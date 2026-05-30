@@ -133,3 +133,28 @@ data, so arguably consistent with "pure tool"); or (b) **no fixture** — parity
 only against the capture folder, and CI runs unit tests + lint only. Default leaning: (a), pending
 user confirmation. This supersedes the "synthetic" framing in [QUALITY_GATES](reference/QUALITY_GATES.md)
 §21.1 and ADR-6's "derive from real ingest" only insofar as *whether* to commit it.
+
+### ADR-9 — the replay-drift guard's count + equality are corrected against the real code (c13)
+**Context:** ADR-5 / [QUALITY_GATES §21.3](reference/QUALITY_GATES.md) specify the c13 drift test as
+`cols == schemas.expected_columns(stem)` for every replay `*_COLS`, plus `assert len(tables) >= 21`.
+Implementing c13 and checking against the actual `replay/replay_main.py` (read-only `ast` extraction)
+found the literal spec **cannot be green**:
+- **Count is 20, not 21.** `replay_main.py` defines 20 `*_COLS` table tuples (excl. `ID_COLS`).
+  `assert >= 21` fails on the spot. (ADR-5 itself estimated "~21"; the c13 doc's "Done when" already
+  hedges to "~21".)
+- **Three tables legitimately differ from `schemas.py`.** `events`, `draws`, `passes` omit exactly
+  four columns that `derive_post_merge.py` (see its module docstring) computes **host-side, after
+  replay**: `events.parent_marker_path_norm`; `draws.parent_pass_path_norm`, `draws.draw_class`;
+  `passes.marker_path_norm`. Replay emits raw extraction; the host adds the normalized-path +
+  classification columns before the final Parquet. The other 17 tables match byte-for-byte.
+
+**Decision (Option A — pinned-derived allowlist; user-confirmed):** c13 compares each replay
+`*_COLS` against its schema tuple **minus a pinned set of host-derived columns** (`_DERIVED_COLS`
+in `tests/test_replay_drift.py`) and asserts `len(tables) >= 20`. This keeps the full guard intent of
+ADR-5 — it still fails on any raw-column add/remove/reorder **and** on any *new, unpinned*
+schema-only column (forcing a deliberate update), while staying green today. The test also asserts
+every pinned derived column genuinely exists in its schema tuple, so the allowlist can't mask a typo
+or a real raw column. **Consequence:** this is a correction to ADR-5's exact-equality framing and its
+`>=21` count, recorded by append (DECISIONS is frozen). The cheaper "rename replay vars to match
+stems" alternative from ADR-5 is orthogonal — it would remove the alias map but not the derived-column
+difference — and is not taken.

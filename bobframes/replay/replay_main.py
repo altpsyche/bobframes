@@ -30,6 +30,12 @@ _SEP = '\x1f'
 
 
 # --- Schema constants (mirror schemas.py exactly) ---------------------------
+#
+# Duplicated by design (H-6): this script runs inside qrenderdoc's embedded Python and cannot import
+# the host bobframes package, so these tuples mirror bobframes/schemas.py. Drift is guarded by
+# bobframes/tests/test_replay_drift.py (CI) and re-checked at parquetize header-verify time.
+# EVENTS/DRAWS/PASSES intentionally omit their *_norm + draw_class columns — those are derived
+# host-side after replay (see derive_post_merge.py). Keep these in sync with schemas.py.
 
 ID_COLS = ('area', 'drop_date', 'drop_label', 'capture')
 

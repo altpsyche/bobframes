@@ -14,7 +14,7 @@
 | H-3 | `derive_post_merge._RE_FRAME_PREFIX` | UE `^Frame\s+\d+/?` | `frame_prefix_regex` in TOML | c09 | ☐ |
 | H-4 | `derives/pass_class_breakdown` | counter literal `'GPU Duration'` (Arm-specific) | `[counters] gpu_duration_aliases` fall-through | c09 | ☐ |
 | H-5 | `chrome.DRAW_CLASSES` + `_classify_draw` | DRAW_CLASSES enum duplicated in two places | single source: classifier `class_order`; chrome iterates it | c09 | ☐ |
-| H-6 | `replay/replay_main` `*_COLS` tuples | schema cols duplicated from `schemas.py` (qrenderdoc import unreliable) | **kept by design**; CI drift detector | [c13](../commits/v01/c13_replay_drift_ci.md) | ☐ |
+| H-6 | `replay/replay_main` `*_COLS` tuples | schema cols duplicated from `schemas.py` (qrenderdoc import unreliable) | **kept by design**; CI drift detector | [c13](../commits/v01/c13_replay_drift_ci.md) | ☑ |
 
 ## P1 — tool version lock + dual-edit lists
 
