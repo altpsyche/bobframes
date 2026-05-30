@@ -158,3 +158,22 @@ or a real raw column. **Consequence:** this is a correction to ADR-5's exact-equ
 `>=21` count, recorded by append (DECISIONS is frozen). The cheaper "rename replay vars to match
 stems" alternative from ADR-5 is orthogonal — it would remove the alias map but not the derived-column
 difference — and is not taken.
+
+### ADR-10 — the bundled-fixture wheel `force-include` is dropped (it duplicated entries)
+**Context:** [ARCHITECTURE §3](ARCHITECTURE.md)'s `pyproject.toml` template lists two wheel
+force-includes — `bobframes/replay/replay_main.py` and `bobframes/tests/data`. Building the wheel
+during c17's publish dry-validation emitted ~65 `Duplicate name:` warnings, all under
+`bobframes/tests/data/**`. Inspection of the built wheel (130 logical files, 195 zip entries)
+confirmed every fixture file appeared twice. Root cause: the `.gitignore` negation
+(`!bobframes/tests/data/**`, added at c02 to track the synthetic `_data` + golden HTML, ADR-8) makes
+those files **tracked**, so hatchling's default `packages = ["bobframes"]` selection already ships
+them; the `tests/data` force-include then added a second copy. `replay_main.py` (a tracked `.py`
+under the package) is likewise shipped by `packages`, but its single-file force-include produced **no**
+duplicate.
+**Decision:** remove the `"bobframes/tests/data" = "bobframes/tests/data"` force-include line; keep
+the `replay_main.py` force-include (no duplicate, and §3 justifies it as a guarantee that
+`importlib.resources` always resolves a real on-disk path). Verified post-fix: the wheel has 130
+entries / 130 unique / **0 duplicates**, still containing `replay_main.py`, all 54 synthetic
+Parquet, both manifests, and all 9 golden HTML; `twine check` passes. **Consequence:** the real
+`pyproject.toml` diverges from the §3 snapshot by one removed line; §3 is annotated with a pointer to
+this ADR rather than rewritten (frozen, append-only).

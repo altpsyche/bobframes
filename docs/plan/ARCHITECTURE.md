@@ -119,6 +119,11 @@ exclude = ["**/__pycache__", "**/*.pyc"]
 Hatchling chosen: single-file dynamic version, no `setup.py`, native force-include for
 `replay_main.py` (importlib.resources needs a real on-disk path).
 
+> **Superseded by [ADR-10](DECISIONS.md):** the `"bobframes/tests/data"` force-include line above is
+> removed in the real `pyproject.toml` — the `.gitignore` negation makes those fixtures tracked, so
+> `packages = ["bobframes"]` already ships them and the force-include only created duplicate wheel
+> entries. The `replay_main.py` force-include stays.
+
 > **Python 3.14 caveat (see DECISIONS / QUALITY_GATES):** the `3.14` classifier is intentionally
 > omitted above. `pyarrow>=17` has no cp314 wheels, so a `{3.14, pyarrow 17}` install fails. Add
 > 3.14 only once a compatible pyarrow floor is set for it. CI matrix tops out at 3.13 for v0.1.

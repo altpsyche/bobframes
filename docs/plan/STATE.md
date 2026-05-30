@@ -15,10 +15,8 @@ last_session:   2026-05-31 — c17 DONE: added .github/workflows/ci.yml. test jo
                 on v* tag (twine + GH release), inert until c19. Validated YAML + ran all gate cmds
                 locally; dry-validated build (twine check PASSED both artifacts).
 next_action:    c18 — README + CHANGELOG + LICENSE. Open commits/v01/c18_docs.md and do exactly that
-                commit. Keep 32-test suite green. NOTE two carry-over items for c18/c19: (a) wheel
-                has DUPLICATE entries — pyproject `packages=["bobframes"]` already ships tests/data,
-                and the force-include re-adds it (warns on build; ARCHITECTURE §3 is frozen → needs
-                an ADR to fix); (b) CI green-on-push is unverified (no remote push this session).
+                commit. Keep 32-test suite green. Carry-over for c19: CI green-on-push is unverified
+                (no remote push this session). (The wheel duplicate-entry blemish is FIXED — ADR-10.)
 blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/tests)
 ```
 
@@ -55,6 +53,13 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-05-31 — packaging fix (ADR-10): dropped the redundant `"bobframes/tests/data"` wheel
+  force-include in pyproject.toml. The .gitignore negation makes the fixtures tracked, so
+  packages=["bobframes"] already ships them; the force-include added a 2nd copy → ~65 duplicate zip
+  entries. Verified: wheel now 130/130 unique, 0 dups, still ships replay_main.py + 54 synthetic
+  parquet + 2 manifests + 9 golden html; twine check passes. Kept the replay_main.py force-include
+  (no dup, §3-justified). Annotated frozen ARCHITECTURE §3 with the ADR-10 pointer (not rewritten).
+  pytest 32 green. Not a plan commit — current stays c18.
 - 2026-05-31 — c17 done: added .github/workflows/ci.yml. test job runs on push/PR (windows-latest ×
   py{3.10,3.12,3.13} × pyarrow{17,21}); excluded the {3.13,17} cell since pyarrow 17 has no cp313
   wheel (3.13 support landed in pyarrow 18) — a faithful deviation from §21.6's literal grid. Steps:

@@ -44,9 +44,12 @@ path = "bobframes/_version.py"
 [tool.hatch.build.targets.wheel]
 packages = ["bobframes"]
 
+# replay_main.py is force-included so importlib.resources always resolves a real on-disk path
+# (ARCHITECTURE §3). The bundled test fixtures are NOT force-included: the .gitignore negation
+# (bobframes/tests/data/**) makes them tracked, so packages=["bobframes"] already ships them — a
+# second force-include only produced duplicate zip entries. See DECISIONS ADR-10.
 [tool.hatch.build.targets.wheel.force-include]
 "bobframes/replay/replay_main.py" = "bobframes/replay/replay_main.py"
-"bobframes/tests/data" = "bobframes/tests/data"
 
 [tool.hatch.build.targets.sdist]
 include = ["bobframes/", "README.md", "CHANGELOG.md", "LICENSE", "pyproject.toml"]
