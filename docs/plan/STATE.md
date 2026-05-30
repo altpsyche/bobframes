@@ -7,15 +7,16 @@
 
 ```
 active_release: v0.1
-current:        c15_smoke_tests    (status: not-started)
-last_session:   2026-05-31 — c13 DONE: added tests/test_replay_drift.py (ast-diff of replay_main.py
-                *_COLS vs schemas.py). ADR-5's spec couldn't be green — empirically 20 tables (not
-                21) and events/draws/passes omit 4 host-derived cols. Used Option A (pinned-derived
-                allowlist): equality vs schema-minus-_DERIVED_COLS, assert >=20. Appended ADR-9,
-                added §9 dup-policy comment to replay_main.py, ticked H-6. pytest 12 green.
-next_action:    c15 — smoke rewrite + unit tests. Open commits/v01/c15_smoke_tests.md and do exactly
-                that commit (G-12: replace brittle hardcoded constants in tests/smoke.py). Keep the
-                12-test suite green.
+current:        c17_ci_workflow    (status: not-started)
+last_session:   2026-05-31 — c15 DONE: rewrote tests/smoke.py (G-12) — killed the hardcoded
+                Chor-bazar/r110565/2026-05-27 constants + __file__-walked root. New shape: no --data
+                = render-only vs bundled synthetic (CI-safe); --data DIR = full ingest via
+                find_drops. Wired --data+pixel_grid through cli._cmd_smoke. Added 3 unit files
+                (test_stable_keys / test_schemas_unit / test_discovery — named test_* not unit_*).
+                pytest 32 green; `bobframes smoke` exit 0. Full --data path needs GPU (nightly).
+next_action:    c17 — CI workflow. Open commits/v01/c17_ci_workflow.md and do exactly that commit
+                (.github/workflows/ci.yml; matrix per QUALITY_GATES §21.6). Keep the 32-test suite
+                green; CI step list must match the test_* filenames actually on disk (NOT unit_*).
 blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/tests)
 ```
 
@@ -30,8 +31,8 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c12 replay importlib.resources](commits/v01/c12_replay_importlib.md) | **done** — `replay_script_path()` resolves from wheel; 11 tests green |
 | ☑ | [c13 replay-drift CI guardrail](commits/v01/c13_replay_drift_ci.md) | **done** — `test_replay_drift.py` ast-diffs replay `*_COLS` vs `schemas.py` (Option A / ADR-9); 12 tests green |
 | ✗ | [c14 rename](commits/v01/c14_rename.md) | **COLLAPSED** — package is `bobframes` from scaffold (ADR-7) |
-| ☐ | [c15 smoke rewrite + unit tests](commits/v01/c15_smoke_tests.md) | not-started ← **HERE** |
-| ☐ | [c17 CI workflow](commits/v01/c17_ci_workflow.md) | not-started |
+| ☑ | [c15 smoke rewrite + unit tests](commits/v01/c15_smoke_tests.md) | **done** — `--data`-driven smoke (render-only default) + 3 unit files (`test_stable_keys`/`test_schemas_unit`/`test_discovery`); 32 tests green |
+| ☐ | [c17 CI workflow](commits/v01/c17_ci_workflow.md) | not-started ← **HERE** |
 | ☐ | [c18 README + CHANGELOG + LICENSE](commits/v01/c18_docs.md) | not-started |
 | ☐ | [c19 tag v0.1.0](commits/v01/c19_release.md) | not-started |
 
@@ -52,6 +53,17 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-05-31 — c15 done: full rewrite of tests/smoke.py (G-12). Removed AREA='Chor bazar'/
+  DROP_LABEL='r110565'/DROP_DATE + the __file__-walked ROOT. Two modes: no --data → render-only vs
+  bundled synthetic via _render_util.render_fresh (CI-safe, no .rdc/GPU); --data DIR → full ingest
+  using discovery.find_drops to auto-pick area+latest drop. Both assert schema match + stable_key +
+  catalog + lint-clean HTML; CSV-pair check gated to full mode (synthetic is parquet-only, ADR-8).
+  Wired --data + pixel_grid through cli._cmd_smoke (§4 surface unchanged). Added 3 unit files named
+  test_* (NOT the doc's unit_* — no python_files override, default discovery): test_stable_keys
+  (version/normalize/empty-contract/order-invariance), test_schemas_unit (expected_columns roundtrip,
+  ID_COLS prefix, dtype totality), test_discovery (latest-drop pick + no-fallback when newest empty,
+  filters, capture sort, parse_single_drop_arg). pytest 32 green; `bobframes smoke` exit 0. Full
+  --data ingest path needs Windows+RenderDoc (self-hosted/nightly, ADR-6) — not exercised here.
 - 2026-05-31 — c13 done: new tests/test_replay_drift.py ast-extracts replay_main.py `*_COLS` (resolves
   `ID_COLS + (...)`), maps var→schema stem (alias map for RT/RT_TIMELINE/STATE_CHANGE/COUNTERS), skips
   ID_COLS, diffs vs schemas.py. ADR-5's literal spec couldn't be green: verified 20 tables (not >=21)

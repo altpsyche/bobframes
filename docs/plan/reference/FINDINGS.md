@@ -88,7 +88,7 @@
 | G-9 | no `--json` structured output for CI | v0.2 | ☐ |
 | G-10 | no isolated-stage testing verbs | v0.2 (`bobframes parse`/`replay`) | ☐ |
 | G-11 | `stable_keys` SHA256 has no version prefix — rule change orphans keys | [c03](../commits/v01/c03_hardening.md) (`KEY_VERSION=1`; H-27) | ☑ |
-| G-12 | `tests/smoke.py` brittle hardcoded constants | [c15](../commits/v01/c15_smoke_tests.md) | ☐ |
+| G-12 | `tests/smoke.py` brittle hardcoded constants | [c15](../commits/v01/c15_smoke_tests.md) | ☑ |
 
 ## XSS / safety — no findings (recorded)
 

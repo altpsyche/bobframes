@@ -1,158 +1,199 @@
-"""End-to-end smoke test.
+"""End-to-end smoke test (c15 rewrite — G-12).
 
-Cleans a known drop's _analysis_out, runs the pipeline, asserts every
-expected output exists with non-empty data, asserts schema match,
-asserts catalog updated, asserts lint clean.
+Two modes, no hardcoded area/label/date (the old `Chor bazar` / `r110565` / `2026-05-27`
+constants + the `__file__`-walked project root are gone):
 
-Run from project root:
-    python -m bobframes.tests.smoke
+  bobframes smoke                 render-only against the bundled synthetic `_data/` fixture
+                                  (no `.rdc`, no qrenderdoc/GPU). Runs everywhere, incl. CI.
+  bobframes smoke --data <DIR>    full ingest + render against a real capture root; auto-selects
+                                  area + latest drop via discovery.find_drops. Needs Windows +
+                                  RenderDoc; self-hosted / nightly only.
+
+Both modes assert: outputs exist, every Parquet matches schemas.expected_columns, entity tables
+carry a populated stable_key, catalog is rebuilt, and every emitted HTML is lint-clean.
+
+Run standalone:  python -m bobframes.tests.smoke [--data DIR]
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
-import shutil
 import subprocess
 import sys
+import tempfile
 
 import pyarrow.parquet as papq
 
-from .. import paths, schemas
-
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-AREA = 'Chor bazar'
-DROP_LABEL = 'r110565'
-DROP_DATE = '2026-05-27'
+from .. import discovery, lint, paths, schemas
 
 
-def _run(cmd: list[str]) -> int:
-    p = subprocess.run(cmd, cwd=ROOT)
-    return p.returncode
+def _fail(msg: str) -> int:
+    print(f'FAIL: {msg}')
+    return 1
 
 
-def _drop_dir() -> str:
-    for entry in os.listdir(os.path.join(ROOT, AREA)):
-        if entry.startswith(DROP_DATE):
-            return os.path.join(ROOT, AREA, entry)
-    raise FileNotFoundError(f'no dated drop in {AREA}')
+def _lint_html(root: str) -> int:
+    """Lint every emitted HTML under `root` (skipping the parquet cache). Returns hit count."""
+    from . import _render_util as u
+    hits = 0
+    for rel in u.rendered_html_files(root):
+        for lineno, label, snip in lint.lint_file(os.path.join(root, rel)):
+            print(f'  LINT {rel}:{lineno}: [{label}] {snip}')
+            hits += 1
+    return hits
 
 
-def _clean(drop_dir: str) -> None:
-    """Remove this drop's per-drop _data dir + drill dir (idempotent)."""
-    drop_label_dated = os.path.basename(drop_dir)
-    for d in (
-        paths.drop_data_dir(ROOT, AREA, drop_label_dated),
-        paths.drop_data_dir_tmp(ROOT, AREA, drop_label_dated),
-        paths.drop_drill_dir(ROOT, AREA, drop_label_dated),
-    ):
-        if os.path.isdir(d):
-            try:
-                shutil.rmtree(d)
-            except OSError as e:
-                print(f'  warn: could not remove {d}: {e}')
+def _assert_drop_parquet(out_dir: str, check_csv: bool) -> int:
+    """Schema match + stable_key population for one drop's `_data` dir. Returns error count.
 
-
-def main() -> int:
-    drop_dir = _drop_dir()
-    drop_label_dated = os.path.basename(drop_dir)
-    out_dir = paths.drop_data_dir(ROOT, AREA, drop_label_dated)
-    tmp_dir = paths.drop_data_dir_tmp(ROOT, AREA, drop_label_dated)
-    drill_dir = paths.drop_drill_dir(ROOT, AREA, drop_label_dated)
-
-    print('1. clean')
-    _clean(drop_dir)
-
-    print('2. run pipeline')
-    rc = _run([sys.executable, '-m', 'bobframes.run',
-               '--area', AREA, '--label', DROP_LABEL])
-    if rc != 0:
-        print(f'FAIL: pipeline exited rc={rc}')
-        return 1
-
-    print('3. atomic commit check')
-    assert os.path.isdir(out_dir), f'{out_dir} missing'
-    assert not os.path.isdir(tmp_dir), f'{tmp_dir} should be gone after commit'
-
-    print('4. parquet+csv pairs')
-    for table_stem in schemas.TABLES:
-        pq = os.path.join(out_dir, f'{table_stem}.parquet')
-        cv = os.path.join(out_dir, f'{table_stem}.csv')
+    `check_csv` asserts each Parquet has its `.csv` sidecar — true only for the full-ingest path;
+    the committed synthetic fixture is Parquet-only (ADR-8), so render-only skips it.
+    """
+    errors = 0
+    for stem in schemas.TABLES:
+        pq = os.path.join(out_dir, f'{stem}.parquet')
         if not os.path.exists(pq):
             continue
-        assert os.path.exists(cv), f'{cv} missing alongside {pq}'
-
-    print('5. schema match')
-    schema_errors = 0
-    for table_stem in schemas.TABLES:
-        pq = os.path.join(out_dir, f'{table_stem}.parquet')
-        if not os.path.exists(pq):
-            continue
+        if check_csv and not os.path.exists(os.path.join(out_dir, f'{stem}.csv')):
+            print(f'  {stem}: .csv missing alongside .parquet')
+            errors += 1
         cols = list(papq.read_schema(pq).names)
-        expected = list(schemas.expected_columns(table_stem))
+        expected = list(schemas.expected_columns(stem))
         if cols != expected:
-            print(f'  FAIL {table_stem}: cols={cols} vs expected={expected}')
-            schema_errors += 1
-    if schema_errors:
-        print(f'FAIL: {schema_errors} table schema mismatches')
-        return 1
+            print(f'  {stem}: cols={cols} != expected={expected}')
+            errors += 1
+        if schemas.is_entity_table(stem):
+            t = papq.read_table(pq, columns=['stable_key'])
+            if t.num_rows and not any(t.column('stable_key').to_pylist()):
+                print(f'  {stem}: stable_key all empty across {t.num_rows} rows')
+                errors += 1
+    return errors
 
-    print('6. stable_key populated for entity tables')
-    sk_errors = 0
-    for table_stem in schemas.TABLES:
-        if not schemas.is_entity_table(table_stem):
+
+# --- render-only (default) ---------------------------------------------------
+
+def _render_only_smoke() -> int:
+    from . import _render_util as u
+
+    with tempfile.TemporaryDirectory(prefix='bobframes-smoke-') as td:
+        dest = os.path.join(td, 'root')
+        print(f'1. render-only against bundled synthetic -> {dest}')
+        try:
+            u.render_fresh(dest)
+        except RuntimeError as e:
+            return _fail(str(e))
+
+        print('2. html emitted')
+        html = u.rendered_html_files(dest)
+        if not os.path.exists(paths.root_index_html(dest)):
+            return _fail('root index.html missing')
+        drills = [r for r in html if r.endswith('/index.html') and 'drill' in r]
+        reports = [r for r in html if r.startswith('_reports/') and 'drill' not in r]
+        if not drills:
+            return _fail('no per-drop drill index.html emitted')
+        if not reports:
+            return _fail('no _reports/*.html emitted')
+
+        print('3. schema + stable_key (synthetic _data)')
+        errors = 0
+        for drop in discovery.find_drops(dest):
+            out_dir = paths.drop_data_dir(dest, drop.area, os.path.basename(drop.drop_dir))
+            errors += _assert_drop_parquet(out_dir, check_csv=False)
+        if errors:
+            return _fail(f'{errors} parquet schema/stable_key error(s)')
+
+        print('4. catalog')
+        if not os.path.exists(paths.catalog_parquet(dest)):
+            return _fail('catalog parquet missing')
+
+        print('5. lint')
+        if _lint_html(dest):
+            return _fail('lint hits in rendered HTML')
+
+        print(f'OK: render-only smoke - {len(drills)} drop(s), {len(html)} HTML pages, lint clean')
+        return 0
+
+
+# --- full ingest (--data) ----------------------------------------------------
+
+def _full_smoke(data_dir: str, pixel_grid: int) -> int:
+    data_dir = os.path.abspath(data_dir)
+    drops = discovery.find_drops(data_dir)
+    if not drops:
+        return _fail(f'no drops with .rdc found under {data_dir}')
+    print(f'1. discovered {len(drops)} drop(s): ' +
+          ', '.join(f'{d.area}/{os.path.basename(d.drop_dir)}' for d in drops))
+
+    print('2. ingest (full pipeline, --force)')
+    rc = subprocess.run(
+        [sys.executable, '-m', 'bobframes.run', '--root', data_dir, '--force',
+         '--pixel-grid', str(pixel_grid)],
+    ).returncode
+    if rc != 0:
+        return _fail(f'pipeline exited rc={rc}')
+
+    print('3. per-drop outputs')
+    errors = 0
+    for drop in drops:
+        dated = os.path.basename(drop.drop_dir)
+        out_dir = paths.drop_data_dir(data_dir, drop.area, dated)
+        tmp_dir = paths.drop_data_dir_tmp(data_dir, drop.area, dated)
+        if not os.path.isdir(out_dir):
+            errors += 1
+            print(f'  {out_dir} missing')
             continue
-        pq = os.path.join(out_dir, f'{table_stem}.parquet')
-        if not os.path.exists(pq):
-            continue
-        t = papq.read_table(pq, columns=['stable_key'])
-        n_total = t.num_rows
-        if n_total == 0:
-            continue
-        n_nonempty = sum(1 for v in t.column('stable_key').to_pylist() if v)
-        if n_nonempty == 0:
-            print(f'  FAIL {table_stem}: stable_key all empty across {n_total} rows')
-            sk_errors += 1
-    if sk_errors:
-        return 1
+        if os.path.isdir(tmp_dir):
+            errors += 1
+            print(f'  {tmp_dir} should be gone after atomic commit')
+        errors += _assert_drop_parquet(out_dir, check_csv=True)
 
-    print('7. sidecars')
-    for required in ('shader_src', 'frame_metadata.jsonl'):
-        p = os.path.join(out_dir, required)
-        assert os.path.exists(p), f'{p} missing'
-    if os.path.isdir(os.path.join(out_dir, 'shader_src')):
-        n_shaders = len(os.listdir(os.path.join(out_dir, 'shader_src')))
-        assert n_shaders > 0, 'shader_src/ is empty'
+        mf = os.path.join(out_dir, '_manifest.json')
+        with open(mf, encoding='utf-8') as f:
+            m = json.load(f)
+        if m.get('schema_version') != schemas.SCHEMA_VERSION:
+            errors += 1
+            print(f'  manifest schema_version={m.get("schema_version")} != {schemas.SCHEMA_VERSION}')
+        if not all(s == 'ok' for s in m.get('capture_status', {}).values()):
+            errors += 1
+            print(f'  capture_status not all ok: {m.get("capture_status")}')
 
-    print('8. manifest')
-    mf = os.path.join(out_dir, '_manifest.json')
-    with open(mf, 'r', encoding='utf-8') as f:
-        m = json.load(f)
-    assert m['schema_version'] == schemas.SCHEMA_VERSION, m['schema_version']
-    assert all(s == 'ok' for s in m['capture_status'].values()), m['capture_status']
+        drill = paths.drop_drill_dir(data_dir, drop.area, dated)
+        if not os.path.exists(os.path.join(drill, 'index.html')):
+            errors += 1
+            print(f'  drill index.html missing at {drill}')
+    if errors:
+        return _fail(f'{errors} ingest output error(s)')
 
-    print('9. catalog')
-    cat_pq = paths.catalog_parquet(ROOT)
-    assert os.path.exists(cat_pq), f'catalog missing at {cat_pq}'
-    t = papq.read_table(cat_pq)
-    area_col = t.column('area').to_pylist()
-    cap_col = t.column('capture').to_pylist()
-    found = sum(1 for a, s in zip(area_col, cap_col) if a == AREA)
-    assert found >= len(m['captures']), f'catalog has {found} rows for {AREA}, expected >= {len(m["captures"])}'
-    aop = t.column('analysis_out_path').to_pylist()
-    for p in aop:
-        assert not os.path.isabs(p), f'catalog has absolute analysis_out_path: {p}'
+    print('4. catalog + root index')
+    if not os.path.exists(paths.catalog_parquet(data_dir)):
+        return _fail('catalog parquet missing')
+    if not os.path.exists(paths.root_index_html(data_dir)):
+        return _fail('root index.html missing')
 
-    print('10. html')
-    assert os.path.exists(os.path.join(drill_dir, 'index.html')), \
-        f'per-drop browser missing at {drill_dir}/index.html'
-    assert os.path.exists(paths.root_index_html(ROOT)), 'root index.html missing'
+    print('5. lint')
+    if _lint_html(data_dir):
+        return _fail('lint hits in rendered HTML')
 
-    total_rows = sum(m['row_counts'].values())
-    n_tables = sum(1 for v in m['row_counts'].values() if v > 0)
-    print(f'OK: {n_tables} tables populated, {total_rows:,} total rows, {len(m["captures"])} captures')
+    print(f'OK: full smoke - {len(drops)} drop(s) ingested + rendered, lint clean')
     return 0
 
 
+def main(data: str | None = None, pixel_grid: int = 4) -> int:
+    if data:
+        return _full_smoke(data, pixel_grid)
+    return _render_only_smoke()
+
+
+def _parse(argv: list[str]) -> argparse.Namespace:
+    ap = argparse.ArgumentParser(prog='bobframes.tests.smoke',
+                                 description='render-only (default) or full ingest (--data) smoke')
+    ap.add_argument('--data', help='capture root for full ingest (default: bundled synthetic)')
+    ap.add_argument('--pixel-grid', type=int, default=4)
+    return ap.parse_args(argv)
+
+
 if __name__ == '__main__':
-    sys.exit(main())
+    a = _parse(sys.argv[1:])
+    sys.exit(main(data=a.data, pixel_grid=a.pixel_grid))

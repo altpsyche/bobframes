@@ -164,10 +164,10 @@ def _cmd_serve(args: argparse.Namespace) -> int:
 
 
 def _cmd_smoke(args: argparse.Namespace) -> int:
-    # End-to-end smoke. `--data` (custom capture dir) is wired in c15's smoke rewrite (G-12);
-    # for now this runs the existing self-hosted smoke against its bundled paths.
+    # End-to-end smoke (G-12). No --data → render-only against the bundled synthetic fixture;
+    # --data DIR → full ingest + render against a real capture root.
     from .tests import smoke
-    return smoke.main()
+    return smoke.main(data=args.data, pixel_grid=getattr(args, 'pixel_grid', 4))
 
 
 # --- parser ------------------------------------------------------------------
