@@ -40,9 +40,12 @@ htmlcov/
 **/_manifest.json
 **/done.marker
 
-# Exception: bundled synthetic test data
-!bobframes/tests/data/synthetic/
-!bobframes/tests/data/synthetic/**/*.parquet
+# Exception: bundled test fixtures (ADR-8: synthetic _data + golden HTML are test code, not user
+# data). Must override the broad _data/_reports/index.html/parquet/manifest ignores above. Git
+# cannot un-ignore a file under an ignored directory, so re-include the directories first, then files.
+!bobframes/tests/data/
+!bobframes/tests/data/**/
+!bobframes/tests/data/**
 
 # Bobframes config
 .bobframes.toml

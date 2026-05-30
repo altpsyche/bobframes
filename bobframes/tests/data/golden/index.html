@@ -1,0 +1,1175 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>capture analysis catalog</title>
+<link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect x='2' y='3' width='12' height='2' fill='%23888'/><rect x='2' y='7' width='12' height='2' fill='%234a8'/><rect x='2' y='11' width='12' height='2' fill='%23d54'/></svg>">
+<style>
+:root {
+  color-scheme: light dark;
+
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-6: 24px; --sp-8: 32px; --sp-12: 48px;
+
+  --fs-display: 2.25rem;
+  --fs-h1: 1.5rem;  --fs-h2: 1.1rem;  --fs-h3: 0.9rem;
+  --fs-body: 14px;  --fs-mono: 13px;  --fs-small: 11px;
+
+  --motion-hover: 150ms ease-out;
+  --motion-focus: 100ms ease-out;
+  --motion-vt: 200ms ease-in-out;
+  --motion-disclosure: 180ms ease-out;
+
+  --bg:            light-dark(oklch(97.2% 0.012 80),  oklch(16.4% 0.012 260));
+  --surface-0:     var(--bg);
+  --surface-1:     light-dark(oklch(94.6% 0.018 80),  oklch(19.5% 0.013 260));
+  --surface-2:     light-dark(oklch(94.6% 0.020 80),  oklch(20.7% 0.014 260));
+  --code-bg:       var(--surface-2);
+
+  --fg:            light-dark(oklch(22.0% 0.005 80),  oklch(93.6% 0.005 260));
+  --text-1:        var(--fg);
+  --muted:         light-dark(oklch(49.4% 0.005 80),  oklch(67.5% 0.005 260));
+  --text-2:        var(--muted);
+  --text-3:        light-dark(oklch(60.0% 0.012 80),  oklch(56.4% 0.020 280));
+
+  --border:        light-dark(oklch(84.0% 0.024 82),  oklch(28.0% 0.014 260));
+  --border-1:      var(--border);
+  --border-strong: light-dark(oklch(75.0% 0.030 82),  oklch(35.0% 0.018 260));
+  --border-2:      var(--border-strong);
+
+  --row-alt:       light-dark(oklch(93.2% 0.022 82),  oklch(20.5% 0.015 260));
+  --row-hover:     light-dark(oklch(90.0% 0.038 82),  oklch(25.0% 0.022 260));
+
+  --accent-primary: light-dark(oklch(38.0% 0.020 260), oklch(78.0% 0.015 260));
+  --accent-data:    light-dark(oklch(55.0% 0.155 230), oklch(75.0% 0.115 230));
+  --accent:         var(--accent-primary);
+
+  --status-alarm: light-dark(oklch(52.0% 0.180 28),  oklch(70.0% 0.155 28));
+  --status-warn:  light-dark(oklch(70.0% 0.155 85),  oklch(80.0% 0.130 85));
+  --status-ok:    light-dark(oklch(55.0% 0.135 145), oklch(72.0% 0.115 145));
+  --status-info:  light-dark(oklch(55.0% 0.115 260), oklch(75.0% 0.090 260));
+
+  --c-opaque:      light-dark(oklch(60.5% 0.110 135), oklch(73.5% 0.115 135));
+  --c-prepass:     light-dark(oklch(64.0% 0.135 50),  oklch(73.0% 0.130 50));
+  --c-translucent: light-dark(oklch(56.0% 0.085 240), oklch(71.0% 0.080 240));
+  --c-additive:    light-dark(oklch(56.0% 0.115 305), oklch(72.0% 0.105 305));
+  --c-decal:       light-dark(oklch(60.0% 0.115 65),  oklch(71.0% 0.115 65));
+  --c-shadow:      light-dark(oklch(42.0% 0.025 285), oklch(55.0% 0.020 285));
+  --c-ui:          light-dark(oklch(71.0% 0.115 90),  oklch(80.0% 0.115 90));
+  --c-postprocess: light-dark(oklch(66.0% 0.055 240), oklch(78.0% 0.055 240));
+  --c-other:       light-dark(oklch(64.0% 0.000 0),   oklch(75.0% 0.000 0));
+
+  --pos:     var(--status-ok);
+  --neg:     var(--status-alarm);
+  --neutral: var(--text-2);
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-hover: 0s;
+    --motion-focus: 0s;
+    --motion-vt: 0s;
+    --motion-disclosure: 0s;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--surface-0); color: var(--text-1); }
+body {
+  padding: var(--sp-6) var(--sp-6) var(--sp-12);
+  font: var(--fs-body)/1.5 'Inter', 'Segoe UI', system-ui, sans-serif;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+h1 {
+  font-size: var(--fs-h1); font-weight: 600; color: var(--accent);
+  margin: 0 0 var(--sp-2); padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--border-2);
+  letter-spacing: -0.01em;
+}
+h2 {
+  font-size: var(--fs-h2); font-weight: 600; color: var(--text-1);
+  margin: var(--sp-6) 0 var(--sp-3);
+  padding: 0 0 0 var(--sp-3);
+  border-left: 3px solid var(--accent);
+  line-height: 1.4;
+  scroll-margin-top: 64px;
+}
+h2:first-of-type { margin-top: 0; }
+section[id], h2[id] { scroll-margin-top: 64px; }
+h2[id]:target { color: var(--accent); }
+h3 {
+  font-size: var(--fs-h3); font-weight: 500; color: var(--text-2);
+  margin: var(--sp-3) 0 var(--sp-2);
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; text-decoration-thickness: 2px; }
+a:visited { color: var(--text-2); }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+table.report a { text-decoration: underline; text-decoration-thickness: 1px;
+                 text-underline-offset: 2px; }
+table.report a:visited { color: var(--text-3); }
+
+header.strip {
+  display: flex; flex-wrap: wrap; gap: var(--sp-3) var(--sp-6);
+  align-items: baseline;
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--border-2);
+  margin: 0 0 var(--sp-4);
+}
+header.strip span { color: var(--text-2); font-size: var(--fs-small); }
+header.strip span strong { color: var(--text-1); font-weight: 600; }
+
+nav.crumb {
+  font-size: var(--fs-small);
+  color: var(--text-2);
+  margin: 0 0 var(--sp-3);
+  display: flex; flex-wrap: wrap; gap: var(--sp-2);
+  align-items: center;
+}
+nav.crumb a, nav.crumb a[data-link-kind] {
+  display: inline-flex; align-items: center; gap: 4px;
+  color: var(--accent-primary);
+  text-decoration: none;
+  padding: 2px 8px;
+  border: 1px solid var(--border-1);
+  border-radius: 2px;
+  background: var(--surface-1);
+  transition: border-color var(--motion-hover), background var(--motion-hover);
+}
+nav.crumb a:hover, nav.crumb a[data-link-kind]:hover {
+  border-color: var(--accent-primary);
+  background: var(--row-hover);
+  text-decoration: none;
+}
+nav.crumb a + a::before { content: ''; }
+
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--sp-3);
+  margin: 0 0 var(--sp-8);
+}
+.kpi-chip {
+  background: var(--surface-1);
+  border: 1px solid var(--border-1);
+  padding: var(--sp-3) var(--sp-4);
+  display: flex; flex-direction: column; gap: var(--sp-1);
+  min-height: 88px;
+}
+.kpi-chip .kpi-label {
+  font: var(--fs-small) ui-monospace, monospace;
+  color: var(--text-3);
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+}
+.kpi-chip .kpi-value {
+  font: 600 var(--fs-display)/1.05 ui-monospace, monospace;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.kpi-chip .kpi-delta {
+  font: var(--fs-small) ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-3);
+}
+.kpi-chip.tone-pos .kpi-value, .kpi-chip.tone-pos .kpi-delta { color: var(--pos); }
+.kpi-chip.tone-neg .kpi-value, .kpi-chip.tone-neg .kpi-delta { color: var(--neg); }
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-1);
+  border-radius: 4px;
+  margin: 0 0 var(--sp-6);
+}
+.table-wrap > table.report { border: 0; margin: 0; }
+
+nav.toc {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--sp-1) var(--sp-3);
+  font: var(--fs-mono) ui-monospace, monospace;
+  margin: 0 0 var(--sp-6);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border-1);
+}
+nav.toc a { display: inline-block; padding: 2px 0; }
+
+table.report {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--fs-mono) ui-monospace, 'Cascadia Code', Consolas, monospace;
+  margin-top: var(--sp-1);
+}
+table.report thead th {
+  position: sticky;
+  top: var(--hdr-offset);
+  background: var(--surface-2); color: var(--accent);
+  text-align: left; font-weight: 600;
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--border-2);
+  white-space: nowrap;
+  z-index: 1;
+}
+table.report thead th.num { text-align: right; }
+table.report tbody td {
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--border-1);
+  vertical-align: top;
+}
+table.report tbody td:first-child {
+  font-weight: 600; color: var(--text-1);
+}
+table.report td.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.report tbody tr:nth-child(even) td { background: var(--surface-2); }
+table.report tbody tr:hover td { background: var(--row-hover); }
+table.report tbody td .lbl {
+  color: var(--text-2);
+  margin-left: 6px;
+  font-style: italic;
+  opacity: .85;
+}
+table.report tr.area-break td { border-top: 2px solid var(--border-2); }
+table.report td.area-cell { color: var(--text-2); }
+
+.bar-row {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) 2fr 90px;
+  gap: var(--sp-3);
+  align-items: center;
+  padding: 4px 0;
+  font: var(--fs-mono) ui-monospace, 'Cascadia Code', Consolas, monospace;
+}
+.bar-row .key { white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                font-weight: 600; color: var(--text-1); }
+.bar-row .total { text-align: right; font-variant-numeric: tabular-nums;
+                  color: var(--text-2); }
+.bar { display: flex; height: 18px; background: var(--surface-2);
+       border: 1px solid var(--border-1); overflow: hidden; }
+.bar .seg { flex: 0 0 auto; color: #fff; font-size: 10px; line-height: 18px;
+            text-align: center; overflow: hidden; white-space: nowrap; }
+
+.ibar {
+  display: inline-block; width: 80px; height: 6px;
+  background: var(--surface-2); border: 1px solid var(--border-1);
+  vertical-align: middle; margin-left: 6px;
+}
+.ibar > div { height: 100%; background: var(--accent); }
+
+.delta { font-variant-numeric: tabular-nums; padding: 2px var(--sp-2);
+         text-align: right; }
+.delta-pill {
+  display: inline-block; padding: 1px 6px; border-radius: 2px;
+  background: var(--surface-2);
+  font: 600 var(--fs-small) ui-monospace, monospace;
+}
+.delta.pos, .delta-pill.pos { color: var(--pos); font-weight: 600; }
+.delta.neg, .delta-pill.neg { color: var(--neg); font-weight: 600; }
+.delta.flat, .delta-pill.flat { color: var(--text-3); }
+.delta.new, .delta-pill.new { color: var(--text-3); font-style: italic; }
+.delta.alarm { border-left: 3px solid var(--status-alarm); padding-left: 6px; }
+.delta-latest { border-left: 2px solid var(--border-2); }
+
+.legend { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4);
+          margin: 0 0 var(--sp-3);
+          font-size: var(--fs-small); color: var(--text-2); }
+.legend .chip { display: inline-flex; align-items: center; gap: 6px; }
+.legend .swatch { display: inline-block; width: 12px; height: 12px;
+                  border-radius: 2px; }
+
+.device-strip {
+  font: var(--fs-small) ui-monospace, monospace;
+  color: var(--text-2);
+  background: var(--surface-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-1);
+  margin: 0 0 var(--sp-4);
+}
+.ab-strip {
+  font: var(--fs-small) ui-monospace, monospace;
+  color: var(--text-2);
+  background: var(--surface-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-2);
+  margin: 0 0 var(--sp-4);
+}
+
+.rank {
+  display: inline-block; width: 1.4em; text-align: center;
+  font: 600 var(--fs-small) ui-monospace, monospace;
+  margin-right: var(--sp-1);
+  color: var(--text-3);
+}
+.rank.rank-1 { color: var(--accent); }
+.rank.rank-2 { color: var(--text-1); }
+.rank.rank-3 { color: var(--text-2); }
+
+details.matrix, details.category {
+  margin: 0 0 var(--sp-4);
+  background: var(--surface-1);
+  border: 1px solid var(--border-1);
+}
+details.matrix > summary, details.category > summary {
+  cursor: pointer; list-style: none; user-select: none;
+  padding: var(--sp-3) var(--sp-4);
+  font: 600 var(--fs-body) 'Inter', system-ui, sans-serif;
+  color: var(--accent);
+  border-bottom: 1px solid transparent;
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: var(--sp-3);
+}
+details.matrix[open] > summary, details.category[open] > summary {
+  border-bottom-color: var(--border-1);
+}
+details > summary::-webkit-details-marker { display: none; }
+details.matrix > summary::before, details.category > summary::before {
+  content: '+'; margin-right: var(--sp-2);
+  font-family: ui-monospace, monospace; color: var(--text-3);
+  display: inline-block; width: 0.8em;
+}
+details[open] > summary::before { content: '-'; }
+details.matrix > .matrix-body, details.category > .cat-body {
+  padding: var(--sp-4);
+}
+.cat-meta { font: var(--fs-small) ui-monospace, monospace;
+            color: var(--text-3); font-variant-numeric: tabular-nums; }
+.spark { display: inline-block; vertical-align: middle; color: var(--text-2); }
+
+footer.legend {
+  font: var(--fs-small) ui-monospace, monospace;
+  color: var(--text-2);
+  margin-top: var(--sp-12);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border-1);
+  display: block;
+}
+
+.note { font-size: var(--fs-small); color: var(--text-2);
+        margin-top: var(--sp-2); }
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: var(--sp-6);
+  margin: 0 0 var(--sp-6);
+}
+a.dash-card { border: 1px solid var(--border-1);
+              padding: var(--sp-4); display: flex; flex-direction: column;
+              gap: var(--sp-3); text-decoration: none; color: inherit;
+              transition: border-color 0.1s, background 0.1s; }
+a.dash-card:hover { background: var(--surface-1); border-color: var(--border-2);
+                    text-decoration: none; }
+a.dash-card:visited { color: inherit; }
+a.dash-card h3 { margin: 0; color: var(--accent); font-size: var(--fs-h2);
+                 border-left: 3px solid var(--accent); padding-left: var(--sp-3); }
+a.dash-card table.report { font-size: var(--fs-small); }
+a.dash-card table.report a { pointer-events: none; }
+
+a[data-link-kind="primary"] {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 6px 12px;
+  background: var(--surface-1);
+  border: 1px solid var(--border-2);
+  color: var(--accent-primary);
+  text-decoration: none;
+  transition: background var(--motion-hover), border-color var(--motion-hover);
+}
+a[data-link-kind="primary"]:hover {
+  background: var(--row-hover);
+  border-color: var(--accent-primary);
+  text-decoration: none;
+}
+a[data-link-kind="primary"]:visited { color: var(--accent-primary); }
+
+a[data-link-kind="inline"] {
+  color: var(--accent-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+a[data-link-kind="inline"]:hover { text-decoration-thickness: 2px; }
+a[data-link-kind="inline"] .icon {
+  margin-left: 3px;
+  color: var(--text-2);
+}
+
+a[data-link-kind="drill"] {
+  color: var(--text-1);
+  text-decoration: underline;
+  text-decoration-color: var(--border-2);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+a[data-link-kind="drill"]:hover {
+  color: var(--accent-primary);
+  text-decoration-color: var(--accent-primary);
+  text-decoration-thickness: 2px;
+}
+tr:has(a[data-link-kind="drill"]):hover td { background: var(--row-hover); }
+
+a[data-link-kind="copy"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px; height: 24px;
+  color: var(--text-2);
+  text-decoration: none;
+  border-radius: 2px;
+  transition: color var(--motion-hover), background var(--motion-hover);
+}
+a[data-link-kind="copy"]:hover {
+  color: var(--accent-primary);
+  background: var(--row-hover);
+}
+
+a[data-link-kind="crumb"] {
+  color: var(--text-2);
+  text-decoration: none;
+}
+a[data-link-kind="crumb"]:hover {
+  color: var(--accent-primary);
+  text-decoration: underline;
+}
+
+.icon {
+  width: 11px; height: 11px;
+  display: inline-block;
+  vertical-align: -1px;
+  fill: currentColor;
+}
+
+/* Sticky stack: crumb (top:0) -> summary-bar (top:crumb-h) -> thead (top:hdr-offset).
+   --hdr-offset is the combined height of crumb + summary-bar (pages set per page).
+   --crumb-h is the crumb height alone. Defaults work for most pages.
+   h2 is NOT sticky: the cascading sticky h2 + thead + summary-bar over-stacks
+   on long multi-section pages. Sticky thead is sufficient for table reading. */
+body { --hdr-offset: 120px; --crumb-h: 36px; }
+nav.crumb {
+  position: sticky; top: 0; z-index: 3;
+  background: var(--bg);
+  padding-top: var(--sp-1); padding-bottom: var(--sp-1);
+}
+.summary-bar {
+  position: sticky; top: var(--crumb-h); z-index: 3;
+  display: grid;
+  grid-template-columns: minmax(140px, max-content) 1fr auto;
+  gap: var(--sp-2) var(--sp-6);
+  align-items: center;
+  background: var(--surface-1);
+  border: 1px solid var(--border-1);
+  border-top: 2px solid var(--accent-data);
+  padding: var(--sp-3) var(--sp-4);
+  margin: 0 0 var(--sp-4);
+}
+.summary-bar .sb-label {
+  font: var(--fs-small) ui-monospace, monospace;
+  color: var(--text-2);
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+}
+.summary-bar .sb-headline {
+  font: 600 var(--fs-h1)/1.15 ui-monospace, monospace;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.summary-bar .sb-sub {
+  font: var(--fs-small) ui-monospace, monospace;
+  color: var(--text-2);
+  grid-column: 2;
+  font-variant-numeric: tabular-nums;
+}
+.summary-bar .sb-link { align-self: center; grid-row: 1 / span 2; grid-column: 3; }
+.summary-bar.tone-alarm { border-top-color: var(--status-alarm); }
+.summary-bar.tone-ok { border-top-color: var(--status-ok); }
+.summary-bar.tone-warn { border-top-color: var(--status-warn); }
+.summary-bar.tone-info { border-top-color: var(--status-info); }
+
+body { container-type: inline-size; container-name: page; }
+
+@container page (max-width: 1100px) {
+  nav.toc { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+}
+
+@container page (max-width: 860px) {
+  .dash-grid { grid-template-columns: 1fr; }
+  .summary-bar { grid-template-columns: 1fr auto; }
+  .summary-bar .sb-sub { grid-column: 1; }
+  .summary-bar .sb-link { grid-row: auto; grid-column: 2; }
+  .summary-bar .sb-headline { font-size: var(--fs-h1); }
+}
+
+@container page (max-width: 768px) {
+  .bar-row {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    gap: var(--sp-1);
+  }
+  .bar-row .total { text-align: left; }
+  .kpi-strip { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+  .kpi-chip .kpi-value { font-size: var(--fs-h1); }
+  body { padding: var(--sp-3); }
+  .summary-bar .sb-headline { font-size: var(--fs-h2); }
+  table.report thead th,
+  table.report tbody td { padding: var(--sp-1) var(--sp-2); }
+}
+
+@media print {
+  @page { size: A4; margin: 12mm; }
+  :root { color-scheme: light; }
+  html, body { background: #fff; color: #000; }
+  body { max-width: none; padding: 0; }
+
+  nav.crumb, .device-strip, .ab-strip,
+  rdc-copy-button, rdc-search-cards, rdc-ab-picker { display: none; }
+
+  .summary-bar {
+    position: static;
+    background: #fff;
+    border-color: #888;
+    border-top-width: 3px;
+    break-inside: avoid;
+    break-after: avoid;
+    print-color-adjust: exact;
+  }
+  .summary-bar .sb-headline { color: #000; }
+  .summary-bar .sb-link { display: none; }
+
+  h1, h2 { color: #000; }
+  h2[id] { position: static; background: transparent; break-after: avoid; }
+  table.report thead th {
+    position: static;
+    background: #f0f0f0;
+    color: #000;
+    print-color-adjust: exact;
+  }
+  table.report thead { display: table-header-group; }
+  table.report tbody tr { break-inside: avoid; }
+
+  .kpi-strip { break-inside: avoid; grid-template-columns: repeat(4, 1fr); }
+  .kpi-chip { background: #fff; border-color: #888; }
+  .kpi-chip .kpi-value { color: #000; }
+
+  .dash-grid { grid-template-columns: repeat(2, 1fr); }
+  a.dash-card { break-inside: avoid; }
+
+  .bar, .bar .seg, .ibar, .ibar > div,
+  .legend .swatch, .delta.pos, .delta.neg, .delta-pill {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  details, details > summary { display: block; }
+  details > .matrix-body, details > .cat-body { display: block; }
+
+  a[data-link-kind="primary"] {
+    background: transparent;
+    border: 1px solid #888;
+    color: #000;
+  }
+  a[data-link-kind="inline"] { color: #000; }
+  a[data-link-kind="inline"] .icon { display: none; }
+
+  /* Multi-section trend_table: page break before each h2 section after the first */
+  body[data-multi-section="true"] h2[id] ~ h2[id] { break-before: page; }
+
+  /* Per-drop browser: too large for print; show fallback message */
+  body[data-page-kind="drop-browser"] > * { display: none; }
+  body[data-page-kind="drop-browser"]::before {
+    content: "Per-drop browser is not designed for print. See the cumulative reports.";
+    display: block;
+    padding: 20mm;
+    font: bold 1.2rem system-ui, sans-serif;
+    color: #000;
+  }
+}
+
+rdc-sortable-table { display: block; }
+rdc-sortable-table table.report thead th { cursor: pointer; user-select: none; }
+rdc-sortable-table table.report thead th[aria-sort="ascending"]::after {
+  content: ' \25B4'; color: var(--text-3);
+}
+rdc-sortable-table table.report thead th[aria-sort="descending"]::after {
+  content: ' \25BE'; color: var(--text-3);
+}
+
+rdc-copy-button {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 28px; padding: 0 6px; height: 22px;
+  color: var(--text-2);
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  font: var(--fs-small) ui-monospace, monospace;
+  margin-left: 4px;
+  transition: color var(--motion-hover), background var(--motion-hover), border-color var(--motion-hover);
+}
+rdc-copy-button:hover {
+  color: var(--accent-primary);
+  background: var(--row-hover);
+  border-color: var(--border-1);
+}
+rdc-copy-button:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 1px; }
+rdc-copy-button::before { content: 'copy'; }
+rdc-copy-button.copied { color: var(--status-ok); border-color: var(--status-ok); }
+rdc-copy-button.copied::before { content: 'ok'; }
+
+rdc-heatmap-cell {
+  display: inline-block;
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+rdc-sticky-h2 { display: contents; }
+rdc-sticky-h2 h2[aria-current="section"] {
+  border-left-color: var(--accent-data);
+}
+
+rdc-row-drill { display: contents; }
+rdc-row-drill > tr { cursor: pointer; }
+rdc-row-drill > tr:hover td { background: var(--row-hover); }
+
+rdc-search-cards {
+  display: flex; align-items: center; gap: var(--sp-3);
+  margin: 0 0 var(--sp-4);
+  font: var(--fs-small) ui-monospace, monospace;
+}
+rdc-search-cards input[type="search"] {
+  font: inherit;
+  padding: 6px 10px;
+  border: 1px solid var(--border-1);
+  background: var(--surface-0);
+  color: var(--text-1);
+  border-radius: 2px;
+  min-width: 280px;
+}
+rdc-search-cards input[type="search"]:focus {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+rdc-search-cards .rdc-count {
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+rdc-ab-picker {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  margin: 0 0 var(--sp-4);
+  font: var(--fs-small) ui-monospace, monospace;
+}
+rdc-ab-picker label { color: var(--text-2); }
+rdc-ab-picker select {
+  font: inherit;
+  padding: 4px 8px;
+  border: 1px solid var(--border-1);
+  background: var(--surface-0);
+  color: var(--text-1);
+  border-radius: 2px;
+}
+
+rdc-alarm-banner { display: contents; }
+
+/* Chip cluster: wrap N primary chips in flex row, no table abuse */
+.chip-cluster {
+  display: flex; flex-wrap: wrap; gap: var(--sp-2);
+  margin: 0 0 var(--sp-4);
+}
+.chip-cluster a[data-link-kind="primary"] { padding: 4px 10px; font-size: var(--fs-small); }
+
+/* Pair list: grouped variant chips per A/B pair */
+.pair-list { display: flex; flex-direction: column; gap: var(--sp-4); margin: 0 0 var(--sp-6); }
+.pair-group { border: 1px solid var(--border-1); padding: var(--sp-3) var(--sp-4); background: var(--surface-1); }
+.pair-group > h3 {
+  margin: 0 0 var(--sp-3); padding: 0;
+  font: var(--fs-mono) ui-monospace, monospace;
+  color: var(--text-2);
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Catalog grid: flex-wrap chip area for report shortcuts */
+.catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-6);
+}
+.catalog-grid a[data-link-kind="primary"] { justify-content: flex-start; }
+
+:root { --label: #4a6a3a; --th-bg: var(--surface-2); --th-bg-active: var(--row-hover); }
+@media (prefers-color-scheme: dark) {
+  :root { --label: #a3d39c; }
+}
+
+body { max-width: 1800px; }
+
+nav.toc a { display: flex; justify-content: space-between; padding: 2px 0; gap: 1rem; }
+nav.toc a .ct { color: var(--text-3); font-variant-numeric: tabular-nums; }
+
+.controls {
+  display: flex; gap: var(--sp-3); align-items: center;
+  font-size: var(--fs-small); flex-wrap: wrap;
+  margin: var(--sp-2) 0 var(--sp-2);
+}
+.controls input[type=search] {
+  font: inherit; padding: 4px 8px;
+  border: 1px solid var(--border-2); background: var(--surface-0); color: var(--text-1);
+  border-radius: 2px; min-width: 22rem;
+}
+.controls input[type=search]:focus { outline: 1px solid var(--accent); }
+.controls .ct { color: var(--text-2); font-variant-numeric: tabular-nums; }
+.controls .dl { font-size: var(--fs-small); color: var(--accent); }
+
+.table-scroll {
+  height: 60vh; overflow: auto;
+  border: 1px solid var(--border-1);
+  background: var(--surface-0);
+  position: relative;
+}
+.table-scroll.short { height: auto; max-height: 60vh; }
+table.data {
+  border-collapse: separate; border-spacing: 0;
+  font: var(--fs-mono) ui-monospace, 'Cascadia Code', Consolas, monospace;
+  width: max-content; min-width: 100%; table-layout: auto;
+}
+table.data thead th {
+  position: sticky; top: 0; z-index: 2;
+  background: var(--th-bg);
+  text-align: left; cursor: pointer; user-select: none;
+  color: var(--accent); font-weight: 600;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border-2);
+  white-space: nowrap;
+}
+table.data thead th:hover { background: var(--th-bg-active); }
+table.data thead th .sort-arrow { display: inline-block; width: 10px; color: var(--text-3); }
+table.data thead th.numeric, table.data tbody td.numeric {
+  text-align: right; font-variant-numeric: tabular-nums;
+}
+table.data tbody td {
+  padding: 2px 8px;
+  border-bottom: 1px solid var(--border-1);
+  vertical-align: top; white-space: nowrap;
+  max-width: 380px; overflow: hidden; text-overflow: ellipsis;
+  background: var(--surface-0);
+}
+table.data tbody tr.alt td { background: var(--surface-1); }
+table.data tbody tr:hover td { background: var(--row-hover); }
+table.data tbody td .lbl {
+  color: var(--label); margin-left: 6px;
+  font-style: italic; opacity: .85;
+}
+table.data tbody td a {
+  color: inherit; text-decoration: none;
+  border-bottom: 1px dotted var(--accent);
+}
+table.data tbody td a:hover { color: var(--accent); border-bottom-style: solid; }
+.spacer td { padding: 0; border: 0; background: var(--surface-0); }
+
+.sidecar-list a { font-family: ui-monospace, monospace; font-size: var(--fs-small); }
+.sidecar-list span { color: var(--text-2); margin-left: .4rem; font-size: var(--fs-small); }
+ul.sidecar-list { list-style: none; padding: 0; margin: var(--sp-2) 0;
+                  columns: 5; column-gap: var(--sp-6); column-rule: 1px solid var(--border-1); }
+ul.sidecar-list li { padding: 1px 0; break-inside: avoid; }
+
+/* Per-drop table sections: inline (no full card chrome) */
+section.table-section {
+  margin: 0 0 var(--sp-4);
+}
+section.table-section > header.table-header {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--sp-3); margin: 0 0 var(--sp-2);
+  padding: 0 0 0 var(--sp-3);
+  border-left: 3px solid var(--border-2);
+}
+section.table-section > header.table-header h2 {
+  margin: 0; padding: 0; border: 0;
+  font-size: var(--fs-h3); color: var(--text-1);
+}
+section.table-section .table-meta {
+  font: var(--fs-small) ui-monospace, monospace;
+  color: var(--text-3);
+}
+
+details.category > .cat-body {
+  background: var(--surface-0);
+}
+</style></head><body style="--hdr-offset: 120px">
+<header class="strip">
+<span>built <strong><TS></strong></span>
+<span>drops <strong>2</strong></span>
+</header>
+<aside class="summary-bar tone-neutral" aria-label="page summary"><div class="sb-label">latest drop</div><div class="sb-headline">2026-05-28 / r110600</div><div class="sb-sub">1 areas; 10 catalog rows</div><a class="sb-link" href="_reports/index.html" data-link-kind="primary">dashboard</a></aside>
+<section><h2 id="dashboard">dashboard</h2><div class="chip-cluster"><a href="_reports/index.html" data-link-kind="primary">cumulative reports dashboard</a></div></section>
+<section><h2 id="reports">reports</h2><div class="catalog-grid">
+<a href="_reports/draws_by_class.html" data-link-kind="primary">draws_by_class</a>
+<a href="_reports/instancing_opportunities.html" data-link-kind="primary">instancing_opportunities</a>
+<a href="_reports/overdraw.html" data-link-kind="primary">overdraw</a>
+<a href="_reports/pass_gpu.html" data-link-kind="primary">pass_gpu</a>
+<a href="_reports/shader_hotlist.html" data-link-kind="primary">shader_hotlist</a>
+<a href="_reports/trend_table.html" data-link-kind="primary">trend_table</a>
+</div></section>
+<section><h2>catalog</h2>
+<div class="controls">
+<input type="search" placeholder="filter">
+<span class="ct visible-count"></span>
+<a class="dl" href="_data/_catalog.csv" data-link-kind="inline">CSV</a>
+<a class="dl" href="_data/_catalog.parquet" data-link-kind="inline">parquet</a>
+</div>
+<div class="table-scroll" data-table="catalog"></div>
+</section>
+<script>window.__data_catalog={"cols":["area","drop_date","drop_label","capture","schema_version","build_timestamp","replay_status","row_count_draws","row_count_events","row_count_shaders","row_count_textures","row_count_render_targets","row_count_buffers","row_count_programs","row_count_samplers","row_count_fbos","row_count_state_change_events","row_count_counters_per_event","row_count_descriptor_access","row_count_passes","row_count_frame_totals","row_count_clears","row_count_dispatches","row_count_rt_event_timeline","row_count_vertex_inputs","row_count_resource_creation","row_count_draw_bindings","row_count_program_transitions","row_count_pixel_history","row_count_vbo_samples","row_count_ibo_samples","row_count_post_vs_samples","row_count_texture_samples","row_count_indirect_args","row_count_pass_class_breakdown","row_count_texture_usage","analysis_out_path"],"rows":[["District 01","2026-05-27","r110565","1",3,"2026-01-01T00:00:00+00:00","ok",60,60,60,60,9,60,60,11,13,60,60,60,60,1,8,9,60,60,60,60,60,60,60,60,60,60,0,0,0,"_reports/drill/District 01/2026-05-27_r110565/index.html"],["District 01","2026-05-27","r110565","2",3,"2026-01-01T00:00:00+00:00","ok",0,0,0,0,9,0,0,11,13,0,0,0,0,1,8,9,0,0,0,0,0,0,0,0,0,0,0,0,0,"_reports/drill/District 01/2026-05-27_r110565/index.html"],["District 01","2026-05-27","r110565","3",3,"2026-01-01T00:00:00+00:00","ok",0,0,0,0,9,0,0,11,13,0,0,0,0,1,8,9,0,0,0,0,0,0,0,0,0,0,0,0,0,"_reports/drill/District 01/2026-05-27_r110565/index.html"],["District 01","2026-05-27","r110565","4",3,"2026-01-01T00:00:00+00:00","ok",0,0,0,0,9,0,0,11,13,0,0,0,0,1,8,9,0,0,0,0,0,0,0,0,0,0,0,0,0,"_reports/drill/District 01/2026-05-27_r110565/index.html"],["District 01","2026-05-27","r110565","5",3,"2026-01-01T00:00:00+00:00","ok",0,0,0,0,9,0,0,11,8,0,0,0,0,1,8,9,0,0,0,0,0,0,0,0,0,0,0,0,0,"_reports/drill/District 01/2026-05-27_r110565/index.html"],["District 01","2026-05-28","r110600","1",3,"2026-01-01T00:00:00+00:00","ok",60,60,60,60,9,60,60,11,13,60,60,60,60,1,8,9,60,60,60,60,60,60,60,60,60,60,0,60,1,"_reports/drill/District 01/2026-05-28_r110600/index.html"],["District 01","2026-05-28","r110600","2",3,"2026-01-01T00:00:00+00:00","ok",0,0,0,0,9,0,0,11,13,0,0,0,0,1,8,9,0,0,0,0,0,0,0,0,0,0,0,0,0,"_reports/drill/District 01/2026-05-28_r110600/index.html"],["District 01","2026-05-28","r110600","3",3,"2026-01-01T00:00:00+00:00","ok",0,0,0,0,9,0,0,11,13,0,0,0,0,1,8,9,0,0,0,0,0,0,0,0,0,0,0,0,0,"_reports/drill/District 01/2026-05-28_r110600/index.html"],["District 01","2026-05-28","r110600","4",3,"2026-01-01T00:00:00+00:00","ok",0,0,0,0,9,0,0,11,13,0,0,0,0,1,8,9,0,0,0,0,0,0,0,0,0,0,0,0,0,"_reports/drill/District 01/2026-05-28_r110600/index.html"],["District 01","2026-05-28","r110600","5",3,"2026-01-01T00:00:00+00:00","ok",0,0,0,0,9,0,0,11,8,0,0,0,0,1,8,9,0,0,0,0,0,0,0,0,0,0,0,0,0,"_reports/drill/District 01/2026-05-28_r110600/index.html"]],"labelCols":{}};</script>
+<script>window.__labels={};</script>
+<script>
+(function(){
+  const ROW_H = 22;
+  const BUFFER = 8;
+
+  // For ID kinds: where to jump when an ID cell is clicked
+  const LINK_TARGET = {
+    shader: { table: 'shaders', col: 'shader_id' },
+    program: { table: 'programs', col: 'program_id' },
+    texture: { table: 'textures', col: 'tex_id' },
+    sampler: { table: 'samplers', col: 'sampler_id' },
+    buffer: { table: 'buffers', col: 'buffer_id' },
+    fbo: { table: 'fbos', col: 'fbo_id' },
+  };
+
+  function isNumeric(v){
+    return v != null && (typeof v === 'number' || (typeof v === 'string' && /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(v)));
+  }
+  function fmt(v){
+    if (v == null) return '';
+    if (typeof v === 'number'){
+      if (v === 0) return '0';
+      if (Math.abs(v) < 1e-4 || Math.abs(v) >= 1e7) return v.toExponential(4);
+      return (Math.round(v * 1e6) / 1e6).toString();
+    }
+    return String(v);
+  }
+
+  function lookupLabel(labels, kind, id){
+    if (!labels || !kind || id == null || id === '' || id === 0 || id === '0') return '';
+    const k = String(id);
+    const cap = labels.capture;
+    if (!cap || !labels.by_capture || !labels.by_capture[cap]) return '';
+    const buckets = labels.by_capture[cap];
+    if (kind === 'auto_by_slot_kind' || kind === 'auto_by_kind') return '';
+    if (kind === 'texture_list') return '';
+    return (buckets[kind] && buckets[kind][k]) || '';
+  }
+
+  function autoKindForSlot(slotKind){
+    if (slotKind === 'texture') return 'texture';
+    if (slotKind === 'sampler') return 'sampler';
+    if (slotKind === 'ubo' || slotKind === 'ssbo') return 'buffer';
+    return '';
+  }
+  function autoKindForDescriptor(descriptorKind){
+    if (descriptorKind === 'ReadOnlyResource' || descriptorKind === 'ImageSampler' || descriptorKind === 'TypedBuffer') return 'texture';
+    if (descriptorKind === 'Sampler') return 'sampler';
+    if (descriptorKind === 'ConstantBuffer' || descriptorKind === 'ReadWriteResource' || descriptorKind === 'ReadWriteBuffer') return 'buffer';
+    return '';
+  }
+
+  class VTable {
+    constructor(host, payload, labels){
+      this.host = host;
+      this.cols = payload.cols;
+      this.rows = payload.rows;
+      this.labelCols = payload.labelCols || {};
+      this.labels = labels;
+      this.view = this.rows.slice();
+      this.sortCol = -1;
+      this.sortDir = 1;
+
+      // detect numeric columns from first 50 non-null cells
+      this.numericCols = new Set();
+      for (let ci = 0; ci < this.cols.length; ci++){
+        let count = 0, num = 0;
+        for (let ri = 0; ri < this.rows.length && count < 50; ri++){
+          const v = this.rows[ri][ci];
+          if (v == null || v === '') continue;
+          count++;
+          if (typeof v === 'number' || (typeof v === 'string' && /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(v))) num++;
+        }
+        if (count > 0 && num / count > 0.7) this.numericCols.add(ci);
+      }
+
+      // detect slot_kind column for draw_bindings (resource_id auto-label)
+      this.slotKindCol = this.cols.indexOf('slot_kind');
+      this.descriptorKindCol = this.cols.indexOf('descriptor_kind');
+
+      this.build();
+    }
+
+    build(){
+      const table = document.createElement('table');
+      table.className = 'data';
+      const thead = table.createTHead();
+      const tr = thead.insertRow();
+      for (let i = 0; i < this.cols.length; i++){
+        const th = document.createElement('th');
+        const txt = document.createTextNode(this.cols[i]);
+        th.appendChild(txt);
+        if (this.numericCols.has(i)) th.classList.add('numeric');
+        const arrow = document.createElement('span');
+        arrow.className = 'sort-arrow';
+        th.appendChild(arrow);
+        th.addEventListener('click', () => this.sort(i));
+        tr.appendChild(th);
+      }
+      const tbody = document.createElement('tbody');
+      const sTop = document.createElement('tr');
+      const sBot = document.createElement('tr');
+      sTop.className = 'spacer'; sBot.className = 'spacer';
+      const tdTop = document.createElement('td');
+      const tdBot = document.createElement('td');
+      tdTop.colSpan = this.cols.length;
+      tdBot.colSpan = this.cols.length;
+      sTop.appendChild(tdTop); sBot.appendChild(tdBot);
+      tbody.appendChild(sTop); tbody.appendChild(sBot);
+      table.appendChild(tbody);
+      this.host.appendChild(table);
+
+      this.tbody = tbody;
+      this.sTop = sTop;
+      this.sBot = sBot;
+      this.tdTop = tdTop;
+      this.tdBot = tdBot;
+
+      this.host.addEventListener('scroll', () => this.render());
+      window.addEventListener('resize', () => this.render());
+      // Re-render when a containing <details class="category"> opens.
+      const detailsEl = this.host.closest('details');
+      if (detailsEl){
+        detailsEl.addEventListener('toggle', () => {
+          if (detailsEl.open){
+            requestAnimationFrame(() => this.render());
+            setTimeout(() => this.render(), 50);
+          }
+        });
+      }
+      this.render();
+      // Re-render after layout settles (initial clientHeight can be 0)
+      requestAnimationFrame(() => this.render());
+      // And once more after fonts/sizes stabilize
+      setTimeout(() => this.render(), 50);
+    }
+
+    sort(ci){
+      if (this.sortCol === ci) this.sortDir = -this.sortDir;
+      else { this.sortCol = ci; this.sortDir = 1; }
+      const dir = this.sortDir;
+      const isNum = this.numericCols.has(ci);
+      this.view.sort((a, b) => {
+        const aa = a[ci], bb = b[ci];
+        if (aa == null && bb == null) return 0;
+        if (aa == null) return 1;
+        if (bb == null) return -1;
+        if (isNum){
+          const na = +aa, nb = +bb;
+          return (na - nb) * dir;
+        }
+        return String(aa).localeCompare(String(bb)) * dir;
+      });
+      const headers = this.host.querySelectorAll('thead th');
+      for (let i = 0; i < headers.length; i++){
+        const a = headers[i].querySelector('.sort-arrow');
+        if (a) a.textContent = (i === ci) ? (dir > 0 ? ' ▲' : ' ▼') : '';
+      }
+      this.host.scrollTop = 0;
+      this.render();
+    }
+
+    filter(query){
+      const q = (query || '').trim().toLowerCase();
+      if (!q){
+        this.view = this.rows.slice();
+      } else {
+        const labels = this.labels;
+        const labelCols = this.labelCols;
+        const cols = this.cols;
+        const slotKindCol = this.slotKindCol;
+        const descriptorKindCol = this.descriptorKindCol;
+        this.view = this.rows.filter(r => {
+          for (let i = 0; i < r.length; i++){
+            const v = r[i];
+            if (v == null) continue;
+            if (String(v).toLowerCase().indexOf(q) >= 0) return true;
+            // also match against the resolved label, if any
+            const lc = labelCols[cols[i]];
+            if (!lc || v === 0 || v === '0' || v === '') continue;
+            let kind = lc;
+            if (kind === 'auto_by_slot_kind' && slotKindCol >= 0) kind = autoKindForSlot(r[slotKindCol]);
+            else if (kind === 'auto_by_kind' && descriptorKindCol >= 0) kind = autoKindForDescriptor(r[descriptorKindCol]);
+            if (kind === 'texture_list'){
+              const ids = String(v).split(';').filter(x => x);
+              for (const id of ids){
+                const lbl = lookupLabel(labels, 'texture', id);
+                if (lbl && lbl.toLowerCase().indexOf(q) >= 0) return true;
+              }
+            } else if (kind){
+              const lbl = lookupLabel(labels, kind, v);
+              if (lbl && lbl.toLowerCase().indexOf(q) >= 0) return true;
+            }
+          }
+          return false;
+        });
+      }
+      // resort if a sort was active
+      if (this.sortCol >= 0){
+        const ci = this.sortCol, dir = this.sortDir;
+        const isNum = this.numericCols.has(ci);
+        this.view.sort((a, b) => {
+          const aa = a[ci], bb = b[ci];
+          if (aa == null && bb == null) return 0;
+          if (aa == null) return 1;
+          if (bb == null) return -1;
+          if (isNum) return (+aa - +bb) * dir;
+          return String(aa).localeCompare(String(bb)) * dir;
+        });
+      }
+      this.host.scrollTop = 0;
+      this.render();
+    }
+
+    cellNode(value, ri, ci){
+      const td = document.createElement('td');
+      if (this.numericCols.has(ci)) td.classList.add('numeric');
+
+      const colName = this.cols[ci];
+      const lc = this.labelCols[colName];
+      let kind = lc;
+      if (kind === 'auto_by_slot_kind' && this.slotKindCol >= 0){
+        kind = autoKindForSlot(this.view[ri][this.slotKindCol]);
+      } else if (kind === 'auto_by_kind' && this.descriptorKindCol >= 0){
+        kind = autoKindForDescriptor(this.view[ri][this.descriptorKindCol]);
+      }
+
+      // primary cell value: cross-link if we have a target for this kind
+      const formatted = fmt(value);
+      const link = LINK_TARGET[kind];
+      if (link && value != null && value !== '' && value !== 0 && value !== '0' && kind !== 'texture_list'){
+        const a = document.createElement('a');
+        a.href = '#' + link.table;
+        a.textContent = formatted;
+        a.title = 'jump to ' + link.table + ' filtered to ' + link.col + '=' + value;
+        a.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          jumpToTable(link.table, String(value));
+        });
+        td.appendChild(a);
+      } else {
+        td.textContent = formatted;
+      }
+
+      // label enrichment (appears after the value/link)
+      if (lc && value != null && value !== '' && value !== 0 && value !== '0'){
+        if (kind === 'texture_list'){
+          const ids = String(value).split(';').filter(x => x);
+          const labels = ids.map(id => lookupLabel(this.labels, 'texture', id))
+                            .filter(x => x);
+          if (labels.length){
+            const span = document.createElement('span');
+            span.className = 'lbl';
+            span.textContent = labels.join(', ');
+            td.appendChild(span);
+          }
+        } else if (kind){
+          const label = lookupLabel(this.labels, kind, value);
+          if (label){
+            const span = document.createElement('span');
+            span.className = 'lbl';
+            span.textContent = label;
+            td.appendChild(span);
+          }
+        }
+      }
+      return td;
+    }
+
+    render(){
+      const scrollTop = this.host.scrollTop;
+      const height = this.host.clientHeight || 600;
+      const len = this.view.length;
+      const start = Math.max(0, Math.floor(scrollTop / ROW_H) - BUFFER);
+      const end = Math.min(len, Math.ceil((scrollTop + height) / ROW_H) + BUFFER);
+
+      // clear data rows between spacers
+      while (this.sTop.nextSibling !== this.sBot){
+        this.tbody.removeChild(this.sTop.nextSibling);
+      }
+      // height on <tr> directly; <td> alone doesn't make a row tall in all browsers
+      this.sTop.style.height = (start * ROW_H) + 'px';
+      this.sBot.style.height = ((len - end) * ROW_H) + 'px';
+      this.tdTop.style.height = (start * ROW_H) + 'px';
+      this.tdBot.style.height = ((len - end) * ROW_H) + 'px';
+
+      const frag = document.createDocumentFragment();
+      for (let i = start; i < end; i++){
+        const tr = document.createElement('tr');
+        tr.style.height = ROW_H + 'px';
+        if (i % 2 === 1) tr.className = 'alt';
+        const row = this.view[i];
+        for (let ci = 0; ci < this.cols.length; ci++){
+          tr.appendChild(this.cellNode(row[ci], i, ci));
+        }
+        frag.appendChild(tr);
+      }
+      this.tbody.insertBefore(frag, this.sBot);
+    }
+  }
+
+  function jumpToTable(tableName, idValue){
+    const host = document.querySelector('div.table-scroll[data-table="' + tableName + '"]');
+    if (!host || !host._vt) return;
+    const section = host.closest('section');
+    const input = section ? section.querySelector('input[type=search]') : null;
+    if (input){
+      input.value = idValue;
+      // trigger filter immediately (no debounce on programmatic set)
+      host._vt.filter(idValue);
+      const counter = section.querySelector('.ct.visible-count');
+      if (counter){
+        const v = host._vt.view.length, t = host._vt.rows.length;
+        counter.textContent = v.toLocaleString() + ' / ' + t.toLocaleString() + ' visible';
+      }
+    }
+    section.scrollIntoView({behavior: 'smooth', block: 'start'});
+  }
+  window.__jumpToTable = jumpToTable;
+
+  window.addEventListener('DOMContentLoaded', () => {
+    const labels = window.__labels || {};
+    document.querySelectorAll('div.table-scroll[data-table]').forEach(host => {
+      const name = host.dataset.table;
+      const payload = window['__data_' + name];
+      if (!payload){ return; }
+      const labelsForTable = Object.assign({}, labels);
+      // Per-section: capture from data is row-level; use the section's data-capture if set
+      labelsForTable.capture = host.dataset.capture || (payload.rows[0] ? payload.rows[0][3] : '');
+      const vt = new VTable(host, payload, labelsForTable);
+      host._vt = vt;
+
+      const section = host.closest('section');
+      const input = section.querySelector('input[type=search]');
+      const counter = section.querySelector('.ct.visible-count');
+      function updateCounter(){
+        const v = vt.view.length, t = vt.rows.length;
+        counter.textContent = v.toLocaleString() + ' / ' + t.toLocaleString() + ' visible';
+      }
+      updateCounter();
+      let timer = null;
+      input.addEventListener('input', () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => { vt.filter(input.value); updateCounter(); }, 80);
+      });
+    });
+  });
+})();
+</script>
+</body></html>

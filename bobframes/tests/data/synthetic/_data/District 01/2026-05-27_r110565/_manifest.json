@@ -1,0 +1,51 @@
+{
+  "schema_version": 3,
+  "build_timestamp": "2026-01-01T00:00:00+00:00",
+  "area": "District 01",
+  "drop_date": "2026-05-27",
+  "drop_label": "r110565",
+  "captures": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+  ],
+  "capture_status": {
+    "1": "ok",
+    "2": "ok",
+    "3": "ok",
+    "4": "ok",
+    "5": "ok"
+  },
+  "row_counts": {
+    "draws": 60,
+    "draw_bindings": 60,
+    "passes": 60,
+    "shaders": 60,
+    "textures": 60,
+    "render_targets": 45,
+    "rt_event_timeline": 60,
+    "buffers": 60,
+    "programs": 60,
+    "samplers": 55,
+    "fbos": 60,
+    "events": 60,
+    "clears": 40,
+    "dispatches": 45,
+    "state_change_events": 60,
+    "indirect_args": 0,
+    "vertex_inputs": 60,
+    "resource_creation": 60,
+    "counters_per_event": 60,
+    "descriptor_access": 60,
+    "program_transitions": 60,
+    "frame_totals": 5,
+    "pixel_history": 60,
+    "vbo_samples": 60,
+    "ibo_samples": 60,
+    "post_vs_samples": 60,
+    "texture_samples": 60
+  },
+  "rotated_from": null
+}
