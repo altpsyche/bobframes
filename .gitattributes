@@ -1,0 +1,8 @@
+# Normalize line endings: LF in the repo and working tree (Windows-only tool, but keep diffs stable).
+* text=auto eol=lf
+
+# Treat these as binary (no eol munging, no diff).
+*.parquet binary
+*.rdc binary
+*.png binary
+*.zip binary
