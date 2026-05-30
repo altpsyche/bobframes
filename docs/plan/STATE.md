@@ -7,16 +7,18 @@
 
 ```
 active_release: v0.1
-current:        c18_docs    (status: not-started)
-last_session:   2026-05-31 — c17 DONE: added .github/workflows/ci.yml. test job: windows-latest ×
-                py{3.10,3.12,3.13} × pyarrow{17,21}, excluding {3.13,17} (no pyarrow-17 cp313 wheel).
-                Steps: install+pin pyarrow, `pytest bobframes/tests` (one run subsumes §21.6's per-
-                file gate list — filenames are test_*), `bobframes smoke`, lint golden. publish job
-                on v* tag (twine + GH release), inert until c19. Validated YAML + ran all gate cmds
-                locally; dry-validated build (twine check PASSED both artifacts).
-next_action:    c18 — README + CHANGELOG + LICENSE. Open commits/v01/c18_docs.md and do exactly that
-                commit. Keep 32-test suite green. Carry-over for c19: CI green-on-push is unverified
-                (no remote push this session). (The wheel duplicate-entry blemish is FIXED — ADR-10.)
+current:        c19_release    (status: not-started)
+last_session:   2026-05-31 — c18 DONE: wrote README.md (§13 outline: requirements, install,
+                quickstart, commands table, external tools, output layout, _analysis migration table,
+                troubleshooting, advanced) + finalized CHANGELOG.md (Keep-a-Changelog [0.1.0] with
+                KEY_VERSION/Windows-only/hard-rename callouts). LICENSE already MIT (unchanged). Gate
+                `bobframes lint README.md CHANGELOG.md` passes (had to avoid arrows/em-dash + banned
+                words incl. "notable"/"the following"). Migration map + commands table match real
+                verbs.
+next_action:    c19 — tag v0.1.0. Open commits/v01/c19_release.md and do exactly that commit. Before
+                tagging: verify the bobframes name is free on PyPI; CONFIRM the CHANGELOG [0.1.0]
+                date (currently 2026-05-31) at tag time; CI green-on-push still unverified (no push
+                this session) — a push should be green before the tag. Keep 32-test suite green.
 blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/tests)
 ```
 
@@ -33,8 +35,8 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ✗ | [c14 rename](commits/v01/c14_rename.md) | **COLLAPSED** — package is `bobframes` from scaffold (ADR-7) |
 | ☑ | [c15 smoke rewrite + unit tests](commits/v01/c15_smoke_tests.md) | **done** — `--data`-driven smoke (render-only default) + 3 unit files (`test_stable_keys`/`test_schemas_unit`/`test_discovery`); 32 tests green |
 | ☑ | [c17 CI workflow](commits/v01/c17_ci_workflow.md) | **done** — `.github/workflows/ci.yml`: gate matrix + tag-gated publish; YAML+gate cmds validated, build dry-checked |
-| ☐ | [c18 README + CHANGELOG + LICENSE](commits/v01/c18_docs.md) | not-started ← **HERE** |
-| ☐ | [c19 tag v0.1.0](commits/v01/c19_release.md) | not-started |
+| ☑ | [c18 README + CHANGELOG + LICENSE](commits/v01/c18_docs.md) | **done** — README (§13) + CHANGELOG [0.1.0] + MIT LICENSE; `lint README.md CHANGELOG.md` green |
+| ☐ | [c19 tag v0.1.0](commits/v01/c19_release.md) | not-started ← **HERE** |
 
 ## v0.2 — de-hardcoding (deferred)
 
@@ -53,6 +55,17 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-05-31 — c18 done: wrote the user-facing README.md from the §13 outline (requirements, install,
+  quickstart, commands table from ARCHITECTURE §4, external tools, output layout from paths.py, the
+  _analysis->bobframes migration as an ASCII table, troubleshooting incl. the G-3 `ingest --force`
+  schema-migration note, advanced). Finalized CHANGELOG.md to Keep-a-Changelog with a [0.1.0] section
+  (KEY_VERSION=1 key-format note, Windows-only + hard-rename `_analysis` removal callouts) and an
+  empty [Unreleased]. LICENSE was already standard MIT (no change). Both .md pass the banlist gate
+  `bobframes lint README.md CHANGELOG.md` (exit 0) — required dropping every arrow/em-dash and banned
+  word (Keep-a-Changelog's "notable" -> reworded; avoided "the following"/"overview"/"etc."). LICENSE
+  itself trips lint only because it's non-.md (linted as HTML) and MIT text contains "the following
+  conditions" — left as-is (immutable legal text, not in the gate). Not advancing date assertions:
+  CHANGELOG [0.1.0] is dated 2026-05-31; c19 confirms at tag. pytest 32 green.
 - 2026-05-31 — packaging fix (ADR-10): dropped the redundant `"bobframes/tests/data"` wheel
   force-include in pyproject.toml. The .gitignore negation makes the fixtures tracked, so
   packages=["bobframes"] already ships them; the force-include added a 2nd copy → ~65 duplicate zip
