@@ -37,6 +37,7 @@ from . import (
 from .derives import pass_class_breakdown, texture_usage
 from .html import template
 from .parsers import derive_program_transitions
+from .replay import replay_script_path
 from .reports import orchestrator as reports_orchestrator
 
 
@@ -204,30 +205,31 @@ def _do_parse(drop: discovery.Drop, stage_root: str, workers: int, project_root:
 
 # --- Stage 4: replay ---------------------------------------------------------
 
-def _do_replay(drop: discovery.Drop, stage_root: str, project_root: str,
-               pixel_grid: int = 4) -> dict[str, str]:
+def _do_replay(drop: discovery.Drop, stage_root: str, pixel_grid: int = 4) -> dict[str, str]:
     os.environ['RDC_PIXEL_GRID'] = str(pixel_grid)
     _log(f'  replay: {len(drop.captures)} captures (sequential)')
-    script = os.path.join(project_root, 'bobframes', 'replay', 'replay_main.py')
     statuses: dict[str, str] = {}
-    for capture in drop.captures:
-        capture_stage = os.path.join(stage_root, capture)
-        os.makedirs(capture_stage, exist_ok=True)
-        log_path = os.path.join(capture_stage, '_harness.log')
-        t0 = time.monotonic()
-        rc, elapsed = qrd_harness.run(
-            script,
-            payload_args=[drop.drop_dir, capture, drop.area, drop.drop_date, drop.drop_label, stage_root],
-            log_path=log_path,
-            timeout_s=600,
-        )
-        if rc == 0:
-            statuses[capture] = 'ok'
-            _log(f'    {capture}: rc={rc} {elapsed:.1f}s')
-        else:
-            # Isolate the failure: skip this capture, keep the rest of the drop alive (R-6).
-            statuses[capture] = 'replay_failed'
-            _log(f'    {capture}: replay FAILED (rc={rc}, {elapsed:.1f}s); skipping, see {log_path}')
+    # Resolve replay_main.py as a packaged resource so replay works from an installed wheel,
+    # not just an in-tree checkout (c12). The path lives for the whole loop's subprocesses.
+    with replay_script_path() as script:
+        for capture in drop.captures:
+            capture_stage = os.path.join(stage_root, capture)
+            os.makedirs(capture_stage, exist_ok=True)
+            log_path = os.path.join(capture_stage, '_harness.log')
+            t0 = time.monotonic()
+            rc, elapsed = qrd_harness.run(
+                str(script),
+                payload_args=[drop.drop_dir, capture, drop.area, drop.drop_date, drop.drop_label, stage_root],
+                log_path=log_path,
+                timeout_s=600,
+            )
+            if rc == 0:
+                statuses[capture] = 'ok'
+                _log(f'    {capture}: rc={rc} {elapsed:.1f}s')
+            else:
+                # Isolate the failure: skip this capture, keep the rest of the drop alive (R-6).
+                statuses[capture] = 'replay_failed'
+                _log(f'    {capture}: replay FAILED (rc={rc}, {elapsed:.1f}s); skipping, see {log_path}')
     return statuses
 
 
@@ -259,7 +261,7 @@ def process_drop(drop: discovery.Drop, *, force: bool, workers: int,
 
     parse_status = _do_parse(drop, stage_root, workers=workers, project_root=project_root)
 
-    replay_status = _do_replay(drop, stage_root, project_root=project_root,
+    replay_status = _do_replay(drop, stage_root,
                                pixel_grid=int(os.environ.get('RDC_PIXEL_GRID', '4')))
 
     capture_status: dict[str, str] = {}

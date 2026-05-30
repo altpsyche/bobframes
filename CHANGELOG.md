@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `report`, `catalog`, `lint`, `check`, `serve`, `smoke`, `version`. Positional `root` (default `.`)
   across verbs; long-flag-only; exit codes 0/1/2/3/4. stdlib `logging` (INFO default,
   `--verbose` → DEBUG, `[HH:MM:SS]` lines; G-8).
+- Replay script located via `importlib.resources` (c12, `bobframes.replay.replay_script_path`) so
+  replay works from an installed wheel, not just an in-tree checkout.
 - Reliability hardening (c03): atomic writes for `_manifest.json`, Parquet+CSV pairs, and
   `done.marker` (`.tmp` + `os.replace`, rollback on failure); process-tree kill (`taskkill /T /F`)
   when qrenderdoc replay times out; per-capture replay-failure isolation

@@ -65,7 +65,7 @@ def test_replay_failure_skips_and_records_status(monkeypatch, tmp_path):
                 drop_dir=str(tmp_path / 'drop'), captures=('1', '2'))
     stage_root = str(tmp_path / 'stage')
 
-    statuses = run._do_replay(drop, stage_root, project_root=str(tmp_path), pixel_grid=4)
+    statuses = run._do_replay(drop, stage_root, pixel_grid=4)
 
     assert statuses == {'1': 'ok', '2': 'replay_failed'}
 
