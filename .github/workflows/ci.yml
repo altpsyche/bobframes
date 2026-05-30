@@ -1,0 +1,106 @@
+# BobFrames CI — runs the full gate suite on every push/PR; publishes on a v* tag.
+#
+# Windows-only (v1): qrenderdoc replay is Windows-only, so the matrix is windows-latest only.
+# KNOWN GAP (DECISIONS ADR-6): the hosted runner has no GPU/RenderDoc, so the INGEST path is never
+# exercised here. The c03 mocked-subprocess unit test (test_hardening.py) is the stand-in; full
+# `smoke --data <real>` ingest is self-hosted/nightly (v0.2). The `smoke` step below is render-only
+# against the bundled synthetic fixture.
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  test:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # QUALITY_GATES §21.6. 3.14 omitted — no pyarrow 17 cp314 wheel (ADR-6).
+        python: ["3.10", "3.12", "3.13"]
+        pyarrow: ["17", "21"]            # lower + upper of the `pyarrow>=17,<22` pin
+        exclude:
+          # pyarrow 17 has no cp313 wheel (3.13 support landed in pyarrow 18); 3.13's effective
+          # lower bound is 18. Drop this cell so install doesn't fail. (Deviates from §21.6's
+          # literal grid — see c17 session log.)
+          - python: "3.13"
+            pyarrow: "17"
+    name: test py${{ matrix.python }} pyarrow${{ matrix.pyarrow }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install package + dev deps, pin pyarrow
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install --upgrade "pyarrow==${{ matrix.pyarrow }}.*"
+
+      - name: Resolved versions
+        run: bobframes version
+
+      # One pytest run collects every §21.6 gate: test_parity (golden snapshots), test_schemas
+      # (schema regression), test_replay_drift (H-6 drift), test_determinism, test_perf, the c03
+      # hardening tests, and the unit tests. Filenames are test_*.py (the repo has no pytest
+      # `python_files` override), so the doc's `tests/unit_*.py` maps to test_stable_keys /
+      # test_schemas_unit / test_discovery and `tests/parity.py` -> test_parity.py, etc.
+      - name: pytest (all gates)
+        run: python -m pytest bobframes/tests -v
+
+      - name: smoke (render-only against bundled synthetic)
+        run: bobframes smoke
+
+      - name: lint golden HTML
+        run: |
+          $files = Get-ChildItem -Recurse bobframes/tests/data/golden -Filter *.html | ForEach-Object FullName
+          bobframes lint @files
+
+  publish:
+    # Builds + publishes ONLY on a v* tag. No tag is pushed until c19 — until then this job is inert.
+    # Requires the test matrix to pass first. Secret: PYPI_API_TOKEN.
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-latest
+    permissions:
+      contents: write          # create the GitHub Release
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build sdist + wheel
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build
+          twine check dist/*
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload dist/*
+
+      - name: GitHub Release (wheel + sdist + notes)
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+          generate_release_notes: true

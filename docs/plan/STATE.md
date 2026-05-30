@@ -7,16 +7,18 @@
 
 ```
 active_release: v0.1
-current:        c17_ci_workflow    (status: not-started)
-last_session:   2026-05-31 — c15 DONE: rewrote tests/smoke.py (G-12) — killed the hardcoded
-                Chor-bazar/r110565/2026-05-27 constants + __file__-walked root. New shape: no --data
-                = render-only vs bundled synthetic (CI-safe); --data DIR = full ingest via
-                find_drops. Wired --data+pixel_grid through cli._cmd_smoke. Added 3 unit files
-                (test_stable_keys / test_schemas_unit / test_discovery — named test_* not unit_*).
-                pytest 32 green; `bobframes smoke` exit 0. Full --data path needs GPU (nightly).
-next_action:    c17 — CI workflow. Open commits/v01/c17_ci_workflow.md and do exactly that commit
-                (.github/workflows/ci.yml; matrix per QUALITY_GATES §21.6). Keep the 32-test suite
-                green; CI step list must match the test_* filenames actually on disk (NOT unit_*).
+current:        c18_docs    (status: not-started)
+last_session:   2026-05-31 — c17 DONE: added .github/workflows/ci.yml. test job: windows-latest ×
+                py{3.10,3.12,3.13} × pyarrow{17,21}, excluding {3.13,17} (no pyarrow-17 cp313 wheel).
+                Steps: install+pin pyarrow, `pytest bobframes/tests` (one run subsumes §21.6's per-
+                file gate list — filenames are test_*), `bobframes smoke`, lint golden. publish job
+                on v* tag (twine + GH release), inert until c19. Validated YAML + ran all gate cmds
+                locally; dry-validated build (twine check PASSED both artifacts).
+next_action:    c18 — README + CHANGELOG + LICENSE. Open commits/v01/c18_docs.md and do exactly that
+                commit. Keep 32-test suite green. NOTE two carry-over items for c18/c19: (a) wheel
+                has DUPLICATE entries — pyproject `packages=["bobframes"]` already ships tests/data,
+                and the force-include re-adds it (warns on build; ARCHITECTURE §3 is frozen → needs
+                an ADR to fix); (b) CI green-on-push is unverified (no remote push this session).
 blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/tests)
 ```
 
@@ -32,8 +34,8 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c13 replay-drift CI guardrail](commits/v01/c13_replay_drift_ci.md) | **done** — `test_replay_drift.py` ast-diffs replay `*_COLS` vs `schemas.py` (Option A / ADR-9); 12 tests green |
 | ✗ | [c14 rename](commits/v01/c14_rename.md) | **COLLAPSED** — package is `bobframes` from scaffold (ADR-7) |
 | ☑ | [c15 smoke rewrite + unit tests](commits/v01/c15_smoke_tests.md) | **done** — `--data`-driven smoke (render-only default) + 3 unit files (`test_stable_keys`/`test_schemas_unit`/`test_discovery`); 32 tests green |
-| ☐ | [c17 CI workflow](commits/v01/c17_ci_workflow.md) | not-started ← **HERE** |
-| ☐ | [c18 README + CHANGELOG + LICENSE](commits/v01/c18_docs.md) | not-started |
+| ☑ | [c17 CI workflow](commits/v01/c17_ci_workflow.md) | **done** — `.github/workflows/ci.yml`: gate matrix + tag-gated publish; YAML+gate cmds validated, build dry-checked |
+| ☐ | [c18 README + CHANGELOG + LICENSE](commits/v01/c18_docs.md) | not-started ← **HERE** |
 | ☐ | [c19 tag v0.1.0](commits/v01/c19_release.md) | not-started |
 
 ## v0.2 — de-hardcoding (deferred)
@@ -53,6 +55,17 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-05-31 — c17 done: added .github/workflows/ci.yml. test job runs on push/PR (windows-latest ×
+  py{3.10,3.12,3.13} × pyarrow{17,21}); excluded the {3.13,17} cell since pyarrow 17 has no cp313
+  wheel (3.13 support landed in pyarrow 18) — a faithful deviation from §21.6's literal grid. Steps:
+  install + pin pyarrow, one `pytest bobframes/tests -v` (subsumes §21.6's per-file gate list since
+  files are test_*.py — `tests/unit_*.py`→test_stable_keys/test_schemas_unit/test_discovery, etc.),
+  `bobframes smoke` (render-only), lint golden via Get-ChildItem enumeration. publish job is v*-tag-
+  gated (build → twine upload → softprops GH release), inert until c19. Validated YAML structure and
+  ran every gate command locally (pytest 32 green, smoke 0, lint golden 0); dry-validated the build
+  (python -m build + twine check → both wheel & sdist PASSED). Found a wheel DUPLICATE-entry warning:
+  packages=["bobframes"] already ships tests/data, force-include re-adds it (ARCHITECTURE §3 frozen →
+  deferred to an ADR in c18/c19). CI green-on-push not verified (no remote push this session).
 - 2026-05-31 — c15 done: full rewrite of tests/smoke.py (G-12). Removed AREA='Chor bazar'/
   DROP_LABEL='r110565'/DROP_DATE + the __file__-walked ROOT. Two modes: no --data → render-only vs
   bundled synthetic via _render_util.render_fresh (CI-safe, no .rdc/GPU); --data DIR → full ingest
