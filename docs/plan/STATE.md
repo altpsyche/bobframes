@@ -7,14 +7,14 @@
 
 ```
 active_release: v0.1
-current:        c02_golden_harness     (status: not-started)
-last_session:   2026-05-30 — install-ready verified: uv .venv on py3.12, `pip install -e .` ok,
-                `bobframes version` -> 0.1.0 / schema 3 / pyarrow 21. cli.py SEED added (version +
-                delegate to run.main; full subcommand CLI = c11). Initial git commit made on `main`.
-next_action:    c02 — decide test-fixture policy (ADR-8), then build golden + parity/schema/det/perf.
-                Rendering runs against the EXTERNAL capture _data; the repo stays data-free.
-blockers:       c02 fixture policy open — bundle a tiny synthetic vs CI-parity-local-only (ADR-8).
-                Note: py3.14 has no pyarrow wheel, so dev/CI use 3.10-3.13 (ADR-6 confirmed).
+current:        c03_hardening          (status: not-started)
+last_session:   2026-05-30 — c02 DONE: scrubbed synthetic fixture (2 drops, 27 tables) + 9 golden
+                pages + parity/schema/determinism/perf tests, all green (4.3s). Committed f8cf833.
+                Fixture decision: synthetic committed (ADR-8 option a). venv: .venv (uv, py3.12).
+next_action:    c03 — reliability hardening (atomic writes R-1/2/3, process-tree kill R-4,
+                replay-skip R-6, stderr logging R-7/8, KEY_VERSION H-27, single UTC now_iso H-28,
+                manifest provenance G-6/7) + mocked-subprocess unit test. Run pytest after.
+blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/tests)
 ```
 
 ## v0.1 — extraction (ships first)
@@ -22,8 +22,8 @@ blockers:       c02 fixture policy open — bundle a tiny synthetic vs CI-parity
 | | Commit | Status |
 |---|---|---|
 | ☑ | [c01 version](commits/v01/c01_version.md) | **done** — `import bobframes` → 0.1.0 |
-| ☐ | [c02 golden harness + parity](commits/v01/c02_golden_harness.md) | not-started ← **HERE** |
-| ☐ | [c03 reliability hardening](commits/v01/c03_hardening.md) | not-started |
+| ☑ | [c02 golden harness + parity](commits/v01/c02_golden_harness.md) | **done** — 4 tests green (parity/schema/determinism/perf), commit f8cf833 |
+| ☐ | [c03 reliability hardening](commits/v01/c03_hardening.md) | not-started ← **HERE** |
 | ☐ | [c11 cli.py dispatcher](commits/v01/c11_cli_dispatcher.md) | not-started |
 | ☐ | [c12 replay importlib.resources](commits/v01/c12_replay_importlib.md) | not-started |
 | ☐ | [c13 replay-drift CI guardrail](commits/v01/c13_replay_drift_ci.md) | not-started |
@@ -50,6 +50,9 @@ blockers:       c02 fixture policy open — bundle a tiny synthetic vs CI-parity
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-05-30 — c02 done: built scrubbed synthetic fixture + golden + 4 parity/schema/determinism/
+  perf tests (green); fixed .gitignore to track fixtures; committed f8cf833. Found only 1 render
+  nondeterminism (catalog build timestamp) — masked.
 - 2026-05-30 — Verified install-ready (uv .venv py3.12, `bobframes version` works); added cli.py
   seed; recorded ADR-8 (repo data-free, tests use external capture _data); made initial git commit.
 - 2026-05-30 — Copied source into bobframes/ (46 .py), swept package-name refs, all compile; c01 done.
