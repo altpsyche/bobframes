@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "bobframes"
+dynamic = ["version"]
+description = "RenderDoc capture pipeline: ingest, analyze, render."
+readme = "README.md"
+requires-python = ">=3.10,<3.15"
+license = { text = "MIT" }
+authors = [{ name = "Siva Subramanyam", email = "sivasubramanyam@mayhem-studios.com" }]
+keywords = ["renderdoc", "gpu", "profiling", "parquet"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: Microsoft :: Windows",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Debuggers",
+  "Topic :: Multimedia :: Graphics",
+]
+dependencies = [
+  "pyarrow>=17,<22",
+]
+
+[project.optional-dependencies]
+dev = ["build", "twine", "hatchling", "pytest"]
+
+[project.scripts]
+bobframes = "bobframes.cli:main"
+
+[project.urls]
+Homepage  = "https://github.com/mayhem-studios/bobframes"
+Issues    = "https://github.com/mayhem-studios/bobframes/issues"
+Changelog = "https://github.com/mayhem-studios/bobframes/blob/main/CHANGELOG.md"
+
+[tool.hatch.version]
+path = "bobframes/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["bobframes"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"bobframes/replay/replay_main.py" = "bobframes/replay/replay_main.py"
+"bobframes/tests/data" = "bobframes/tests/data"
+
+[tool.hatch.build.targets.sdist]
+include = ["bobframes/", "README.md", "CHANGELOG.md", "LICENSE", "pyproject.toml"]
+exclude = ["**/__pycache__", "**/*.pyc"]

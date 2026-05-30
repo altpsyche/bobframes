@@ -1,0 +1,268 @@
+"""Merge per-capture CSV fragments into drop-level CSV + Parquet pairs.
+
+For each table in schemas.TABLES:
+  1. Read every _stage/<capture>/<table>.csv that exists.
+  2. Verify the CSV header equals schemas.<TABLE>_COLS exactly (no drift).
+  3. Concatenate (preserving capture order).
+  4. Compute stable_key for entity tables.
+  5. Coerce dtypes via schemas.infer_dtype.
+  6. Write _analysis_out.tmp/<table>.parquet (snappy) and <table>.csv.
+
+Also copies non-tabular sidecars (shader_src/, histogram/, jsonl) from the
+stage tree into _analysis_out.tmp/.
+"""
+
+from __future__ import annotations
+
+import csv
+import json
+import os
+import shutil
+from typing import Iterable
+
+import pyarrow as pa
+import pyarrow.csv as pacsv
+import pyarrow.parquet as papq
+
+from . import schemas, stable_keys
+
+
+def _list_stage_dirs(stage_root: str) -> list[str]:
+    if not os.path.isdir(stage_root):
+        return []
+    names = []
+    for entry in os.listdir(stage_root):
+        full = os.path.join(stage_root, entry)
+        if os.path.isdir(full):
+            names.append(entry)
+    names.sort(key=lambda s: (len(s), s))
+    return names
+
+
+def _read_csv_compat(path: str, expected_cols: tuple[str, ...]) -> tuple[list[list[str]], list[int | None]]:
+    """Read CSV, return rows ordered into the expected_cols positions.
+
+    Any expected column missing from the CSV header is filled with empty
+    strings (post-merge derives populate them later). Extra columns in the
+    CSV are ignored. Reorders columns as needed to match expected order.
+
+    Returns (rows, position_map) where rows[i][j] is the value for
+    expected_cols[j]. position_map records which CSV column index maps to
+    each expected column (None if not present).
+    """
+    with open(path, 'r', encoding='utf-8', newline='') as f:
+        reader = csv.reader(f)
+        try:
+            header = next(reader)
+        except StopIteration:
+            return [], []
+        idx_for = {c: i for i, c in enumerate(header)}
+        pos_map: list[int | None] = [idx_for.get(c) for c in expected_cols]
+
+        out_rows: list[list[str]] = []
+        for raw in reader:
+            row: list[str] = []
+            for p in pos_map:
+                if p is None or p >= len(raw):
+                    row.append('')
+                else:
+                    row.append(raw[p])
+            out_rows.append(row)
+        return out_rows, pos_map
+
+
+def _cast_value(v: str, dtype: str):
+    if v == '' or v is None:
+        if dtype == 'int':   return 0
+        if dtype == 'float': return 0.0
+        if dtype == 'bool':  return False
+        return ''
+    try:
+        if dtype == 'int':
+            try: return int(v)
+            except (ValueError, TypeError): return int(float(v))
+        if dtype == 'float': return float(v)
+        if dtype == 'bool':  return v not in ('0', '', 'False', 'false')
+    except (ValueError, TypeError):
+        if dtype == 'int':   return 0
+        if dtype == 'float': return 0.0
+        if dtype == 'bool':  return False
+    return v
+
+
+def _as_int(v) -> int:
+    try:
+        return int(v) if v not in ('', None) else 0
+    except (ValueError, TypeError):
+        return 0
+
+
+def _apply_stable_key(table_stem: str, columns: dict[str, list]) -> None:
+    """For entity tables, fill the stable_key column from row content.
+
+    Called BEFORE dtype coercion; all column values are still strings here.
+    Numeric inputs are cast via _as_int.
+    """
+    n = len(next(iter(columns.values())))
+    if 'stable_key' not in columns:
+        return
+
+    keys: list[str] = ['' for _ in range(n)]
+
+    if table_stem == 'shaders':
+        for i in range(n):
+            keys[i] = (columns.get('src_hash') or [''] * n)[i] or ''
+    elif table_stem in ('textures', 'render_targets'):
+        for i in range(n):
+            keys[i] = stable_keys.texture_key(
+                (columns.get('label') or [''] * n)[i],
+                (columns.get('format') or [''] * n)[i],
+                _as_int((columns.get('width') or [''] * n)[i]),
+                _as_int((columns.get('height') or [''] * n)[i]),
+                _as_int((columns.get('depth') or [''] * n)[i]),
+                _as_int((columns.get('mip_levels') or [''] * n)[i]),
+                _as_int((columns.get('sample_count') or [''] * n)[i]),
+            )
+    elif table_stem == 'samplers':
+        for i in range(n):
+            keys[i] = stable_keys.sampler_key(
+                (columns.get('min_filter') or [''] * n)[i],
+                (columns.get('mag_filter') or [''] * n)[i],
+                (columns.get('wrap_s') or [''] * n)[i],
+                (columns.get('wrap_t') or [''] * n)[i],
+                (columns.get('wrap_r') or [''] * n)[i],
+                _as_int((columns.get('max_anisotropy') or [''] * n)[i]),
+                (columns.get('compare_mode') or [''] * n)[i],
+                (columns.get('compare_func') or [''] * n)[i],
+            )
+    elif table_stem == 'buffers':
+        for i in range(n):
+            tgts = (columns.get('target_history') or [''] * n)[i]
+            first_target = (tgts.split(';')[0] if tgts else '')
+            keys[i] = stable_keys.buffer_key(
+                (columns.get('usage_hint') or [''] * n)[i],
+                _as_int((columns.get('allocated_size_bytes') or [''] * n)[i]),
+                first_target,
+            )
+    elif table_stem == 'programs':
+        for i in range(n):
+            ids = (columns.get('attached_shader_ids') or [''] * n)[i]
+            id_list = [x for x in ids.split(';') if x] if ids else []
+            if id_list:
+                keys[i] = stable_keys.program_key(id_list)
+    elif table_stem == 'fbos':
+        for i in range(n):
+            rid = (columns.get('resource_id') or [''] * n)[i] or ''
+            keys[i] = stable_keys.fbo_key([rid]) if rid and rid != '0' else ''
+
+    columns['stable_key'] = keys
+
+
+def _build_table(table_stem: str, stage_root: str) -> tuple[pa.Table | None, int]:
+    """Return (pa.Table or None, row_count). None if no fragments existed."""
+    expected_cols = schemas.expected_columns(table_stem)
+    captures = _list_stage_dirs(stage_root)
+
+    columns: dict[str, list] = {c: [] for c in expected_cols}
+
+    found_any = False
+    for capture in captures:
+        path = os.path.join(stage_root, capture, f'{table_stem}.csv')
+        if not os.path.exists(path):
+            continue
+        found_any = True
+        rows, _pos = _read_csv_compat(path, expected_cols)
+        for row in rows:
+            for i, col in enumerate(expected_cols):
+                columns[col].append(row[i])
+
+    if not found_any:
+        return None, 0
+
+    n_rows = len(columns[expected_cols[0]])
+
+    if schemas.is_entity_table(table_stem):
+        _apply_stable_key(table_stem, columns)
+
+    arrays: dict[str, pa.Array] = {}
+    for col in expected_cols:
+        dtype = schemas.infer_dtype(col)
+        raw = columns[col]
+        if dtype == 'int':
+            arrays[col] = pa.array([_cast_value(v, 'int') for v in raw], type=pa.int64())
+        elif dtype == 'float':
+            arrays[col] = pa.array([_cast_value(v, 'float') for v in raw], type=pa.float64())
+        elif dtype == 'bool':
+            arrays[col] = pa.array([_cast_value(v, 'bool') for v in raw], type=pa.bool_())
+        else:
+            arrays[col] = pa.array(raw, type=pa.string())
+
+    return pa.table(arrays), n_rows
+
+
+def _write_pair(table: pa.Table, out_dir: str, name: str) -> None:
+    pq_path = os.path.join(out_dir, f'{name}.parquet')
+    csv_path = os.path.join(out_dir, f'{name}.csv')
+    papq.write_table(table, pq_path, compression='snappy')
+    pacsv.write_csv(table, csv_path)
+
+
+def _copy_sidecars(stage_root: str, out_dir: str) -> None:
+    """Copy shader_src/, histogram/ and jsonl sidecars from stage to out."""
+    captures = _list_stage_dirs(stage_root)
+    shader_src_dst = os.path.join(out_dir, 'shader_src')
+    histogram_dst = os.path.join(out_dir, 'histogram')
+    os.makedirs(shader_src_dst, exist_ok=True)
+    os.makedirs(histogram_dst, exist_ok=True)
+
+    # jsonl merging across captures
+    fm_path = os.path.join(out_dir, 'frame_metadata.jsonl')
+    up_path = os.path.join(out_dir, 'uniforms_per_pass.jsonl')
+    fm_lines: list[str] = []
+    up_lines: list[str] = []
+
+    for capture in captures:
+        cap_dir = os.path.join(stage_root, capture)
+
+        src = os.path.join(cap_dir, 'shader_src')
+        if os.path.isdir(src):
+            for f in os.listdir(src):
+                shutil.copy2(os.path.join(src, f), os.path.join(shader_src_dst, f))
+
+        hist = os.path.join(cap_dir, 'histogram')
+        if os.path.isdir(hist):
+            for f in os.listdir(hist):
+                shutil.copy2(os.path.join(hist, f), os.path.join(histogram_dst, f))
+
+        fm = os.path.join(cap_dir, 'frame_metadata.json')
+        if os.path.exists(fm):
+            with open(fm, 'r', encoding='utf-8') as f:
+                obj = json.load(f)
+            fm_lines.append(json.dumps(obj))
+
+        up = os.path.join(cap_dir, 'uniforms_per_pass.jsonl')
+        if os.path.exists(up):
+            with open(up, 'r', encoding='utf-8') as f:
+                up_lines.append(f.read().rstrip('\n'))
+
+    if fm_lines:
+        with open(fm_path, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(fm_lines) + '\n')
+    if up_lines:
+        with open(up_path, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(up_lines) + '\n')
+
+
+def merge_drop(stage_root: str, out_dir: str) -> dict[str, int]:
+    """Merge all stage CSVs into out_dir as Parquet+CSV pairs. Returns row counts."""
+    os.makedirs(out_dir, exist_ok=True)
+    row_counts: dict[str, int] = {}
+    for table_stem in schemas.TABLES:
+        tbl, n_rows = _build_table(table_stem, stage_root)
+        if tbl is None:
+            row_counts[table_stem] = 0
+            continue
+        _write_pair(tbl, out_dir, table_stem)
+        row_counts[table_stem] = n_rows
+    _copy_sidecars(stage_root, out_dir)
+    return row_counts

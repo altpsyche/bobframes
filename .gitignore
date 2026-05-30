@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.egg-info/
+.eggs/
+*.egg
+build/
+dist/
+wheels/
+pip-wheel-metadata/
+
+# Virtual env
+.venv/
+venv/
+env/
+
+# Editor
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Project-specific: never commit user data, manifests, or rendered output
+**/_data/
+**/_reports/
+**/_stage/
+**/_tmp/
+**/index.html
+**/*.parquet
+**/*.rdc
+**/*.zip.xml
+**/_manifest.json
+**/done.marker
+
+# Exception: bundled synthetic test data
+!bobframes/tests/data/synthetic/
+!bobframes/tests/data/synthetic/**/*.parquet
+
+# Bobframes config
+.bobframes.toml
+
+# Generated docs (docs/plan/ IS tracked — only built output is ignored)
+docs/_build/
+
+# OS
+Thumbs.db

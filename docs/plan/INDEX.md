@@ -1,0 +1,50 @@
+# BobFrames implementation plan — index
+
+This folder is the plan for extracting the `_analysis/` RenderDoc pipeline into the standalone
+`bobframes` CLI. It is **plan-driven across sessions**: you should never need to read everything to
+make progress. Open two or three small files and go.
+
+## Read order (every session)
+
+1. **[STATE.md](STATE.md)** — where we are. Names the active release + the current commit. **Start here.**
+2. **[commits/](commits/)** `<release>/<current>.md` — the one unit of work to do now. Has its own
+   "Done when" gate; stop when it's green.
+3. Update **STATE.md** before you stop (status, `last_session`, `next_action`).
+
+Everything else is reference — open it only when a commit doc points you there.
+
+## Map
+
+| Doc | Role | Touch frequency |
+|---|---|---|
+| [STATE.md](STATE.md) | Live progress tracker — the resumption anchor | Every session |
+| [MIGRATION.md](MIGRATION.md) | The commit spine: phases, ordered list, links to each commit doc | Read often; edit rarely |
+| [commits/v01/](commits/v01/) | One doc per v0.1 commit (extraction). The execution units. | The daily driver |
+| [commits/v02/](commits/v02/) | One doc per v0.2 commit (de-hardcoding, deferred) | After v0.1 ships |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | **Frozen** contract: tool identity, package layout, pyproject, CLI surface, tool discovery, config, portability | Reference; change = ADR |
+| [DECISIONS.md](DECISIONS.md) | **Frozen** rationale: versioning, backwards-compat, risks, and the review ADRs | Reference; append-only |
+| [BOOTSTRAP.md](BOOTSTRAP.md) | One-time repo setup, `.gitignore`, source-project cleanup | Once, then history |
+| [reference/FINDINGS.md](reference/FINDINGS.md) | Code-review findings (R/Q/D/S/C/M/G). Ticked as resolved. | Burndown |
+| [reference/HARDCODE.md](reference/HARDCODE.md) | Hardcode/inflexibility catalog (H-*). Mostly v0.2. | Burndown |
+| [reference/QUALITY_GATES.md](reference/QUALITY_GATES.md) | Testing strategy, golden-parity, schema/drift/determinism gates, CI matrix, pre-merge checklist | Reference each PR |
+| [reference/DESIGNER.md](reference/DESIGNER.md) | Designer-tooling track (v0.2) | Reference (v0.2) |
+| [CLI_PLAN.archive.md](CLI_PLAN.archive.md) | **SUPERSEDED.** The original monolith this set was carved from. Provenance only — do not edit, do not execute from it. | Never |
+
+## Conventions
+
+- **Commits are `cNN`** — numbers are fixed from the original migration plan and never renumbered.
+  v0.1 deliberately skips `c04`–`c10` (those are v0.2); the gaps are intentional.
+- **No line numbers** anywhere — they rot. Anchor to module + symbol name (e.g.
+  `derive_post_merge._classify_draw`).
+- **ID ownership** — each catalog owns its IDs: `R-/Q-/D-/S-/C-/M-/G-*` live in FINDINGS, `H-*` in
+  HARDCODE. Every P0/P1 row carries `resolved-by: cNN` so the catalogs double as the burndown.
+- **Frozen vs living** — ARCHITECTURE and DECISIONS are frozen; change them only by appending a new
+  ADR to DECISIONS.md. STATE, MIGRATION, commit docs, and reference catalogs are living.
+
+## Scope at a glance
+
+- **v0.1 = pure extraction.** Package + CLI + tests + CI + release. Output byte-identical to today.
+  Package named `bobframes` from the scaffold (c14 rename collapsed — [DECISIONS](DECISIONS.md) ADR-7).
+  Keeps the hardcoded Arm tool path (ADR-2).
+- **v0.2 = de-hardcoding.** Config layer, engine-agnostic classifier, design tokens, registry
+  consolidation, env-var rename, report polish, designer track.
