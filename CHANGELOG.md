@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Repo scaffold: package layout, `pyproject.toml`, plan doc set under `docs/plan/`.
+- CLI dispatcher (c11): single `bobframes` binary with subcommands `ingest`, `render`, `ab`,
+  `report`, `catalog`, `lint`, `check`, `serve`, `smoke`, `version`. Positional `root` (default `.`)
+  across verbs; long-flag-only; exit codes 0/1/2/3/4. stdlib `logging` (INFO default,
+  `--verbose` → DEBUG, `[HH:MM:SS]` lines; G-8).
 - Reliability hardening (c03): atomic writes for `_manifest.json`, Parquet+CSV pairs, and
   `done.marker` (`.tmp` + `os.replace`, rollback on failure); process-tree kill (`taskkill /T /F`)
   when qrenderdoc replay times out; per-capture replay-failure isolation

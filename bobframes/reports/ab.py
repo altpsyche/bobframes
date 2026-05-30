@@ -38,7 +38,9 @@ _MODULES = [
 
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(prog='bobframes.reports.ab')
-    ap.add_argument('--root', default='.')
+    ap.add_argument('root', nargs='?', default='.')
+    # Hidden one-release alias for the old --root flag (positional is canonical, §4).
+    ap.add_argument('--root', dest='root', default=argparse.SUPPRESS, help=argparse.SUPPRESS)
     ap.add_argument('--baseline-label', required=True)
     ap.add_argument('--compare-label', required=True)
     ap.add_argument('--baseline-date', default=None)

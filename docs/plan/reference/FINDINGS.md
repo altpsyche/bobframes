@@ -84,7 +84,7 @@
 | G-5 | no CSV export verb (CSV pairs already written) | v0.2 (`bobframes export`) | ☐ |
 | G-6 | manifest lacks `renderdoccmd --version` | [c03](../commits/v01/c03_hardening.md) | ☑ |
 | G-7 | manifest lacks host GPU/driver/CPU/OS | [c03](../commits/v01/c03_hardening.md) | ☑ |
-| G-8 | single global log level | [c11](../commits/v01/c11_cli_dispatcher.md) (stdlib logging, `--verbose`) | ☐ |
+| G-8 | single global log level | [c11](../commits/v01/c11_cli_dispatcher.md) (stdlib logging, `--verbose`) | ☑ |
 | G-9 | no `--json` structured output for CI | v0.2 | ☐ |
 | G-10 | no isolated-stage testing verbs | v0.2 (`bobframes parse`/`replay`) | ☐ |
 | G-11 | `stable_keys` SHA256 has no version prefix — rule change orphans keys | [c03](../commits/v01/c03_hardening.md) (`KEY_VERSION=1`; H-27) | ☑ |

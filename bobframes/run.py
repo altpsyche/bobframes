@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import concurrent.futures as cf
 import datetime as _dt
+import logging
 import os
 import shutil
 import subprocess
@@ -43,8 +44,24 @@ def _ts() -> str:
     return _dt.datetime.now().strftime('%Y%m%dT%H%M%S')
 
 
+_logger = logging.getLogger('bobframes')
+
+
+def setup_logging(verbose: bool = False) -> None:
+    """Configure the 'bobframes' logger once. Idempotent: if an outer caller
+    (e.g. cli.main) already attached a handler, leave it untouched so --verbose
+    set there wins (G-8). Keeps the existing ``[HH:MM:SS] message`` line format."""
+    if _logger.handlers:
+        return
+    _logger.setLevel(logging.DEBUG if verbose else logging.INFO)
+    h = logging.StreamHandler(sys.stdout)
+    h.setFormatter(logging.Formatter('[%(asctime)s] %(message)s', datefmt='%H:%M:%S'))
+    _logger.addHandler(h)
+    _logger.propagate = False
+
+
 def _log(msg: str) -> None:
-    print(f'[{_dt.datetime.now().strftime("%H:%M:%S")}] {msg}', flush=True)
+    _logger.info(msg)
 
 
 # --- Stage 1: pre-flight -----------------------------------------------------
@@ -335,6 +352,7 @@ def process_drop(drop: discovery.Drop, *, force: bool, workers: int,
 # --- CLI ---------------------------------------------------------------------
 
 def main(argv: list[str]) -> int:
+    setup_logging()  # no-op if cli.main already configured logging
     ap = argparse.ArgumentParser(prog='bobframes.run',
         description='RDC capture analysis pipeline')
     ap.add_argument('positional', nargs='?',

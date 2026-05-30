@@ -7,14 +7,15 @@
 
 ```
 active_release: v0.1
-current:        c11_cli_dispatcher     (status: not-started)
-last_session:   2026-05-30 — c03 DONE: ingest-path hardening — atomic writes (R-1/2/3),
-                process-tree kill on replay timeout (R-4), RDC_ROOT save/restore (R-5),
-                replay-skip→`replay_failed` (R-6), stderr logging (R-7/8), KEY_VERSION=1 (H-27),
-                single UTC now_iso (H-28), manifest tool_versions+host_info (G-6/7). New
-                test_hardening.py (7 mocked-subprocess tests). pytest: 11 green (4.85s).
-next_action:    c11 — cli.py dispatcher. Open commits/v01/c11_cli_dispatcher.md and do exactly
-                that commit. Run pytest after (keep 4 parity-suite + hardening tests green).
+current:        c12_replay_importlib   (status: not-started)
+last_session:   2026-05-30 — c11 DONE: full argparse cli.py dispatcher (ingest/render/ab/report/
+                catalog/lint/check/serve/smoke/version), positional root default '.', exit codes
+                0/1/2/3/4; stdlib logging in run.py (--verbose→DEBUG, [HH:MM:SS] kept; G-8);
+                ab.py positional root + hidden --root alias. Verified: version, render <root>
+                (9 pages), report/catalog/lint dispatch. pytest 11 green. Fixed cp1252 crash from
+                non-ASCII help text.
+next_action:    c12 — replay importlib.resources. Open commits/v01/c12_replay_importlib.md and do
+                exactly that commit. Run pytest after (keep 11 tests green).
 blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/tests)
 ```
 
@@ -25,8 +26,8 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c01 version](commits/v01/c01_version.md) | **done** — `import bobframes` → 0.1.0 |
 | ☑ | [c02 golden harness + parity](commits/v01/c02_golden_harness.md) | **done** — 4 tests green (parity/schema/determinism/perf), commit f8cf833 |
 | ☑ | [c03 reliability hardening](commits/v01/c03_hardening.md) | **done** — atomic writes, tree-kill, replay-skip, KEY_VERSION=1, provenance; 11 tests green |
-| ☐ | [c11 cli.py dispatcher](commits/v01/c11_cli_dispatcher.md) | not-started ← **HERE** |
-| ☐ | [c12 replay importlib.resources](commits/v01/c12_replay_importlib.md) | not-started |
+| ☑ | [c11 cli.py dispatcher](commits/v01/c11_cli_dispatcher.md) | **done** — full subcommand CLI + stdlib logging (G-8); 11 tests green |
+| ☐ | [c12 replay importlib.resources](commits/v01/c12_replay_importlib.md) | not-started ← **HERE** |
 | ☐ | [c13 replay-drift CI guardrail](commits/v01/c13_replay_drift_ci.md) | not-started |
 | ✗ | [c14 rename](commits/v01/c14_rename.md) | **COLLAPSED** — package is `bobframes` from scaffold (ADR-7) |
 | ☐ | [c15 smoke rewrite + unit tests](commits/v01/c15_smoke_tests.md) | not-started |
@@ -51,6 +52,13 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-05-30 — c11 done: built full cli.py argparse dispatcher over §4 verbs (ingest/render/ab/
+  report/catalog/lint/check/serve/smoke/version), positional root default '.', exit map 0/1/2/3/4,
+  heavy imports lazy. run.py `_log` now routes through stdlib `logging` ('bobframes' logger,
+  idempotent setup_logging, --verbose→DEBUG, [HH:MM:SS] format kept; G-8). ab.py: positional root
+  + hidden --root alias. reports/cli already §4-compliant (no change). Caught+fixed a cp1252
+  UnicodeEncodeError from a non-ASCII (→/…) help string. Verified end-to-end render via cli (9
+  pages). pytest 11 green. No ADR (follows ADR-7).
 - 2026-05-30 — c03 done: ingest hardening (R-1..R-8, H-27/28, G-6/7/11). Atomic tmp+os.replace for
   manifest/parquet-pair/done.marker; qrd_harness now Popen+taskkill tree-kill on timeout; replay
   failure → `replay_failed` (no abort); RDC_ROOT save/restore; stderr always logged; KEY_VERSION=1
