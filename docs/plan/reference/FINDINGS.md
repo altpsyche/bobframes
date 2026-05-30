@@ -9,14 +9,14 @@
 
 | ID | Where | Finding | Fix | resolved-by | status |
 |---|---|---|---|---|---|
-| R-1 | `manifest.write_manifest` | `_manifest.json` written non-atomically; crash mid-write corrupts; catalog silently skips drop | `.tmp` then `os.replace()` | c03 | ☐ |
-| R-2 | `parquetize._write_pair` | Parquet+CSV written sequentially; Parquet committed even if CSV fails (split-brain pair) | stage both `.tmp`, atomic rename, rollback both on either failure | c03 | ☐ |
-| R-3 | `pipeline` done.marker write | `done.marker` bare-write after commit; crash → duplicate re-process | tmp + `os.replace()` | c03 | ☐ |
-| R-4 | `qrd_harness` timeout except | `subprocess.run` kills the *direct* child, but qrenderdoc GPU/replay **grandchildren** survive and hold locks | reap the **process tree** (`taskkill /T /F /PID` or Win32 job object) — see [ADR-4](../DECISIONS.md) | c03 | ☐ |
-| R-5 | `pipeline._do_parse` | `os.environ['RDC_ROOT']` set globally, never restored; later drops inherit stale value | save/restore around parse, or pass as explicit arg (folds into c10 env rename) | c03 | ☐ |
-| R-6 | `pipeline` replay loop | single capture replay failure raises → aborts whole drop merge | skip + record `capture_status='replay_failed'` in manifest | c03 | ☐ |
-| R-7 | `pipeline._do_parse` | returns stderr only when `rc != 0`; rc==0 parse failures lose stderr | always log stderr regardless of rc | c03 | ☐ |
-| R-8 | `rdcmd` convert | `TimeoutExpired` with `capture_output=True` loses stderr | try/except, log stderr tail (~400 chars) before re-raise | c03 | ☐ |
+| R-1 | `manifest.write_manifest` | `_manifest.json` written non-atomically; crash mid-write corrupts; catalog silently skips drop | `.tmp` then `os.replace()` | c03 | ☑ |
+| R-2 | `parquetize._write_pair` | Parquet+CSV written sequentially; Parquet committed even if CSV fails (split-brain pair) | stage both `.tmp`, atomic rename, rollback both on either failure | c03 | ☑ |
+| R-3 | `pipeline` done.marker write | `done.marker` bare-write after commit; crash → duplicate re-process | tmp + `os.replace()` | c03 | ☑ |
+| R-4 | `qrd_harness` timeout except | `subprocess.run` kills the *direct* child, but qrenderdoc GPU/replay **grandchildren** survive and hold locks | reap the **process tree** (`taskkill /T /F /PID` or Win32 job object) — see [ADR-4](../DECISIONS.md) | c03 | ☑ |
+| R-5 | `pipeline._do_parse` | `os.environ['RDC_ROOT']` set globally, never restored; later drops inherit stale value | save/restore around parse, or pass as explicit arg (folds into c10 env rename) | c03 | ☑ |
+| R-6 | `pipeline` replay loop | single capture replay failure raises → aborts whole drop merge | skip + record `capture_status='replay_failed'` in manifest | c03 | ☑ |
+| R-7 | `pipeline._do_parse` | returns stderr only when `rc != 0`; rc==0 parse failures lose stderr | always log stderr regardless of rc | c03 | ☑ |
+| R-8 | `rdcmd` convert | `TimeoutExpired` with `capture_output=True` loses stderr | try/except, log stderr tail (~400 chars) before re-raise | c03 | ☑ |
 | ~~R-9~~ | `catalog._per_capture_row_counts` | **WITHDRAWN — false positive.** `+= 1` per row IS the correct per-capture count; `+= t.num_rows` would over-count. See [ADR-3](../DECISIONS.md). | none | — | ✗ n/a |
 
 ## Reliability — P1
@@ -82,12 +82,12 @@
 | G-3 | no schema migration path (`SCHEMA_VERSION` bump strands `_data/`) | v1.0 (`bobframes migrate`); for v0.1 document `ingest --force` | ☐ |
 | G-4 | no integrity-check verb | v0.2 (`bobframes verify`) | ☐ |
 | G-5 | no CSV export verb (CSV pairs already written) | v0.2 (`bobframes export`) | ☐ |
-| G-6 | manifest lacks `renderdoccmd --version` | [c03](../commits/v01/c03_hardening.md) | ☐ |
-| G-7 | manifest lacks host GPU/driver/CPU/OS | [c03](../commits/v01/c03_hardening.md) | ☐ |
+| G-6 | manifest lacks `renderdoccmd --version` | [c03](../commits/v01/c03_hardening.md) | ☑ |
+| G-7 | manifest lacks host GPU/driver/CPU/OS | [c03](../commits/v01/c03_hardening.md) | ☑ |
 | G-8 | single global log level | [c11](../commits/v01/c11_cli_dispatcher.md) (stdlib logging, `--verbose`) | ☐ |
 | G-9 | no `--json` structured output for CI | v0.2 | ☐ |
 | G-10 | no isolated-stage testing verbs | v0.2 (`bobframes parse`/`replay`) | ☐ |
-| G-11 | `stable_keys` SHA256 has no version prefix — rule change orphans keys | [c03](../commits/v01/c03_hardening.md) (`KEY_VERSION=1`; H-27) | ☐ |
+| G-11 | `stable_keys` SHA256 has no version prefix — rule change orphans keys | [c03](../commits/v01/c03_hardening.md) (`KEY_VERSION=1`; H-27) | ☑ |
 | G-12 | `tests/smoke.py` brittle hardcoded constants | [c15](../commits/v01/c15_smoke_tests.md) | ☐ |
 
 ## XSS / safety — no findings (recorded)

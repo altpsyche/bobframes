@@ -13,6 +13,10 @@ from __future__ import annotations
 import hashlib
 import re
 
+# Version byte prepended to every stable-key hash input. Bump when a key-derivation
+# rule changes so old and new keys are provably distinct (rebuild with `ingest --force`).
+KEY_VERSION = 1
+
 _LINE_COMMENT = re.compile(r'//[^\n]*')
 _BLOCK_COMMENT = re.compile(r'/\*.*?\*/', re.DOTALL)
 _TRAILING_WS = re.compile(r'[ \t]+$', re.MULTILINE)
@@ -31,7 +35,7 @@ def normalize_glsl(source: str) -> str:
 
 
 def _sha(payload: str) -> str:
-    return hashlib.sha256(payload.encode('utf-8')).hexdigest()
+    return hashlib.sha256(bytes([KEY_VERSION]) + payload.encode('utf-8')).hexdigest()
 
 
 def shader_key(normalized_source: str) -> str:

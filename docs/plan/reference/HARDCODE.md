@@ -45,8 +45,8 @@
 | H-24 | `qrd_harness`/`replay_main` `_SEP='\x1f'` | wire protocol; both ends must agree | **stays by design** | — |
 | H-25 | `rdcmd` `renderdoccmd convert -f … -c <fmt>` | RenderDoc CLI contract | **stays by design** | — |
 | H-26 | `qrd_harness` `qrenderdoc --python <path>` | RenderDoc-defined | **stays by design** | — |
-| H-27 | `stable_keys._sha` | SHA256 no version prefix; rule change orphans keys (G-11) | add `KEY_VERSION=1`, prepend version byte | [c03](../commits/v01/c03_hardening.md) | ☐ |
-| H-28 | `manifest`/`cli` timestamps | UTC vs local mixed | single `now_iso()` UTC helper | [c03](../commits/v01/c03_hardening.md) | ☐ |
+| H-27 | `stable_keys._sha` | SHA256 no version prefix; rule change orphans keys (G-11) | add `KEY_VERSION=1`, prepend version byte | [c03](../commits/v01/c03_hardening.md) | ☑ |
+| H-28 | `manifest`/`cli` timestamps | UTC vs local mixed | single `now_iso()` UTC helper | [c03](../commits/v01/c03_hardening.md) | ☑ |
 | H-29 | `schemas.ID_COLS` | `(area, drop_date, drop_label, capture)` layout assumption | **frozen v1 contract**; v2 may relax | v2.0 |
 | H-30 | `discovery.DATED_RE` | `YYYY-MM-DD[_label]` locked | `[discovery] drop_folder_regex` | [c07](../commits/v02/c07_toml_config.md) | ☐ |
 | H-31 | English UI strings everywhere | i18n impossible | out of scope v1; roadmap only | — |

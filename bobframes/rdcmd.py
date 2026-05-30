@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 import time
 
 _DEFAULT_PATHS = [
@@ -43,7 +44,16 @@ def convert(rdc_path: str, out_path: str, fmt: str = 'xml', timeout_s: float = 1
         '-c', fmt,
     ]
     t0 = time.monotonic()
-    rc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_s)
+    try:
+        rc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_s)
+    except subprocess.TimeoutExpired as e:
+        # capture_output swallows stderr on timeout; surface the tail before re-raising (R-8).
+        out = e.stderr or e.output or ''
+        if isinstance(out, bytes):
+            out = out.decode('utf-8', 'replace')
+        print(f'renderdoccmd convert timed out after {timeout_s}s (fmt={fmt}): {out[-400:]}',
+              file=sys.stderr)
+        raise
     elapsed = time.monotonic() - t0
     if rc.returncode != 0:
         tail = (rc.stderr or rc.stdout or '')[-400:]

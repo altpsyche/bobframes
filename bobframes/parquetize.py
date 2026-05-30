@@ -201,10 +201,24 @@ def _build_table(table_stem: str, stage_root: str) -> tuple[pa.Table | None, int
 
 
 def _write_pair(table: pa.Table, out_dir: str, name: str) -> None:
+    """Stage Parquet+CSV to .tmp, then atomically rename both. If either write
+    fails, roll back both tmps so a half-written pair is never committed (R-2)."""
     pq_path = os.path.join(out_dir, f'{name}.parquet')
     csv_path = os.path.join(out_dir, f'{name}.csv')
-    papq.write_table(table, pq_path, compression='snappy')
-    pacsv.write_csv(table, csv_path)
+    pq_tmp = pq_path + '.tmp'
+    csv_tmp = csv_path + '.tmp'
+    try:
+        papq.write_table(table, pq_tmp, compression='snappy')
+        pacsv.write_csv(table, csv_tmp)
+    except BaseException:
+        for t in (pq_tmp, csv_tmp):
+            try:
+                os.remove(t)
+            except OSError:
+                pass
+        raise
+    os.replace(pq_tmp, pq_path)
+    os.replace(csv_tmp, csv_path)
 
 
 def _copy_sidecars(stage_root: str, out_dir: str) -> None:

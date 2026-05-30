@@ -137,7 +137,7 @@ def _do_export(drop: discovery.Drop, workers: int) -> None:
 
 # --- Stage 3: static parse ---------------------------------------------------
 
-def _parse_one(args: tuple[str, str, str, str, str, str]) -> tuple[str, float, str]:
+def _parse_one(args: tuple[str, str, str, str, str, str]) -> tuple[str, float, str, str]:
     xml_path, capture_stage, area, drop_date, drop_label, capture = args
     cmd = [
         sys.executable, '-m', 'bobframes.parsers.parse_init_state',
@@ -150,9 +150,10 @@ def _parse_one(args: tuple[str, str, str, str, str, str]) -> tuple[str, float, s
     t0 = time.monotonic()
     p = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd)
     elapsed = time.monotonic() - t0
+    stderr = p.stderr.strip()
     if p.returncode != 0:
-        return capture, elapsed, f'FAIL: {p.stderr.strip() or p.stdout.strip()}'
-    return capture, elapsed, p.stdout.strip()
+        return capture, elapsed, f'FAIL: {stderr or p.stdout.strip()}', stderr
+    return capture, elapsed, p.stdout.strip(), stderr
 
 
 def _do_parse(drop: discovery.Drop, stage_root: str, workers: int, project_root: str) -> dict[str, str]:
@@ -163,13 +164,23 @@ def _do_parse(drop: discovery.Drop, stage_root: str, workers: int, project_root:
         capture_stage = os.path.join(stage_root, capture)
         os.makedirs(capture_stage, exist_ok=True)
         args.append((xml, capture_stage, drop.area, drop.drop_date, drop.drop_label, capture))
+    prev_rdc_root = os.environ.get('RDC_ROOT')
     os.environ['RDC_ROOT'] = project_root
     t0 = time.monotonic()
     statuses: dict[str, str] = {}
-    with cf.ProcessPoolExecutor(max_workers=workers) as ex:
-        for capture, elapsed, status in ex.map(_parse_one, args):
-            statuses[capture] = 'ok' if not status.startswith('FAIL') else 'fail'
-            _log(f'    {capture}: {status} ({elapsed:.1f}s)')
+    try:
+        with cf.ProcessPoolExecutor(max_workers=workers) as ex:
+            for capture, elapsed, status, stderr in ex.map(_parse_one, args):
+                statuses[capture] = 'ok' if not status.startswith('FAIL') else 'fail'
+                if stderr:  # surface stderr even when rc==0 (R-7)
+                    _log(f'    {capture} stderr: {stderr[-400:]}')
+                _log(f'    {capture}: {status} ({elapsed:.1f}s)')
+    finally:
+        # Restore RDC_ROOT so a later drop never inherits this drop's value (R-5).
+        if prev_rdc_root is None:
+            os.environ.pop('RDC_ROOT', None)
+        else:
+            os.environ['RDC_ROOT'] = prev_rdc_root
     _log(f'  parse done in {time.monotonic()-t0:.1f}s')
     return statuses
 
@@ -193,10 +204,13 @@ def _do_replay(drop: discovery.Drop, stage_root: str, project_root: str,
             log_path=log_path,
             timeout_s=600,
         )
-        statuses[capture] = 'ok' if rc == 0 else f'fail(rc={rc})'
-        _log(f'    {capture}: rc={rc} {elapsed:.1f}s')
-        if rc != 0:
-            raise RuntimeError(f'replay failed for capture {capture!r}; see {log_path}')
+        if rc == 0:
+            statuses[capture] = 'ok'
+            _log(f'    {capture}: rc={rc} {elapsed:.1f}s')
+        else:
+            # Isolate the failure: skip this capture, keep the rest of the drop alive (R-6).
+            statuses[capture] = 'replay_failed'
+            _log(f'    {capture}: replay FAILED (rc={rc}, {elapsed:.1f}s); skipping, see {log_path}')
     return statuses
 
 
@@ -234,8 +248,13 @@ def process_drop(drop: discovery.Drop, *, force: bool, workers: int,
     capture_status: dict[str, str] = {}
     for s in drop.captures:
         p_ok = parse_status.get(s, 'ok') == 'ok'
-        r_ok = replay_status.get(s, 'ok') == 'ok'
-        capture_status[s] = 'ok' if (p_ok and r_ok) else 'fail'
+        r = replay_status.get(s, 'ok')
+        if r == 'replay_failed':
+            capture_status[s] = 'replay_failed'
+        elif p_ok and r == 'ok':
+            capture_status[s] = 'ok'
+        else:
+            capture_status[s] = 'fail'
 
     _log('  merge + parquetize')
     t0 = time.monotonic()
@@ -269,6 +288,8 @@ def process_drop(drop: discovery.Drop, *, force: bool, workers: int,
         area=drop.area, drop_date=drop.drop_date, drop_label=drop.drop_label,
         captures=list(drop.captures), capture_status=capture_status,
         row_counts=row_counts, rotated_from=rotated_from,
+        tool_versions=manifest.gather_tool_versions(),
+        host_info=manifest.gather_host_info(),
     )
     manifest.write_manifest(tmp, m)
 
@@ -282,8 +303,11 @@ def process_drop(drop: discovery.Drop, *, force: bool, workers: int,
     os.makedirs(os.path.dirname(out), exist_ok=True)
     os.replace(tmp, out)
 
-    with open(os.path.join(out, 'done.marker'), 'w', encoding='utf-8') as f:
+    marker = os.path.join(out, 'done.marker')
+    marker_tmp = marker + '.tmp'
+    with open(marker_tmp, 'w', encoding='utf-8') as f:
         f.write(str(_drop_inputs_max_mtime(drop.drop_dir, drop.captures)))
+    os.replace(marker_tmp, marker)
 
     # Render per-drop browser HTML to _reports/drill/<area>/<drop>/index.html.
     # Separate from data commit: HTML is idempotent and can be regenerated.
@@ -293,7 +317,7 @@ def process_drop(drop: discovery.Drop, *, force: bool, workers: int,
         drill_dir, data_dir=out,
         area=drop.area, drop_date=drop.drop_date, drop_label=drop.drop_label,
         captures=list(drop.captures), schema_version=schemas.SCHEMA_VERSION,
-        build_timestamp=manifest.utc_now_iso(),
+        build_timestamp=manifest.now_iso(),
         row_counts=row_counts,
     )
 

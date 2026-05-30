@@ -3,18 +3,14 @@
 from __future__ import annotations
 
 import argparse
-import datetime as _dt
 import os
 import sys
 from typing import Callable
 
 from .. import lint as _lint
 from .. import paths as _paths
+from ..manifest import now_iso  # single UTC timestamp helper (H-28); re-exported via base
 from .discovery import DropSet, discover_drops, resolve_drop_set
-
-
-def now_iso() -> str:
-    return _dt.datetime.now().replace(microsecond=0).isoformat()
 
 
 def _lint_or_raise(path: str) -> None:

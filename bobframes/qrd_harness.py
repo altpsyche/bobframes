@@ -20,6 +20,20 @@ _DEFAULT_QRD = (
 _SEP = '\x1f'
 
 
+def _kill_tree(pid: int) -> None:
+    """Kill a process AND its descendants. qrenderdoc spawns GPU/replay
+    grandchildren that survive a bare child kill and keep file locks held for
+    the next run (R-4, ADR-4); `subprocess` only reaps the direct child. Uses
+    Windows `taskkill /T /F`. Best-effort — never raises."""
+    try:
+        subprocess.run(
+            ['taskkill', '/T', '/F', '/PID', str(pid)],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30,
+        )
+    except Exception:
+        pass
+
+
 def find_qrenderdoc() -> str:
     env = os.environ.get('RENDERDOC_QRENDERDOC', '').strip()
     if env and os.path.exists(env):
@@ -56,35 +70,39 @@ def run(
         os.makedirs(os.path.dirname(log_path), exist_ok=True)
 
     t0 = time.monotonic()
+    logf = None
     if log_path:
-        with open(log_path, 'a', encoding='utf-8', buffering=1) as logf:
+        logf = open(log_path, 'a', encoding='utf-8', buffering=1)
+    try:
+        if logf:
             logf.write(f'\n--- qrd_harness launching {os.path.basename(script_path)} ---\n')
             logf.flush()
-            try:
-                proc = subprocess.run(
-                    [qrd, '--python', script_path],
-                    env=env,
-                    stdout=logf,
-                    stderr=subprocess.STDOUT,
-                    timeout=timeout_s,
-                )
-                rc = proc.returncode
-                logf.write(f'\n--- rc={rc}, elapsed={time.monotonic()-t0:.2f}s ---\n')
-            except subprocess.TimeoutExpired as e:
-                logf.write(f'\n--- TIMEOUT after {timeout_s}s ---\n')
-                rc = -1
-    else:
+            stdout = logf
+            stderr = subprocess.STDOUT
+        else:
+            stdout = subprocess.DEVNULL
+            stderr = subprocess.DEVNULL
+
+        # Popen (not subprocess.run) so we hold the pid for a process-tree kill on timeout.
+        proc = subprocess.Popen([qrd, '--python', script_path], env=env,
+                                stdout=stdout, stderr=stderr)
         try:
-            proc = subprocess.run(
-                [qrd, '--python', script_path],
-                env=env,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=timeout_s,
-            )
+            proc.communicate(timeout=timeout_s)
             rc = proc.returncode
+            if logf:
+                logf.write(f'\n--- rc={rc}, elapsed={time.monotonic()-t0:.2f}s ---\n')
         except subprocess.TimeoutExpired:
+            _kill_tree(proc.pid)
+            try:
+                proc.wait(timeout=30)
+            except Exception:
+                pass
             rc = -1
+            if logf:
+                logf.write(f'\n--- TIMEOUT after {timeout_s}s; killed process tree pid={proc.pid} ---\n')
+    finally:
+        if logf:
+            logf.close()
     elapsed = time.monotonic() - t0
     return rc, elapsed
 
