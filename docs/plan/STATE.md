@@ -27,8 +27,12 @@ next_action:    Do c05 — derive table/entity/report lists from a single source
                 a NAMED record (cols, size_class, is_entity, category) + reserve api="core" for c33; make
                 ALL_REPORTS runtime-augmentable for c38. Then c06->c10, c16 (c16 now also wires the
                 manifest schema-version guard, D-4/D-7). Roadmap: ROADMAP.md + commits/v03..v06 (c20-c39)
-                + ADR-14..22. Each commit behind the golden parity gate. Post-release nit (non-blocking):
-                bump CI actions off Node20 (checkout@v5/setup-python@v6 before 2026-06-16).
+                + ADR-14..22. Each commit behind the golden parity gate. GIT: this work is on branch
+                `v0.2-roadmap-c04` (off main @dedfdfc; commits ea68a63 docs + d8f61d7 c04; UNPUSHED) —
+                continue on it. REAL-INGEST: defer the real-rdc smoke to AFTER c06 (tool resolver, the
+                ingest-relevant commit); one run then covers c04+c05+c06's ingest-path changes (ADR-6 —
+                not per-commit). Post-release nit (non-blocking): bump CI actions off Node20
+                (checkout@v5/setup-python@v6 before 2026-06-16).
 DONE-2026-05-31: c19 — bobframes 0.1.0 PUBLISHED. tag v0.1.0 -> CI publish job green (OIDC trusted
                 publishing, ubuntu). Live on PyPI (wheel + sdist) + GitHub Release with both assets.
                 Post-install verify from a clean PyPI install: version (0.1.0 schema 3 pyarrow 21.0.0),
