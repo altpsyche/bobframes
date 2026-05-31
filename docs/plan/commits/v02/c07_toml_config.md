@@ -17,7 +17,10 @@ the drop-folder regex out of code.
   `discovery` (`drop_folder_regex`), `formatters._BANNED_CHROME_CHARS` (banlist TOML).
 
 ## Changes
-Each literal reads from config with the default equal to today's value.
+Each literal reads from config with the default equal to today's value. **Structure `[scoring]` as a
+parent with subsections** (`[scoring.complexity]` here) so v0.3/[c21](../v03/c21_regression_gating.md)
+can add `[scoring.regression]` + `[gating]` (the `trend_table.KPIS` thresholds) by *extending* the
+config dataclass, not restructuring it.
 
 ## Done when
 - **Parity gate is the hard part** ([ADR-6](../../DECISIONS.md)): defaults must reproduce current

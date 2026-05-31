@@ -223,3 +223,95 @@ host is irrelevant), `permissions: id-token: write` (+ `contents: write` for the
 `twine upload` step is replaced by `pypa/gh-action-pypi-publish@release/v1`. **Consequence:** no
 `PYPI_API_TOKEN` secret is created or referenced; supersedes the token mention in c17/c19 and §21.6.
 On first successful publish PyPI converts the pending publisher into a normal trusted publisher.
+
+---
+
+## v0.2+ roadmap ADRs (from the 2026-05-31 planning session — [ROADMAP.md](ROADMAP.md))
+
+> Decided with the user before locking the v0.5 graphics-API epic and the v0.6 cross-platform epic.
+> See [ROADMAP.md](ROADMAP.md) for phasing and the per-commit docs under `commits/v03..v06/`.
+
+### ADR-14 — multi-API schema is a unified core + per-API extension tables
+**Context:** v0.5 adds a second graphics API (Vulkan). The schema can either widen the existing tables
+per-API, give each API its own full table set, or keep shared columns in the core tables and isolate
+API-specific data in small optional extension tables. The frozen contract is `SCHEMA_VERSION=3` +
+`ID_COLS=(area,drop_date,drop_label,capture)` (H-29), and the hard rule is that GL Parquet stays
+byte-identical for identical `.rdc`. **Decision (user-confirmed):** **unified core + per-API extension
+tables.** Shared columns stay in the core tables (GL output byte-identical); API-specific data lives in
+small **optional, additive** extension tables (`frame_totals_gl`, `frame_totals_vk`, …) keyed by the
+frozen `ID_COLS` (H-29 stays frozen as the join key). New API tables never edit GL output. The
+mechanism (an `api` tag on `schemas.TABLES` entries) lands additively in c33 with **no** version
+change; the single intentional `SCHEMA_VERSION` bump (3→4) is isolated to **c35**, which refreshes the
+goldens and bumps bobframes MINOR (pre-1.0). **Consequence:** cross-API reports query the core tables
+and left-join the extension tables; `parquetize`'s existing missing-column auto-fill means a GL capture
+simply has no Vulkan extension rows. Rejected: per-API full table sets (duplicates common columns,
+forces UNION/branch in every report).
+
+### ADR-15 — the first added graphics API is Vulkan
+**Context:** after the GL-adapter refactor (c32), the second API can be Vulkan or D3D12. **Decision
+(user-confirmed):** **Vulkan first** — cross-vendor and aligned with the v0.6 cross-platform epic.
+D3D12 is deferred and will later validate the adapter abstraction against a very different binding
+model. **Consequence:** c34 ships `VulkanAdapter` + a Vulkan synthetic fixture + golden; the v0.6
+cross-platform lane and Vulkan reinforce each other.
+
+### ADR-16 — `--json` is a versioned contract from day one
+**Context:** CI consumers need stable machine-readable output (G-9). **Decision (user-confirmed):**
+`--json` emits a single JSON object to **stdout** (logs stay on **stderr**) carrying an independent
+`json_schema_version` (≠ data `SCHEMA_VERSION`), introduced in c20 and required of every verb that
+gains JSON. `json_schema_version` bumps only on a breaking JSON-shape change. **Consequence:** a
+`tests/test_json_contract.py` pins the version + key set; `--json` is additive to stdout so it never
+touches the HTML golden.
+
+### ADR-17 — SQL `query` is an optional extra; the core stays pyarrow-only
+**Context:** the "queryable Parquet" goal wants SQL, but the frozen dep invariant is **pyarrow only**;
+a bundled engine would be a standing heavy dep. The user delegated the choice to "whatever is better
+for tool lifespan." **Decision:** `schema` introspection ships in the **core** (pyarrow-only, always
+available); SQL `query` is an **opt-in extra** — `pip install bobframes[query]` pulls DuckDB, and the
+`query` verb lazy-imports it with a helpful install hint when absent. **Consequence:** the
+pyarrow-only-core invariant is preserved; `pyproject.toml` gains
+`[project.optional-dependencies] query = ["duckdb>=1.0"]` (ARCHITECTURE §3 annotated, not rewritten);
+power users opt in. Best for lifespan: lean core, no forced heavy dep, full SQL available. Rejected:
+bundling DuckDB in core (breaks pyarrow-only, grows every install); introspection-only (too weak).
+
+### ADR-18 — cross-platform (Linux/macOS) lands v0.6, after the API epic
+**Context:** ARCHITECTURE §12 freezes "Windows only in v1." Vulkan-first (ADR-15) mildly argues for
+pulling Linux forward. **Decision (user-confirmed):** keep cross-platform at **v0.6** (c36) — land
+Vulkan extraction on Windows first (v0.5), then port the tool locator (extends c06 `resolve_tool`) and
+a platform-dispatched process-tree kill (`os.killpg`+`start_new_session` on POSIX; taskkill/job object
+on Windows), and relax the `sys.platform!='win32'` gate in `_cmd_check`. **Consequence:** this
+supersedes the ARCHITECTURE §12 "Windows only in v1" statement for v0.6+; §12 is annotated with a
+pointer to this ADR (frozen, not rewritten). A per-OS nightly real-`.rdc` lane is added.
+
+### ADR-19 — plugins are trusted-local-only (no sandbox)
+**Context:** v0.6 wants user-supplied reports/derives/presets/API-adapters (M-1/M-2); the open question
+is the security posture. **Decision (user-confirmed):** **trusted-local-only** — plugins are discovered
+from a documented user dir / installed entry points and run in-process; the posture is documented as
+"you run code you install." No sandbox, no signature verification. **Consequence:** c38 implements
+auto-discovery (`pkgutil.iter_modules` + entry-point groups + a `build()` convention) and schema-table
+registration (M-2); sandboxing/signing is deferred until demanded.
+
+### ADR-20 — the public sample capture is a SHA256-pinned GitHub Release asset
+**Context:** the <5-min onboarding goal needs a public sample capture / `_data`, but the repo stays
+data-free (ADR-8). **Decision (user-confirmed):** host an anonymized sample as a **SHA256-pinned
+GitHub Release asset**, versioned with the tool; docs (and an optional fetch helper) pull it.
+**Consequence:** the repo gains no captures; the sample is referenced by release URL + SHA256. Rejected:
+a separate companion repo (extra maintenance) and committing the sample (violates ADR-8).
+
+### ADR-21 — engine presets are generic-first; each new engine needs its own fixture + golden
+**Context:** c09 ships the classifier-TOML mechanism + a UE preset. Adding engines needs a validation
+strategy and an order. **Decision (user-confirmed):** **generic-first** — ship an honest "generic"
+preset (depth-write/blend heuristics, no engine keywords) that needs no external capture and unblocks
+every non-UE user immediately (c27). Unity/Godot presets land when a real `.rdc` from that engine
+exists to anonymize. Each new engine preset requires its **own synthetic fixture + golden**, gated
+behind a real-`.rdc` smoke from that engine. **Consequence:** breadth ≥2 engines (UE + generic) is met
+in v0.4 without waiting on third-party captures; per-engine goldens grow the parity surface one engine
+at a time.
+
+### ADR-22 — per-API / per-engine golden parity grows one fixture at a time
+**Context:** ADR-11 pins byte-parity to one canonical cell for the single GL fixture. Multi-API
+(ADR-14/15) and multi-engine (ADR-21) each add fixtures. **Decision:** **each new API and each new
+engine gets its own synthetic fixture + golden**, anonymized/down-sampled from a real ingest
+(ADR-6/ADR-8) and baked on the canonical cell py3.12+pa21 (ADR-11). The byte-parity gate runs each new
+golden on the canonical cell; functional gates run the full matrix. **Consequence:** this refines
+QUALITY_GATES §21 — the golden set is `{golden (GL/UE), golden-vk, golden-generic, …}`; every
+output-changing commit refreshes the affected golden(s) in-PR.
