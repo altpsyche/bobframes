@@ -15,13 +15,14 @@ last_session:   2026-05-31 — pre-release REAL-RDC validation (user-requested) 
                 First live exercise of the c12 replay-path resolution + c03 Popen/taskkill harness;
                 schema-match on real parquet empirically confirms the H-6 dup. c19 code-ready:
                 _version 0.1.0, CHANGELOG [0.1.0] finalized, PyPI name `bobframes` FREE (404).
-next_action:    c19 release-ops — BLOCKED on infra/authorization (do not auto-run, outward+
-                irreversible): (1) no git remote (repo is local-only) -> create GH repo + add origin;
-                (2) push main so CI runs green (never run yet); (3) set PYPI_API_TOKEN GH secret;
-                (4) `git tag v0.1.0 && git push origin v0.1.0` -> CI publish job. Then post-install
-                verify (pipx install bobframes; version/check/smoke/ingest) per c19 Done-when.
-blockers:       c19 needs a git remote + PYPI_API_TOKEN + an authorized, irreversible tag push.
-                Awaiting user decision on handling the outward release steps.
+next_action:    c19 release-ops. CI fix landed (ADR-11): first push went red — golden parity not
+                byte-identical across matrix (pyarrow writer parquet-size + py3.10 numpy 1-ULP % flip).
+                Pinned test_parity to canonical cell (py3.12+pa21); all other gates run full matrix.
+                STEPS: (1) re-push main, confirm matrix now GREEN; (2) set PYPI_API_TOKEN secret;
+                (3) `git tag v0.1.0 && git push origin v0.1.0` -> publish job (outward+irreversible,
+                authorize first); (4) post-install verify per c19 Done-when.
+blockers:       c19 needs CI confirmed green after the ADR-11 fix push, PYPI_API_TOKEN, and an
+                authorized irreversible tag push. Remote now exists (user pushed; CI ran).
 blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/tests)
 ```
 
@@ -58,6 +59,16 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-05-31 — CI first-push RED, root-caused + fixed (ADR-11). Matrix failed on {3.10,*} and
+  {3.12,pa17}; passed only {3.12,pa21}/{3.13,pa21}. Reproduced each cell locally via `uv run
+  --isolated --python X --with pyarrow==Y` rendering synthetic + diffing golden (read-only). Two
+  independent env-variable bytes in the golden HTML: (A) drill page prints parquet on-disk KB ->
+  differs by pyarrow writer (pa17 15.1 vs pa21 12.3 KB); (B) pass_gpu bar-width pct_share flips
+  0.62->0.63 on py3.10 (1-ULP numpy-build diff at .2f boundary). Each cell diverged in exactly 1
+  file; all functional gates + determinism (within-env) green everywhere. Fix: pin test_parity to
+  canonical cell (py3.12+pa21) in ci.yml (`--ignore=test_parity.py` on all cells + a canonical-only
+  test_parity step); appended ADR-11, noted QUALITY_GATES §21.6. Validated split locally: 31 + 1 = 32
+  green. Re-push needed to confirm matrix green.
 - 2026-05-31 — pre-release real-rdc validation: ran `bobframes smoke --data` on a junctioned temp
   root holding the real Chor bazar/2026-05-27_r110565 drop (5 captures; C:\tmp, Downloads inputs
   read-only via junction, removed safely after). Full pipeline green: parse 5x, live qrenderdoc

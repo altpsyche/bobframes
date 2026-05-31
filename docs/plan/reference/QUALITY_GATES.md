@@ -87,6 +87,12 @@ jobs:
       - bobframes smoke                  # render-only against synthetic
       - bobframes lint tests/data/golden/**/*.html
 ```
+
+> **Refined by [ADR-11](../DECISIONS.md):** golden byte-parity (`test_parity`) is **pinned to the
+> canonical cell** (py3.12 + pyarrow 21) — the rendered HTML embeds env-variable bytes (parquet
+> on-disk size by pyarrow version; a percentage's last `.2f` digit by numpy build), so it is only
+> byte-identical on the env the golden was baked in. Every other gate (incl. `determinism`, which is
+> within-env stable) runs on the full matrix. Real test files are `test_*.py`, not `unit_*.py`.
 **Gap (ADR-6):** no GPU/RenderDoc on `windows-latest` → CI never exercises the **ingest** path. The
 c03 hardening gets a **mocked-subprocess** unit test so kill/skip/atomic-rename ship tested; full
 ingest smoke is self-hosted/nightly (v0.2).

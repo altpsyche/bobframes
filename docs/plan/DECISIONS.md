@@ -177,3 +177,24 @@ entries / 130 unique / **0 duplicates**, still containing `replay_main.py`, all 
 Parquet, both manifests, and all 9 golden HTML; `twine check` passes. **Consequence:** the real
 `pyproject.toml` diverges from the §3 snapshot by one removed line; §3 is annotated with a pointer to
 this ADR rather than rewritten (frozen, append-only).
+
+### ADR-11 — golden byte-parity is pinned to one canonical env; the matrix runs functional gates
+**Context:** c17's CI matrix (windows × py{3.10,3.12,3.13} × pyarrow{17,21}) went red on the first
+push. Root-caused by reproducing each cell locally under `uv` (read-only): the rendered golden HTML
+is **not** byte-identical across the matrix because it embeds environment-variable bytes —
+(A) the per-drop drill page prints each Parquet's **on-disk KB**, which differs by pyarrow writer
+version (render-only rewrites the derived Parquet with the local pyarrow; pa17 `15.1 KB` vs pa21
+`12.3 KB`); and (B) a computed `pass_gpu` bar-width `pct_share` flips `0.62% -> 0.63%` on py3.10 — a
+one-ULP difference in a float aggregate (numpy build bundled per-python) landing on the `.2f`
+rounding boundary. Each cell diverges in exactly one file; the functional gates (unit, schema,
+replay-drift, **determinism** — which renders twice in the *same* env, so it is stable — perf,
+hardening, smoke, lint) pass on every cell.
+**Decision:** run **`test_parity` only on the canonical cell** (py3.12 + pyarrow 21, where the golden
+is baked); every other gate runs on every matrix cell. Rationale: byte-snapshot equality across
+differing numpy/pyarrow builds is not a deliverable promise, whereas the snapshot's real job —
+catching render-**logic** regressions — is fully served by running it each push on one fixed env.
+The matrix proves install/import/functional compatibility across the version range; it does not
+promise byte-identical bytes across builds. **Consequence:** ci.yml splits the pytest step
+(`--ignore=test_parity.py` everywhere + a canonical-only `test_parity.py` step). If the canonical
+env's pyarrow floor is bumped, re-bake the golden. This refines [QUALITY_GATES §21.6](reference/QUALITY_GATES.md),
+which had listed parity in the matrix.

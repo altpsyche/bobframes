@@ -54,13 +54,21 @@ jobs:
       - name: Resolved versions
         run: bobframes version
 
-      # One pytest run collects every §21.6 gate: test_parity (golden snapshots), test_schemas
-      # (schema regression), test_replay_drift (H-6 drift), test_determinism, test_perf, the c03
-      # hardening tests, and the unit tests. Filenames are test_*.py (the repo has no pytest
-      # `python_files` override), so the doc's `tests/unit_*.py` maps to test_stable_keys /
-      # test_schemas_unit / test_discovery and `tests/parity.py` -> test_parity.py, etc.
-      - name: pytest (all gates)
-        run: python -m pytest bobframes/tests -v
+      # Every gate runs on every cell EXCEPT golden byte-parity (test_parity), which is pinned to
+      # the canonical env below. The rendered HTML embeds environment-variable bytes that are not a
+      # cross-build promise: parquet file sizes differ by pyarrow writer version, and a computed
+      # percentage can flip one ULP across numpy builds (py3.10) at a .2f rounding boundary. So the
+      # snapshot is only byte-identical on the env it was baked in. test_determinism stays here: it
+      # renders twice in the SAME env, so it is stable on every cell. See DECISIONS ADR-11.
+      # (Filenames are test_*.py — no pytest `python_files` override — so §21.6's `tests/unit_*.py`
+      # maps to test_stable_keys / test_schemas_unit / test_discovery, `tests/parity.py` ->
+      # test_parity.py, etc.)
+      - name: pytest (all gates except golden parity)
+        run: python -m pytest bobframes/tests --ignore=bobframes/tests/test_parity.py -v
+
+      - name: golden byte-parity (canonical env only)
+        if: matrix.python == '3.12' && matrix.pyarrow == '21'
+        run: python -m pytest bobframes/tests/test_parity.py -v
 
       - name: smoke (render-only against bundled synthetic)
         run: bobframes smoke
