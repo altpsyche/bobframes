@@ -7,18 +7,21 @@
 
 ```
 active_release: v0.1
-current:        c19_release    (status: not-started)
-last_session:   2026-05-31 — c18 DONE: wrote README.md (§13 outline: requirements, install,
-                quickstart, commands table, external tools, output layout, _analysis migration table,
-                troubleshooting, advanced) + finalized CHANGELOG.md (Keep-a-Changelog [0.1.0] with
-                KEY_VERSION/Windows-only/hard-rename callouts). LICENSE already MIT (unchanged). Gate
-                `bobframes lint README.md CHANGELOG.md` passes (had to avoid arrows/em-dash + banned
-                words incl. "notable"/"the following"). Migration map + commands table match real
-                verbs.
-next_action:    c19 — tag v0.1.0. Open commits/v01/c19_release.md and do exactly that commit. Before
-                tagging: verify the bobframes name is free on PyPI; CONFIRM the CHANGELOG [0.1.0]
-                date (currently 2026-05-31) at tag time; CI green-on-push still unverified (no push
-                this session) — a push should be green before the tag. Keep 32-test suite green.
+current:        c19_release    (status: blocked — release-ops; code-ready)
+last_session:   2026-05-31 — pre-release REAL-RDC validation (user-requested) + c19 prep. Ran the
+                scoped real smoke on Chor bazar/r110565 (5 captures, junctioned into C:\tmp, Downloads
+                untouched): full ingest incl. live qrenderdoc replay (5x rc=0, ~190s each), 597k rows
+                parquetized, stable_keys + 16651 global entities, all reports + lint clean -> exit 0.
+                First live exercise of the c12 replay-path resolution + c03 Popen/taskkill harness;
+                schema-match on real parquet empirically confirms the H-6 dup. c19 code-ready:
+                _version 0.1.0, CHANGELOG [0.1.0] finalized, PyPI name `bobframes` FREE (404).
+next_action:    c19 release-ops — BLOCKED on infra/authorization (do not auto-run, outward+
+                irreversible): (1) no git remote (repo is local-only) -> create GH repo + add origin;
+                (2) push main so CI runs green (never run yet); (3) set PYPI_API_TOKEN GH secret;
+                (4) `git tag v0.1.0 && git push origin v0.1.0` -> CI publish job. Then post-install
+                verify (pipx install bobframes; version/check/smoke/ingest) per c19 Done-when.
+blockers:       c19 needs a git remote + PYPI_API_TOKEN + an authorized, irreversible tag push.
+                Awaiting user decision on handling the outward release steps.
 blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/tests)
 ```
 
@@ -55,6 +58,15 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-05-31 — pre-release real-rdc validation: ran `bobframes smoke --data` on a junctioned temp
+  root holding the real Chor bazar/2026-05-27_r110565 drop (5 captures; C:\tmp, Downloads inputs
+  read-only via junction, removed safely after). Full pipeline green: parse 5x, live qrenderdoc
+  replay 5x rc=0 (~176-218s each), parquetize 597199 rows, program_transitions 415, pass_class_
+  breakdown 4245, atomic commit, catalog 1 drop/5 captures, global_entities 16651, 7 reports +
+  dashboard + root index, lint clean -> exit 0. This is the first end-to-end run of the packaged
+  ingest path (c12 replay_script_path resolution + c03 Popen/taskkill harness had only been mocked);
+  schema-match on real parquet validates the H-6 dup beyond the static drift test. PyPI name free.
+  c19 left BLOCKED on release-ops (no remote / token / authorized irreversible push).
 - 2026-05-31 — c18 done: wrote the user-facing README.md from the §13 outline (requirements, install,
   quickstart, commands table from ARCHITECTURE §4, external tools, output layout from paths.py, the
   _analysis->bobframes migration as an ASCII table, troubleshooting incl. the G-3 `ingest --force`
