@@ -34,9 +34,9 @@ dev = ["build", "twine", "hatchling", "pytest"]
 bobframes = "bobframes.cli:main"
 
 [project.urls]
-Homepage  = "https://github.com/mayhem-studios/bobframes"
-Issues    = "https://github.com/mayhem-studios/bobframes/issues"
-Changelog = "https://github.com/mayhem-studios/bobframes/blob/main/CHANGELOG.md"
+Homepage  = "https://github.com/altpsyche/bobframes"
+Issues    = "https://github.com/altpsyche/bobframes/issues"
+Changelog = "https://github.com/altpsyche/bobframes/blob/main/CHANGELOG.md"
 
 [tool.hatch.version]
 path = "bobframes/_version.py"

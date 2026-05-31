@@ -198,3 +198,14 @@ promise byte-identical bytes across builds. **Consequence:** ci.yml splits the p
 (`--ignore=test_parity.py` everywhere + a canonical-only `test_parity.py` step). If the canonical
 env's pyarrow floor is bumped, re-bake the golden. This refines [QUALITY_GATES §21.6](reference/QUALITY_GATES.md),
 which had listed parity in the matrix.
+
+### ADR-12 — package URLs repointed to github.com/altpsyche/bobframes
+**Context:** [ARCHITECTURE §3](ARCHITECTURE.md) froze `[project.urls]` (Homepage/Issues/Changelog) at
+`github.com/mayhem-studios/bobframes`, and the CHANGELOG link refs matched. At release prep the actual
+git remote is `github.com/altpsyche/bobframes`; CI and the v0.1.0 publish happen there. Publishing as
+frozen would give the PyPI page Homepage/Issues/Changelog links that 404. **Decision (user-confirmed):**
+repoint the three `pyproject.toml` `[project.urls]` and the two CHANGELOG link-reference URLs to
+`altpsyche/bobframes`. The author email (`@mayhem-studios.com`) is unchanged — it is the real contact,
+not a repo URL. **Consequence:** `pyproject.toml` + `CHANGELOG.md` diverge from the §3 snapshot; §3 is
+annotated with a pointer to this ADR rather than rewritten (frozen, append-only). If the project later
+moves to a mayhem-studios org repo, repoint again.

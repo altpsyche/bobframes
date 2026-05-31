@@ -15,14 +15,14 @@ last_session:   2026-05-31 — pre-release REAL-RDC validation (user-requested) 
                 First live exercise of the c12 replay-path resolution + c03 Popen/taskkill harness;
                 schema-match on real parquet empirically confirms the H-6 dup. c19 code-ready:
                 _version 0.1.0, CHANGELOG [0.1.0] finalized, PyPI name `bobframes` FREE (404).
-next_action:    c19 release-ops. CI fix landed (ADR-11): first push went red — golden parity not
-                byte-identical across matrix (pyarrow writer parquet-size + py3.10 numpy 1-ULP % flip).
-                Pinned test_parity to canonical cell (py3.12+pa21); all other gates run full matrix.
-                STEPS: (1) re-push main, confirm matrix now GREEN; (2) set PYPI_API_TOKEN secret;
-                (3) `git tag v0.1.0 && git push origin v0.1.0` -> publish job (outward+irreversible,
-                authorize first); (4) post-install verify per c19 Done-when.
-blockers:       c19 needs CI confirmed green after the ADR-11 fix push, PYPI_API_TOKEN, and an
-                authorized irreversible tag push. Remote now exists (user pushed; CI ran).
+next_action:    c19 release-ops. CI GREEN confirmed after ADR-11 parity-pinning. Remote is
+                github.com/altpsyche/bobframes; repointed pyproject [project.urls] + CHANGELOG refs
+                mayhem-studios -> altpsyche (ADR-12) so PyPI metadata links resolve. REMAINING:
+                (1) push the ADR-12 URL-fix commit; (2) set PYPI_API_TOKEN secret in altpsyche/
+                bobframes; (3) `git tag v0.1.0 && git push origin v0.1.0` -> publish job
+                (outward+IRREVERSIBLE — authorize first); (4) post-install verify per c19 Done-when.
+blockers:       c19 needs PYPI_API_TOKEN set + an authorized irreversible tag push. CI green; URLs
+                fixed; PyPI name `bobframes` free.
 blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/tests)
 ```
 
@@ -59,6 +59,11 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-05-31 — CI green after ADR-11 fix (user confirmed). Release prep: remote is altpsyche/
+  bobframes, but pyproject [project.urls] + CHANGELOG link refs pointed at mayhem-studios -> would
+  404 on the PyPI page. Repointed all 5 URLs to altpsyche (ADR-12; author email @mayhem-studios.com
+  left as the real contact); annotated frozen ARCHITECTURE §3. Lint clean, pyproject parses. c19 now
+  gated only on: set PYPI_API_TOKEN + authorize the irreversible tag push.
 - 2026-05-31 — CI first-push RED, root-caused + fixed (ADR-11). Matrix failed on {3.10,*} and
   {3.12,pa17}; passed only {3.12,pa21}/{3.13,pa21}. Reproduced each cell locally via `uv run
   --isolated --python X --with pyarrow==Y` rendering synthetic + diffing golden (read-only). Two

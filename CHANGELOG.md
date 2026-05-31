@@ -41,5 +41,5 @@ First standalone release. v1 is Windows-only (the replay stage drives `qrenderdo
   `python -m _analysis.*` entry points no longer work; switch to the `bobframes` commands (see the
   migration table in the README). This is a hard rename with no compatibility shim.
 
-[Unreleased]: https://github.com/mayhem-studios/bobframes/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/mayhem-studios/bobframes/releases/tag/v0.1.0
+[Unreleased]: https://github.com/altpsyche/bobframes/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/altpsyche/bobframes/releases/tag/v0.1.0

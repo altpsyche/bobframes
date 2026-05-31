@@ -124,6 +124,10 @@ Hatchling chosen: single-file dynamic version, no `setup.py`, native force-inclu
 > `packages = ["bobframes"]` already ships them and the force-include only created duplicate wheel
 > entries. The `replay_main.py` force-include stays.
 
+> **Superseded by [ADR-12](DECISIONS.md):** the `[project.urls]` above (and the CHANGELOG link refs)
+> are repointed from `mayhem-studios/bobframes` to `altpsyche/bobframes` in the real files — that is
+> the actual remote where CI runs and v0.1.0 publishes. The author email is unchanged.
+
 > **Python 3.14 caveat (see DECISIONS / QUALITY_GATES):** the `3.14` classifier is intentionally
 > omitted above. `pyarrow>=17` has no cp314 wheels, so a `{3.14, pyarrow 17}` install fails. Add
 > 3.14 only once a compatible pyarrow floor is set for it. CI matrix tops out at 3.13 for v0.1.
