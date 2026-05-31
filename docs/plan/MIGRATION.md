@@ -39,6 +39,58 @@ Operates on the renamed `bobframes/` package. Each guarded by parity.
 | [c10 env rename](commits/v02/c10_env_rename.md) | `RDC_*`→`BOBFRAMES_*` (legacy fallback); `RDC_INSIDE_ARGS` kept |
 | [c16 report quality](commits/v02/c16_report_quality.md) | empty states, missing-col tolerance, cache SHA256, dashboard rename (R-13, Q-9, G-* polish) |
 
+## v0.3 — CI/automation surface (after v0.2)
+
+The high-leverage audience step. `--json` first (additive; no HTML-golden impact). See
+[ROADMAP.md](ROADMAP.md). Each guarded by parity.
+
+| Commit | Leaves working state of… |
+|---|---|
+| [c20 --json output](commits/v03/c20_json_output.md) | global `--json` + `jsonout.JSON_SCHEMA_VERSION=1`; stdout=JSON, stderr=logs (G-9, ADR-16) |
+| [c21 regression gating](commits/v03/c21_regression_gating.md) | `trend_table.KPIS` thresholds → c07 config; `report trend --gate` exit code |
+| [c22 isolated stages](commits/v03/c22_isolated_stages.md) | standalone `parse`/`replay` verbs over the stage tree (G-10) |
+| [c23 --dry-run](commits/v03/c23_dry_run.md) | `ingest --dry-run` prints the plan, zero side effects (G-1) |
+| [c24 verify](commits/v03/c24_verify.md) | `verify` integrity check (schema/cols/cache-SHA/counts), exit 1 on mismatch (G-4) |
+| [c25 diff](commits/v03/c25_diff.md) | `diff` drop/manifest deltas, text + JSON (G-2) |
+| [c26 export](commits/v03/c26_export.md) | `export` tables to csv/json/zip from committed `_data/` (G-5) |
+
+## v0.4 — Engine breadth + ergonomics (after v0.3)
+
+UE + generic engines; the artist reports; schema/query. New reports add goldens; no schema bump.
+
+| Commit | Leaves working state of… |
+|---|---|
+| [c27 engine presets](commits/v04/c27_engine_presets.md) | generic preset + per-engine fixture/golden harness; Unity/Godot stubs (ADR-21/22) |
+| [c28 texture_usage report](commits/v04/c28_texture_usage_report.md) | the already-derived `texture_usage` surfaced as a report (G-13) |
+| [c29 overdraw heatmap](commits/v04/c29_overdraw_heatmap.md) | per-RT overdraw heatmap on the overdraw report |
+| [c30 schema + query](commits/v04/c30_query_schema.md) | `schema` introspection (core) + `query` via `bobframes[query]` extra (ADR-17) |
+| [c31 mesh/material report](commits/v04/c31_mesh_material_report.md) | per-material draw/vertex/instance report |
+
+## v0.5 — Graphics-API adapter epic (after v0.4)
+
+GL adapter = today (parity-clean) → data-driven columns → Vulkan + fixture/golden → **`SCHEMA_VERSION`
+3→4** at c35 (golden refresh + bobframes MINOR). Unified core + per-API extension tables (ADR-14);
+Vulkan first (ADR-15).
+
+| Commit | Leaves working state of… |
+|---|---|
+| [c32 PipelineStateAdapter](commits/v05/c32_pipeline_state_adapter.md) | GL extraction behind `PipelineStateAdapter` + `ctrl.API()` dispatch; **no output change** |
+| [c33 data-driven columns](commits/v05/c33_data_driven_columns.md) | class columns generated from `class_order`; `api` tag on `schemas.TABLES`; GL byte-identical |
+| [c34 Vulkan extraction](commits/v05/c34_vulkan_extraction.md) | `VulkanAdapter` + Vulkan fixture + golden; GL untouched |
+| [c35 schema widening](commits/v05/c35_schema_widening.md) | Vulkan extension tables registered; `SCHEMA_VERSION` 3→4; **both goldens refreshed** |
+
+## v0.6+ — Cross-platform + leads + plugins (after v0.5)
+
+Linux/macOS locator + non-Windows tree-kill; historical dashboard + alerts; trusted-local plugins;
+optional Figma sync.
+
+| Commit | Leaves working state of… |
+|---|---|
+| [c36 cross-platform](commits/v06/c36_cross_platform.md) | per-OS tool locator (extends c06) + platform-dispatched tree-kill; Linux/macOS `check` (H-38, ADR-18) |
+| [c37 historical dashboard](commits/v06/c37_historical_dashboard.md) | multi-drop historical dashboard + config-driven regression alerts |
+| [c38 plugins](commits/v06/c38_plugins.md) | trusted-local auto-discovery of reports/derives/presets/adapters; schema-table registration (M-1/M-2, ADR-19) |
+| [c39 Figma sync](commits/v06/c39_figma_sync.md) | optional `export-tokens --format figma` / sync behind a `[figma]` extra |
+
 ## Critical files (load-bearing across the migration)
 
 - `pipeline.py` (was `run.py`) — the `python -m bobframes.parsers.parse_init_state` subprocess

@@ -21,7 +21,11 @@ preset that is **byte-identical to today**. (Most invasive — budget extra time
 ## Changes
 Transcribe the current rules exactly. Regex in TOML needs doubled escapes
 (`frame_prefix_regex = "^Frame\\s+\\d+/?"`). User selects preset via `[classifier] preset = "unity"`
-or `custom_path`.
+or `custom_path`. **`class_order` must equal `chrome.DRAW_CLASSES` byte-for-byte in the current
+order** (`opaque, prepass, shadow, translucent, additive, decal, ui, postprocess, other`) — it becomes
+the single source for the CSS `--c-<class>` tokens (H-5) **and** the seam v0.5/[c33](../v05/c33_data_driven_columns.md)
+generates the `draws_by_class_*` report columns from. Any reorder silently breaks GL byte-parity at
+c33, so freeze the order here.
 
 ## Done when
 - **Parity gate:** synthetic golden reproduces the current `draw_class` column **byte-identically**,

@@ -128,6 +128,11 @@ Hatchling chosen: single-file dynamic version, no `setup.py`, native force-inclu
 > are repointed from `mayhem-studios/bobframes` to `altpsyche/bobframes` in the real files — that is
 > the actual remote where CI runs and v0.1.0 publishes. The author email is unchanged.
 
+> **Extended for v0.4+ by [ADR-17](DECISIONS.md):** the core `dependencies` stays **pyarrow only**.
+> v0.4/c30 adds `[project.optional-dependencies] query = ["duckdb>=1.0"]` so the SQL `query` verb is an
+> opt-in extra (`pip install bobframes[query]`); the `schema` introspection verb ships in the
+> pyarrow-only core. This block is annotated, not rewritten (frozen, append-only).
+
 > **Python 3.14 caveat (see DECISIONS / QUALITY_GATES):** the `3.14` classifier is intentionally
 > omitted above. `pyarrow>=17` has no cp314 wheels, so a `{3.14, pyarrow 17}` install fails. Add
 > 3.14 only once a compatible pyarrow floor is set for it. CI matrix tops out at 3.13 for v0.1.
@@ -252,6 +257,12 @@ Per-file changes are captured in the relevant commit docs (notably
   change needed for portability.
 
 ## 12. Cross-platform
+
+> **Superseded for v0.6+ by [ADR-18](DECISIONS.md):** the "v1 is Windows-only" statement below holds
+> through v0.5. v0.6/c36 adds Linux/macOS support — per-OS tool locator (extends c06 `resolve_tool`) +
+> a platform-dispatched process-tree kill (`os.killpg`+`start_new_session` on POSIX) + a relaxed
+> `_cmd_check` gate (H-38). See [ROADMAP.md](ROADMAP.md). This section is annotated, not rewritten
+> (frozen, append-only).
 
 **v1 is Windows-only.** Documented in README, classifier, error message.
 - `bobframes check` on non-Windows: exit 3, message: `bobframes v1 is Windows-only (qrenderdoc
