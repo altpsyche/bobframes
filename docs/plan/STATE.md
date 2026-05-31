@@ -6,8 +6,8 @@
 > defer to this.
 
 ```
-active_release: v0.1
-current:        c19_release    (status: blocked — release-ops; code-ready)
+active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
+current:        c04_paths_constants    (status: not-started — v0.2 de-hardcoding begins when ready)
 last_session:   2026-05-31 — pre-release REAL-RDC validation (user-requested) + c19 prep. Ran the
                 scoped real smoke on Chor bazar/r110565 (5 captures, junctioned into C:\tmp, Downloads
                 untouched): full ingest incl. live qrenderdoc replay (5x rc=0, ~190s each), 597k rows
@@ -15,7 +15,16 @@ last_session:   2026-05-31 — pre-release REAL-RDC validation (user-requested) 
                 First live exercise of the c12 replay-path resolution + c03 Popen/taskkill harness;
                 schema-match on real parquet empirically confirms the H-6 dup. c19 code-ready:
                 _version 0.1.0, CHANGELOG [0.1.0] finalized, PyPI name `bobframes` FREE (404).
-next_action:    c19 release-ops. CI GREEN confirmed after ADR-11 parity-pinning. Remote is
+next_action:    v0.2 (de-hardcoding) when ready — start at c04_paths_constants, then c05/c06/...
+                (see v0.2 table). Each v0.2 commit stays behind the golden parity gate. Post-release
+                nits (non-blocking): bump CI actions off Node20 (checkout@v5/setup-python@v6 before
+                2026-06-16); after first publish, the PyPI pending publisher auto-converted to a
+                normal trusted publisher (no token ever needed).
+DONE-2026-05-31: c19 — bobframes 0.1.0 PUBLISHED. tag v0.1.0 -> CI publish job green (OIDC trusted
+                publishing, ubuntu). Live on PyPI (wheel + sdist) + GitHub Release with both assets.
+                Post-install verify from a clean PyPI install: version (0.1.0 schema 3 pyarrow 21.0.0),
+                check (tools resolve), smoke render-only (9 pages, lint clean) all exit 0.
+former_next:    c19 release-ops. CI GREEN confirmed after ADR-11 parity-pinning. Remote is
                 github.com/altpsyche/bobframes; repointed pyproject [project.urls] + CHANGELOG refs
                 mayhem-studios -> altpsyche (ADR-12) so PyPI metadata links resolve. REMAINING:
                 (1) push the ADR-12 URL-fix commit; (2) set PYPI_API_TOKEN secret in altpsyche/
@@ -42,7 +51,7 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c15 smoke rewrite + unit tests](commits/v01/c15_smoke_tests.md) | **done** — `--data`-driven smoke (render-only default) + 3 unit files (`test_stable_keys`/`test_schemas_unit`/`test_discovery`); 32 tests green |
 | ☑ | [c17 CI workflow](commits/v01/c17_ci_workflow.md) | **done** — `.github/workflows/ci.yml`: gate matrix + tag-gated publish; YAML+gate cmds validated, build dry-checked |
 | ☑ | [c18 README + CHANGELOG + LICENSE](commits/v01/c18_docs.md) | **done** — README (§13) + CHANGELOG [0.1.0] + MIT LICENSE; `lint README.md CHANGELOG.md` green |
-| ☐ | [c19 tag v0.1.0](commits/v01/c19_release.md) | not-started ← **HERE** |
+| ☑ | [c19 tag v0.1.0](commits/v01/c19_release.md) | **done** — bobframes 0.1.0 live on PyPI + GH Release (OIDC); post-install verify green |
 
 ## v0.2 — de-hardcoding (deferred)
 
@@ -61,6 +70,12 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-05-31 — c19 DONE: bobframes 0.1.0 RELEASED. Switched publish to PyPI Trusted Publishing
+  (OIDC, ADR-13) — no token; user saved a pending publisher (altpsyche/bobframes/ci.yml). Pushed main
+  (CI green on OIDC workflow d11c84e), then tagged v0.1.0 + pushed -> publish job green: build ->
+  OIDC upload -> GH Release. Verified live: PyPI bobframes 0.1.0 (wheel + sdist), GH Release v0.1.0
+  with both assets. Post-install from clean PyPI install (uv isolated): version / check / smoke
+  render-only all exit 0. v0.1 extraction release COMPLETE; v0.2 de-hardcoding (c04+) is next.
 - 2026-05-31 — CI green after ADR-11 fix (user confirmed). Release prep: remote is altpsyche/
   bobframes, but pyproject [project.urls] + CHANGELOG link refs pointed at mayhem-studios -> would
   404 on the PyPI page. Repointed all 5 URLs to altpsyche (ADR-12; author email @mayhem-studios.com
