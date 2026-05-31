@@ -48,7 +48,7 @@
 
 | ID | Finding | resolved-by | status |
 |---|---|---|---|
-| D-1 | 6-report list duplicated: `orchestrator._REPORT_MODULES` + `ab._MODULES` (**different names**, same content) | [c05](../commits/v02/c05_registry_consolidation.md) | ☐ |
+| D-1 | 6-report list duplicated: `orchestrator._REPORT_MODULES` + `ab._MODULES` (**different names**, same content) | [c05](../commits/v02/c05_registry_consolidation.md) | ☑ |
 | D-2 | `parquetize` couples to `schemas`; must verify + raise SchemaMismatch with diff | partially [c13](../commits/v01/c13_replay_drift_ci.md) + v0.2 | ☐ |
 | D-3 | `pipeline` imports `reports.orchestrator` at top — fine post-rename; document expected coupling | doc | ☐ |
 | D-4 | `manifest` `.get('captures') or .get('stems')` shows schema drift between old/new manifests | [c16](../commits/v02/c16_report_quality.md) (manifest schema-version guard) | ☐ |

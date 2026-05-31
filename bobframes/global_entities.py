@@ -28,16 +28,21 @@ import pyarrow as pa
 import pyarrow.csv as pacsv
 import pyarrow.parquet as papq
 
+from . import schemas
 
-_ENTITY_TABLES = [
-    ('shaders', 'shader_id', 'shader'),
-    ('textures', 'tex_id', 'texture'),
-    ('render_targets', 'rt_id', 'texture'),  # RTs are textures
-    ('programs', 'program_id', 'program'),
-    ('samplers', 'sampler_id', 'sampler'),
-    ('fbos', 'fbo_id', 'fbo'),
-    ('buffers', 'buffer_id', 'buffer'),
-]
+
+# Entity kind label: RTs are indexed as textures; everything else is the stem depluralized (H-9).
+_KIND_OVERRIDE = {'render_targets': 'texture'}
+
+
+def _entity_id_col(stem: str) -> str:
+    """Per-capture resource-id column = the field right after stable_key (registry convention)."""
+    cols = schemas.expected_columns(stem)
+    return cols[cols.index('stable_key') + 1]
+
+
+def _entity_kind(stem: str) -> str:
+    return _KIND_OVERRIDE.get(stem, stem[:-1] if stem.endswith('s') else stem)
 
 
 _OUT_COLS = ('stable_key', 'kind', 'area', 'drop_date', 'drop_label',
@@ -53,7 +58,9 @@ def build_global_entities(root: str) -> int:
 
     from . import paths as _paths
     data_root = _paths.data_root(root)
-    for table, id_col, kind in _ENTITY_TABLES:
+    for table in schemas.entity_tables():
+        id_col = _entity_id_col(table)
+        kind = _entity_kind(table)
         for path in sorted(glob.glob(os.path.join(data_root, '*', '*',
                                                   f'{table}.parquet'))):
             try:

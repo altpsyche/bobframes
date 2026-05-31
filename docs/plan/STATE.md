@@ -7,31 +7,36 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        c05_registry_consolidation    (status: not-started — c04 DONE)
-last_session:   2026-05-31 — c04 DONE (paths constants, H-18/H-19). Added 10 layout constants to
-                paths.py (DATA_DIR/REPORTS_DIR/CACHE_DIR/STAGE_DIR/DRILL_DIR/AB_DIR/TMP_SUFFIX/
-                MANIFEST_NAME/DONE_MARKER/INDEX_HTML) + refactored paths.py's own funcs to use them.
-                Swept the literals out of every production module (manifest, catalog, run, parquetize,
-                html/template incl. the render_root URL-prefix strings, reports/{cache,cli,chrome,
-                _dashboard}) and the test fixtures (_render_util, make_synthetic, smoke, test_hardening,
-                test_discovery), reusing existing paths funcs (reports_dir/reports_cache_dir) where they
-                already matched. TMP_SUFFIX='.tmp' (the c04 doc's '_tmp' was a typo — used the real
-                value for parity). Baseline 32-green captured BEFORE edits; full suite 32-green AFTER
-                (parity/schema/determinism byte-identical — no golden refresh). Grep gate clean: the 4
-                literals survive only in paths.py + two `#` comments. API surface only gained constants
-                (additive). Per-OS/HTML log-message display strings left as literals (not filesystem
-                paths, not in the gate).
-next_action:    Do c05 — derive table/entity/report lists from a single source. Open
-                commits/v02/c05_registry_consolidation.md and do exactly that commit. Note the c05 doc
-                was tightened this planning pass: migrate schemas.TABLES values from the raw 3-tuple to
-                a NAMED record (cols, size_class, is_entity, category) + reserve api="core" for c33; make
-                ALL_REPORTS runtime-augmentable for c38. Then c06->c10, c16 (c16 now also wires the
-                manifest schema-version guard, D-4/D-7). Roadmap: ROADMAP.md + commits/v03..v06 (c20-c39)
-                + ADR-14..22. Each commit behind the golden parity gate. GIT: this work is on branch
-                `v0.2-roadmap-c04` (off main @dedfdfc; commits ea68a63 docs + d8f61d7 c04; UNPUSHED) —
-                continue on it. REAL-INGEST: defer the real-rdc smoke to AFTER c06 (tool resolver, the
-                ingest-relevant commit); one run then covers c04+c05+c06's ingest-path changes (ADR-6 —
-                not per-commit). Post-release nit (non-blocking): bump CI actions off Node20
+current:        c06_tool_resolver    (status: not-started — c05 DONE)
+last_session:   2026-05-31 — c05 DONE (registry consolidation, H-8/H-9/H-10/H-11 + D-1). schemas.TABLES
+                values migrated from the raw 3-tuple to a TableSpec NamedTuple (cols, size_class,
+                is_entity, category, api="core" reserved for c33). The dict was REORDERED to the old
+                catalog._CATALOG_TABLE_KEYS order so catalog can derive `tuple(schemas.TABLES.keys())`
+                byte-identically (render_root bakes the catalog column order into the golden root
+                index.html). Added helpers table_category()/entity_tables(); expected_columns/
+                is_entity_table/size_class now read named fields. catalog.py: _CATALOG_TABLE_KEYS =
+                tuple(schemas.TABLES.keys()). global_entities.py: iterate schemas.entity_tables(), id_col
+                by convention (col after stable_key), kind = depluralize(stem) + {render_targets:texture}
+                override. template.py: dropped _CATEGORY_MAP — category now from the record; within-cat
+                DISPLAY order kept in a presentation-only _TABLE_DISPLAY_ORDER tuple (a third ordering
+                that matches neither TABLES nor catalog order — verified empirically — so it can't be
+                derived). reports/__init__.py: NEW all_reports() accessor + register_report() (lazy
+                imports; runtime-augmentable per c38; frozen ALL_REPORTS tuple intentionally rejected);
+                orchestrator + ab both consume it (drops _REPORT_MODULES/_MODULES). test_schemas_unit
+                fixed (5-field record unpack). Baseline 32-green BEFORE; 32-green AFTER, byte-identical
+                (no golden refresh). Scratch in-memory sanity: a dummy is_entity table auto-appears in
+                catalog + entity_tables + template (tails its category; existing order preserved).
+                _global_entities row order shifts (ungated parquet, not in golden) — accepted.
+next_action:    Do c06 — config.resolve_tool() + errors.py + glob version detection (H-7). Open
+                commits/v02/c06_tool_resolver.md and do exactly that commit. NEW config.py
+                (resolve_tool: BOBFRAMES_* env > [tools] config > shutil.which > known Win paths >
+                ToolNotFound) + errors.py (ToolNotFound/PipelineError/exit-map); rewire rdcmd.py +
+                qrd_harness.py off inline discovery (keep _SEP + RDC_INSIDE_ARGS wire); make `check`
+                real (exit 0/3). Golden parity green (discovery doesn't touch render). Then c07->c10,
+                c16. Roadmap: ROADMAP.md + commits/v03..v06 (c20-c39) + ADR-14..22. GIT: still on branch
+                `v0.2-roadmap-c04` (off main @dedfdfc; now +ea68a63 docs +d8f61d7 c04 +<c05>; UNPUSHED).
+                REAL-INGEST: run the deferred real-rdc smoke AFTER c06 — one run covers c04+c05+c06's
+                ingest-path changes (ADR-6). Post-release nit (non-blocking): bump CI actions off Node20
                 (checkout@v5/setup-python@v6 before 2026-06-16).
 DONE-2026-05-31: c19 — bobframes 0.1.0 PUBLISHED. tag v0.1.0 -> CI publish job green (OIDC trusted
                 publishing, ubuntu). Live on PyPI (wheel + sdist) + GitHub Release with both assets.
@@ -71,7 +76,7 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | | Commit | Status |
 |---|---|---|
 | ☑ | [c04 paths.py constants](commits/v02/c04_paths_constants.md) | **done** — 10 layout constants in paths.py; literals swept from all modules + tests; 32 green, byte-parity (H-18/H-19) |
-| ☐ | [c05 registry from `schemas.TABLES`](commits/v02/c05_registry_consolidation.md) | deferred |
+| ☑ | [c05 registry from `schemas.TABLES`](commits/v02/c05_registry_consolidation.md) | **done** — TableSpec record (api reserved); catalog/entities/template/reports all derive; 32 green, byte-parity (H-8/9/10/11, D-1) |
 | ☐ | [c06 tool resolver + glob version detect](commits/v02/c06_tool_resolver.md) | deferred |
 | ☐ | [c07 TOML config layer](commits/v02/c07_toml_config.md) | deferred |
 | ☐ | [c08 design tokens TOML + preview](commits/v02/c08_design_tokens.md) | deferred |
@@ -123,6 +128,21 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-05-31 — c05 DONE (registry consolidation; H-8/9/10/11 + D-1). Migrated schemas.TABLES values to
+  a TableSpec NamedTuple (cols, size_class, is_entity, category, api="core" reserved for c33) and
+  REORDERED the dict to the old catalog key order so `catalog._CATALOG_TABLE_KEYS = tuple(TABLES.keys())`
+  stays byte-identical (render_root bakes catalog column order into the golden root index.html). Added
+  table_category()/entity_tables(); helpers read named fields. global_entities now iterates
+  entity_tables() with id_col-by-convention + depluralized kind ({render_targets:texture} override).
+  template dropped _CATEGORY_MAP — category from the record; within-category DISPLAY order kept as a
+  presentation-only _TABLE_DISPLAY_ORDER tuple (empirically a third distinct ordering vs TABLES/catalog,
+  so it cannot be derived — exactly one of {catalog,template} must keep an explicit order; user chose
+  catalog-derives). reports/__init__ gained all_reports()+register_report() (lazy, runtime-augmentable
+  for c38; frozen ALL_REPORTS rejected); orchestrator+ab consume it (dropped _REPORT_MODULES/_MODULES).
+  test_schemas_unit fixed for the 5-field record. Baseline 32-green before, 32-green after, byte-identical
+  (no golden refresh). In-memory scratch check: a dummy is_entity table auto-appears in catalog +
+  entities + template, tailing its category with existing order intact. _global_entities row order shifts
+  (ungated parquet, not in golden) — accepted. Verified forward-fit with c06/c33/c38/ADR-14. current → c06.
 - 2026-05-31 — c04 DONE (first v0.2 implementation commit). Centralized the layout literals in
   paths.py: 10 module constants (DATA_DIR/REPORTS_DIR/CACHE_DIR/STAGE_DIR/DRILL_DIR/AB_DIR/TMP_SUFFIX/
   MANIFEST_NAME/DONE_MARKER/INDEX_HTML); paths.py funcs + manifest/catalog/run/parquetize/html.template/

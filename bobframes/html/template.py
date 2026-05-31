@@ -21,22 +21,27 @@ from typing import Iterable
 
 import pyarrow.parquet as papq
 
+from .. import schemas
 from ..reports import base as reports_base
 
 
-_CATEGORY_MAP = {
-    'aggregates': ['passes', 'pass_class_breakdown', 'frame_totals',
-                   'texture_usage'],
-    'entities':   ['shaders', 'textures', 'render_targets', 'programs',
-                   'samplers', 'buffers', 'fbos'],
-    'actions':    ['draws', 'draw_bindings', 'events', 'clears', 'dispatches',
-                   'state_change_events', 'vertex_inputs', 'indirect_args',
-                   'descriptor_access', 'rt_event_timeline',
-                   'program_transitions', 'resource_creation',
-                   'counters_per_event'],
-    'samples':    ['vbo_samples', 'ibo_samples', 'post_vs_samples',
-                   'texture_samples', 'pixel_history'],
-}
+# Category ASSIGNMENT now lives on schemas.TABLES[*].category (H-11). What stays here is the
+# presentation-only WITHIN-category display order — a third ordering that matches neither the
+# registry key order nor the catalog order, so it can't be derived from TABLES iteration. A table
+# absent from this tuple (e.g. a newly registered one) sorts to its category's tail.
+_TABLE_DISPLAY_ORDER = (
+    # aggregates
+    'passes', 'pass_class_breakdown', 'frame_totals', 'texture_usage',
+    # entities
+    'shaders', 'textures', 'render_targets', 'programs', 'samplers', 'buffers', 'fbos',
+    # actions
+    'draws', 'draw_bindings', 'events', 'clears', 'dispatches', 'state_change_events',
+    'vertex_inputs', 'indirect_args', 'descriptor_access', 'rt_event_timeline',
+    'program_transitions', 'resource_creation', 'counters_per_event',
+    # samples
+    'vbo_samples', 'ibo_samples', 'post_vs_samples', 'texture_samples', 'pixel_history',
+)
+_DISPLAY_RANK = {name: i for i, name in enumerate(_TABLE_DISPLAY_ORDER)}
 _CATEGORY_ORDER = ['aggregates', 'entities', 'actions', 'samples', 'sidecars']
 _DEFAULT_OPEN = {'aggregates'}
 
@@ -663,22 +668,23 @@ def _inline_table_with_data(table_name: str, out_dir: str,
 
 
 def _categorize(table_specs: list[tuple[str, int, int]]) -> dict:
-    """Return {category: [(name, n_rows, n_cols), ...]} preserving order."""
+    """Return {category: [(name, n_rows, n_cols), ...]} in display order.
+
+    Category membership comes from schemas.TABLES[*].category (a table unknown to the registry
+    falls back to 'actions'); within a category, specs sort by _DISPLAY_RANK, with any unranked
+    (newly registered) table tailing in TABLES order.
+    """
     by_cat: dict[str, list] = {cat: [] for cat in _CATEGORY_ORDER if cat != 'sidecars'}
-    spec_by_name = {name: (name, n_rows, n_cols)
-                    for (name, n_rows, n_cols) in table_specs}
-    used: set = set()
-    for cat in _CATEGORY_ORDER:
-        if cat == 'sidecars':
-            continue
-        for name in _CATEGORY_MAP.get(cat, []):
-            if name in spec_by_name:
-                by_cat[cat].append(spec_by_name[name])
-                used.add(name)
-    # Anything uncategorized goes into 'actions' as a tail bucket
-    for name, n_rows, n_cols in table_specs:
-        if name not in used:
-            by_cat.setdefault('actions', []).append((name, n_rows, n_cols))
+    for spec in table_specs:
+        name = spec[0]
+        try:
+            cat = schemas.table_category(name)
+        except KeyError:
+            cat = 'actions'
+        by_cat.setdefault(cat, []).append(spec)
+    tail = len(_TABLE_DISPLAY_ORDER)
+    for specs in by_cat.values():
+        specs.sort(key=lambda s: _DISPLAY_RANK.get(s[0], tail))
     return by_cat
 
 

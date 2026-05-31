@@ -21,22 +21,12 @@ import pyarrow as pa
 import pyarrow.csv as pacsv
 import pyarrow.parquet as papq
 
-from . import paths as _paths
+from . import paths as _paths, schemas
 
 
-_CATALOG_TABLE_KEYS = [
-    'draws', 'events', 'shaders', 'textures',
-    'render_targets', 'buffers', 'programs',
-    'samplers', 'fbos', 'state_change_events',
-    'counters_per_event', 'descriptor_access',
-    'passes', 'frame_totals',
-    'clears', 'dispatches', 'rt_event_timeline',
-    'vertex_inputs', 'resource_creation',
-    'draw_bindings', 'program_transitions',
-    'pixel_history', 'vbo_samples', 'ibo_samples',
-    'post_vs_samples', 'texture_samples', 'indirect_args',
-    'pass_class_breakdown', 'texture_usage',
-]
+# Derived from the single registry (H-10). schemas.TABLES key order IS the catalog order, so the
+# row_count_* column order baked into the golden root index.html stays byte-identical.
+_CATALOG_TABLE_KEYS = tuple(schemas.TABLES.keys())
 
 
 def _find_manifests(root: str) -> list[tuple[str, str, dict]]:

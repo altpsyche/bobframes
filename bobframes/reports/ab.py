@@ -18,22 +18,7 @@ import os
 import sys
 
 from . import base
-from . import draws_by_class as report_draws_by_class
-from . import trend_table as report_trend
-from . import instancing_opportunities as report_instancing
-from . import pass_gpu as report_pass_gpu
-from . import shader_hotlist as report_shader
-from . import overdraw as report_overdraw
-
-
-_MODULES = [
-    report_draws_by_class,
-    report_trend,
-    report_instancing,
-    report_pass_gpu,
-    report_shader,
-    report_overdraw,
-]
+from . import all_reports
 
 
 def main(argv: list[str]) -> int:
@@ -66,7 +51,7 @@ def main(argv: list[str]) -> int:
 
     drops = [baseline, compare]
     ab = (baseline, compare)
-    for mod in _MODULES:
+    for mod in all_reports():
         try:
             out = mod.build(root, drops=drops, ab=ab)
             print(f'  wrote {out}')
