@@ -19,6 +19,7 @@ Everything else is reference — open it only when a commit doc points you there
 |---|---|---|
 | [STATE.md](STATE.md) | Live progress tracker — the resumption anchor | Every session |
 | [MIGRATION.md](MIGRATION.md) | The commit spine: phases, ordered list, links to each commit doc | Read often; edit rarely |
+| [V02_PLANNING_PROMPT.md](V02_PLANNING_PROMPT.md) | The brief for the next planning session: v0.2+ vision, recommended release sequence, open decisions. Paste into a fresh planner. | When planning v0.2+ |
 | [commits/v01/](commits/v01/) | One doc per v0.1 commit (extraction). The execution units. | The daily driver |
 | [commits/v02/](commits/v02/) | One doc per v0.2 commit (de-hardcoding, deferred) | After v0.1 ships |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | **Frozen** contract: tool identity, package layout, pyproject, CLI surface, tool discovery, config, portability | Reference; change = ADR |

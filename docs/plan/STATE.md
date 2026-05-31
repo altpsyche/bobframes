@@ -15,11 +15,14 @@ last_session:   2026-05-31 — pre-release REAL-RDC validation (user-requested) 
                 First live exercise of the c12 replay-path resolution + c03 Popen/taskkill harness;
                 schema-match on real parquet empirically confirms the H-6 dup. c19 code-ready:
                 _version 0.1.0, CHANGELOG [0.1.0] finalized, PyPI name `bobframes` FREE (404).
-next_action:    v0.2 (de-hardcoding) when ready — start at c04_paths_constants, then c05/c06/...
-                (see v0.2 table). Each v0.2 commit stays behind the golden parity gate. Post-release
-                nits (non-blocking): bump CI actions off Node20 (checkout@v5/setup-python@v6 before
-                2026-06-16); after first publish, the PyPI pending publisher auto-converted to a
-                normal trusted publisher (no token ever needed).
+next_action:    v0.2+ planning: hand docs/plan/V02_PLANNING_PROMPT.md to a fresh planning session to
+                produce the MIGRATION spine + per-commit docs + ROADMAP.md (vision -> best RenderDoc
+                tool for a wide audience; recommended sequence v0.2 foundation -> v0.3 CI/automation
+                -> v0.4 engines+ergonomics -> v0.5 graphics-API epic -> v0.6 cross-platform; all 3
+                breadth axes in scope). Or just execute v0.2 as-planned starting at c04. Each commit
+                stays behind the golden parity gate. Post-release nits (non-blocking): bump CI actions
+                off Node20 (checkout@v5/setup-python@v6 before 2026-06-16); the PyPI pending publisher
+                auto-converted to a normal trusted publisher (no token ever needed).
 DONE-2026-05-31: c19 — bobframes 0.1.0 PUBLISHED. tag v0.1.0 -> CI publish job green (OIDC trusted
                 publishing, ubuntu). Live on PyPI (wheel + sdist) + GitHub Release with both assets.
                 Post-install verify from a clean PyPI install: version (0.1.0 schema 3 pyarrow 21.0.0),
