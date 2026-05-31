@@ -28,10 +28,10 @@
 | ID | Where | Hardcoded | Remediation | resolved-by | status |
 |---|---|---|---|---|---|
 | H-7 | `qrd_harness`, `rdcmd` | Arm `2026.2` path baked (breaks quarterly) | glob `Arm Performance Studio */…`, pick latest; `resolve_tool()` | [c06](../commits/v02/c06_tool_resolver.md) (ADR-2: pull-forward candidate) | ☐ |
-| H-8 | `orchestrator._REPORT_MODULES` + `ab._MODULES` | 6-report list duplicated (two names) | `reports/__init__.ALL_REPORTS` | [c05](../commits/v02/c05_registry_consolidation.md) | ☐ |
-| H-9 | `global_entities._ENTITY_TABLES` | 7 entity tables literal | derive from `schemas.TABLES` via `is_entity_table()` | c05 | ☐ |
-| H-10 | `catalog._CATALOG_TABLE_KEYS` | 29 table names | `tuple(schemas.TABLES.keys())` | c05 | ☐ |
-| H-11 | `html/template._CATEGORY_MAP` | table groupings | move `category` field into `schemas.TABLES` | c05 | ☐ |
+| H-8 | `orchestrator._REPORT_MODULES` + `ab._MODULES` | 6-report list duplicated (two names) | `reports/__init__.all_reports()` (runtime-augmentable accessor; frozen `ALL_REPORTS` tuple rejected per c05) | [c05](../commits/v02/c05_registry_consolidation.md) | ☑ |
+| H-9 | `global_entities._ENTITY_TABLES` | 7 entity tables literal | derive from `schemas.entity_tables()`; id_col by convention + depluralized kind (RT→texture override) | c05 | ☑ |
+| H-10 | `catalog._CATALOG_TABLE_KEYS` | 29 table names | `tuple(schemas.TABLES.keys())` (TABLES reordered to catalog order to hold byte parity) | c05 | ☑ |
+| H-11 | `html/template._CATEGORY_MAP` | table groupings | `category` field on `schemas.TABLES`; within-cat display order kept in `template._TABLE_DISPLAY_ORDER` | c05 | ☑ |
 | H-12 | `qrd_harness` timeout `600.0` | replay timeout not tunable | `[pipeline] replay_timeout_s` + `--replay-timeout` | [c07](../commits/v02/c07_toml_config.md) | ☐ |
 | H-13 | `rdcmd` timeout `120.0` | convert timeout not tunable | `[pipeline] convert_timeout_s` + flag | c07 | ☐ |
 | H-14 | `lint.BANNED` | inline banlist | `lint_banlist.toml` + `[lint] extra_banned` | c07 | ☐ |

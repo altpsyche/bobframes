@@ -7,33 +7,19 @@ import time
 from .. import lint
 from ..html import template
 from . import (
+    all_reports,
     _dashboard as report_dashboard,
     base as reports_base,
-    draws_by_class as report_draws_by_class,
-    instancing_opportunities as report_instancing,
-    overdraw as report_overdraw,
-    pass_gpu as report_pass_gpu,
-    shader_hotlist as report_shader,
-    trend_table as report_trend,
-)
-
-_REPORT_MODULES = (
-    report_draws_by_class,
-    report_trend,
-    report_instancing,
-    report_pass_gpu,
-    report_shader,
-    report_overdraw,
 )
 
 
 def render_all_reports(root: str, log) -> int:
-    """Build cache, all 6 reports, dashboard, root index. Returns 0 on success."""
+    """Build cache, every registered report, dashboard, root index. Returns 0 on success."""
     t0 = time.monotonic()
     cache_out = reports_base.build_per_drop_cache(root)
     log(f'  built per-drop cache: {cache_out} ({time.monotonic()-t0:.1f}s)')
 
-    for mod in _REPORT_MODULES:
+    for mod in all_reports():
         try:
             rep = mod.build(root)
             log(f'  built report: {rep}')

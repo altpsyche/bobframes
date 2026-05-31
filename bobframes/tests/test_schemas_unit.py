@@ -19,11 +19,13 @@ def test_schema_version_is_int():
 
 
 def test_expected_columns_roundtrips_every_stem():
-    for stem, (cols, size, entity) in schemas.TABLES.items():
-        assert schemas.expected_columns(stem) == cols
-        assert schemas.is_entity_table(stem) is entity
-        assert schemas.size_class(stem) == size
-        assert size in ('large', 'small')
+    for stem, spec in schemas.TABLES.items():
+        assert schemas.expected_columns(stem) == spec.cols
+        assert schemas.is_entity_table(stem) is spec.is_entity
+        assert schemas.size_class(stem) == spec.size_class
+        assert spec.size_class in ('large', 'small')
+        assert schemas.table_category(stem) == spec.category
+        assert spec.api == 'core'  # c05: every base table is core; c33 adds gl/vk extensions
 
 
 def test_every_table_starts_with_id_cols():

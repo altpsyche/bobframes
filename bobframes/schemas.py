@@ -4,9 +4,26 @@ Every fat table's column tuple lives here. Writers and readers import these
 constants. SCHEMA_VERSION bumps on any column add/remove/rename.
 """
 
+from typing import NamedTuple
+
 SCHEMA_VERSION = 3
 
 ID_COLS = ('area', 'drop_date', 'drop_label', 'capture')
+
+
+class TableSpec(NamedTuple):
+    """One row of the master table registry (single source of truth).
+
+    `category` drives the per-drop browser grouping (was html/template._CATEGORY_MAP).
+    `api` is reserved for the v0.5 graphics-API epic (c33): "core" applies to every API;
+    "gl"/"vk" tag per-API extension tables. NamedTuple stays index-compatible, so legacy
+    positional reads (`TABLES[stem][0]`) keep working during migration.
+    """
+    cols: tuple
+    size_class: str
+    is_entity: bool
+    category: str
+    api: str = "core"
 
 
 # --- Entity tables (carry stable_key after ID_COLS) ---
@@ -253,37 +270,41 @@ TEXTURE_USAGE_COLS = ID_COLS + (
 )
 
 
-# Master table registry. Map file stem to (column tuple, size class, carries stable_key).
+# Master table registry: file stem -> TableSpec(cols, size_class, is_entity, category, api).
+# Key order is THE canonical table order — it drives catalog._CATALOG_TABLE_KEYS (and the catalog
+# parquet/json column order baked into the golden root index.html), so it must stay byte-stable.
+# `category` here replaces html/template._CATEGORY_MAP (H-11); the within-category *display* order is
+# a separate presentation concern kept in template._TABLE_DISPLAY_ORDER.
 TABLES = {
-    'draws':                  (DRAWS_COLS,              'large', False),
-    'draw_bindings':          (DRAW_BINDINGS_COLS,      'large', False),
-    'passes':                 (PASSES_COLS,             'small', False),
-    'shaders':                (SHADERS_COLS,            'small', True),
-    'textures':               (TEXTURES_COLS,           'small', True),
-    'render_targets':         (RENDER_TARGETS_COLS,     'small', True),
-    'rt_event_timeline':      (RT_TIMELINE_COLS,        'large', False),
-    'buffers':                (BUFFERS_COLS,            'small', True),
-    'programs':               (PROGRAMS_COLS,           'small', True),
-    'samplers':               (SAMPLERS_COLS,           'small', True),
-    'fbos':                   (FBOS_COLS,               'small', True),
-    'events':                 (EVENTS_COLS,             'large', False),
-    'clears':                 (CLEARS_COLS,             'small', False),
-    'dispatches':             (DISPATCHES_COLS,         'small', False),
-    'state_change_events':    (STATE_CHANGE_COLS,       'large', False),
-    'indirect_args':          (INDIRECT_ARGS_COLS,      'small', False),
-    'vertex_inputs':          (VERTEX_INPUTS_COLS,      'large', False),
-    'resource_creation':      (RESOURCE_CREATION_COLS,  'small', False),
-    'counters_per_event':     (COUNTERS_COLS,           'large', False),
-    'descriptor_access':      (DESCRIPTOR_ACCESS_COLS,  'large', False),
-    'program_transitions':    (PROG_TRANS_COLS,         'small', False),
-    'frame_totals':           (FRAME_TOTALS_COLS,       'small', False),
-    'pixel_history':          (PIXEL_HISTORY_COLS,      'small', False),
-    'vbo_samples':            (VBO_SAMPLES_COLS,        'small', False),
-    'ibo_samples':            (IBO_SAMPLES_COLS,        'small', False),
-    'post_vs_samples':        (POST_VS_SAMPLES_COLS,    'large', False),
-    'texture_samples':        (TEXTURE_SAMPLES_COLS,    'small', False),
-    'pass_class_breakdown':   (PASS_CLASS_BREAKDOWN_COLS, 'small', False),
-    'texture_usage':          (TEXTURE_USAGE_COLS,      'small', False),
+    'draws':                  TableSpec(DRAWS_COLS,              'large', False, 'actions'),
+    'events':                 TableSpec(EVENTS_COLS,             'large', False, 'actions'),
+    'shaders':                TableSpec(SHADERS_COLS,            'small', True,  'entities'),
+    'textures':               TableSpec(TEXTURES_COLS,           'small', True,  'entities'),
+    'render_targets':         TableSpec(RENDER_TARGETS_COLS,     'small', True,  'entities'),
+    'buffers':                TableSpec(BUFFERS_COLS,            'small', True,  'entities'),
+    'programs':               TableSpec(PROGRAMS_COLS,           'small', True,  'entities'),
+    'samplers':               TableSpec(SAMPLERS_COLS,           'small', True,  'entities'),
+    'fbos':                   TableSpec(FBOS_COLS,               'small', True,  'entities'),
+    'state_change_events':    TableSpec(STATE_CHANGE_COLS,       'large', False, 'actions'),
+    'counters_per_event':     TableSpec(COUNTERS_COLS,           'large', False, 'actions'),
+    'descriptor_access':      TableSpec(DESCRIPTOR_ACCESS_COLS,  'large', False, 'actions'),
+    'passes':                 TableSpec(PASSES_COLS,             'small', False, 'aggregates'),
+    'frame_totals':           TableSpec(FRAME_TOTALS_COLS,       'small', False, 'aggregates'),
+    'clears':                 TableSpec(CLEARS_COLS,             'small', False, 'actions'),
+    'dispatches':             TableSpec(DISPATCHES_COLS,         'small', False, 'actions'),
+    'rt_event_timeline':      TableSpec(RT_TIMELINE_COLS,        'large', False, 'actions'),
+    'vertex_inputs':          TableSpec(VERTEX_INPUTS_COLS,      'large', False, 'actions'),
+    'resource_creation':      TableSpec(RESOURCE_CREATION_COLS,  'small', False, 'actions'),
+    'draw_bindings':          TableSpec(DRAW_BINDINGS_COLS,      'large', False, 'actions'),
+    'program_transitions':    TableSpec(PROG_TRANS_COLS,         'small', False, 'actions'),
+    'pixel_history':          TableSpec(PIXEL_HISTORY_COLS,      'small', False, 'samples'),
+    'vbo_samples':            TableSpec(VBO_SAMPLES_COLS,        'small', False, 'samples'),
+    'ibo_samples':            TableSpec(IBO_SAMPLES_COLS,        'small', False, 'samples'),
+    'post_vs_samples':        TableSpec(POST_VS_SAMPLES_COLS,    'large', False, 'samples'),
+    'texture_samples':        TableSpec(TEXTURE_SAMPLES_COLS,    'small', False, 'samples'),
+    'indirect_args':          TableSpec(INDIRECT_ARGS_COLS,      'small', False, 'actions'),
+    'pass_class_breakdown':   TableSpec(PASS_CLASS_BREAKDOWN_COLS, 'small', False, 'aggregates'),
+    'texture_usage':          TableSpec(TEXTURE_USAGE_COLS,      'small', False, 'aggregates'),
 }
 
 
@@ -415,12 +436,22 @@ def infer_dtype(col_name: str) -> str:
 
 def expected_columns(table_stem: str) -> tuple:
     """Lookup column tuple by table stem. Raises KeyError if unknown."""
-    return TABLES[table_stem][0]
+    return TABLES[table_stem].cols
 
 
 def is_entity_table(table_stem: str) -> bool:
-    return TABLES[table_stem][2]
+    return TABLES[table_stem].is_entity
 
 
 def size_class(table_stem: str) -> str:
-    return TABLES[table_stem][1]
+    return TABLES[table_stem].size_class
+
+
+def table_category(table_stem: str) -> str:
+    """Grouping key for the per-drop browser. Raises KeyError if unknown."""
+    return TABLES[table_stem].category
+
+
+def entity_tables() -> tuple:
+    """Stems of every table that carries a stable_key, in registry order (H-9)."""
+    return tuple(stem for stem in TABLES if TABLES[stem].is_entity)
