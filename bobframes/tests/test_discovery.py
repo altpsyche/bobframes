@@ -13,6 +13,7 @@ import os
 import pytest
 
 from .. import discovery
+from .. import paths as _paths
 from ..discovery import Drop
 
 
@@ -30,7 +31,7 @@ def _make_root(tmp_path) -> str:
     # Bay: a single undated-label drop (label absent).
     _touch(os.path.join(root, 'Bay', '2026-01-01', 'cap.rdc'))
     # Noise that must be ignored: underscore (output) dir is not an area.
-    _touch(os.path.join(root, '_data', 'District 01', '2026-05-28_new', 'x.parquet'))
+    _touch(os.path.join(root, _paths.DATA_DIR, 'District 01', '2026-05-28_new', 'x.parquet'))
     return root
 
 

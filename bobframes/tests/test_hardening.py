@@ -16,7 +16,7 @@ import subprocess
 import pyarrow as pa
 import pytest
 
-from .. import manifest, parquetize, qrd_harness, rdcmd, run, stable_keys
+from .. import manifest, parquetize, paths, qrd_harness, rdcmd, run, stable_keys
 from ..discovery import Drop
 
 
@@ -81,8 +81,8 @@ def test_write_manifest_atomic_no_partial(monkeypatch, tmp_path):
     with pytest.raises(RuntimeError):
         manifest.write_manifest(str(tmp_path), {'schema_version': 3})
 
-    assert not os.path.exists(tmp_path / '_manifest.json')
-    assert not os.path.exists(tmp_path / '_manifest.json.tmp')
+    assert not os.path.exists(tmp_path / paths.MANIFEST_NAME)
+    assert not os.path.exists(tmp_path / (paths.MANIFEST_NAME + paths.TMP_SUFFIX))
 
 
 # --- R-2: Parquet+CSV pair rolls back both tmps if either write fails ---------

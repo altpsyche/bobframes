@@ -13,6 +13,7 @@ from collections import Counter, defaultdict
 import pyarrow.parquet as papq
 
 from . import base
+from .. import paths as _paths
 
 
 def _top_meshes(root: str, drops: list, n: int = 3) -> list:
@@ -251,9 +252,9 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     if drops is None:
         drops = base.discover_drops(root)
 
-    out_dir = os.path.join(root, '_reports')
+    out_dir = _paths.reports_dir(root)
     os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, 'index.html')
+    out_path = os.path.join(out_dir, _paths.INDEX_HTML)
 
     parts = [base.page_open('reports dashboard', hdr_offset_px=120)]
     parts.append(base.header(

@@ -93,7 +93,7 @@ def _preflight(drop: discovery.Drop, force: bool, project_root: str) -> tuple[bo
             shutil.rmtree(tmp, ignore_errors=True)
 
     if os.path.isdir(out):
-        marker = os.path.join(out, 'done.marker')
+        marker = os.path.join(out, paths.DONE_MARKER)
         if not force and os.path.exists(marker):
             marker_mt = os.path.getmtime(marker)
             input_mt = _drop_inputs_max_mtime(drop.drop_dir, drop.captures)
@@ -254,7 +254,7 @@ def process_drop(drop: discovery.Drop, *, force: bool, workers: int,
 
     drop_label_dated = os.path.basename(drop.drop_dir)
     tmp = paths.drop_data_dir_tmp(project_root, drop.area, drop_label_dated)
-    stage_root = os.path.join(tmp, '_stage')
+    stage_root = os.path.join(tmp, paths.STAGE_DIR)
     os.makedirs(stage_root, exist_ok=True)
 
     _do_export(drop, workers=workers)
@@ -322,8 +322,8 @@ def process_drop(drop: discovery.Drop, *, force: bool, workers: int,
     os.makedirs(os.path.dirname(out), exist_ok=True)
     os.replace(tmp, out)
 
-    marker = os.path.join(out, 'done.marker')
-    marker_tmp = marker + '.tmp'
+    marker = os.path.join(out, paths.DONE_MARKER)
+    marker_tmp = marker + paths.TMP_SUFFIX
     with open(marker_tmp, 'w', encoding='utf-8') as f:
         f.write(str(_drop_inputs_max_mtime(drop.drop_dir, drop.captures)))
     os.replace(marker_tmp, marker)
@@ -340,7 +340,7 @@ def process_drop(drop: discovery.Drop, *, force: bool, workers: int,
         row_counts=row_counts,
     )
 
-    hits = lint.lint_file(os.path.join(drill_dir, 'index.html'))
+    hits = lint.lint_file(os.path.join(drill_dir, paths.INDEX_HTML))
     if hits:
         for lineno, label, snip in hits:
             _log(f'  LINT FAIL {drill_dir}/index.html:{lineno}: [{label}] {snip}')
@@ -418,7 +418,7 @@ def main(argv: list[str]) -> int:
                     build_timestamp=m.get('build_timestamp', ''),
                     row_counts=m.get('row_counts') or {},
                 )
-                hits = lint.lint_file(os.path.join(drill_dir, 'index.html'))
+                hits = lint.lint_file(os.path.join(drill_dir, paths.INDEX_HTML))
                 if hits:
                     for lineno, label, snip in hits:
                         _log(f'  LINT FAIL {drill_dir}/index.html:{lineno}: [{label}] {snip}')

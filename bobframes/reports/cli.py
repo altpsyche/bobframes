@@ -23,14 +23,14 @@ def _lint_or_raise(path: str) -> None:
 
 
 def ab_subdir(root: str, baseline: DropSet, compare: DropSet) -> str:
-    d = os.path.join(root, '_reports', 'ab', f'{baseline.key}_vs_{compare.key}')
+    d = os.path.join(_paths.reports_dir(root), _paths.AB_DIR, f'{baseline.key}_vs_{compare.key}')
     os.makedirs(d, exist_ok=True)
     return d
 
 
 def output_path(root: str, name: str, ab: tuple | None) -> str:
     if ab is None:
-        d = os.path.join(root, '_reports')
+        d = _paths.reports_dir(root)
         os.makedirs(d, exist_ok=True)
         return os.path.join(d, f'{name}.html')
     baseline, compare = ab
@@ -49,7 +49,7 @@ def rel_path_to_drop_index(out_dir: str, drop_dir: str, anchor: str | None = Non
     The browser HTML lives at <root>/_reports/drill/<area>/<drop>/index.html.
     """
     drill_dir = _paths.drop_dir_to_drill_dir(drop_dir)
-    target = os.path.join(drill_dir, 'index.html')
+    target = os.path.join(drill_dir, _paths.INDEX_HTML)
     p = os.path.relpath(target, out_dir).replace('\\', '/')
     return p + ('#' + anchor if anchor else '')
 
