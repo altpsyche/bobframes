@@ -55,7 +55,7 @@ def _find_manifests(root: str) -> list[tuple[str, str, dict]]:
             drop_dir = os.path.join(area_dir, drop_entry)
             if not os.path.isdir(drop_dir):
                 continue
-            mf = os.path.join(drop_dir, '_manifest.json')
+            mf = os.path.join(drop_dir, _paths.MANIFEST_NAME)
             if not os.path.exists(mf):
                 continue
             try:

@@ -27,6 +27,7 @@ import os
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from .. import paths as _paths
 from .. import schemas
 
 SYNTH_AREA = "District 01"
@@ -136,7 +137,7 @@ def _build_drop(src_area_dir: str, src_drop: str, out_drop_dir: str,
         "row_counts": row_counts,
         "rotated_from": None,
     }
-    with open(os.path.join(out_drop_dir, "_manifest.json"), "w", encoding="utf-8") as f:
+    with open(os.path.join(out_drop_dir, _paths.MANIFEST_NAME), "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
         f.write("\n")
     return {"label": label, "tables": len(row_counts), "captures": caps}
@@ -147,7 +148,7 @@ def main() -> int:
     areas = sorted(d for d in os.listdir(src) if os.path.isdir(os.path.join(src, d)))
     if len(areas) < len(DROPS):
         raise SystemExit(f"need >= {len(DROPS)} source areas, found {len(areas)} in {src}")
-    out_area = os.path.join(ARGS.out, "_data", SYNTH_AREA)
+    out_area = os.path.join(ARGS.out, _paths.DATA_DIR, SYNTH_AREA)
     for spec, src_area in zip(DROPS, areas):
         src_area_dir = os.path.join(src, src_area)
         src_drops = sorted(d for d in os.listdir(src_area_dir)
@@ -158,7 +159,7 @@ def main() -> int:
         info = _build_drop(src_area_dir, src_drops[0], out_drop, spec["date"], spec["label"])
         print(f"  {SYNTH_AREA}/{spec['date']}_{spec['label']}  <- {src_area}/{src_drops[0]}  "
               f"({info['tables']} tables, captures={info['captures']})")
-    print(f"synthetic _data written under {os.path.join(ARGS.out, '_data')}")
+    print(f"synthetic _data written under {os.path.join(ARGS.out, _paths.DATA_DIR)}")
     return 0
 
 

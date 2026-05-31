@@ -24,7 +24,7 @@ import pyarrow as pa
 import pyarrow.csv as pacsv
 import pyarrow.parquet as papq
 
-from . import schemas, stable_keys
+from . import paths, schemas, stable_keys
 
 
 def _list_stage_dirs(stage_root: str) -> list[str]:
@@ -205,8 +205,8 @@ def _write_pair(table: pa.Table, out_dir: str, name: str) -> None:
     fails, roll back both tmps so a half-written pair is never committed (R-2)."""
     pq_path = os.path.join(out_dir, f'{name}.parquet')
     csv_path = os.path.join(out_dir, f'{name}.csv')
-    pq_tmp = pq_path + '.tmp'
-    csv_tmp = csv_path + '.tmp'
+    pq_tmp = pq_path + paths.TMP_SUFFIX
+    csv_tmp = csv_path + paths.TMP_SUFFIX
     try:
         papq.write_table(table, pq_tmp, compression='snappy')
         pacsv.write_csv(table, csv_tmp)

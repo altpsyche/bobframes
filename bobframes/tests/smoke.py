@@ -89,8 +89,8 @@ def _render_only_smoke() -> int:
         html = u.rendered_html_files(dest)
         if not os.path.exists(paths.root_index_html(dest)):
             return _fail('root index.html missing')
-        drills = [r for r in html if r.endswith('/index.html') and 'drill' in r]
-        reports = [r for r in html if r.startswith('_reports/') and 'drill' not in r]
+        drills = [r for r in html if r.endswith('/' + paths.INDEX_HTML) and paths.DRILL_DIR in r]
+        reports = [r for r in html if r.startswith(paths.REPORTS_DIR + '/') and paths.DRILL_DIR not in r]
         if not drills:
             return _fail('no per-drop drill index.html emitted')
         if not reports:
@@ -149,7 +149,7 @@ def _full_smoke(data_dir: str, pixel_grid: int) -> int:
             print(f'  {tmp_dir} should be gone after atomic commit')
         errors += _assert_drop_parquet(out_dir, check_csv=True)
 
-        mf = os.path.join(out_dir, '_manifest.json')
+        mf = os.path.join(out_dir, paths.MANIFEST_NAME)
         with open(mf, encoding='utf-8') as f:
             m = json.load(f)
         if m.get('schema_version') != schemas.SCHEMA_VERSION:
@@ -160,7 +160,7 @@ def _full_smoke(data_dir: str, pixel_grid: int) -> int:
             print(f'  capture_status not all ok: {m.get("capture_status")}')
 
         drill = paths.drop_drill_dir(data_dir, drop.area, dated)
-        if not os.path.exists(os.path.join(drill, 'index.html')):
+        if not os.path.exists(os.path.join(drill, paths.INDEX_HTML)):
             errors += 1
             print(f'  drill index.html missing at {drill}')
     if errors:

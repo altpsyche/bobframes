@@ -9,6 +9,7 @@ import os
 import pyarrow as pa
 import pyarrow.parquet as papq
 
+from .. import paths as _paths
 from .discovery import DropSet, discover_drops
 
 
@@ -46,7 +47,7 @@ def label_for(drop_dir: str, capture, kind: str, rid) -> str:
 
 
 def cache_dir(root: str) -> str:
-    d = os.path.join(root, '_reports', '_cache')
+    d = _paths.reports_cache_dir(root)
     os.makedirs(d, exist_ok=True)
     return d
 

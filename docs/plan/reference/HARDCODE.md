@@ -16,6 +16,13 @@
 | H-5 | `chrome.DRAW_CLASSES` + `_classify_draw` | DRAW_CLASSES enum duplicated in two places | single source: classifier `class_order`; chrome iterates it | c09 | ☐ |
 | H-6 | `replay/replay_main` `*_COLS` tuples | schema cols duplicated from `schemas.py` (qrenderdoc import unreliable) | **kept by design**; CI drift detector | [c13](../commits/v01/c13_replay_drift_ci.md) | ☑ |
 
+## P0 — graphics-API lock-in (the v0.5 epic)
+
+| ID | Where | Hardcoded | Remediation | resolved-by | status |
+|---|---|---|---|---|---|
+| H-36 | `replay/replay_main` | GL-only pipeline-state reads (`GetGLPipelineState` in `_read_draw_state`/`_extract_draw_aux`/`_snapshot_uniforms`), GL chunk-name sets (`_CLEAR_CHUNK_NAMES`/`STATE_CHANGE_CHUNK_NAMES`/`_INDIRECT_CHUNK_NAMES`), `_decode_ubo_member` std140, `GL_*_ATTACHMENT` names. No `ctrl.API()` dispatch today. | `PipelineStateAdapter` dispatched on `ctrl.API()`; GL adapter = today (byte-identical); `VulkanAdapter` is new extraction | [c32](../commits/v05/c32_pipeline_state_adapter.md) (adapter) · [c34](../commits/v05/c34_vulkan_extraction.md) (Vulkan) | ☐ |
+| H-37 | `replay_main.FRAME_TOTALS_COLS` | 14 `gl*_count` columns are GL-specific (not portable to other APIs) | data-driven API columns: move `gl*_count` to an `api="gl"` extension table; generate `draws_by_class_*` from `class_order`; new-API counts in their own extension table | [c33](../commits/v05/c33_data_driven_columns.md) (mechanism) · [c35](../commits/v05/c35_schema_widening.md) (relocation + bump) | ☐ |
+
 ## P1 — tool version lock + dual-edit lists
 
 | ID | Where | Hardcoded | Remediation | resolved-by | status |
@@ -31,12 +38,13 @@
 | H-15 | `chrome` design tokens | tokens as inline Python string | `design_tokens.toml` | [c08](../commits/v02/c08_design_tokens.md) | ☐ |
 | H-16 | `formatters._BANNED_CHROME_CHARS` | inline regex | move to lint/token TOML | c08 | ☐ |
 | H-17 | `derive_post_merge` complexity weights | inline literals | `[scoring.complexity]` in config | c07 | ☐ |
-| H-18 | `paths` dir literals (`_data`,`_reports`,`_cache`,`_stage`,`_tmp`,`drill`,`ab`) | scattered | module constants in `paths.py` | [c04](../commits/v02/c04_paths_constants.md) | ☐ |
-| H-19 | `manifest`/`catalog`/`pipeline` literals (`_manifest.json`,`done.marker`) | scattered | `paths.py` constants | c04 | ☐ |
+| H-18 | `paths` dir literals (`_data`,`_reports`,`_cache`,`_stage`,`_tmp`,`drill`,`ab`) | scattered | module constants in `paths.py` | [c04](../commits/v02/c04_paths_constants.md) | ☑ |
+| H-19 | `manifest`/`catalog`/`pipeline` literals (`_manifest.json`,`done.marker`) | scattered | `paths.py` constants | [c04](../commits/v02/c04_paths_constants.md) | ☑ |
 | H-20 | `chrome` + `delta` layout literals (bar heights, grid widths, sparkline `60x14`) | inline | `[layout]` in design_tokens.toml | c08 | ☐ |
 | H-21 | `delta` `pct >= 8.0` bar-label threshold | inline | `[layout] bar_label_min_pct` | c07 | ☐ |
 | H-22 | `delta` `fmt='{:+,.0f}'` | inline default | config default + per-call override | c07 | ☐ |
 | H-23 | `formatters` `n=12`, `max_len=60` | rigid defaults | `[formatting] id_short_n`, `text_trunc_max` | c07 | ☐ |
+| H-38 | `qrd_harness`/`rdcmd`/`cli` | platform process model: forced `.exe` suffix, `taskkill /T /F` tree-kill, `_cmd_check` `sys.platform!='win32'` gate (extends H-7's Arm-path) | per-OS locator in `resolve_tool` + platform-dispatched `kill_process_tree` (`os.killpg`+`start_new_session` on POSIX) + relaxed `check` gate | [c36](../commits/v06/c36_cross_platform.md) (ADR-18) | ☐ |
 
 ## P1 — wire protocol / stable-key / manifest
 

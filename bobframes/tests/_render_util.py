@@ -14,6 +14,8 @@ import shutil
 import subprocess
 import sys
 
+from .. import paths as _paths
+
 HERE = os.path.dirname(__file__)
 
 # The only render-time nondeterminism is the catalog build timestamp on the footer line
@@ -24,7 +26,7 @@ _TS_RE = re.compile(r"(built <strong>)[^<]*(</strong>)")
 
 def normalize(html: str) -> str:
     return _TS_RE.sub(r"\1<TS>\2", html)
-SYNTHETIC_DATA = os.path.join(HERE, "data", "synthetic", "_data")
+SYNTHETIC_DATA = os.path.join(HERE, "data", "synthetic", _paths.DATA_DIR)
 GOLDEN_DIR = os.path.join(HERE, "data", "golden")
 
 
@@ -33,14 +35,14 @@ def setup_root(dest: str, data_src: str = SYNTHETIC_DATA) -> str:
     if os.path.exists(dest):
         shutil.rmtree(dest)
     os.makedirs(dest)
-    shutil.copytree(data_src, os.path.join(dest, "_data"))
-    data = os.path.join(dest, "_data")
+    shutil.copytree(data_src, os.path.join(dest, _paths.DATA_DIR))
+    data = os.path.join(dest, _paths.DATA_DIR)
     for area in os.listdir(data):
         area_dir = os.path.join(data, area)
         if area.startswith("_") or not os.path.isdir(area_dir):
             continue
         for drop in os.listdir(area_dir):
-            mf = os.path.join(area_dir, drop, "_manifest.json")
+            mf = os.path.join(area_dir, drop, _paths.MANIFEST_NAME)
             if not os.path.isfile(mf):
                 continue
             with open(mf, encoding="utf-8") as f:
@@ -78,7 +80,7 @@ def rendered_html_files(root: str) -> list[str]:
         for fn in files:
             if fn.endswith(".html"):
                 rel = os.path.relpath(os.path.join(dirpath, fn), root).replace("\\", "/")
-                if rel.startswith("_data/"):
+                if rel.startswith(_paths.DATA_DIR + "/"):
                     continue
                 out.append(rel)
     return sorted(out)

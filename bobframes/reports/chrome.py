@@ -1175,9 +1175,10 @@ def ab_picker_for(root: str, report_name: str, *, ab=None) -> str:
     Emits relative URLs from <root>/_reports/<report>.html.
     """
     import os as _os
+    from .. import paths as _paths
     if ab is not None:
         return ''
-    ab_dir = _os.path.join(root, '_reports', 'ab')
+    ab_dir = _os.path.join(_paths.reports_dir(root), _paths.AB_DIR)
     if not _os.path.isdir(ab_dir):
         return ''
     pairs = sorted(d for d in _os.listdir(ab_dir)

@@ -14,7 +14,7 @@ import platform
 import subprocess
 from typing import Any
 
-from . import qrd_harness, rdcmd, schemas
+from . import paths, qrd_harness, rdcmd, schemas
 from ._version import __version__
 
 
@@ -105,8 +105,8 @@ def build_manifest(
 def write_manifest(out_dir: str, manifest: dict[str, Any]) -> str:
     """Atomically write _manifest.json (tmp + os.replace) so a crash mid-write
     never leaves a partial file the catalog would silently skip (R-1)."""
-    path = os.path.join(out_dir, '_manifest.json')
-    tmp = path + '.tmp'
+    path = os.path.join(out_dir, paths.MANIFEST_NAME)
+    tmp = path + paths.TMP_SUFFIX
     try:
         with open(tmp, 'w', encoding='utf-8') as f:
             json.dump(manifest, f, indent=2, sort_keys=False)
@@ -122,6 +122,6 @@ def write_manifest(out_dir: str, manifest: dict[str, Any]) -> str:
 
 
 def read_manifest(out_dir: str) -> dict[str, Any]:
-    path = os.path.join(out_dir, '_manifest.json')
+    path = os.path.join(out_dir, paths.MANIFEST_NAME)
     with open(path, 'r', encoding='utf-8') as f:
         return json.load(f)

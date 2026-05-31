@@ -7,22 +7,28 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        c04_paths_constants    (status: not-started — v0.2 de-hardcoding begins when ready)
-last_session:   2026-05-31 — pre-release REAL-RDC validation (user-requested) + c19 prep. Ran the
-                scoped real smoke on Chor bazar/r110565 (5 captures, junctioned into C:\tmp, Downloads
-                untouched): full ingest incl. live qrenderdoc replay (5x rc=0, ~190s each), 597k rows
-                parquetized, stable_keys + 16651 global entities, all reports + lint clean -> exit 0.
-                First live exercise of the c12 replay-path resolution + c03 Popen/taskkill harness;
-                schema-match on real parquet empirically confirms the H-6 dup. c19 code-ready:
-                _version 0.1.0, CHANGELOG [0.1.0] finalized, PyPI name `bobframes` FREE (404).
-next_action:    v0.2+ planning: hand docs/plan/V02_PLANNING_PROMPT.md to a fresh planning session to
-                produce the MIGRATION spine + per-commit docs + ROADMAP.md (vision -> best RenderDoc
-                tool for a wide audience; recommended sequence v0.2 foundation -> v0.3 CI/automation
-                -> v0.4 engines+ergonomics -> v0.5 graphics-API epic -> v0.6 cross-platform; all 3
-                breadth axes in scope). Or just execute v0.2 as-planned starting at c04. Each commit
-                stays behind the golden parity gate. Post-release nits (non-blocking): bump CI actions
-                off Node20 (checkout@v5/setup-python@v6 before 2026-06-16); the PyPI pending publisher
-                auto-converted to a normal trusted publisher (no token ever needed).
+current:        c05_registry_consolidation    (status: not-started — c04 DONE)
+last_session:   2026-05-31 — c04 DONE (paths constants, H-18/H-19). Added 10 layout constants to
+                paths.py (DATA_DIR/REPORTS_DIR/CACHE_DIR/STAGE_DIR/DRILL_DIR/AB_DIR/TMP_SUFFIX/
+                MANIFEST_NAME/DONE_MARKER/INDEX_HTML) + refactored paths.py's own funcs to use them.
+                Swept the literals out of every production module (manifest, catalog, run, parquetize,
+                html/template incl. the render_root URL-prefix strings, reports/{cache,cli,chrome,
+                _dashboard}) and the test fixtures (_render_util, make_synthetic, smoke, test_hardening,
+                test_discovery), reusing existing paths funcs (reports_dir/reports_cache_dir) where they
+                already matched. TMP_SUFFIX='.tmp' (the c04 doc's '_tmp' was a typo — used the real
+                value for parity). Baseline 32-green captured BEFORE edits; full suite 32-green AFTER
+                (parity/schema/determinism byte-identical — no golden refresh). Grep gate clean: the 4
+                literals survive only in paths.py + two `#` comments. API surface only gained constants
+                (additive). Per-OS/HTML log-message display strings left as literals (not filesystem
+                paths, not in the gate).
+next_action:    Do c05 — derive table/entity/report lists from a single source. Open
+                commits/v02/c05_registry_consolidation.md and do exactly that commit. Note the c05 doc
+                was tightened this planning pass: migrate schemas.TABLES values from the raw 3-tuple to
+                a NAMED record (cols, size_class, is_entity, category) + reserve api="core" for c33; make
+                ALL_REPORTS runtime-augmentable for c38. Then c06->c10, c16 (c16 now also wires the
+                manifest schema-version guard, D-4/D-7). Roadmap: ROADMAP.md + commits/v03..v06 (c20-c39)
+                + ADR-14..22. Each commit behind the golden parity gate. Post-release nit (non-blocking):
+                bump CI actions off Node20 (checkout@v5/setup-python@v6 before 2026-06-16).
 DONE-2026-05-31: c19 — bobframes 0.1.0 PUBLISHED. tag v0.1.0 -> CI publish job green (OIDC trusted
                 publishing, ubuntu). Live on PyPI (wheel + sdist) + GitHub Release with both assets.
                 Post-install verify from a clean PyPI install: version (0.1.0 schema 3 pyarrow 21.0.0),
@@ -60,7 +66,7 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 
 | | Commit | Status |
 |---|---|---|
-| ☐ | [c04 paths.py constants](commits/v02/c04_paths_constants.md) | deferred |
+| ☑ | [c04 paths.py constants](commits/v02/c04_paths_constants.md) | **done** — 10 layout constants in paths.py; literals swept from all modules + tests; 32 green, byte-parity (H-18/H-19) |
 | ☐ | [c05 registry from `schemas.TABLES`](commits/v02/c05_registry_consolidation.md) | deferred |
 | ☐ | [c06 tool resolver + glob version detect](commits/v02/c06_tool_resolver.md) | deferred |
 | ☐ | [c07 TOML config layer](commits/v02/c07_toml_config.md) | deferred |
@@ -69,10 +75,71 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☐ | [c10 env-var rename `RDC_*`→`BOBFRAMES_*`](commits/v02/c10_env_rename.md) | deferred |
 | ☐ | [c16 report-quality polish](commits/v02/c16_report_quality.md) | deferred |
 
+## v0.3 — CI/automation surface (planned — [ROADMAP](ROADMAP.md))
+
+| | Commit | Status |
+|---|---|---|
+| ☐ | [c20 --json output](commits/v03/c20_json_output.md) | planned |
+| ☐ | [c21 regression gating](commits/v03/c21_regression_gating.md) | planned |
+| ☐ | [c22 isolated stages](commits/v03/c22_isolated_stages.md) | planned |
+| ☐ | [c23 --dry-run](commits/v03/c23_dry_run.md) | planned |
+| ☐ | [c24 verify](commits/v03/c24_verify.md) | planned |
+| ☐ | [c25 diff](commits/v03/c25_diff.md) | planned |
+| ☐ | [c26 export](commits/v03/c26_export.md) | planned |
+
+## v0.4 — Engine breadth + ergonomics (planned)
+
+| | Commit | Status |
+|---|---|---|
+| ☐ | [c27 engine presets](commits/v04/c27_engine_presets.md) | planned |
+| ☐ | [c28 texture_usage report](commits/v04/c28_texture_usage_report.md) | planned |
+| ☐ | [c29 overdraw heatmap](commits/v04/c29_overdraw_heatmap.md) | planned |
+| ☐ | [c30 schema + query](commits/v04/c30_query_schema.md) | planned |
+| ☐ | [c31 mesh/material report](commits/v04/c31_mesh_material_report.md) | planned |
+
+## v0.5 — Graphics-API adapter epic (planned — SCHEMA_VERSION 3→4 at c35)
+
+| | Commit | Status |
+|---|---|---|
+| ☐ | [c32 PipelineStateAdapter](commits/v05/c32_pipeline_state_adapter.md) | planned |
+| ☐ | [c33 data-driven columns](commits/v05/c33_data_driven_columns.md) | planned |
+| ☐ | [c34 Vulkan extraction](commits/v05/c34_vulkan_extraction.md) | planned |
+| ☐ | [c35 schema widening](commits/v05/c35_schema_widening.md) | planned |
+
+## v0.6+ — Cross-platform + leads + plugins (planned)
+
+| | Commit | Status |
+|---|---|---|
+| ☐ | [c36 cross-platform](commits/v06/c36_cross_platform.md) | planned |
+| ☐ | [c37 historical dashboard](commits/v06/c37_historical_dashboard.md) | planned |
+| ☐ | [c38 plugins](commits/v06/c38_plugins.md) | planned |
+| ☐ | [c39 Figma sync](commits/v06/c39_figma_sync.md) | planned |
+
 ## Status legend
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-05-31 — c04 DONE (first v0.2 implementation commit). Centralized the layout literals in
+  paths.py: 10 module constants (DATA_DIR/REPORTS_DIR/CACHE_DIR/STAGE_DIR/DRILL_DIR/AB_DIR/TMP_SUFFIX/
+  MANIFEST_NAME/DONE_MARKER/INDEX_HTML); paths.py funcs + manifest/catalog/run/parquetize/html.template/
+  reports.{cache,cli,chrome,_dashboard} + the 5 test fixtures now reference them. Reused existing paths
+  funcs (reports_dir, reports_cache_dir) where they matched; added no new functions (API gained only
+  constants). render_root's relative-URL strings ('_reports/...', '_data/...') routed through the
+  constants too (identical bytes). TMP_SUFFIX='.tmp' (doc said '_tmp' — typo; real value kept for
+  parity). Verified: baseline 32-green before, 32-green after (test_parity/schema/determinism/perf/
+  hardening/smoke all pass → byte-identical, no golden refresh). Grep gate clean: the 4 gated literals
+  remain only in paths.py + two `#` comments. H-18/H-19 ticked. current advances to c05.
+- 2026-05-31 — v0.2+ ROADMAP produced (planning session; no code). Turned V02_PLANNING_PROMPT.md into:
+  new ROADMAP.md (vision + measurable per-persona success + v0.2->v0.6 phasing); 20 per-commit docs
+  c20-c39 under commits/v03..v06/ (CI/automation -> engine+ergonomics -> Vulkan adapter epic ->
+  cross-platform+plugins); ADR-14..22 appended to DECISIONS.md (multi-API unified-core+extension schema,
+  Vulkan-first, versioned --json, query optional extra, cross-platform@v0.6, trusted-local plugins,
+  GH-Release sample, generic-first presets, per-API/engine golden); MIGRATION.md v0.3-v0.6 spine tables;
+  FINDINGS (G-1/2/4/5/9/10 repointed to c20-c26, M-1/2->c38, new D-6 classify-draw drift + G-13
+  texture_usage, S-1->v0.6) + HARDCODE (new H-36/37 graphics-API, H-38 platform process model) updates;
+  ARCHITECTURE §3 (deps) + §12 (cross-platform) annotated by ADR pointer (frozen, not rewritten).
+  Mapped all three breadth seams against real code via Explore agents (no line numbers). Strategic
+  decisions locked with the user (8 of them). current stays c04 — v0.2 execution is unchanged and next.
 - 2026-05-31 — c19 DONE: bobframes 0.1.0 RELEASED. Switched publish to PyPI Trusted Publishing
   (OIDC, ADR-13) — no token; user saved a pending publisher (altpsyche/bobframes/ci.yml). Pushed main
   (CI green on OIDC workflow d11c84e), then tagged v0.1.0 + pushed -> publish job green: build ->

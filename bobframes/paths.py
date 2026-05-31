@@ -28,9 +28,23 @@ from __future__ import annotations
 
 import os
 
+# Layout literals — single source of truth (H-18, H-19). Changing the on-disk
+# layout means changing these, nowhere else. Values are frozen for v1; only the
+# literals are centralized (parity must stay byte-identical).
+DATA_DIR = '_data'           # pipeline outputs root
+REPORTS_DIR = '_reports'     # rendered HTML root
+CACHE_DIR = '_cache'         # per-project report cache (under _reports/)
+STAGE_DIR = '_stage'         # per-drop staging tree (under the .tmp commit dir)
+DRILL_DIR = 'drill'          # per-drop browser HTML (under _reports/)
+AB_DIR = 'ab'                # A/B report pairs (under _reports/)
+TMP_SUFFIX = '.tmp'          # atomic-commit staging suffix (dir + file)
+MANIFEST_NAME = '_manifest.json'
+DONE_MARKER = 'done.marker'
+INDEX_HTML = 'index.html'
+
 
 def data_root(root: str) -> str:
-    return os.path.join(root, '_data')
+    return os.path.join(root, DATA_DIR)
 
 
 def drop_data_dir(root: str, area: str, drop_label_dated: str) -> str:
@@ -40,20 +54,20 @@ def drop_data_dir(root: str, area: str, drop_label_dated: str) -> str:
 
 def drop_data_dir_tmp(root: str, area: str, drop_label_dated: str) -> str:
     """Staging dir for atomic commit. Renamed to drop_data_dir on success."""
-    return drop_data_dir(root, area, drop_label_dated) + '.tmp'
+    return drop_data_dir(root, area, drop_label_dated) + TMP_SUFFIX
 
 
 def drop_drill_dir(root: str, area: str, drop_label_dated: str) -> str:
     """<root>/_reports/drill/<area>/<drop>/  (per-drop browser HTML)"""
-    return os.path.join(root, '_reports', 'drill', area, drop_label_dated)
+    return os.path.join(root, REPORTS_DIR, DRILL_DIR, area, drop_label_dated)
 
 
 def reports_dir(root: str) -> str:
-    return os.path.join(root, '_reports')
+    return os.path.join(root, REPORTS_DIR)
 
 
 def reports_cache_dir(root: str) -> str:
-    return os.path.join(reports_dir(root), '_cache')
+    return os.path.join(reports_dir(root), CACHE_DIR)
 
 
 def catalog_parquet(root: str) -> str:
@@ -81,13 +95,13 @@ def query_examples_md(root: str) -> str:
 
 
 def root_index_html(root: str) -> str:
-    return os.path.join(root, 'index.html')
+    return os.path.join(root, INDEX_HTML)
 
 
 def drop_dir_rel(area: str, drop_label_dated: str) -> str:
     """Relative path stored in catalog.analysis_out_path column.
     Combine with root via resolve_drop_dir() at read time."""
-    return os.path.join('_data', area, drop_label_dated).replace('\\', '/')
+    return os.path.join(DATA_DIR, area, drop_label_dated).replace('\\', '/')
 
 
 def resolve_drop_dir(root: str, analysis_out_path: str) -> str:
@@ -105,7 +119,7 @@ def drop_dir_to_drill_dir(drop_dir: str) -> str:
     Used by report drill-link helpers."""
     parts = os.path.normpath(drop_dir).split(os.sep)
     try:
-        i = parts.index('_data')
+        i = parts.index(DATA_DIR)
     except ValueError:
         return drop_dir
-    return os.sep.join(parts[:i] + ['_reports', 'drill'] + parts[i + 1:])
+    return os.sep.join(parts[:i] + [REPORTS_DIR, DRILL_DIR] + parts[i + 1:])

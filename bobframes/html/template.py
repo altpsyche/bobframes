@@ -937,8 +937,9 @@ def render_root(root: str) -> str:
         for r in rows:
             v = str(r[path_idx])
             # Replace leading "_data/" with "_reports/drill/" and append index.html.
-            if v.startswith('_data/') or v.startswith('_data\\'):
-                drill_rel = '_reports/drill/' + v[len('_data/'):].replace('\\', '/')
+            if v.startswith(_paths.DATA_DIR + '/') or v.startswith(_paths.DATA_DIR + '\\'):
+                drill_rel = (_paths.REPORTS_DIR + '/' + _paths.DRILL_DIR + '/'
+                             + v[len(_paths.DATA_DIR) + 1:].replace('\\', '/'))
             elif os.path.isabs(v):
                 drill_rel = os.path.relpath(
                     _paths.drop_dir_to_drill_dir(v), root).replace('\\', '/')
@@ -980,35 +981,35 @@ def render_root(root: str) -> str:
             'latest drop',
             head_text,
             sub=f'{len(unique_areas)} areas; {n} catalog rows',
-            link_href='_reports/index.html',
+            link_href=f'{_paths.REPORTS_DIR}/{_paths.INDEX_HTML}',
             link_text='dashboard',
             tone='neutral',
         ))
 
     # Reports section
-    reports_dir = os.path.join(root, '_reports')
+    reports_dir = _paths.reports_dir(root)
     if os.path.isdir(reports_dir):
-        dashboard = os.path.join(reports_dir, 'index.html')
+        dashboard = os.path.join(reports_dir, _paths.INDEX_HTML)
         if os.path.exists(dashboard):
             parts.append('<section><h2 id="dashboard">dashboard</h2>'
                          '<div class="chip-cluster">'
-                         '<a href="_reports/index.html" data-link-kind="primary">'
+                         f'<a href="{_paths.REPORTS_DIR}/{_paths.INDEX_HTML}" data-link-kind="primary">'
                          'cumulative reports dashboard</a>'
                          '</div></section>')
 
         report_files = sorted(
             f for f in os.listdir(reports_dir)
-            if f.endswith('.html') and f != 'index.html'
+            if f.endswith('.html') and f != _paths.INDEX_HTML
         )
         if report_files:
             parts.append('<section><h2 id="reports">reports</h2>'
                          '<div class="catalog-grid">')
             for f in report_files:
-                parts.append(f'<a href="_reports/{_h(f)}" data-link-kind="primary">'
+                parts.append(f'<a href="{_paths.REPORTS_DIR}/{_h(f)}" data-link-kind="primary">'
                              f'{_h(f[:-5])}</a>')
             parts.append('</div></section>')
 
-        ab_dir = os.path.join(reports_dir, 'ab')
+        ab_dir = os.path.join(reports_dir, _paths.AB_DIR)
         if os.path.isdir(ab_dir):
             pairs = sorted(
                 d for d in os.listdir(ab_dir)
@@ -1023,7 +1024,7 @@ def render_root(root: str) -> str:
                         if f.endswith('.html')
                     )
                     chips = ''.join(
-                        f'<a href="_reports/ab/{_h(pair)}/{_h(f)}" data-link-kind="primary">'
+                        f'<a href="{_paths.REPORTS_DIR}/{_paths.AB_DIR}/{_h(pair)}/{_h(f)}" data-link-kind="primary">'
                         f'{_h(f[:-5])}</a>'
                         for f in pair_files
                     )
@@ -1039,8 +1040,8 @@ def render_root(root: str) -> str:
     parts.append('<div class="controls">')
     parts.append('<input type="search" placeholder="filter">')
     parts.append('<span class="ct visible-count"></span>')
-    parts.append(f'<a class="dl" href="_data/_catalog.csv" data-link-kind="inline">CSV</a>')
-    parts.append(f'<a class="dl" href="_data/_catalog.parquet" data-link-kind="inline">parquet</a>')
+    parts.append(f'<a class="dl" href="{_paths.DATA_DIR}/_catalog.csv" data-link-kind="inline">CSV</a>')
+    parts.append(f'<a class="dl" href="{_paths.DATA_DIR}/_catalog.parquet" data-link-kind="inline">parquet</a>')
     parts.append('</div>')
     parts.append(f'<div class="table-scroll" data-table="catalog"></div>')
     parts.append('</section>')
