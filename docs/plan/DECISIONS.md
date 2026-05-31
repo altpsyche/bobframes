@@ -209,3 +209,17 @@ repoint the three `pyproject.toml` `[project.urls]` and the two CHANGELOG link-r
 not a repo URL. **Consequence:** `pyproject.toml` + `CHANGELOG.md` diverge from the §3 snapshot; §3 is
 annotated with a pointer to this ADR rather than rewritten (frozen, append-only). If the project later
 moves to a mayhem-studios org repo, repoint again.
+
+### ADR-13 — PyPI publish uses Trusted Publishing (OIDC), not an API token
+**Context:** c17/c19 + [QUALITY_GATES §21.6](reference/QUALITY_GATES.md) specified API-token auth
+(`PYPI_API_TOKEN` GH secret + `twine upload`). At release setup this is awkward: a **project-scoped**
+token cannot be created before `bobframes` exists on PyPI (chicken-and-egg), and an **account-wide**
+token is over-privileged and a standing secret to rotate. **Decision (user-confirmed):** use PyPI
+**Trusted Publishing** (OIDC) via a **pending publisher** — no token, no GH secret. A pending publisher
+is registered on PyPI before first publish (Owner `altpsyche`, Repository `bobframes`, Workflow
+`ci.yml`, no environment). The `publish` job changes: `runs-on: ubuntu-latest` (the
+`pypa/gh-action-pypi-publish` OIDC action is Linux-only, and the wheel is `py3-none-any` so the build
+host is irrelevant), `permissions: id-token: write` (+ `contents: write` for the GH Release), and the
+`twine upload` step is replaced by `pypa/gh-action-pypi-publish@release/v1`. **Consequence:** no
+`PYPI_API_TOKEN` secret is created or referenced; supersedes the token mention in c17/c19 and §21.6.
+On first successful publish PyPI converts the pending publisher into a normal trusted publisher.

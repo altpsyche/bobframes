@@ -19,10 +19,12 @@ next_action:    c19 release-ops. CI GREEN confirmed after ADR-11 parity-pinning.
                 github.com/altpsyche/bobframes; repointed pyproject [project.urls] + CHANGELOG refs
                 mayhem-studios -> altpsyche (ADR-12) so PyPI metadata links resolve. REMAINING:
                 (1) push the ADR-12 URL-fix commit; (2) set PYPI_API_TOKEN secret in altpsyche/
-                bobframes; (3) `git tag v0.1.0 && git push origin v0.1.0` -> publish job
-                (outward+IRREVERSIBLE — authorize first); (4) post-install verify per c19 Done-when.
-blockers:       c19 needs PYPI_API_TOKEN set + an authorized irreversible tag push. CI green; URLs
-                fixed; PyPI name `bobframes` free.
+                bobframes via OIDC Trusted Publishing (ADR-13 — NO token/secret; publish job moved to
+                ubuntu + id-token: write + pypa/gh-action-pypi-publish); (3) `git tag v0.1.0 &&
+                git push origin v0.1.0` -> publish job (outward+IRREVERSIBLE — authorize first);
+                (4) post-install verify per c19 Done-when.
+blockers:       c19 needs the PyPI pending publisher saved (altpsyche/bobframes/ci.yml) + an authorized
+                irreversible tag push. CI green; URLs fixed; PyPI name free; no token needed (ADR-13).
 blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/tests)
 ```
 

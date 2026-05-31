@@ -80,12 +80,16 @@ jobs:
 
   publish:
     # Builds + publishes ONLY on a v* tag. No tag is pushed until c19 — until then this job is inert.
-    # Requires the test matrix to pass first. Secret: PYPI_API_TOKEN.
+    # Requires the test matrix to pass first. Auth is PyPI Trusted Publishing (OIDC) — no API token /
+    # secret; a pending publisher must be configured on PyPI (owner=altpsyche, repo=bobframes,
+    # workflow=ci.yml). Runs on ubuntu: the wheel is py3-none-any (pure Python) and the OIDC publish
+    # action is Linux-only. See DECISIONS ADR-13.
     needs: test
     if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     permissions:
       contents: write          # create the GitHub Release
+      id-token: write          # PyPI Trusted Publishing (OIDC)
     steps:
       - uses: actions/checkout@v4
 
@@ -99,11 +103,8 @@ jobs:
           python -m build
           twine check dist/*
 
-      - name: Publish to PyPI
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: twine upload dist/*
+      - name: Publish to PyPI (Trusted Publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1
 
       - name: GitHub Release (wheel + sdist + notes)
         uses: softprops/action-gh-release@v2
