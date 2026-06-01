@@ -56,10 +56,16 @@ def setup_root(dest: str, data_src: str = SYNTHETIC_DATA) -> str:
 
 
 def render(dest: str) -> str:
-    """Run `bobframes --render-only --root <dest>`; raise on nonzero with captured output."""
+    """Run `bobframes --render-only --root <dest>`; raise on nonzero with captured output.
+
+    Scrubs BOBFRAMES_CONFIG from the child env so a developer's user config can't leak into the
+    parity render and silently diverge the golden (c07; hermeticity, not gate-narrowing). The temp
+    <dest> has no .bobframes.toml, so the config falls back to bundled defaults = today's values.
+    """
+    env = {k: v for k, v in os.environ.items() if k != "BOBFRAMES_CONFIG"}
     r = subprocess.run(
         [sys.executable, "-m", "bobframes.run", "--render-only", "--root", dest],
-        capture_output=True, text=True,
+        capture_output=True, text=True, env=env,
     )
     if r.returncode != 0:
         raise RuntimeError(f"render failed ({r.returncode}):\nSTDOUT:\n{r.stdout}\nSTDERR:\n{r.stderr}")

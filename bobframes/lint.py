@@ -9,27 +9,13 @@ Run via `python -m bobframes.lint <file...>` or imported by run.py.
 
 from __future__ import annotations
 
-import re
 import sys
 from html.parser import HTMLParser
 
-BANNED = [
-    (re.compile(r'[—–]'),                                           'em/en dash anywhere'),
-    (re.compile(r'[…]'),                                                 'ellipsis unicode'),
-    (re.compile(r'[“”‘’]'),                               'curly quote'),
-    (re.compile(r'[✓✅↑↓·×⏳→←⚠✨]'), 'decorative unicode'),
-    (re.compile(r'\bcaps\b'),                                                 'shorthand caps'),
-    (re.compile(r'\bcap\b(?![A-Za-z])'),                                      'shorthand cap'),
-    (re.compile(r'\b(comprehensive|leverage|robust|polished|sleek|seamless)\b', re.I), 'LLM filler vocabulary'),
-    (re.compile(r'\b(overview|insights?|breakdown of|deep dive|key findings)\b', re.I), 'report-prose noun'),
-    (re.compile(r'\b(this (report|chart|table|section) shows|as (you can )?see|as shown|the following|let us|we (can )?see|note that|please note|observe that)\b', re.I), 'reader-address phrase'),
-    (re.compile(r'\b(highlights?|takeaways?|notable|noteworthy|significant|interesting)\b', re.I), 'editorial verb'),
-    (re.compile(r'\b(in conclusion|to summarize|in summary|overall)\b', re.I), 'summary opener'),
-    (re.compile(r'\bN/A\b'),                                                  'NA filler'),
-    (re.compile(r'ranks remaining work', re.I),                               'LLM filler phrase'),
-    (re.compile(r'\*\*(What to do|Why this matters|Verify|Effort|Impact|Detail|Fix|Severity|Title):\*\*'), 'label scaffolding'),
-    (re.compile(r'\betc\.'),                                                  'filler etc.'),
-]
+from . import config
+
+# The banlist now lives in bobframes/lint_banlist.toml (default) + [lint].extra_banned (H-14);
+# read it via config.banlist() (compiled + cached, order preserved).
 
 
 class _HtmlTextExtractor(HTMLParser):
@@ -71,8 +57,9 @@ def lint_html(path: str) -> list[tuple[int, str, str]]:
     extractor = _HtmlTextExtractor()
     extractor.feed(body)
     hits: list[tuple[int, str, str]] = []
+    banned = config.banlist()
     for lineno, text in extractor.chunks:
-        for rx, label in BANNED:
+        for rx, label in banned:
             m = rx.search(text)
             if m:
                 snippet = text.strip()[:80]
@@ -82,9 +69,10 @@ def lint_html(path: str) -> list[tuple[int, str, str]]:
 
 def lint_markdown(path: str) -> list[tuple[int, str, str]]:
     hits: list[tuple[int, str, str]] = []
+    banned = config.banlist()
     with open(path, 'r', encoding='utf-8') as f:
         for lineno, line in enumerate(f, start=1):
-            for rx, label in BANNED:
+            for rx, label in banned:
                 if rx.search(line):
                     hits.append((lineno, label, line.rstrip()[:80]))
     return hits

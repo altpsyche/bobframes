@@ -7,72 +7,29 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        c07_toml_config    (status: not-started — c06b DONE; v0.2 audit foundation complete)
-last_session:   2026-06-01 — c06b DONE (G-14: Parquet-output parity gate). NEW
-                tests/test_parquet_parity.py renders the synthetic fixture, walks every
-                rendered _data/**/*.parquet (58 tables: 28 per-drop for the latest drop + 27 static
-                copies of the older drop + _catalog + _global_entities), and compares a
-                WRITER-INDEPENDENT logical digest vs committed tests/data/golden_parquet/digests.json.
-                Digest = ordered schema [(name, str(type))] + num_rows + sha256 over Table.to_pydict()
-                serialized in schema column order, row order preserved (NOT on-disk bytes — those vary
-                pa17↔pa21, the D-8 trap). Chose approach (a) from the commit doc. NEW helpers in
-                _render_util.py: rendered_parquet_files (mirror of rendered_html_files; excludes
-                _cache) + parquet_digest + compute_digest_map; NEW tests/make_parquet_golden.py refresh
-                script (mirrors make_synthetic.py; run by hand on intentional data-path change).
-                NO-PATCH-FIX moment (ADR-23): allow_nan=False caught a NaN — root-caused to
-                vbo_samples.as_f32_0..3 (raw VBO bytes reinterpreted as float32 → legit NaN; pyarrow
-                float64 prints as type "double", which an initial scan missed). Did NOT flip to
-                allow_nan; instead canonicalize non-finite floats to FIXED sentinels ({"__nf__":nan/inf})
-                so the values stay GATED (a NaN→number flip is a real regression). FULL-MATRIX PROVEN:
-                rendered+digested under py3.10/pa17, py3.12/pa21, py3.13/pa21 — all 58 digests
-                byte-identical to the canonical-cell golden → gate is NOT in ci.yml's --ignore (runs
-                every cell, unlike HTML parity which ADR-11 pins). NEGATIVE TEST: reversing
-                build_global_entities' glob sort makes the gate FAIL naming _global_entities.parquet,
-                same num_rows + different rows_sha256 (the exact c05 regression that slipped ungated).
-                Note: render-only re-derives ONLY the latest discovered drop (discovery._latest_drop_dir
-                returns one drop/area); the older drop's parquet are untouched fixture copies — matches
-                the HTML golden (only the latest drop has a drill page). 37→38 tests green; HTML parity
-                + determinism/schema/perf untouched; smoke render-only clean; lint golden exit 0. G-14
-                ticked → c06b; QUALITY_GATES §21.1b added. PRIOR: c06a DONE (D-8 drill-size de-harden). Dropped every os.path.getsize-derived
-                value from rendered HTML in html/template.py: the per-table CSV/parquet download-link
-                size span in _inline_table_with_data (CSV (X KB)/parquet (X KB) → bare CSV/parquet — the
-                writer-dependent D-8 byte), plus the shader_src `// 1024` per-file size and the jsonl
-                sidecar _file_size_label span in _sidecar_category (not in synthetic golden, but feed real
-                HTML); removed the now-unused _file_size_label helper. `grep getsize bobframes/html/` is
-                empty (grep gate green, repo-convention manual). DECISION (user deferred "do what's better
-                for tool lifespan"): drop the span, NOT the commit-doc's "row count" — header already shows
-                {rows:,} rows/{cols} cols (row count would triple it on the page) and csv_sz is empty on
-                csv-less tables so a row count would assert a figure for a 404 file. Golden drill page
-                refreshed by byte-level regex (>CSV (...)</a> → >CSV</a>, same for parquet) to preserve LF
-                + keep a minimal git diff: 361 bytes removed across 26 tables, no other line touched. 37
-                tests green (was 37 baseline incl R-16) — test_parity green on canonical cell. lint golden
-                clean. WRITER-KB DIVERGENCE GONE: the floor for un-pinning test_parity is now just the
-                float-ULP (pass_gpu pct_share .2f) case → D-(float). ci.yml --ignore=test_parity split
-                UNCHANGED this commit (still needed for the float half). D-8 ticked → c06a. Left _row_count
-                (template.py, already dead pre-c06a) + unused .sidecar-list span/.ct CSS untouched (out of
-                D-8 scope). PRIOR: c06 DONE (tool resolver + errors + glob version detect, H-7). NEW
-                config.py: resolve_tool(name)/resolve_tool_verbose(name) walk one ordered candidate
-                list `_candidates(name, config)` (BOBFRAMES_* env > legacy RENDERDOCCMD/
-                RENDERDOC_QRENDERDOC env w/ one-shot deprecation log > [tools] config > shutil.which >
-                known Win paths > raise ToolNotFound). Arm glob `_ARM_GLOB` = 'C:/Program Files/Arm/Arm
-                Performance Studio */renderdoc_for_arm_gpus/{name}.exe', pick latest by a
-                natural-numeric key (_version_key, ADR-24 — 2026.10 > 2026.2, not lexicographic);
-                vanilla/LOCALAPPDATA in `_KNOWN_PATH_TEMPLATES` (skips template whose env unset). [tools] read defensively (getattr .tools then dict-fallback) so c07's
-                dataclass needs no signature change; config=None branch dormant (no loader yet).
-                .exe + Win paths intentionally hardcoded (Windows-only v1; c36 drops .exe per-OS) —
-                commented. NEW errors.py: EXIT_* constants + BobFramesError/PipelineError/ToolNotFound;
-                ToolNotFound.format_message() renders the ARCHITECTURE §5 block from attempts
-                (kind∈{env,config,path,file} → status). Rewired rdcmd.find_renderdoccmd/
-                qrd_harness.find_qrenderdoc to thin config.resolve_tool wrappers (names kept — manifest
-                + test_hardening monkeypatch them); dropped _DEFAULT_PATHS/_DEFAULT_QRD; _SEP +
-                RDC_INSIDE_ARGS wire untouched. cli._cmd_check uses resolve_tool_verbose (prints path +
-                'via <source>' only when source≠path; exit 0 found / 3 + §5 block on miss);
-                cli.main now catches BobFramesError → e.exit_code (§4 exit-map). NEW tests/test_config.py
-                (4 hermetic tests: env>known precedence, legacy honored + warns-once, Arm glob picks
-                latest version, ToolNotFound exit_code==3 + §5 msg). Baseline 32-green BEFORE; 36-green
-                AFTER, golden byte-identical (no refresh — discovery doesn't touch render). Live check
-                on dev box: real Arm 2026.2 resolved via the `*` glob (H-7 proven), exit 0; forced-miss
-                in-process → full §5 block + exit 3.
+current:        c08_design_tokens    (status: not-started; c07 DONE)
+last_session:   2026-06-01 — c07 DONE (TOML config layer). NEW config.py loader: tomllib (tomli
+                backport <3.11, ADR-26 — qrenderdoc embeds py3.10, verified python310.dll) → a frozen
+                Config dataclass; §6 lookup ($BOBFRAMES_CONFIG > <root>/.bobframes.toml > %APPDATA%)
+                with bundled _default_config.toml as the SINGLE-SOURCE base DEEP-MERGED under the
+                first-found user file (ADR-25; §6 'no merging' = file SELECTION only, not the base).
+                NEW _default_config.toml + lint_banlist.toml (15-entry banlist, order preserved).
+                Lifted to config.get_config(): qrd_harness/rdcmd timeouts (H-12/13 + --replay-timeout/
+                --convert-timeout flags; convert_timeout THREADED into the ProcessPool worker as an arg
+                — Windows spawn re-import would miss a child-side singleton), discovery DATED_RE (H-30;
+                module name kept as fallback, _dated_re() recompiles from config), lint.BANNED (H-14),
+                formatters chrome_scrub/id_short_n/text_trunc_max (H-16 RE-POINTED from c08 + H-23),
+                delta fmt + bar_label_min_pct (H-22/21), derive_post_merge complexity weights (H-17/Q-3).
+                resolve_tool defaults config→get_config() (empty [tools] → c06 precedence unchanged).
+                cli check --write-config writes a CURATED commented starter (not a full dump — preserves
+                deep-merge forward-compat). PARITY (the hard part, ADR-6): defaults bit-identical
+                (tomllib parses 0.3/2.0/8.0 to the same double; test asserts struct.pack('>d') floats +
+                regex .pattern + banlist roundtrip) → test_parity + test_parquet_parity GREEN, NO golden
+                refresh. _render_util.render() now scrubs BOBFRAMES_CONFIG from the child env (hermetic,
+                NOT gate-narrowing). 38→47 tests green; smoke render-only clean; wheel ships both TOMLs
+                with 0 dup entries (ADR-10 clean); py3.10/tomli load proven identical to py3.12/tomllib.
+                ADR-25/26 appended; ARCHITECTURE §3/§6 annotated; QUALITY_GATES §21.1c; H-12/13/14/16/17/
+                21/22/23/30 + Q-3 ticked. PRIOR: c06b DONE (G-14 Parquet-output parity gate).
 audit-2026-06-01: Lifecycle quality audit + standing rule. ADR-23 "no patch-fixes" (root-cause or
                 record explicitly; never narrow a gate to go green) — mirrored in CLAUDE.md "How to
                 work" + a cross-session memory. Opened 3 findings from the audit: D-8 (drill HTML bakes
@@ -94,25 +51,17 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    Do c07 (TOML config layer). Open commits/v02/c07_toml_config.md. The v0.2 audit
-                foundation (c06a D-8 + c06b G-14) is now complete — data-path regressions are gated
-                (test_parquet_parity) and the writer-KB is out of the HTML, so c07's parity work has a
-                stable floor. NOTE for c07: the NEW Parquet gate means any change to derive scoring /
-                formatters that shifts a parquet cell value will now FAIL test_parquet_parity (not just
-                HTML) — if c07's defaults are truly byte-identical it stays green; if a float fmt or
-                weight intentionally changes, refresh BOTH goldens (HTML via re-render + parquet via
-                `python -m bobframes.tests.make_parquet_golden`).
-                c07: NEW config.py loader (tomllib → dataclass, §6 lookup
-                $BOBFRAMES_CONFIG > <root>/.bobframes.toml > %APPDATA%/bobframes/config.toml) +
-                _default_config.toml; resolve_tool gains the loaded singleton as its default `config`;
-                readers (qrd_harness/rdcmd timeouts, lint banlist, derive_post_merge scoring,
-                formatters, delta, discovery regex) switch to the config singleton. PARITY is the hard
-                part (ADR-6): defaults must reproduce output byte-identically (assert regex .pattern +
-                complexity-weight float fmt unchanged). Structure [scoring] as parent w/ subsections
-                (c21 extends). Then c08->c10, c16. GIT: still on branch `v0.2-roadmap-c04` (off main
-                @dedfdfc; now +ea68a63 docs +d8f61d7 c04 +d2870ec c05 +c939995 c06+audit; UNPUSHED).
-                Post-release nit (non-blocking): bump CI actions off Node20 (checkout@v5/
-                setup-python@v6 before 2026-06-16).
+next_action:    Do c08 (design tokens TOML + preview). Open commits/v02/c08_design_tokens.md. c07 gave
+                the config singleton (config.get_config()), the bundled-TOML + deep-merge loader, and
+                the importlib.resources read pattern — c08's design_tokens.toml reuses all of it (a
+                SEPARATE file by concern: designer-editable tokens vs the c07 config). c08 closes H-15
+                (chrome design tokens) + H-20 (layout literals: bar heights, grid widths, sparkline
+                60x14); H-16 chrome_scrub already moved to c07. Same parity discipline: the emitted CSS
+                + --c-<class> tokens must be byte-identical (assert in test). Then c09 (engine-agnostic
+                classifier — most invasive; note its TOML walker may reach the embedded-3.10 replay
+                side, which is exactly why ADR-26 kept the 3.10 floor), c10, c16. GIT: still on branch
+                v0.2-roadmap-c04 (off main; now + c07; UNPUSHED). Post-release nit (non-blocking): bump
+                CI actions off Node20 (checkout@v5/setup-python@v6 before 2026-06-16).
 DONE-2026-05-31: c19 — bobframes 0.1.0 PUBLISHED. tag v0.1.0 -> CI publish job green (OIDC trusted
                 publishing, ubuntu). Live on PyPI (wheel + sdist) + GitHub Release with both assets.
                 Post-install verify from a clean PyPI install: version (0.1.0 schema 3 pyarrow 21.0.0),
@@ -155,8 +104,8 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c06 tool resolver + glob version detect](commits/v02/c06_tool_resolver.md) | **done** — `config.resolve_tool()` + `errors.py` (§4 exit-map) + Arm glob (H-7, ADR-24 natural-sort); `check` real (0/3 + §5); 36 green, byte-parity |
 | ☑ | [c06a drill-size de-harden](commits/v02/c06a_drill_size_dehardcode.md) | **done** — D-8: dropped getsize size-spans from drill HTML; 37 green, golden refreshed (writer-KB gone) |
 | ☑ | [c06b Parquet parity gate](commits/v02/c06b_parquet_parity_gate.md) | **done** — G-14: writer-independent logical digest over `_data/**/*.parquet` (58 tables), full matrix; 38 green |
-| ☐ | [c07 TOML config layer](commits/v02/c07_toml_config.md) | **next** |
-| ☐ | [c08 design tokens TOML + preview](commits/v02/c08_design_tokens.md) | deferred |
+| ☑ | [c07 TOML config layer](commits/v02/c07_toml_config.md) | **done** — tomllib config (tomli<3.11); timeouts/regex/banlist/chrome-scrub/weights/delta lifted; 47 green, byte-parity (H-12/13/14/16/17/21/22/23/30,Q-3) |
+| ☐ | [c08 design tokens TOML + preview](commits/v02/c08_design_tokens.md) | **next** |
 | ☐ | [c09 engine-agnostic classifier](commits/v02/c09_classifier.md) | deferred |
 | ☐ | [c10 env-var rename `RDC_*`→`BOBFRAMES_*`](commits/v02/c10_env_rename.md) | deferred |
 | ☐ | [c16 report-quality polish](commits/v02/c16_report_quality.md) | deferred |
@@ -205,6 +154,20 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-01 — c07 DONE (TOML config layer; H-12/13/14/16/17/21/22/23/30 + Q-3). NEW config.py loader
+  (tomllib + tomli backport python_version<'3.11', ADR-26: qrenderdoc embeds py3.10 — python310.dll on
+  box) → frozen Config dataclass; §6 lookup + bundled _default_config.toml SINGLE-SOURCE base DEEP-MERGED
+  under the first-found user file (ADR-25: §6 'no merging' = file selection only). NEW _default_config.toml
+  + lint_banlist.toml (15-entry, order kept). Readers → config.get_config(): timeouts (qrd_harness/rdcmd +
+  --replay-timeout/--convert-timeout; convert_timeout threaded into the spawn pool as an ARG, not a child
+  singleton), discovery DATED_RE (_dated_re(); module DATED_RE kept as fallback), lint banlist, formatters
+  chrome_scrub/id_short_n/text_trunc_max, delta fmt/bar_label_min_pct, derive complexity weights.
+  resolve_tool default → get_config() (empty [tools], c06 unchanged). cli check --write-config = curated
+  commented starter (not a dump — keeps deep-merge forward-compat). Defaults BIT-IDENTICAL → test_parity +
+  test_parquet_parity green, NO refresh; new test_config asserts struct.pack floats + regex .pattern +
+  banlist roundtrip + spawn-arg threading + deep-merge + env-file precedence + write-config skip. _render_util
+  scrubs BOBFRAMES_CONFIG (hermetic). 38→47 green; smoke clean; wheel ships both TOMLs 0 dups; py3.10/tomli
+  load proven identical. ADR-25/26; ARCHITECTURE §3/§6 + QUALITY_GATES §21.1c. current → c08.
 - 2026-06-01 — c06b DONE (G-14: Parquet-output parity gate; no-patch-fix per ADR-23). NEW
   tests/test_parquet_parity.py: render synthetic → walk every rendered _data/**/*.parquet (58 tables
   incl. _catalog + _global_entities) → compare a WRITER-INDEPENDENT logical digest (ordered schema +
