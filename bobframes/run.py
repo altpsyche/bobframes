@@ -254,7 +254,10 @@ def process_drop(drop: discovery.Drop, *, force: bool, workers: int,
 
     drop_label_dated = os.path.basename(drop.drop_dir)
     tmp = paths.drop_data_dir_tmp(project_root, drop.area, drop_label_dated)
-    stage_root = os.path.join(tmp, paths.STAGE_DIR)
+    # Stage tree is a SIBLING of tmp, not nested inside it: a held _harness.log handle
+    # (e.g. inherited by the adb daemon) must never block the atomic commit (R-16).
+    stage_root = paths.drop_stage_dir(project_root, drop.area, drop_label_dated)
+    shutil.rmtree(stage_root, ignore_errors=True)  # clear any stale stage from a prior failed run
     os.makedirs(stage_root, exist_ok=True)
 
     _do_export(drop, workers=workers)
@@ -312,10 +315,9 @@ def process_drop(drop: discovery.Drop, *, force: bool, workers: int,
     )
     manifest.write_manifest(tmp, m)
 
-    # Drop _stage/ before commit so it doesn't pollute the committed output.
-    if not os.environ.get('RDC_KEEP_STAGE'):
-        shutil.rmtree(stage_root, ignore_errors=True)
-
+    # Commit FIRST (atomic rename of the data dir), THEN clean the stage. The stage is a
+    # sibling of tmp (R-16), so it is never part of this rename and a locked _harness.log
+    # in it cannot fail the commit. parquetize.merge_drop already consumed the stage above.
     out = paths.drop_data_dir(project_root, drop.area, drop_label_dated)
     if os.path.isdir(out):
         raise RuntimeError(f'unexpected: {out} exists at commit time')
@@ -327,6 +329,11 @@ def process_drop(drop: discovery.Drop, *, force: bool, workers: int,
     with open(marker_tmp, 'w', encoding='utf-8') as f:
         f.write(str(_drop_inputs_max_mtime(drop.drop_dir, drop.captures)))
     os.replace(marker_tmp, marker)
+
+    # Best-effort stage cleanup (post-commit). If a foreign process still holds a handle
+    # (R-16), this tolerantly leaves the sibling dir; the next run clears it (see above).
+    if not os.environ.get('RDC_KEEP_STAGE'):
+        shutil.rmtree(stage_root, ignore_errors=True)
 
     # Render per-drop browser HTML to _reports/drill/<area>/<drop>/index.html.
     # Separate from data commit: HTML is idempotent and can be regenerated.

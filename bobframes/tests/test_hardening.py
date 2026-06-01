@@ -140,3 +140,17 @@ def test_stable_key_version_prefix():
     versioned = hashlib.sha256(bytes([1]) + b'x').hexdigest()
     assert stable_keys.shader_key('x') != bare
     assert stable_keys.shader_key('x') == versioned
+
+
+# --- R-16: stage tree (with _harness.log) lives OUTSIDE the atomic-commit dir ----
+
+def test_stage_dir_is_sibling_not_inside_commit_dir():
+    """A held _harness.log handle (e.g. inherited by adb) must never block the commit.
+    The stage tree must not be nested inside the .tmp dir that os.replace renames."""
+    root, area, drop = 'R', 'A', '2026-01-01_x'
+    tmp = os.path.normpath(paths.drop_data_dir_tmp(root, area, drop))
+    final = os.path.normpath(paths.drop_data_dir(root, area, drop))
+    stage = os.path.normpath(paths.drop_stage_dir(root, area, drop))
+    assert not stage.startswith(tmp + os.sep), 'stage must not be inside the .tmp commit dir'
+    assert not stage.startswith(final + os.sep), 'stage must not be inside the committed dir'
+    assert stage not in (tmp, final)

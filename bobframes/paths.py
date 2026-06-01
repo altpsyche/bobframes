@@ -34,7 +34,7 @@ import os
 DATA_DIR = '_data'           # pipeline outputs root
 REPORTS_DIR = '_reports'     # rendered HTML root
 CACHE_DIR = '_cache'         # per-project report cache (under _reports/)
-STAGE_DIR = '_stage'         # per-drop staging tree (under the .tmp commit dir)
+STAGE_SUFFIX = '.stage'      # per-drop staging tree; SIBLING of the .tmp commit dir (R-16)
 DRILL_DIR = 'drill'          # per-drop browser HTML (under _reports/)
 AB_DIR = 'ab'                # A/B report pairs (under _reports/)
 TMP_SUFFIX = '.tmp'          # atomic-commit staging suffix (dir + file)
@@ -55,6 +55,19 @@ def drop_data_dir(root: str, area: str, drop_label_dated: str) -> str:
 def drop_data_dir_tmp(root: str, area: str, drop_label_dated: str) -> str:
     """Staging dir for atomic commit. Renamed to drop_data_dir on success."""
     return drop_data_dir(root, area, drop_label_dated) + TMP_SUFFIX
+
+
+def drop_stage_dir(root: str, area: str, drop_label_dated: str) -> str:
+    """Per-drop parse/replay staging tree (CSVs + ``_harness.log`` + sidecars).
+
+    A SIBLING of the ``.tmp`` commit dir, deliberately NOT nested inside it (R-16):
+    qrd_harness hands ``_harness.log`` to qrenderdoc as an inheritable stdout handle,
+    which a foreign process (e.g. the adb server daemon) can inherit and hold open.
+    If the log lived inside ``.tmp`` that held handle would make the atomic
+    ``os.replace(tmp, final)`` commit fail with ``[WinError 5]`` after a fully
+    successful ingest; as a sibling it can never block the commit.
+    """
+    return drop_data_dir(root, area, drop_label_dated) + STAGE_SUFFIX
 
 
 def drop_drill_dir(root: str, area: str, drop_label_dated: str) -> str:
