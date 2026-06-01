@@ -120,16 +120,44 @@ def test_convert_timeout_logs_stderr(monkeypatch, capsys):
 # --- R-7: parse surfaces stderr even when the return code is 0 ----------------
 
 def test_parse_one_returns_stderr_on_success(monkeypatch):
+    seen = {}
+
     def _fake_run(cmd, *a, **k):
+        seen['cwd'] = k.get('cwd')
         return type('P', (), {'returncode': 0, 'stdout': 'okout\n', 'stderr': 'warnmsg\n'})()
 
     monkeypatch.setattr(run.subprocess, 'run', _fake_run)
 
+    # 7-tuple: project_root rides as the explicit child cwd (c10; RDC_ROOT eliminated, R-5/Q-5).
     capture, elapsed, status, stderr = run._parse_one(
-        ('x.zip.xml', 'root/_data/_stage/cap', 'A', '2026-01-01', 'x', 'cap'))
+        ('x.zip.xml', 'root/_data/_stage/cap', 'A', '2026-01-01', 'x', 'cap', '/proj/root'))
 
     assert status == 'okout'
     assert stderr == 'warnmsg'
+    assert seen['cwd'] == '/proj/root'
+
+
+def test_do_parse_leaves_environ_untouched(monkeypatch, tmp_path):
+    """R-5: parse must not mutate the process env (no global RDC_ROOT leak across drops)."""
+    class _FakeExecutor:
+        def __init__(self, *a, **k):
+            pass
+        def __enter__(self):
+            return self
+        def __exit__(self, *a):
+            return False
+        def map(self, fn, args):
+            # Return one ok status per submitted arg without running a real subprocess.
+            return [(a[5], 0.0, 'ok', '') for a in args]
+
+    monkeypatch.setattr(run.cf, 'ProcessPoolExecutor', _FakeExecutor)
+    drop = Drop(area='A', drop_date='2026-01-01', drop_label='x',
+                drop_dir=str(tmp_path / 'A' / '2026-01-01_x'), captures=('1', '2'))
+
+    before = dict(os.environ)
+    run._do_parse(drop, str(tmp_path / 'stage'), workers=2, project_root=str(tmp_path))
+    assert dict(os.environ) == before
+    assert 'RDC_ROOT' not in os.environ
 
 
 # --- H-27 / G-11: stable keys carry a version byte ---------------------------

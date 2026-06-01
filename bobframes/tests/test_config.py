@@ -211,6 +211,44 @@ def test_legacy_env_honored_and_warns_once(monkeypatch, tmp_path):
     assert len(warns) == 1
 
 
+# --- c10: getenv_legacy (BOBFRAMES_* with one-release RDC_* fallback) ----------
+
+def test_getenv_legacy_prefers_canonical(monkeypatch):
+    monkeypatch.setenv('BOBFRAMES_PIXEL_GRID', '8')
+    monkeypatch.setenv('RDC_PIXEL_GRID', '4')
+    assert config.getenv_legacy('BOBFRAMES_PIXEL_GRID', 'RDC_PIXEL_GRID') == '8'
+
+
+def test_getenv_legacy_falls_back_and_warns_once(monkeypatch):
+    monkeypatch.delenv('BOBFRAMES_KEEP_STAGE', raising=False)
+    monkeypatch.setenv('RDC_KEEP_STAGE', '1')
+
+    records: list[logging.LogRecord] = []
+
+    class _Capture(logging.Handler):
+        def emit(self, record):
+            records.append(record)
+
+    logger = logging.getLogger('bobframes')
+    handler = _Capture()
+    logger.addHandler(handler)
+    try:
+        assert config.getenv_legacy('BOBFRAMES_KEEP_STAGE', 'RDC_KEEP_STAGE') == '1'
+        assert config.getenv_legacy('BOBFRAMES_KEEP_STAGE', 'RDC_KEEP_STAGE') == '1'  # no re-warn
+    finally:
+        logger.removeHandler(handler)
+
+    warns = [r for r in records if 'RDC_KEEP_STAGE' in r.getMessage()]
+    assert len(warns) == 1
+
+
+def test_getenv_legacy_default_when_unset(monkeypatch):
+    monkeypatch.delenv('BOBFRAMES_PIXEL_GRID', raising=False)
+    monkeypatch.delenv('RDC_PIXEL_GRID', raising=False)
+    assert config.getenv_legacy('BOBFRAMES_PIXEL_GRID', 'RDC_PIXEL_GRID', '4') == '4'
+    assert config.getenv_legacy('BOBFRAMES_PIXEL_GRID', 'RDC_PIXEL_GRID') is None
+
+
 def test_arm_glob_picks_latest_version(monkeypatch, tmp_path):
     # Includes the two-digit-minor case (2026.10) that a plain lexicographic sort mis-ranks
     # below 2026.2 — the natural-version key (ADR-24) must pick 2026.10.
