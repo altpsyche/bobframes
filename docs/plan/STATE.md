@@ -104,8 +104,11 @@ next_action:    Do c10 (env-var rename RDC_*→BOBFRAMES_*). Open commits/v02/c1
                 footer_legend/_row_count/dead CSS, golden refresh). NOTE for whoever does c27/c35: the
                 c09 classifier engine is already STATE-CAPABLE (when{} over any draw column), so the
                 state-first generic preset (D-10, fewer `other`) is a preset, not a rewrite; c35 removes
-                the zeroed passes.draws_by_class_* + slims passes (D-11a). GIT: still on branch
-                v0.2-roadmap-c04 (off main; c07 + c08 + c09 UNPUSHED). Post-release nit (non-blocking):
+                the zeroed passes.draws_by_class_* + slims passes (D-11a). V0.2 CLOSE-OUT (user-requested
+                2026-06-01): before tagging v0.2, run a real FULL ingest of ALL areas (not just Chor
+                bazar — Commercial/Financial/Police station/Resort/Train station/Under construction mall
+                from the Downloads RDC drop), keep the rendered HTML, eyeball the reports. GIT: still on
+                branch v0.2-roadmap-c04 (off main; c07 + c08 + c09 UNPUSHED). Post-release nit (non-blocking):
                 bump CI actions off Node20 (checkout@v5/setup-python@v6 before 2026-06-16).
 DONE-2026-05-31: c19 — bobframes 0.1.0 PUBLISHED. tag v0.1.0 -> CI publish job green (OIDC trusted
                 publishing, ubuntu). Live on PyPI (wheel + sdist) + GitHub Release with both assets.
