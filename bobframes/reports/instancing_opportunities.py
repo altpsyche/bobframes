@@ -181,9 +181,10 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
                 href='#top_meshes', link_text='top meshes'))
 
     single = len(drop_keys) == 1
-    parts.append('<h2 id="top_meshes">top meshes by repeat</h2>')
+    # c16c: framed in a sticky-highlighted section card.
+    mbody = []
     if not ranked:
-        parts.append(base.empty_state('no repeated meshes found'))
+        mbody.append(base.empty_state('no repeated meshes found'))
     else:
         # Flagship: estimated wasted indices for the top meshes (c16b).
         chart_items = []
@@ -201,26 +202,28 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
             tag_c = str(mh)[-4:] if mh else ''
             chart_items.append((f'{dom_c}/{suffix_c}#{tag_c}', wasted_c))
         if chart_items:
-            parts.append(base.figure(
+            mbody.append(base.figure(
                 base.bar_chart(chart_items, title='estimated wasted indices',
                                desc='(max repeat - 1) x typical indices, per mesh'),
                 'estimated wasted indices (top meshes)'))
 
         sec1 = ['<div class="table-wrap"><rdc-sortable-table>',
-                '<table class="report"><thead><tr>', '<th>mesh</th>']
+                '<table class="report">',
+                '<caption>meshes drawn repeatedly - instancing / batching candidates</caption>',
+                '<thead><tr>', '<th scope="col">mesh</th>']
         for i, k in enumerate(drop_keys):
             head = 'repeat' if single else f'repeat@{base.h(k)}'
-            sec1.append(f'<th class="num">{head}</th>')
+            sec1.append(f'<th class="num" scope="col">{head}</th>')
             if i > 0:
                 latest = ' delta-latest' if i == len(drop_keys) - 1 else ''
-                sec1.append(f'<th class="num{latest}">delta</th>')
+                sec1.append(f'<th class="num{latest}" scope="col">delta</th>')
         if len(drop_keys) >= 3:
-            sec1.append('<th class="num">trend</th>')
+            sec1.append('<th class="num" scope="col">trend</th>')
         sec1.extend([
-            '<th>areas</th>',
-            '<th>dominant pass</th>',
-            '<th class="num">indices typical</th>',
-            '<th class="num" title="(max repeat - 1) x typical indices: index data re-submitted across repeats">wasted indices</th>',
+            '<th scope="col">areas</th>',
+            '<th scope="col">dominant pass</th>',
+            '<th class="num" scope="col">indices typical</th>',
+            '<th class="num" scope="col" title="(max repeat - 1) x typical indices: index data re-submitted across repeats">wasted indices</th>',
             '</tr></thead><tbody>',
         ])
         for rank_i, (mh, m) in enumerate(ranked, 1):
@@ -242,8 +245,10 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
             sec1.append('<tr>')
             link = base.rel_path_to_drop_index(out_dir, rep_drop_dir, 'draws') if rep_drop_dir else '#'
             rp = base.rank_pill(rank_i) if rank_i <= 3 else ''
+            copy_mh = (f'<rdc-copy-button data-value="{base.safe_chrome_text(mh)}" '
+                       f'data-label="copy mesh hash"></rdc-copy-button>') if mh else ''
             sec1.append(
-                f'<td>{rp}<a href="{base.h(link)}" data-link-kind="drill">{base.h(mesh_label)}</a></td>'
+                f'<td>{rp}<a href="{base.h(link)}" data-link-kind="drill">{base.h(mesh_label)}</a>{copy_mh}</td>'
             )
             prev = None
             series = []
@@ -266,18 +271,23 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
             sec1.append(f'<td class="num">{base.heatmap_cell(wasted, 0, max_wasted, text=base.fmt_int(wasted))}</td>')
             sec1.append('</tr>')
         sec1.append('</tbody></table></rdc-sortable-table></div>')
-        parts.append(''.join(sec1))
+        mbody.append(''.join(sec1))
+    parts.append('<rdc-sticky-h2>'
+                 + base.section_card('top_meshes', 'top meshes by repeat',
+                                     ''.join(mbody), count=len(ranked))
+                 + '</rdc-sticky-h2>')
 
-    parts.append('<h2 id="batching">potential material batching</h2>')
+    # c16c fill-or-hide: only emit the batching section when there is real content - no bare heading.
     top_batch = [(k, v) for k, v in batching_groups.items() if v >= rcfg.instancing_repeat_min]
     top_batch.sort(key=lambda kv: kv[1], reverse=True)
-    if not top_batch:
-        parts.append(base.empty_state('no material-batching candidates found'))
-    else:
+    if top_batch:
         sec2 = ['<div class="table-wrap"><rdc-sortable-table>',
-                '<table class="report"><thead><tr>', '<th>pass</th>', '<th>class</th>',
-                '<th class="num">repeat</th>', '<th class="num">distinct meshes</th>',
-                '<th>drops</th>', '</tr></thead><tbody>']
+                '<table class="report">',
+                '<caption>passes where many distinct meshes share one material - batch candidates</caption>',
+                '<thead><tr>', '<th scope="col">pass</th>', '<th scope="col">class</th>',
+                '<th class="num" scope="col">repeat</th>',
+                '<th class="num" scope="col">distinct meshes</th>',
+                '<th scope="col">drops</th>', '</tr></thead><tbody>']
         for (pass_norm, fs, cls), n in top_batch[:30]:
             sec2.append('<tr>')
             sec2.append(f'<td>{base.h(base.pass_short(pass_norm))}</td>')
@@ -287,7 +297,10 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
             sec2.append(f'<td>{base.h(", ".join(sorted(batching_drops[(pass_norm, fs, cls)])))}</td>')
             sec2.append('</tr>')
         sec2.append('</tbody></table></rdc-sortable-table></div>')
-        parts.append(''.join(sec2))
+        parts.append('<rdc-sticky-h2>'
+                     + base.section_card('batching', 'potential material batching',
+                                         ''.join(sec2), count=len(top_batch))
+                     + '</rdc-sticky-h2>')
 
     return base.write_report(out_path, [base.report_page(
         'instancing opportunities', parts,

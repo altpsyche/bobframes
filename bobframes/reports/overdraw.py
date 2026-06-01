@@ -247,22 +247,24 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
             rows.sort(key=lambda x: x[2], reverse=True)
 
             sec = []
-            sec.append('<table class="report"><thead><tr>')
-            sec.append('<th>rt label</th>')
-            sec.append('<th>format</th>')
-            sec.append('<th>dims</th>')
-            sec.append('<th class="num">samples (latest)</th>')
-            sec.append('<th class="num">passed</th>')
-            sec.append('<th class="num">depth failed</th>')
-            sec.append('<th class="num">discarded</th>')
-            sec.append('<th class="num">scissor</th>')
-            sec.append('<th class="num">backface</th>')
-            sec.append('<th>rejection bar</th>')
+            sec.append('<table class="report">')
+            sec.append(f'<caption>per-render-target sample rejection in {base.h(area)}</caption>')
+            sec.append('<thead><tr>')
+            sec.append('<th scope="col">rt label</th>')
+            sec.append('<th scope="col">format</th>')
+            sec.append('<th scope="col">dims</th>')
+            sec.append('<th class="num" scope="col">samples (latest)</th>')
+            sec.append('<th class="num" scope="col">passed</th>')
+            sec.append('<th class="num" scope="col">depth failed</th>')
+            sec.append('<th class="num" scope="col">discarded</th>')
+            sec.append('<th class="num" scope="col">scissor</th>')
+            sec.append('<th class="num" scope="col">backface</th>')
+            sec.append('<th scope="col">rejection bar</th>')
             for i, k in enumerate(drop_keys):
-                sec.append(f'<th class="num">samples@{base.h(k)}</th>')
+                sec.append(f'<th class="num" scope="col">samples@{base.h(k)}</th>')
                 if i > 0:
                     latest_cls = ' delta-latest' if i == len(drop_keys) - 1 else ''
-                    sec.append(f'<th class="num{latest_cls}">delta</th>')
+                    sec.append(f'<th class="num{latest_cls}" scope="col">delta</th>')
             sec.append('</tr></thead><tbody>')
 
             for label, rep, _ in rows:
@@ -304,9 +306,9 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
                     prev_n = cur
                 sec.append('</tr>')
             sec.append('</tbody></table>')
-            parts.append(f'<h2 id="{base.h(area)}">{base.h(area)}</h2>')
 
             # Flagship: sample-rejection % per RT with config warn/alarm rule-lines (c16b).
+            body = []
             chart_rows = []
             for label, _rep, _ in rows:
                 lb = None
@@ -320,7 +322,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
                 reject = 100.0 * (1.0 - lb['n_passed'] / lb['n_samples'])
                 chart_rows.append((str(label), reject))
             if chart_rows:
-                parts.append(base.figure(
+                body.append(base.figure(
                     base.bar_chart(
                         chart_rows, value_fmt=lambda v: f'{v:.1f}%', max_value=100.0,
                         thresholds=[(rcfg.overdraw_reject_warn_pct, 'var(--status-warn)', 'warn'),
@@ -329,7 +331,11 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
                         desc='percent of shaded samples rejected per render target'),
                     f'{area}: sample rejection % per RT'))
 
-            parts.append(f'<div class="table-wrap"><rdc-sortable-table>{"".join(sec)}</rdc-sortable-table></div>')
+            # c16c: frame the per-area section in a sticky-highlighted card.
+            body.append(f'<div class="table-wrap"><rdc-sortable-table>{"".join(sec)}</rdc-sortable-table></div>')
+            parts.append('<rdc-sticky-h2>'
+                         + base.section_card(area, area, ''.join(body), count=len(rows))
+                         + '</rdc-sticky-h2>')
 
     return base.write_report(out_path, [base.report_page(
         'overdraw', parts,

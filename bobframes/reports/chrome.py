@@ -279,6 +279,28 @@ details.secondary-metrics { margin: var(--sp-2) 0 var(--sp-4); }
 details.secondary-metrics > summary { cursor: pointer; color: var(--text-2);
                                       font-size: var(--fs-small); padding: var(--sp-1) 0; }
 
+/* Section cards (c16c): consistent framing for every report section + the preview gallery.
+   Light frame only (no fill) so nested charts/tables keep their own surfaces. */
+section.card {
+  border: 1px solid var(--border-1); border-radius: 2px;
+  padding: var(--sp-4) var(--sp-4) var(--sp-2);
+  margin: 0 0 var(--sp-6);
+}
+section.card > header {
+  display: flex; align-items: baseline; gap: var(--sp-3);
+  margin: 0 0 var(--sp-3);
+}
+section.card > header > h2 { margin: 0; }
+.card-count {
+  font: 600 var(--fs-small) ui-monospace, monospace; color: var(--text-2);
+  background: var(--surface-2); padding: 1px 8px; border-radius: 2px;
+}
+.card-subtitle { margin: 0 0 var(--sp-3); color: var(--text-2); font-size: var(--fs-small); }
+table.report > caption {
+  caption-side: top; text-align: left; color: var(--text-2);
+  font-size: var(--fs-small); padding: 0 0 var(--sp-2);
+}
+
 .ibar {
   display: inline-block; width: ${ibar_width}; height: ${ibar_height};
   background: var(--surface-2); border: 1px solid var(--border-1);
@@ -411,6 +433,8 @@ a.dash-card h3 { margin: 0; color: var(--accent); font-size: var(--fs-h2);
                  border-left: 3px solid var(--accent); padding-left: var(--sp-3); }
 a.dash-card table.report { font-size: var(--fs-small); }
 a.dash-card table.report a { pointer-events: none; }
+a.dash-card .dash-sub { margin: 0; color: var(--text-2); font-size: var(--fs-small); }
+a.dash-card figure.chart { margin: 0; max-width: none; }
 """
 
 _CHROME_CSS = _string.Template(_CHROME_CSS_TMPL).substitute(_tokens.layout_subst())
@@ -910,7 +934,7 @@ _COMPONENTS_JS_ALL = """
 
   class RdcStickyH2 extends RdcBase {
     init(){
-      const h2 = this.querySelector('h2[id]');
+      const h2 = this.querySelector('h2');
       if (!h2) return;
       const io = new IntersectionObserver((entries) => {
         entries.forEach(e => {

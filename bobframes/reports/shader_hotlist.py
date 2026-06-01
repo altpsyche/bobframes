@@ -165,9 +165,10 @@ def build(root: str, *, drops: list | None = None, ab=None,
                 f'hot shaders (cost = complexity x uses).',
                 href='#shaders', link_text='shader table'))
 
-    parts.append(f'<h2 id="shaders">top {stage} shaders by cost</h2>')
+    # c16c: the single shader section is framed in a sticky-highlighted card.
+    sbody = []
     if not ranked:
-        parts.append(base.empty_state(f'no {stage} shaders found'))
+        sbody.append(base.empty_state(f'no {stage} shaders found'))
     else:
         single = len(drop_keys) == 1
 
@@ -177,12 +178,12 @@ def build(root: str, *, drops: list | None = None, ab=None,
              f'{p["shader_type"][:4]}-cplx-{int(p["complexity"])}')
             for sk, p, total_uses, cost in ranked
         ]
-        parts.append(base.figure(
+        sbody.append(base.figure(
             base.scatter(scatter_pts, x_label='complexity', y_label='cost', bubble=True,
                          title='complexity vs cost',
                          desc='each point is a shader; x complexity, y cost proxy, bubble src bytes'),
             'shader complexity vs cost (bubble = src bytes)'))
-        parts.append(base.figure(
+        sbody.append(base.figure(
             base.histogram(all_cplx, bins=12, title='complexity distribution',
                            desc=f'distribution of complexity across {len(all_cplx)} shaders'),
             'complexity distribution (all shaders)'))
@@ -190,21 +191,23 @@ def build(root: str, *, drops: list | None = None, ab=None,
         # Primary (diet) table: shader / complexity / uses / cost / flags / src (c16b column diet).
         sec = ['<div class="table-wrap">'
                '<rdc-sortable-table data-default-sort="cost proxy" data-default-dir="desc">',
-               '<table class="report"><thead><tr>', '<th>shader</th>',
-               '<th class="num" title="shader complexity score (weighted instruction proxy)">complexity</th>',
-               '<th class="num">uses total</th>']
+               '<table class="report">',
+               f'<caption>top {stage} shaders ranked by cost proxy</caption>',
+               '<thead><tr>', '<th scope="col">shader</th>',
+               '<th class="num" scope="col" title="shader complexity score (weighted instruction proxy)">complexity</th>',
+               '<th class="num" scope="col">uses total</th>']
         for i, k in enumerate(drop_keys):
             head = 'uses' if single else f'uses@{base.h(k)}'
-            sec.append(f'<th class="num">{head}</th>')
+            sec.append(f'<th class="num" scope="col">{head}</th>')
             if i > 0:
                 latest = ' delta-latest' if i == len(drop_keys) - 1 else ''
-                sec.append(f'<th class="num{latest}">delta</th>')
+                sec.append(f'<th class="num{latest}" scope="col">delta</th>')
         if len(drop_keys) >= 3:
-            sec.append('<th class="num">trend</th>')
+            sec.append('<th class="num" scope="col">trend</th>')
         sec.extend([
-            '<th class="num" title="cost proxy = complexity x total uses">cost proxy</th>',
-            '<th>flags</th>',
-            '<th>src</th>',
+            '<th class="num" scope="col" title="cost proxy = complexity x total uses">cost proxy</th>',
+            '<th scope="col">flags</th>',
+            '<th scope="col">src</th>',
             '</tr></thead><tbody>',
         ])
 
@@ -214,10 +217,12 @@ def build(root: str, *, drops: list | None = None, ab=None,
             shader_label = f'{p["shader_type"][:4]}-cplx-{int(p["complexity"])}'
             drop_dir = _drop_dir_first(drops, p['rep_drop_date'], p['rep_drop_label'])
             src_link = base.rel_path_to_drop_file(out_dir, drop_dir, p['rep_src_path'])
+            copy_id = (f'<rdc-copy-button data-value="{base.safe_chrome_text(sk)}" '
+                       f'data-label="copy shader id"></rdc-copy-button>')
             if src_link:
-                sec.append(f'<td>{rp}<a href="{base.h(src_link)}" data-link-kind="inline" target="_blank" rel="noopener">{base.h(shader_label)}{base.icon("link-out")}</a></td>')
+                sec.append(f'<td>{rp}<a href="{base.h(src_link)}" data-link-kind="inline" target="_blank" rel="noopener">{base.h(shader_label)}{base.icon("link-out")}</a>{copy_id}</td>')
             else:
-                sec.append(f'<td>{rp}{base.h(shader_label)}</td>')
+                sec.append(f'<td>{rp}{base.h(shader_label)}{copy_id}</td>')
             sec.append(f'<td class="num">{base.heatmap_cell(p["complexity"], 0, max_cplx, text=base.fmt_float(p["complexity"], 2))}</td>')
             sec.append(f'<td class="num">{base.fmt_int(total_uses)}</td>')
             prev = None
@@ -244,25 +249,28 @@ def build(root: str, *, drops: list | None = None, ab=None,
             sec.append(f'<td>{base.h(",".join(flags))}</td>')
 
             if src_link:
-                sec.append(f'<td><a href="{base.h(src_link)}" data-link-kind="inline" target="_blank" rel="noopener">{base.h(p["rep_src_path"])}{base.icon("file")}</a></td>')
+                sec.append(f'<td><a href="{base.h(src_link)}" data-link-kind="inline" target="_blank" rel="noopener">{base.h(p["rep_src_path"])}{base.icon("file")}</a>'
+                           f'<rdc-copy-button data-value="{base.safe_chrome_text(p["rep_src_path"])}" data-label="copy src path"></rdc-copy-button></td>')
             else:
                 sec.append('<td></td>')
 
             sec.append('</tr>')
         sec.append('</tbody></table></rdc-sortable-table></div>')
-        parts.append(''.join(sec))
+        sbody.append(''.join(sec))
 
         # Secondary metrics (collapsed): per-shader instruction-mix detail (c16b column diet).
         det = ['<details class="secondary-metrics"><summary>secondary metrics</summary>',
                '<div class="table-wrap"><rdc-sortable-table>',
-               '<table class="report"><thead><tr>',
-               '<th>shader</th>',
-               '<th class="num">branches</th>',
-               '<th class="num">loops</th>',
-               '<th class="num">discards</th>',
-               '<th class="num">dfdx/dfdy</th>',
-               '<th class="num">tex samples</th>',
-               '<th class="num">src bytes</th>',
+               '<table class="report">',
+               '<caption>per-shader instruction-mix detail</caption>',
+               '<thead><tr>',
+               '<th scope="col">shader</th>',
+               '<th class="num" scope="col">branches</th>',
+               '<th class="num" scope="col">loops</th>',
+               '<th class="num" scope="col">discards</th>',
+               '<th class="num" scope="col">dfdx/dfdy</th>',
+               '<th class="num" scope="col">tex samples</th>',
+               '<th class="num" scope="col">src bytes</th>',
                '</tr></thead><tbody>']
         for sk, p, total_uses, cost in ranked:
             shader_label = f'{p["shader_type"][:4]}-cplx-{int(p["complexity"])}'
@@ -276,7 +284,12 @@ def build(root: str, *, drops: list | None = None, ab=None,
             det.append(f'<td class="num">{base.fmt_int(p["src_len"])}</td>')
             det.append('</tr>')
         det.append('</tbody></table></rdc-sortable-table></div></details>')
-        parts.append(''.join(det))
+        sbody.append(''.join(det))
+
+    parts.append('<rdc-sticky-h2>'
+                 + base.section_card('shaders', f'top {stage} shaders by cost',
+                                     ''.join(sbody), count=len(ranked))
+                 + '</rdc-sticky-h2>')
 
     return base.write_report(out_path, [base.report_page(
         f'shader hotlist ({stage})', parts,

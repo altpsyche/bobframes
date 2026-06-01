@@ -51,11 +51,15 @@ def _gather_from_drops(drops: list) -> tuple[dict, list, list, int]:
 def _build_table(counts: dict, drop_keys: list) -> str:
     classes = base.DRAW_CLASSES
     rows = []
-    rows.append('<table class="report"><thead><tr>')
-    rows.append('<th>area</th><th>drop</th><th class="num">total</th>')
+    rows.append('<table class="report">')
+    rows.append('<caption>raw draw counts per class, per area and drop</caption>')
+    rows.append('<thead><tr>')
+    rows.append('<th scope="col">area</th><th scope="col">drop</th>'
+                '<th class="num" scope="col">total</th>')
     for c in classes:
-        rows.append(f'<th class="num">{base.h(c)}</th>')
-    rows.append('<th class="num" title="prepass draws divided by opaque draws (depth-prepass ratio)">'
+        rows.append(f'<th class="num" scope="col">{base.h(c)}</th>')
+    rows.append('<th class="num" scope="col" '
+                'title="prepass draws divided by opaque draws (depth-prepass ratio)">'
                 'prepass / opaque</th>')
     rows.append('</tr></thead><tbody>')
 
@@ -141,27 +145,35 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
         parts.append(base.empty_state('no draws found in any drop'))
     else:
         # Section 1: flagship charts - class-share donut + per area/drop pct-stacked bars (c16b).
-        parts.append('<h2 id="stacked">class share per area / drop</h2>')
-        parts.append(base.legend())
+        # c16c: framed in a sticky-highlighted section card.
+        sec_stacked = [base.legend()]
         donut_segs = [(c, class_totals.get(c, 0), base.class_color_var(c))
                       for c in base.DRAW_CLASSES if class_totals.get(c, 0) > 0]
-        parts.append(base.figure(
+        sec_stacked.append(base.figure(
             base.donut(donut_segs, center_label=base.fmt_int(grand_total),
                        title='draw class share',
                        desc='share of all draws by class across every area and drop'),
             'draw-class share (all areas / drops)'))
         keys = sorted(counts.keys(), key=lambda k: (k[1], k[0]))
         rows = [(f'{area} / {date}', dict(counts[(area, date)])) for area, date in keys]
-        parts.append(base.figure(
+        sec_stacked.append(base.figure(
             base.pct_stacked_bar(rows, title='class mix per area / drop',
                                  desc='each bar is one area/drop normalized to 100% by draw class'),
             'class mix per area / drop (100%)'))
+        parts.append('<rdc-sticky-h2>'
+                     + base.section_card('stacked', 'class share per area / drop',
+                                         ''.join(sec_stacked))
+                     + '</rdc-sticky-h2>')
 
         # Section 2: raw counts table
-        parts.append('<h2 id="counts">raw counts per class</h2>')
-        parts.append('<div class="table-wrap"><rdc-sortable-table data-default-sort="opaque" data-default-dir="desc">')
-        parts.append(_build_table(counts, drop_keys))
-        parts.append('</rdc-sortable-table></div>')
+        counts_body = ('<div class="table-wrap">'
+                       '<rdc-sortable-table data-default-sort="opaque" data-default-dir="desc">'
+                       + _build_table(counts, drop_keys)
+                       + '</rdc-sortable-table></div>')
+        parts.append('<rdc-sticky-h2>'
+                     + base.section_card('counts', 'raw counts per class', counts_body,
+                                         count=len(counts))
+                     + '</rdc-sticky-h2>')
 
     out_path = base.output_path(root, 'draws_by_class', ab)
     return base.write_report(out_path, [base.report_page(

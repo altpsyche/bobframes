@@ -121,6 +121,26 @@ ASCII-only guard since chart `<text>`/`<title>`/`<desc>` ride **outside** `<tabl
 restructure (section framing, copy buttons, dashboard small-multiples, fuller a11y) is
 [c16c](../commits/v02/c16c_report_restructure.md).
 
+## 21.1h Report restructure: framing + copy + a11y (c16c, ADR-6/32/33) — see [c16c](../commits/v02/c16c_report_restructure.md)
+c16c routes every report section through `chrome.section_card` wrapped in `<rdc-sticky-h2>` (the
+component's `querySelector` was relaxed `h2[id]` -> `h2` so a card's id-less header h2 still drives the
+in-view highlight; section ids stay the anchor targets, so `#area`/`#gpu`/`#class_counts` resolve
+unchanged). Copyable IDs carry `<rdc-copy-button data-value=...>` — the **full** value (mesh hash / shader
+stable_key + src path / pass path), routed through `safe_chrome_text` even though it rides inside `<td>`.
+The instancing "material batching" section is **fill-or-hide** (no bare heading over an empty-state).
+Accessibility: every report `<table>` gets a `<caption>` + `scope="col"` on every `<th>` (zero bare
+`<th>` left in reports + dashboard), and the trend gpu-delta KPI prints an explicit sign so regression
+direction is not tone-colour-only. The dashboard gains a per-card small-multiple (mini bars; a class-share
+donut on draws-by-class, matching its flagship), an insight subtitle, and a cross-report nav. The card
+framing CSS lives in `_CHROME_CSS_TMPL` (literal `var()`, no `$`), so drill/root/preview change **only** by
+that shared CSS (no structural churn). Output-changing -> the HTML golden + preview golden are **refreshed
+here** and reviewed page-by-page (per-report structural-marker diff: cards/sticky/copy/caption/scope in,
+bare h2/th out). `test_parquet_parity` stays green with **no** `digests.json` refresh (presentation only,
+§21.9). `test_report_structure` adds golden-independent guards (section_card + sticky wrap present; the 3
+named reports carry copy buttons with full-length payloads; tabled reports balance `<th >` with
+`scope="col"` and have a `<caption>`; instancing hides `id="batching"`; the dashboard has 6 mini charts +
+6 subtitles + the nav; a whole-page ASCII guard). `test_design_tokens` pins the new card/caption CSS.
+
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,
 dropped column, dtype slip). Skip `_`-prefixed (`_catalog`, `_global_entities`). Runs on synthetic +

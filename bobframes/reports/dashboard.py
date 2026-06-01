@@ -104,9 +104,10 @@ def _top_shaders(root: str, n: int = 3) -> list:
     return out
 
 
-def _per_area_draws(drops: list) -> dict:
-    """Return {area: {n_draws, dominant_class}}."""
+def _per_area_draws(drops: list) -> tuple[dict, Counter]:
+    """Return ({area: {n_draws, dominant_class}}, class_totals) where class_totals sums all areas."""
     per: dict = defaultdict(lambda: {'n_draws': 0, 'by_class': Counter()})
+    class_totals: Counter = Counter()
     for d in drops:
         for r in d.rows:
             p = os.path.join(r.drop_dir, 'pass_class_breakdown.parquet')
@@ -123,11 +124,12 @@ def _per_area_draws(drops: list) -> dict:
                 n = cols['n_draws'][i] or 0
                 per[a]['n_draws'] += n
                 per[a]['by_class'][cls] += n
+                class_totals[cls] += n
     res: dict = {}
     for a, v in per.items():
         dom = v['by_class'].most_common(1)[0][0] if v['by_class'] else '-'
         res[a] = {'n_draws': v['n_draws'], 'dominant_class': dom}
-    return res
+    return res, class_totals
 
 
 def _top_areas_gpu(drops: list, n: int = 3) -> list:
@@ -223,13 +225,16 @@ def _global_kpis(drops: list) -> list:
     ]
 
 
-def _card_table(rows: list, columns: list) -> str:
+def _card_table(rows: list, columns: list, *, caption: str = '') -> str:
     if not rows:
         return base.empty_state('no data yet')
-    parts = ['<table class="report"><thead><tr>']
+    parts = ['<table class="report">']
+    if caption:
+        parts.append(f'<caption>{base.h(caption)}</caption>')
+    parts.append('<thead><tr>')
     for col_name, _, num in columns:
         cls = ' class="num"' if num else ''
-        parts.append(f'<th{cls}>{base.h(col_name)}</th>')
+        parts.append(f'<th{cls} scope="col">{base.h(col_name)}</th>')
     parts.append('</tr></thead><tbody>')
     for row in rows:
         parts.append('<tr>')
@@ -242,6 +247,16 @@ def _card_table(rows: list, columns: list) -> str:
     return ''.join(parts)
 
 
+def _card(href: str, title: str, subtitle: str, chart: str, table: str) -> str:
+    """One dashboard small-multiple card: title + insight subtitle + mini chart + summary table.
+
+    The card itself is the drill link to the full report (c16c)."""
+    sub = (f'<p class="dash-sub">{base.safe_chrome_text(subtitle)}</p>'
+           if subtitle else '')
+    return (f'<a class="dash-card" href="{base.h(href)}">'
+            f'<h3>{base.h(title)}</h3>{sub}{chart}{table}</a>')
+
+
 def build(root: str, *, drops: list | None = None, ab=None) -> str:
     if drops is None:
         drops = base.discover_drops(root)
@@ -251,10 +266,19 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     out_path = os.path.join(out_dir, _paths.INDEX_HTML)
 
     parts = []
-
-    # Summary bar: worst area by GPU rank + global counts
     cards = []
 
+    # Cross-report nav: jump chips to every report (c16c).
+    _NAV = [
+        ('trend_table.html', 'trend table'),
+        ('instancing_opportunities.html', 'instancing'),
+        ('pass_gpu.html', 'pass gpu'),
+        ('shader_hotlist.html', 'shader hotlist'),
+        ('overdraw.html', 'overdraw'),
+        ('draws_by_class.html', 'draws by class'),
+    ]
+
+    # Summary bar: worst area by GPU rank + global counts
     top_a = _top_areas_gpu(drops, n=999)
     n_areas = len(top_a)
     total_draws = sum(t[2] for t in top_a)
@@ -269,107 +293,123 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
             link_text='trend',
             tone='neutral',
         ))
+
+    # Cross-report nav strip.
+    parts.append('<nav class="chip-cluster" aria-label="reports">'
+                 + ''.join(f'<a href="{href}" data-link-kind="primary">{base.h(lbl)}</a>'
+                           for href, lbl in _NAV)
+                 + '</nav>')
+
+    # Card: trend table - GPU time per area (mini bars matching the trend flagship).
     top_a = top_a[:3]
+    chart_tt = base.figure(base.bar_chart(
+        [(a, g) for a, g, _ in top_a], value_fmt=lambda v: f'{v:.3f}', width=280,
+        title='gpu (s) per area', desc='top areas by GPU seconds'))
     body_tt = _card_table(
         top_a,
         [
             ('area', lambda r: base.h(r[0]), False),
             ('gpu (s)', lambda r: base.fmt_float(r[1], 3), True),
             ('draws', lambda r: base.fmt_int(r[2]), True),
-        ]
-    )
-    cards.append(
-        '<a class="dash-card" href="trend_table.html">'
-        '<h3>trend table</h3>'
-        f'{body_tt}'
-        '</a>'
-    )
+        ],
+        caption='top areas by GPU time')
+    sub_tt = ('GPU time per area across drops.'
+              + (f' worst: {top_a[0][0]} {base.fmt_float(top_a[0][1], 3)}s' if top_a else ''))
+    cards.append(_card('trend_table.html', 'trend table', sub_tt, chart_tt, body_tt))
 
-    # Card: instancing
+    # Card: instancing - repeat per mesh (mini bars).
     top_m = _top_meshes(root, drops)
+    chart_im = base.figure(base.bar_chart(
+        [(lbl, rep) for lbl, rep, _ in top_m], value_fmt=lambda v: base.fmt_int(int(v)), width=280,
+        title='repeat per mesh', desc='most-repeated meshes'))
     body_im = _card_table(
         top_m,
         [
             ('mesh', lambda r: base.h(r[0]), False),
             ('repeat', lambda r: base.fmt_int(r[1]), True),
             ('indices typ', lambda r: base.fmt_int(r[2]), True),
-        ]
-    )
-    cards.append(
-        '<a class="dash-card" href="instancing_opportunities.html">'
-        '<h3>instancing opportunities</h3>'
-        f'{body_im}'
-        '</a>'
-    )
+        ],
+        caption='most-repeated meshes')
+    sub_im = ('Repeated meshes worth instancing or batching.'
+              + (f' top: {top_m[0][0]} x{base.fmt_int(top_m[0][1])}' if top_m else ''))
+    cards.append(_card('instancing_opportunities.html', 'instancing opportunities',
+                       sub_im, chart_im, body_im))
 
-    # Card: pass gpu
+    # Card: pass gpu - GPU per pass (mini bars).
     top_p = _top_passes(drops)
+    chart_pg = base.figure(base.bar_chart(
+        [(pl, g) for _, pl, g in top_p], value_fmt=lambda v: f'{v:.3f}', width=280,
+        title='gpu (s) per pass', desc='heaviest passes by GPU seconds'))
     body_pg = _card_table(
         top_p,
         [
             ('area', lambda r: base.h(r[0]), False),
             ('marker', lambda r: base.safe_chrome_text(base.trunc_left(r[1], 32)), False),
             ('gpu (s)', lambda r: base.fmt_float(r[2], 3), True),
-        ]
-    )
-    cards.append(
-        '<a class="dash-card" href="pass_gpu.html">'
-        '<h3>pass gpu</h3>'
-        f'{body_pg}'
-        '</a>'
-    )
+        ],
+        caption='heaviest passes by GPU time')
+    sub_pg = ('Heaviest GPU passes.'
+              + (f' top: {top_p[0][1]} {base.fmt_float(top_p[0][2], 3)}s in {top_p[0][0]}'
+                 if top_p else ''))
+    cards.append(_card('pass_gpu.html', 'pass gpu', sub_pg, chart_pg, body_pg))
 
-    # Card: shader hotlist
+    # Card: shader hotlist - cost proxy per shader (mini bars).
     top_s = _top_shaders(root)
+    chart_sh = base.figure(base.bar_chart(
+        [(lbl, cost) for lbl, _, cost in top_s], value_fmt=lambda v: f'{v:.1f}', width=280,
+        title='cost proxy per shader', desc='costliest shaders'))
     body_sh = _card_table(
         top_s,
         [
             ('shader', lambda r: base.h(r[0]), False),
             ('complexity', lambda r: base.fmt_float(r[1], 2), True),
             ('cost proxy', lambda r: base.fmt_float(r[2], 1), True),
-        ]
-    )
-    cards.append(
-        '<a class="dash-card" href="shader_hotlist.html">'
-        '<h3>shader hotlist</h3>'
-        f'{body_sh}'
-        '</a>'
-    )
+        ],
+        caption='costliest shaders by cost proxy')
+    sub_sh = ('Costliest shaders (complexity x uses).'
+              + (f' top: {top_s[0][0]} cost {base.fmt_float(top_s[0][2], 1)}' if top_s else ''))
+    cards.append(_card('shader_hotlist.html', 'shader hotlist', sub_sh, chart_sh, body_sh))
 
-    # Card: overdraw — by rejection ratio (1 - passed%)
+    # Card: overdraw - rejection % per RT (mini bars, 0-100 scale).
     wo = _worst_overdraw(drops)
+    chart_od = base.figure(base.bar_chart(
+        [(rt, pct) for _, rt, pct, _ in wo], value_fmt=lambda v: f'{v:.1f}%',
+        max_value=100.0, width=280,
+        title='rejection % per rt', desc='worst render targets by sample rejection'))
     body_od = _card_table(
         wo,
         [
             ('area', lambda r: base.h(r[0]), False),
             ('rt', lambda r: base.h(r[1]), False),
             ('rejected %', lambda r: base.fmt_pct(r[2]), True),
-        ]
-    )
-    cards.append(
-        '<a class="dash-card" href="overdraw.html">'
-        '<h3>overdraw</h3>'
-        f'{body_od}'
-        '</a>'
-    )
+        ],
+        caption='worst render targets by rejection')
+    sub_od = ('Sample rejection per render target.'
+              + (f' worst: {wo[0][1]} {base.fmt_pct(wo[0][2])} in {wo[0][0]}' if wo else ''))
+    cards.append(_card('overdraw.html', 'overdraw', sub_od, chart_od, body_od))
 
-    # Card: draws by class — top 5 areas by draw count, dominant class
-    pa = _per_area_draws(drops)
+    # Card: draws by class - class-share donut (matching the draws_by_class flagship).
+    pa, class_totals = _per_area_draws(drops)
     pa_rows = sorted(pa.items(), key=lambda kv: kv[1]['n_draws'], reverse=True)[:5]
+    grand = sum(class_totals.values())
+    donut_segs = [(cls, class_totals.get(cls, 0), base.class_color_var(cls))
+                  for cls in base.DRAW_CLASSES if class_totals.get(cls, 0) > 0]
+    chart_dc = base.figure(base.donut(
+        donut_segs, center_label=base.fmt_int(grand), width=180,
+        title='draw class share', desc='share of all draws by class'))
     body_dc = _card_table(
         pa_rows,
         [
             ('area', lambda r: base.h(r[0]), False),
             ('draws', lambda r: base.fmt_int(r[1]['n_draws']), True),
             ('dominant', lambda r: base.h(r[1]['dominant_class']), False),
-        ]
-    )
-    cards.append(
-        '<a class="dash-card" href="draws_by_class.html">'
-        '<h3>draws by class</h3>'
-        f'{body_dc}'
-        '</a>'
-    )
+        ],
+        caption='top areas by draw count')
+    dom = class_totals.most_common(1)[0] if class_totals else None
+    sub_dc = ('Draw mix by class.'
+              + (f' dominant: {dom[0]} {base.fmt_pct(100.0 * dom[1] / grand)}'
+                 if dom and grand else ''))
+    cards.append(_card('draws_by_class.html', 'draws by class', sub_dc, chart_dc, body_dc))
 
     parts.append(
         '<rdc-search-cards data-target=".dash-grid">'
@@ -386,8 +426,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
         ab_pairs = sorted(d for d in os.listdir(ab_root)
                           if os.path.isdir(os.path.join(ab_root, d)))
         if ab_pairs:
-            parts.append(f'<h2 id="ab">a/b comparisons</h2>')
-            parts.append('<div class="pair-list">')
+            ab_body = ['<div class="pair-list">']
             for pair in ab_pairs:
                 files = sorted(f for f in os.listdir(os.path.join(ab_root, pair))
                                if f.endswith('.html'))
@@ -395,13 +434,16 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
                     f'<a href="ab/{base.h(pair)}/{base.h(f)}" data-link-kind="primary">{base.h(f[:-5])}</a>'
                     for f in files
                 )
-                parts.append(
+                ab_body.append(
                     f'<div class="pair-group">'
                     f'<h3>{base.h(pair)}</h3>'
                     f'<div class="chip-cluster">{chips}</div>'
                     f'</div>'
                 )
-            parts.append('</div>')
+            ab_body.append('</div>')
+            parts.append('<rdc-sticky-h2>'
+                         + base.section_card('ab', 'a/b comparisons', ''.join(ab_body))
+                         + '</rdc-sticky-h2>')
 
     return base.write_report(out_path, [base.report_page(
         'reports dashboard', parts,

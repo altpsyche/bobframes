@@ -1,6 +1,6 @@
 """Trend table: per-area KPI matrices across drop_dates.
 
-One <h2> per KPI, rows = area, columns = drop_dates (+ delta cols + sparkline).
+One sticky section card per KPI, rows = area, columns = drop_dates (+ delta cols + sparkline).
 Plus per-area class-count matrix at the end.
 """
 
@@ -210,24 +210,27 @@ def _device_string(drop: base.DropSet) -> str:
 
 def _kpi_matrix(kpi: str, label: str, fmt: str, lower_is_better, threshold,
                 per_drop_area_data: list, areas: list, drops: list, lead: str = '') -> str:
-    """Render one KPI matrix as h2 + (flagship chart) + table-wrap (one per KPI, n_drops >= 2)."""
+    """Render one KPI matrix as a sticky section card: (flagship chart) + table-wrap.
+
+    One per KPI, n_drops >= 2 (c16c: framed via section_card; the chart `lead` rides in the body)."""
     is_int = kpi in _INT_KPIS
 
     parts = []
-    parts.append(f'<rdc-sticky-h2><h2 id="{base.h(kpi)}">{base.h(label)}</h2></rdc-sticky-h2>')
     if lead:
         parts.append(lead)
     parts.append('<div class="table-wrap"><rdc-sortable-table>')
-    parts.append('<table class="report"><thead><tr>')
-    parts.append('<th>area</th>')
+    parts.append('<table class="report">')
+    parts.append(f'<caption>{base.h(label)} per area across drops</caption>')
+    parts.append('<thead><tr>')
+    parts.append('<th scope="col">area</th>')
     n_drops = len(drops)
     for i, d in enumerate(drops):
-        parts.append(f'<th class="num">{base.h(d.key)}</th>')
+        parts.append(f'<th class="num" scope="col">{base.h(d.key)}</th>')
         if i > 0:
             latest_cls = ' delta-latest' if i == n_drops - 1 else ''
-            parts.append(f'<th class="num{latest_cls}">delta</th>')
+            parts.append(f'<th class="num{latest_cls}" scope="col">delta</th>')
     if n_drops >= 3:
-        parts.append('<th class="num">trend</th>')
+        parts.append('<th class="num" scope="col">trend</th>')
     parts.append('</tr></thead><tbody>')
 
     for area in areas:
@@ -257,18 +260,21 @@ def _kpi_matrix(kpi: str, label: str, fmt: str, lower_is_better, threshold,
             parts.append(f'<td class="num">{base.sparkline_svg(series)}</td>')
         parts.append('</tr>')
     parts.append('</tbody></table></rdc-sortable-table></div>')
-    return '\n'.join(parts)
+    return ('<rdc-sticky-h2>'
+            + base.section_card(kpi, label, '\n'.join(parts))
+            + '</rdc-sticky-h2>')
 
 
 def _single_drop_matrix(per_drop_ft: list, areas: list, drops: list) -> str:
     """Render single wide matrix (rows=area, cols=KPI) when n_drops==1."""
     parts = []
-    parts.append('<h2 id="matrix">per-area kpi matrix</h2>')
     parts.append('<div class="table-wrap"><rdc-sortable-table>')
-    parts.append('<table class="report"><thead><tr>')
-    parts.append('<th>area</th>')
+    parts.append('<table class="report">')
+    parts.append('<caption>per-area KPI matrix for the single drop</caption>')
+    parts.append('<thead><tr>')
+    parts.append('<th scope="col">area</th>')
     for kpi, label, *_ in KPIS:
-        parts.append(f'<th class="num">{base.h(label)}</th>')
+        parts.append(f'<th class="num" scope="col">{base.h(label)}</th>')
     parts.append('</tr></thead><tbody>')
     data = per_drop_ft[0]
     # Precompute per-column max for heatmap normalization
@@ -292,21 +298,24 @@ def _single_drop_matrix(per_drop_ft: list, areas: list, drops: list) -> str:
                 parts.append(f'<td class="num">{val_str}</td>')
         parts.append('</tr>')
     parts.append('</tbody></table></rdc-sortable-table></div>')
-    return '\n'.join(parts)
+    return ('<rdc-sticky-h2>'
+            + base.section_card('matrix', 'per-area kpi matrix', '\n'.join(parts))
+            + '</rdc-sticky-h2>')
 
 
 def _class_count_matrix(per_drop_area_class: list, areas: list,
                         drops: list) -> str:
     parts = []
-    parts.append('<rdc-sticky-h2><h2 id="class_counts">draws by class</h2></rdc-sticky-h2>')
     parts.append('<div class="table-wrap"><rdc-sortable-table>')
-    parts.append('<table class="report"><thead><tr>')
-    parts.append('<th>area</th>')
+    parts.append('<table class="report">')
+    parts.append('<caption>draw counts by class per area</caption>')
+    parts.append('<thead><tr>')
+    parts.append('<th scope="col">area</th>')
     single = len(drops) == 1
     for d in drops:
         for cls in base.DRAW_CLASSES:
             head = base.h(cls) if single else f'{base.h(d.key)}/{base.h(cls)}'
-            parts.append(f'<th class="num">{head}</th>')
+            parts.append(f'<th class="num" scope="col">{head}</th>')
     parts.append('</tr></thead><tbody>')
     for area in areas:
         parts.append('<tr>')
@@ -317,7 +326,9 @@ def _class_count_matrix(per_drop_area_class: list, areas: list,
                 parts.append(f'<td class="num">{base.fmt_int(cc.get(cls, 0))}</td>')
         parts.append('</tr>')
     parts.append('</tbody></table></rdc-sortable-table></div>')
-    return '\n'.join(parts)
+    return ('<rdc-sticky-h2>'
+            + base.section_card('class_counts', 'draws by class', '\n'.join(parts))
+            + '</rdc-sticky-h2>')
 
 
 def build(root: str, *, drops: list | None = None, ab=None) -> str:
@@ -374,7 +385,8 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
                 if (cur is not None and prv not in (None, 0) and float(prv) > 0
                         and 100.0 * (float(cur) - float(prv)) / float(prv) >= rcfg.gpu_regression_pct):
                     n_reg += 1
-        kpis.insert(1, {'label': 'gpu delta (s)', 'value': base.fmt_float(d_gpu, 3),
+        # Explicit sign so the regression direction is not conveyed by tone colour alone (c16c a11y).
+        kpis.insert(1, {'label': 'gpu delta (s)', 'value': f'{d_gpu:+,.3f}',
                         'tone': 'neg' if d_gpu > 0 else ('pos' if d_gpu < 0 else 'neutral')})
         kpis.append({'label': 'regressions', 'value': base.fmt_int(n_reg)})
 
