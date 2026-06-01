@@ -7,8 +7,36 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        c16_report_quality    (status: not-started; c10 DONE)
-last_session:   2026-06-01 — c10 DONE (env-var rename RDC_*→BOBFRAMES_*; completes R-5 + resolves Q-5;
+current:        c16b_report_viz    (status: not-started; c16 DONE)
+last_session:   2026-06-01 — c16 DONE (report-quality polish + mechanics; user pushed reports 5/10 → aim
+                10/10, so the work SPLIT into c16 + NEW c16b). MECHANICS: R-13 (reports/cache SHA256
+                sidecar + new load_cached → corrupt/missing/mismatch logs a warning + returns None so
+                readers fall back to a live scan, never silent-empty; missing-column tolerant; routed
+                shader/instancing/dashboard readers through it). Q-9 (_dashboard.py → dashboard.py +
+                4 refs: cli/orchestrator/ab/in-file). D-4 + D-7 (manifest.check_schema_version +
+                assert_compatible: render+catalog guarded via catalog.build_catalog, ab via ab.main →
+                PipelineError exit 1 + `ingest --force` hint; synthetic manifest is schema v3 so the
+                guard is PARITY-NEUTRAL). D-11b dead-code swept (chrome.footer_legend + base re-export,
+                html.template._row_count, dead footer.legend + .sidecar-list span CSS, replay `if False`
+                rt_double). PRESENTATION POLISH: NEW chrome builders kpi(existing)/callout/heatmap_cell/
+                provenance_strip/empty_state + report_page device=; config [report] thresholds (ReportCfg,
+                H-39). All 6 reports + dashboard now lead with a hero KPI strip + an insight callout
+                (severity from thresholds) + a header provenance/device strip (GPU/driver/CPU/OS +
+                renderdoccmd/qrenderdoc from the newest drop's manifest; bobframes version OMITTED so a
+                release bump never churns the golden) + heatmap-shaded ranked columns + readable labels
+                (ASCII `x` not `*`/`×` — `×` is in the lint banlist; draws/verts; cost-proxy/wasted
+                tooltips) + icon empty-states. Synthetic manifests gained fixed host_info/tool_versions
+                stubs (+ make_synthetic). PARITY (ADR-6/32): golden HTML REFRESHED (9 pages, ts-normalized
+                to <TS>, LF; reviewed — drill/root deltas are only the D-11b dead-CSS removal + the shared
+                .callout/.empty-state rules) + preview golden; test_parquet_parity GREEN with NO digests
+                refresh (extraction untouched, §21.9). 74 → 99 green (+test_delta/test_manifest_guard/
+                test_cache/test_report_polish, +test_config [report], +test_design_tokens c16 CSS). smoke
+                render-only 9 pages lint clean exit 0. ADR-32 (report contract) + ADR-33 (inline-SVG chart
+                model, for c16b) appended; QUALITY_GATES §21.1f/§21.1g. R-13/Q-9/D-4/D-7 + H-39 ticked;
+                D-11b DONE; G-15 (report info-design) + G-16 (sparkline-null unreachable in live path)
+                opened. c16b authored (commits/v02/c16b_report_viz.md): inline-SVG chart toolkit + flagship
+                chart per report + column-diet/section-cards/copy-buttons.
+former_last_c10: 2026-06-01 — c10 DONE (env-var rename RDC_*→BOBFRAMES_*; completes R-5 + resolves Q-5;
                 ADR-31). NEW config.getenv_legacy(canonical, legacy, default) = the SINGLE source for the
                 one-release legacy cadence, reusing c06's _warn_legacy_once + _warned_legacy one-shot
                 machinery. RDC_KEEP_STAGE→BOBFRAMES_KEEP_STAGE (run.py _do/process_drop cleanup gate) +
@@ -116,18 +144,24 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    Do c16 (report-quality polish). Open commits/v02/c16_report_quality.md. ALSO lands the
-                c09-deferred dead-code cleanup D-11b (footer_legend/_row_count/dead footer.legend +
-                .sidecar-list CSS / the replay `if False` branch) — unlike c10, this one DOES refresh the
-                golden. NOTE for whoever does c27/c35: the
-                c09 classifier engine is already STATE-CAPABLE (when{} over any draw column), so the
-                state-first generic preset (D-10, fewer `other`) is a preset, not a rewrite; c35 removes
-                the zeroed passes.draws_by_class_* + slims passes (D-11a). V0.2 CLOSE-OUT (user-requested
-                2026-06-01): before tagging v0.2, run a real FULL ingest of ALL areas (not just Chor
-                bazar — Commercial/Financial/Police station/Resort/Train station/Under construction mall
-                from the Downloads RDC drop), keep the rendered HTML, eyeball the reports. GIT: still on
-                branch v0.2-roadmap-c04 (off main; c07 + c08 + c09 + c10 UNPUSHED). Post-release nit (non-blocking):
-                bump CI actions off Node20 (checkout@v5/setup-python@v6 before 2026-06-16).
+next_action:    Do c16b (report PRESENTATION overhaul). Open commits/v02/c16b_report_viz.md and do
+                exactly that one commit. It builds NEW reports/charts.py = a deterministic dependency-free
+                inline-SVG toolkit (bar/stacked/donut/scatter/treemap/icicle/histogram/line; ADR-33,
+                extends delta.sparkline_svg), gives every report a flagship chart ABOVE its table (table
+                kept as the exact/accessible fallback), then the restructure (shader 13-col diet +
+                collapsible details, section_card + sticky sections, rdc-copy-button on ids, dashboard
+                card insight subtitles + cross-report nav, fuller a11y). Uses c16's chrome builders +
+                config [report] thresholds. Output-changing → refresh the golden (review page-by-page,
+                ADR-23); test_parquet_parity stays green (extraction untouched). Add tests/test_charts.py
+                (golden-independent: determinism, structure, theming, empty-series). NOTE for c27/c35:
+                the c09 classifier is already STATE-CAPABLE (when{} over any draw column), so the
+                state-first generic preset (D-10) is a preset not a rewrite; c35 removes the zeroed
+                passes.draws_by_class_* + slims passes (D-11a). V0.2 CLOSE-OUT (user-requested 2026-06-01):
+                before tagging v0.2, run a real FULL ingest of ALL areas (not just Chor bazar —
+                Commercial/Financial/Police station/Resort/Train station/Under construction mall from the
+                Downloads RDC drop), keep the rendered HTML, eyeball the reports. GIT: still on branch
+                v0.2-roadmap-c04 (off main; c07 + c08 + c09 + c10 + c16 UNPUSHED). Post-release nit
+                (non-blocking): bump CI actions off Node20 (checkout@v5/setup-python@v6 before 2026-06-16).
 DONE-2026-05-31: c19 — bobframes 0.1.0 PUBLISHED. tag v0.1.0 -> CI publish job green (OIDC trusted
                 publishing, ubuntu). Live on PyPI (wheel + sdist) + GitHub Release with both assets.
                 Post-install verify from a clean PyPI install: version (0.1.0 schema 3 pyarrow 21.0.0),
@@ -174,7 +208,8 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c08 design tokens TOML + preview](commits/v02/c08_design_tokens.md) | **done** — design_tokens.toml + value-only Template skeleton (H-15/H-20, ADR-27/28); report_page (Q-6); preview/export-tokens/render --watch verbs; 59 green, byte-parity (no golden refresh) |
 | ☑ | [c09 engine-agnostic classifier](commits/v02/c09_classifier.md) | **done** — single state-capable classifier API (H-1..H-5); dead replay copy deleted (D-6); 70 green, byte-parity (no refresh) |
 | ☑ | [c10 env-var rename `RDC_*`→`BOBFRAMES_*`](commits/v02/c10_env_rename.md) | **done** — `getenv_legacy` one-release fallback; `RDC_ROOT` eliminated (R-5/Q-5, ADR-31); 74 green, byte-parity (no refresh) |
-| ☐ | [c16 report-quality polish](commits/v02/c16_report_quality.md) | **next** |
+| ☑ | [c16 report-quality polish](commits/v02/c16_report_quality.md) | **done** — mechanics (R-13/Q-9/D-4/D-7/D-11b) + polish slice (KPI strips, callouts, heatmaps, provenance strip, labels); 99 green, golden refreshed (ADR-32) |
+| ☐ | [c16b report presentation overhaul](commits/v02/c16b_report_viz.md) | **next** — inline-SVG charts + restructure (ADR-33) |
 
 ## v0.3 — CI/automation surface (planned — [ROADMAP](ROADMAP.md))
 
@@ -220,6 +255,23 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-01 — c16 DONE (report-quality polish + mechanics; user pushed 5/10 → 10/10, SPLIT into c16 +
+  NEW c16b). R-13 (cache SHA256 sidecar + load_cached: corrupt/missing/mismatch → warn + live-scan
+  fallback, missing-col tolerant). Q-9 (_dashboard.py → dashboard.py + 4 refs). D-4 + D-7
+  (manifest.check_schema_version/assert_compatible; render+catalog via catalog.build_catalog, ab via
+  ab.main; PipelineError exit 1 + `ingest --force`; synthetic v3 → parity-neutral). D-11b dead-code
+  swept (footer_legend + base export, _row_count, footer.legend + .sidecar-list span CSS, replay
+  `if False`). POLISH: NEW chrome callout/heatmap_cell/provenance_strip/empty_state + report_page
+  device=; config [report] thresholds (ReportCfg, H-39). All 6 reports + dashboard lead with a KPI strip
+  + insight callout (threshold severity) + header provenance/device strip (GPU/driver/CPU/OS + tool
+  versions from newest manifest; bobframes ver omitted → no golden churn) + heatmap-shaded columns +
+  readable labels (ASCII `x` not `*`/`×`; `×` is lint-banned) + icon empty-states. Synthetic manifests
+  gained fixed host_info/tool_versions stubs (+ make_synthetic). PARITY (ADR-6/32): golden refreshed
+  (9 pages, <TS>-normalized, LF; reviewed — drill/root deltas = D-11b dead-CSS + shared .callout/
+  .empty-state only) + preview golden; test_parquet_parity GREEN, NO digests refresh. 74→99 green
+  (+delta/manifest_guard/cache/report_polish, +config[report], +design_tokens c16 CSS). smoke 9 pages
+  lint clean exit 0. ADR-32 (report contract) + ADR-33 (inline-SVG chart model for c16b); QUALITY_GATES
+  §21.1f/g. R-13/Q-9/D-4/D-7 + H-39 ticked; D-11b done; G-15 + G-16 opened. c16b authored. current → c16b.
 - 2026-06-01 — c10 DONE (env-var rename RDC_*→BOBFRAMES_*; completes R-5, resolves Q-5; ADR-31). NEW
   config.getenv_legacy(canonical, legacy, default) = single source for the one-release legacy cadence,
   reusing c06's _warn_legacy_once + _warned_legacy one-shot machinery. RDC_KEEP_STAGE→BOBFRAMES_KEEP_STAGE

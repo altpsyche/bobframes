@@ -14,7 +14,7 @@ import platform
 import subprocess
 from typing import Any
 
-from . import paths, qrd_harness, rdcmd, schemas
+from . import errors, paths, qrd_harness, rdcmd, schemas
 from ._version import __version__
 
 
@@ -125,3 +125,24 @@ def read_manifest(out_dir: str) -> dict[str, Any]:
     path = os.path.join(out_dir, paths.MANIFEST_NAME)
     with open(path, 'r', encoding='utf-8') as f:
         return json.load(f)
+
+
+def check_schema_version(manifest: dict[str, Any], *, source: str = '') -> None:
+    """Refuse to operate on a manifest whose schema_version is not this build's (D-7).
+
+    The frozen DECISIONS versioning contract: `render`/`catalog`/`ab` must not touch Parquet written
+    under a different SCHEMA_VERSION (the columns may have moved). Raises PipelineError (exit 1) with
+    the `ingest --force` remedy. Parity-neutral until exercised: a current-version manifest passes.
+    """
+    sv = manifest.get('schema_version')
+    if sv != schemas.SCHEMA_VERSION:
+        where = f' ({source})' if source else ''
+        raise errors.PipelineError(
+            f"manifest schema_version {sv} does not match this build's SCHEMA_VERSION "
+            f"{schemas.SCHEMA_VERSION}{where}.\n"
+            f"Re-ingest with: bobframes ingest --force")
+
+
+def assert_compatible(out_dir: str) -> None:
+    """Read <out_dir>/_manifest.json and assert its schema_version matches (D-7). Reuses read_manifest."""
+    check_schema_version(read_manifest(out_dir), source=out_dir)

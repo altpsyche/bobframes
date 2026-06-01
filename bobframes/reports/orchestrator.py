@@ -8,7 +8,7 @@ from .. import lint
 from ..html import template
 from . import (
     all_reports,
-    _dashboard as report_dashboard,
+    dashboard as report_dashboard,
     base as reports_base,
 )
 

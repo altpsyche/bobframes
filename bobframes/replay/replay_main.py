@@ -1508,7 +1508,6 @@ def _fetch_counters_per_event(ctrl, ctx) -> tuple[list[dict], dict[int, float]]:
     duration_by_event: dict[int, float] = {}
 
     counters = ctrl.EnumerateCounters()
-    rt_double = (rd.CompType.Float, ) if False else ()
     # Use CounterResult.resultType-aware extraction. result_type attr may be int.
     try:
         FLOAT_T = int(rd.CompType.Float)

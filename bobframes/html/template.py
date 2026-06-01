@@ -200,7 +200,6 @@ table.data tbody td a:hover { color: var(--accent); border-bottom-style: solid; 
 .spacer td { padding: 0; border: 0; background: var(--surface-0); }
 
 .sidecar-list a { font-family: ui-monospace, monospace; font-size: var(--fs-small); }
-.sidecar-list span { color: var(--text-2); margin-left: .4rem; font-size: var(--fs-small); }
 ul.sidecar-list { list-style: none; padding: 0; margin: var(--sp-2) 0;
                   columns: 5; column-gap: var(--sp-6); column-rule: 1px solid var(--border-1); }
 ul.sidecar-list li { padding: 1px 0; break-inside: avoid; }
@@ -592,13 +591,6 @@ _JS = r"""
 
 def _h(s) -> str:
     return _html.escape(str(s if s is not None else ''))
-
-
-def _row_count(pq_path: str) -> int:
-    try:
-        return papq.read_metadata(pq_path).num_rows
-    except Exception:
-        return 0
 
 
 def _table_payload(table_name: str, out_dir: str) -> dict | None:

@@ -33,6 +33,20 @@ from .. import schemas
 SYNTH_AREA = "District 01"
 FIXED_TS = "2026-01-01T00:00:00+00:00"
 
+# Deterministic provenance stubs (G-6/G-7) so the report device/provenance strip renders byte-stable
+# in the golden. The strip deliberately ignores host_info['bobframes'] so a release bump never churns.
+SYNTH_TOOL_VERSIONS = {
+    "renderdoccmd": "renderdoccmd v1.x (synthetic)",
+    "qrenderdoc": "qrenderdoc v1.x (synthetic)",
+}
+SYNTH_HOST_INFO = {
+    "gpu": "Synthetic GPU",
+    "gpu_driver": "0.0.0.0",
+    "cpu": "Synthetic CPU",
+    "os": "Synthetic OS",
+    "bobframes": "0.0.0",
+}
+
 # Two synthetic drops (different build labels/dates) so trend/sparkline reports have >1 point.
 DROPS = [
     {"date": "2026-05-27", "label": "r110565"},
@@ -135,6 +149,8 @@ def _build_drop(src_area_dir: str, src_drop: str, out_drop_dir: str,
         "captures": caps,
         "capture_status": {c: "ok" for c in caps},
         "row_counts": row_counts,
+        "tool_versions": dict(SYNTH_TOOL_VERSIONS),
+        "host_info": dict(SYNTH_HOST_INFO),
         "rotated_from": None,
     }
     with open(os.path.join(out_drop_dir, _paths.MANIFEST_NAME), "w", encoding="utf-8") as f:

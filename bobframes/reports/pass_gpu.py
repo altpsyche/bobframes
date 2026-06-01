@@ -73,6 +73,19 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
 
     parts = []
 
+    # Hero KPIs: total GPU, area + pass counts.
+    total_gpu = 0.0
+    n_passes = 0
+    for _markers in data.values():
+        for _buckets in _markers.values():
+            total_gpu += max((b['gpu'] for b in _buckets.values()), default=0.0)
+            n_passes += 1
+    kpis = [
+        {'label': 'total gpu (s)', 'value': base.fmt_float(total_gpu, 3)},
+        {'label': 'areas',         'value': base.fmt_int(len(data))},
+        {'label': 'passes',        'value': base.fmt_int(n_passes)},
+    ]
+
     # Summary bar: top pass globally + area count
     if data:
         global_top = None
@@ -93,11 +106,18 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
                 link_text='area',
                 tone='neutral',
             ))
+            # Insight: the single heaviest pass is where GPU-time investigation starts.
+            parts.append(base.callout(
+                'info',
+                f'heaviest pass: {area} / {marker_short}',
+                f'{base.fmt_float(global_top_gpu, 3)}s GPU on the costliest capture - '
+                f'profile this pass first.',
+                href=f'#{base.h(area)}', link_text='jump to area'))
 
     parts.append(base.legend())
 
     if not data:
-        parts.append('<p class="note">no pass_class_breakdown data found</p>')
+        parts.append(base.empty_state('no pass_class_breakdown data found'))
     else:
         for area in sorted(data.keys()):
             markers = data[area]
@@ -165,7 +185,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
                         prev_gpu = g
                     cells.append('</div>')
                     cells.append(f'<span class="total" style="color:var(--text-3)">'
-                                 f'd={base.fmt_int(latest_draws)} v={base.fmt_int(latest_verts)}</span>')
+                                 f'draws {base.fmt_int(latest_draws)} | verts {base.fmt_int(latest_verts)}</span>')
                     cells.append('</div>')
                     area_body.append(''.join(cells))
 
@@ -176,7 +196,9 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
         'pass gpu', parts,
         drops=len(drops), captures=sum(d.n_captures for d in drops),
         build_ts=base.now_iso(), crumb_depth=base.crumb_depth(ab),
-        ab=ab, root=root, report_key='pass_gpu')])
+        ab=ab, root=root, report_key='pass_gpu',
+        kpis=kpis,
+        device=base.provenance_strip(*base.newest_drop_provenance(root, drops)))])
 
 
 if __name__ == '__main__':

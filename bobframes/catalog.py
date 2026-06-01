@@ -21,7 +21,7 @@ import pyarrow as pa
 import pyarrow.csv as pacsv
 import pyarrow.parquet as papq
 
-from . import paths as _paths, schemas
+from . import manifest as _manifest, paths as _paths, schemas
 
 
 # Derived from the single registry (H-10). schemas.TABLES key order IS the catalog order, so the
@@ -103,6 +103,9 @@ def build_catalog(root: str) -> dict:
     manifests = _find_manifests(root)
     all_rows: list[dict] = []
     for data_dir, rel_path, m in manifests:
+        # D-7: refuse to (re)build over a drop written under a different SCHEMA_VERSION. This is the
+        # shared chokepoint for `render` (which rebuilds the catalog first) and `catalog`.
+        _manifest.check_schema_version(m, source=rel_path)
         all_rows.extend(_capture_rows(data_dir, rel_path, m))
 
     cols = [

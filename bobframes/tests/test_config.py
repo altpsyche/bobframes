@@ -84,6 +84,17 @@ def test_defaults_equal_literals():
         assert _bits(got) == _bits(want)
 
 
+def test_report_thresholds_defaults():
+    """c16: the bundled [report] thresholds load bit-for-bit equal to the ReportCfg defaults."""
+    r = config.get_config().report
+    for got, want in [(r.shader_complexity_high, 60.0),
+                      (r.overdraw_reject_warn_pct, 40.0),
+                      (r.overdraw_reject_alarm_pct, 70.0),
+                      (r.gpu_regression_pct, 10.0)]:
+        assert _bits(got) == _bits(want)
+    assert r.instancing_repeat_min == 4
+
+
 def test_banlist_roundtrip_matches_code():
     """The lint_banlist.toml compiles to the exact original BANNED list, in order (H-14)."""
     bl = config.banlist()

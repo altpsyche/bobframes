@@ -51,3 +51,10 @@ extra_banned = []
 [classifier]                # c09 — draw-classification preset (H-1..H-5)
 preset = "ue"               # draw_classifier.toml (UE default); "unity"/"godot"/... -> presets/<name>.toml
 # custom_path = "C:/path/to/my_engine.toml"   # absolute path to a custom preset (wins over `preset`)
+
+[report]                    # c16 — thresholds that drive report callout severity. Tune per project.
+shader_complexity_high    = 60.0   # fragment shaders at/above this complexity are flagged
+overdraw_reject_warn_pct  = 40.0   # RT sample-rejection % -> warn callout
+overdraw_reject_alarm_pct = 70.0   # RT sample-rejection % -> alarm callout
+instancing_repeat_min     = 4      # min mesh repeat to count as an instancing candidate
+gpu_regression_pct        = 10.0   # latest-vs-previous GPU increase % -> regression callout

@@ -125,6 +125,15 @@ class ClassifierCfg:                  # c09 — selects the draw-classifier pres
 
 
 @dataclass(frozen=True)
+class ReportCfg:                      # c16 — report-presentation thresholds (callout severity)
+    shader_complexity_high: float = 60.0
+    overdraw_reject_warn_pct: float = 40.0
+    overdraw_reject_alarm_pct: float = 70.0
+    instancing_repeat_min: int = 4
+    gpu_regression_pct: float = 10.0
+
+
+@dataclass(frozen=True)
 class Config:
     schema_version: int = 1
     tools: ToolsCfg = ToolsCfg()
@@ -135,6 +144,7 @@ class Config:
     scoring: ScoringCfg = ScoringCfg()
     lint: LintCfg = LintCfg()
     classifier: ClassifierCfg = ClassifierCfg()
+    report: ReportCfg = ReportCfg()
 
 
 class ConfigError(BobFramesError):
@@ -211,6 +221,7 @@ def _build_config(root: str | None) -> Config:
     cx = merged.get('scoring', {}).get('complexity', {})
     lint = merged.get('lint', {})
     cls = merged.get('classifier', {})
+    rpt = merged.get('report', {})
 
     return Config(
         schema_version=merged.get('schema_version', 1),
@@ -243,6 +254,13 @@ def _build_config(root: str | None) -> Config:
         classifier=ClassifierCfg(
             preset=cls.get('preset', 'ue'),
             custom_path=cls.get('custom_path'),
+        ),
+        report=ReportCfg(
+            shader_complexity_high=rpt.get('shader_complexity_high', 60.0),
+            overdraw_reject_warn_pct=rpt.get('overdraw_reject_warn_pct', 40.0),
+            overdraw_reject_alarm_pct=rpt.get('overdraw_reject_alarm_pct', 70.0),
+            instancing_repeat_min=rpt.get('instancing_repeat_min', 4),
+            gpu_regression_pct=rpt.get('gpu_regression_pct', 10.0),
         ),
     )
 

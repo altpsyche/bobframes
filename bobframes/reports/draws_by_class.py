@@ -55,17 +55,20 @@ def _build_table(counts: dict, drop_keys: list) -> str:
     rows.append('<th>area</th><th>drop</th><th class="num">total</th>')
     for c in classes:
         rows.append(f'<th class="num">{base.h(c)}</th>')
-    rows.append('<th class="num">prepass / opaque</th>')
+    rows.append('<th class="num" title="prepass draws divided by opaque draws (depth-prepass ratio)">'
+                'prepass / opaque</th>')
     rows.append('</tr></thead><tbody>')
 
     keys = sorted(counts.keys(), key=lambda k: (k[1], k[0]))
+    totals = [sum(counts[k].values()) for k in keys]
+    hi_total = max(totals, default=0)
     for area, date in keys:
         cc = counts[(area, date)]
         total = sum(cc.values())
         rows.append('<tr>')
         rows.append(f'<td>{base.h(area)}</td>')
         rows.append(f'<td>{base.h(date)}</td>')
-        rows.append(f'<td class="num">{base.fmt_int(total)}</td>')
+        rows.append(f'<td class="num">{base.heatmap_cell(total, 0, hi_total, text=base.fmt_int(total))}</td>')
         for c in classes:
             n = cc.get(c, 0)
             rows.append(f'<td class="num">{base.fmt_int(n)}</td>')
@@ -125,34 +128,47 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
             sub=sub_text,
             tone='neutral',
         ))
+        # Insight: a single class dominating the draw mix is the batching/instancing lever.
+        sev = 'info' if dom_pct >= 50.0 else 'neutral'
+        parts.append(base.callout(
+            sev,
+            f'{dom_cls} is {base.fmt_float(dom_pct, 1)}% of all draws',
+            f'{base.fmt_int(grand_total)} draws across {len(areas)} area(s) - the dominant class is '
+            f'where instancing / batching pays off most.',
+            href='#counts', link_text='see counts'))
 
-    # Section 1: stacked share bars
-    parts.append('<h2 id="stacked">stacked share per area / drop</h2>')
-    sec1_body = ['<div class="table-wrap">', base.legend()]
-    keys = sorted(counts.keys(), key=lambda k: (k[1], k[0]))
-    for area, date in keys:
-        cc = counts[(area, date)]
-        total = sum(cc.values())
-        label = f'{area} / {date}'
-        sec1_body.append('<div class="bar-row">')
-        sec1_body.append(f'<span class="key" title="{base.h(label)}">{base.h(label)}</span>')
-        sec1_body.append(base.class_segments_bar(dict(cc), total))
-        sec1_body.append(f'<span class="total">{base.fmt_int(total)}</span>')
+    if not counts:
+        parts.append(base.empty_state('no draws found in any drop'))
+    else:
+        # Section 1: stacked share bars
+        parts.append('<h2 id="stacked">stacked share per area / drop</h2>')
+        sec1_body = ['<div class="table-wrap">', base.legend()]
+        keys = sorted(counts.keys(), key=lambda k: (k[1], k[0]))
+        for area, date in keys:
+            cc = counts[(area, date)]
+            total = sum(cc.values())
+            label = f'{area} / {date}'
+            sec1_body.append('<div class="bar-row">')
+            sec1_body.append(f'<span class="key" title="{base.h(label)}">{base.h(label)}</span>')
+            sec1_body.append(base.class_segments_bar(dict(cc), total))
+            sec1_body.append(f'<span class="total">{base.fmt_int(total)}</span>')
+            sec1_body.append('</div>')
         sec1_body.append('</div>')
-    sec1_body.append('</div>')
-    parts.append(''.join(sec1_body))
+        parts.append(''.join(sec1_body))
 
-    # Section 2: raw counts table
-    parts.append('<h2 id="counts">raw counts per class</h2>')
-    parts.append('<div class="table-wrap"><rdc-sortable-table data-default-sort="opaque" data-default-dir="desc">')
-    parts.append(_build_table(counts, drop_keys))
-    parts.append('</rdc-sortable-table></div>')
+        # Section 2: raw counts table
+        parts.append('<h2 id="counts">raw counts per class</h2>')
+        parts.append('<div class="table-wrap"><rdc-sortable-table data-default-sort="opaque" data-default-dir="desc">')
+        parts.append(_build_table(counts, drop_keys))
+        parts.append('</rdc-sortable-table></div>')
 
     out_path = base.output_path(root, 'draws_by_class', ab)
     return base.write_report(out_path, [base.report_page(
         'draws by class', parts,
         drops=len(drops), captures=total_captures, build_ts=base.now_iso(),
-        crumb_depth=base.crumb_depth(ab), ab=ab, root=root, report_key='draws_by_class')])
+        crumb_depth=base.crumb_depth(ab), ab=ab, root=root, report_key='draws_by_class',
+        kpis=_compute_kpis(counts, areas),
+        device=base.provenance_strip(*base.newest_drop_provenance(root, drops)))])
 
 
 if __name__ == '__main__':

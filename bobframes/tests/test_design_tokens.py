@@ -63,6 +63,15 @@ def test_layout_literals_preserved():
     assert 'grid-template-columns: minmax(140px, max-content) 1fr auto;' in s
 
 
+def test_c16_polish_css_present():
+    """c16 adds the insight-callout + empty-state primitives + a token-only ruleset (no $ left)."""
+    c = chrome._CHROME_CSS
+    assert '.callout {' in c and '.callout.sev-alarm {' in c
+    assert '.empty-state {' in c
+    assert 'footer.legend' not in c          # D-11b dead rule removed
+    assert '$' not in c
+
+
 def test_sparkline_defaults_from_tokens():
     assert delta.sparkline_svg.__defaults__ == (60, 14)
     assert _tokens.layout()['sparkline_w'] == 60

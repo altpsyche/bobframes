@@ -334,17 +334,34 @@ details.matrix > .matrix-body, details.category > .cat-body {
             color: var(--text-3); font-variant-numeric: tabular-nums; }
 .spark { display: inline-block; vertical-align: middle; color: var(--text-2); }
 
-footer.legend {
-  font: var(--fs-small) ui-monospace, monospace;
-  color: var(--text-2);
-  margin-top: var(--sp-12);
-  padding-top: var(--sp-3);
-  border-top: 1px solid var(--border-1);
-  display: block;
-}
-
 .note { font-size: var(--fs-small); color: var(--text-2);
         margin-top: var(--sp-2); }
+
+.callout {
+  display: flex; align-items: flex-start; gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4); margin: 0 0 var(--sp-4);
+  background: var(--surface-1); border: 1px solid var(--border-1);
+  border-left: 3px solid var(--text-3); font-size: var(--fs-small);
+}
+.callout .icon { flex: 0 0 auto; margin-top: 2px; color: var(--text-3); }
+.callout .co-body { display: flex; flex-direction: column; gap: 2px; }
+.callout .co-title { font-weight: 600; color: var(--text-1); }
+.callout .co-detail { color: var(--text-2); }
+.callout a { color: var(--accent-primary); }
+.callout.sev-ok { border-left-color: var(--status-ok); }
+.callout.sev-ok .icon { color: var(--status-ok); }
+.callout.sev-warn { border-left-color: var(--status-warn); }
+.callout.sev-warn .icon { color: var(--status-warn); }
+.callout.sev-alarm { border-left-color: var(--status-alarm); }
+.callout.sev-alarm .icon { color: var(--status-alarm); }
+
+.empty-state {
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-4); margin: 0 0 var(--sp-4);
+  color: var(--text-2); font-size: var(--fs-small);
+  background: var(--surface-1); border: 1px dashed var(--border-1);
+}
+.empty-state .icon { flex: 0 0 auto; color: var(--text-3); }
 
 .dash-grid {
   display: grid;
@@ -770,7 +787,6 @@ table.data tbody td a:hover { color: var(--accent); border-bottom-style: solid; 
 .spacer td { padding: 0; border: 0; background: var(--surface-0); }
 
 .sidecar-list a { font-family: ui-monospace, monospace; font-size: var(--fs-small); }
-.sidecar-list span { color: var(--text-2); margin-left: .4rem; font-size: var(--fs-small); }
 ul.sidecar-list { list-style: none; padding: 0; margin: var(--sp-2) 0;
                   columns: 5; column-gap: var(--sp-6); column-rule: 1px solid var(--border-1); }
 ul.sidecar-list li { padding: 1px 0; break-inside: avoid; }

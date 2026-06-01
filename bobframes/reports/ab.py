@@ -19,6 +19,7 @@ import sys
 
 from . import base
 from . import all_reports
+from .. import manifest
 
 
 def main(argv: list[str]) -> int:
@@ -46,6 +47,12 @@ def main(argv: list[str]) -> int:
               f'date={args.compare_date}', file=sys.stderr)
         return 2
 
+    # D-7: ab resolves drops via discovery (not the catalog chokepoint), so guard each drop's manifest
+    # before reading its Parquet. Raises PipelineError (exit 1) on a stale-schema drop.
+    for r in (*baseline.rows, *compare.rows):
+        if r.drop_dir:
+            manifest.assert_compatible(r.drop_dir)
+
     print(f'a/b: {baseline.key} ({baseline.n_captures} captures) '
           f'vs {compare.key} ({compare.n_captures} captures)')
 
@@ -59,7 +66,7 @@ def main(argv: list[str]) -> int:
             print(f'  {mod.__name__} FAILED: {e}', file=sys.stderr)
             return 1
     # Rebuild dashboard so its a/b table picks up new pair
-    from . import _dashboard as report_dashboard
+    from . import dashboard as report_dashboard
     try:
         out = report_dashboard.build(root)
         print(f'  refreshed dashboard {out}')
