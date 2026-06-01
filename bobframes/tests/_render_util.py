@@ -29,6 +29,9 @@ def normalize(html: str) -> str:
     return _TS_RE.sub(r"\1<TS>\2", html)
 SYNTHETIC_DATA = os.path.join(HERE, "data", "synthetic", _paths.DATA_DIR)
 GOLDEN_DIR = os.path.join(HERE, "data", "golden")
+# Preview gallery golden lives OUTSIDE golden/ so test_parity's file-set walk is unaffected (the
+# preview page is not produced by render-only). Refresh via tests/make_preview_golden.py (c08).
+GOLDEN_PREVIEW = os.path.join(HERE, "data", "golden_preview", "_chrome_preview.html")
 
 
 def setup_root(dest: str, data_src: str = SYNTHETIC_DATA) -> str:
@@ -75,6 +78,22 @@ def render(dest: str) -> str:
 def render_fresh(dest: str, data_src: str = SYNTHETIC_DATA) -> str:
     setup_root(dest, data_src)
     return render(dest)
+
+
+def render_preview(dest: str) -> str:
+    """Run `bobframes preview <dest>` (c08; no data dependency); return the preview html path.
+
+    Scrubs BOBFRAMES_CONFIG like render() so the gallery is hermetic against a dev's user config.
+    """
+    os.makedirs(dest, exist_ok=True)
+    env = {k: v for k, v in os.environ.items() if k != "BOBFRAMES_CONFIG"}
+    r = subprocess.run(
+        [sys.executable, "-m", "bobframes.cli", "preview", dest],
+        capture_output=True, text=True, env=env,
+    )
+    if r.returncode != 0:
+        raise RuntimeError(f"preview failed ({r.returncode}):\nSTDOUT:\n{r.stdout}\nSTDERR:\n{r.stderr}")
+    return os.path.join(_paths.reports_dir(dest), "_chrome_preview.html")
 
 
 def rendered_html_files(root: str) -> list[str]:

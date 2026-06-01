@@ -256,15 +256,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, _paths.INDEX_HTML)
 
-    parts = [base.page_open('reports dashboard', hdr_offset_px=120)]
-    parts.append(base.header(
-        'reports dashboard',
-        drops=len(drops),
-        captures=sum(d.n_captures for d in drops),
-        build_ts=base.now_iso(),
-        crumb_depth=1,
-        current_page='dashboard',
-    ))
+    parts = []
 
     # Summary bar: worst area by GPU rank + global counts
     cards = []
@@ -417,9 +409,10 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
                 )
             parts.append('</div>')
 
-    parts.append(base.page_close())
-
-    return base.write_report(out_path, parts)
+    return base.write_report(out_path, [base.report_page(
+        'reports dashboard', parts,
+        drops=len(drops), captures=sum(d.n_captures for d in drops),
+        build_ts=base.now_iso(), crumb_depth=1, current_page='dashboard')])
 
 
 if __name__ == '__main__':

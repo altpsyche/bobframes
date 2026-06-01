@@ -35,18 +35,41 @@ time to rebuild the HTML from existing Parquet without re-replaying captures.
 | Command | Purpose |
 |---|---|
 | `ingest [root] [--area X] [--label Y] [--capture N] [--force] [--pixel-grid 4] [--render-only]` | Full pipeline: export, parse, replay, parquetize, derive, manifest, commit, catalog, render. |
-| `render [root] [--area X] [--label Y]` | Rebuild HTML and catalog from existing Parquet. |
+| `render [root] [--area X] [--label Y] [--watch]` | Rebuild HTML and catalog from existing Parquet. `--watch` re-renders on token or chrome edits (alpha). |
 | `ab [root] --baseline-label X --compare-label Y` | All reports for one drop pair under `_reports/ab/<pair>/`. |
 | `report [root] <name>` | Build one named report (draws-by-class, trend, instancing, pass-gpu, shader, overdraw, dashboard). |
 | `catalog [root]` | Rebuild `_data/_catalog.parquet` only. |
 | `lint <file>...` | Check HTML or markdown against the banlist. |
 | `check` | Print resolved tool paths; non-zero when a tool is missing. |
 | `serve [root] [--port 8000] [--bind 127.0.0.1]` | Static preview via the stdlib HTTP server. |
+| `preview [root]` | Render the chrome gallery to `_reports/_chrome_preview.html`; no capture data needed. |
+| `export-tokens [--format toml\|json\|css]` | Print the design tokens to stdout in the chosen format. |
 | `smoke [--data DIR]` | End-to-end check; render-only against the bundled fixture when `--data` is omitted. |
 | `version` | Print `bobframes`, schema, and pyarrow versions. |
 
 `<root>` is positional and defaults to `.`. Flags are long-form only. Exit codes: `0` success,
 `1` pipeline or build failure, `2` usage error, `3` external tool missing, `4` interrupted.
+
+## Customizing reports
+
+The report palette lives in `bobframes/reports/design_tokens.toml` (colors, spacing, type, motion,
+and base layout sizes). A designer can edit values there without touching Python. The CSS variable
+name is fixed by its key: `surface_0` becomes `--surface-0`, `accent_primary` becomes
+`--accent-primary`.
+
+Workflow:
+
+```
+bobframes preview                 # writes _reports/_chrome_preview.html (every primitive, no data)
+# edit a value in design_tokens.toml
+bobframes preview                 # under a second; reload the page in a browser
+bobframes render C:\captures      # apply the change to real reports from existing Parquet
+```
+
+`bobframes render --watch` re-runs render-only whenever the token file or a chrome module changes
+(alpha; a 500ms poll, no extra dependency). `bobframes export-tokens --format css` prints the live
+`:root` block; `--format json` prints the nested table; `--format toml` prints the file itself. For
+prototyping, a browser's dev tools can live-edit the same variables before you commit a value.
 
 ## External tools
 

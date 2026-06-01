@@ -139,16 +139,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
                                                   for _, m in per_mesh.items())
                           if per_mesh else 0)) * 100.0 if per_mesh else 0.0
 
-    parts = [base.page_open('instancing opportunities', hdr_offset_px=120)]
-    parts.append(base.header(
-        'instancing opportunities',
-        drops=len(drops),
-        captures=sum(d.n_captures for d in drops),
-        build_ts=base.now_iso(),
-        crumb_depth=base.crumb_depth(ab),
-    ))
-    parts.append(base.ab_strip(ab))
-    parts.append(base.ab_picker_for(root, 'instancing_opportunities', ab=ab))
+    parts = []
 
     # Summary bar: top 3 meshes by repeat
     top3 = []
@@ -267,9 +258,11 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     sec2.append('</tbody></table></rdc-sortable-table></div>')
     parts.append(''.join(sec2))
 
-    parts.append(base.page_close())
-
-    return base.write_report(out_path, parts)
+    return base.write_report(out_path, [base.report_page(
+        'instancing opportunities', parts,
+        drops=len(drops), captures=sum(d.n_captures for d in drops),
+        build_ts=base.now_iso(), crumb_depth=base.crumb_depth(ab),
+        ab=ab, root=root, report_key='instancing_opportunities')])
 
 
 if __name__ == '__main__':

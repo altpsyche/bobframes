@@ -143,16 +143,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     for area, label in all_keys:
         by_area[area].append(label)
 
-    parts = [base.page_open('overdraw', hdr_offset_px=120)]
-    parts.append(base.header(
-        'overdraw',
-        drops=len(drops),
-        captures=sum(d.n_captures for d in drops),
-        build_ts=base.now_iso(),
-        crumb_depth=base.crumb_depth(ab),
-    ))
-    parts.append(base.ab_strip(ab))
-    parts.append(base.ab_picker_for(root, 'overdraw', ab=ab))
+    parts = []
 
     # Summary bar: worst shadow RT rejection % (or worst RT rejection if no shadow)
     worst_rt = None
@@ -284,9 +275,11 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
             parts.append(f'<h2 id="{base.h(area)}">{base.h(area)}</h2>')
             parts.append(f'<div class="table-wrap"><rdc-sortable-table>{"".join(sec)}</rdc-sortable-table></div>')
 
-    parts.append(base.page_close())
-
-    return base.write_report(out_path, parts)
+    return base.write_report(out_path, [base.report_page(
+        'overdraw', parts,
+        drops=len(drops), captures=sum(d.n_captures for d in drops),
+        build_ts=base.now_iso(), crumb_depth=base.crumb_depth(ab),
+        ab=ab, root=root, report_key='overdraw')])
 
 
 if __name__ == '__main__':

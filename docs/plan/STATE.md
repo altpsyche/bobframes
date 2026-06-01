@@ -7,29 +7,35 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        c08_design_tokens    (status: not-started; c07 DONE)
-last_session:   2026-06-01 — c07 DONE (TOML config layer). NEW config.py loader: tomllib (tomli
-                backport <3.11, ADR-26 — qrenderdoc embeds py3.10, verified python310.dll) → a frozen
-                Config dataclass; §6 lookup ($BOBFRAMES_CONFIG > <root>/.bobframes.toml > %APPDATA%)
-                with bundled _default_config.toml as the SINGLE-SOURCE base DEEP-MERGED under the
-                first-found user file (ADR-25; §6 'no merging' = file SELECTION only, not the base).
-                NEW _default_config.toml + lint_banlist.toml (15-entry banlist, order preserved).
-                Lifted to config.get_config(): qrd_harness/rdcmd timeouts (H-12/13 + --replay-timeout/
-                --convert-timeout flags; convert_timeout THREADED into the ProcessPool worker as an arg
-                — Windows spawn re-import would miss a child-side singleton), discovery DATED_RE (H-30;
-                module name kept as fallback, _dated_re() recompiles from config), lint.BANNED (H-14),
-                formatters chrome_scrub/id_short_n/text_trunc_max (H-16 RE-POINTED from c08 + H-23),
-                delta fmt + bar_label_min_pct (H-22/21), derive_post_merge complexity weights (H-17/Q-3).
-                resolve_tool defaults config→get_config() (empty [tools] → c06 precedence unchanged).
-                cli check --write-config writes a CURATED commented starter (not a full dump — preserves
-                deep-merge forward-compat). PARITY (the hard part, ADR-6): defaults bit-identical
-                (tomllib parses 0.3/2.0/8.0 to the same double; test asserts struct.pack('>d') floats +
-                regex .pattern + banlist roundtrip) → test_parity + test_parquet_parity GREEN, NO golden
-                refresh. _render_util.render() now scrubs BOBFRAMES_CONFIG from the child env (hermetic,
-                NOT gate-narrowing). 38→47 tests green; smoke render-only clean; wheel ships both TOMLs
-                with 0 dup entries (ADR-10 clean); py3.10/tomli load proven identical to py3.12/tomllib.
-                ADR-25/26 appended; ARCHITECTURE §3/§6 annotated; QUALITY_GATES §21.1c; H-12/13/14/16/17/
-                21/22/23/30 + Q-3 ticked. PRIOR: c06b DONE (G-14 Parquet-output parity gate).
+current:        c09_classifier    (status: not-started; c08 DONE)
+last_session:   2026-06-01 — c08 DONE (design tokens TOML + preview + Q-6; H-15/H-20/Q-6). NEW
+                reports/design_tokens.toml (designer-editable [color]/[spacing]/[type]/[motion]/[layout])
+                + reports/_tokens.py loader (tomllib/tomli shim ADR-26, bundled-only, NO deep-merge —
+                Track A edits the packaged file; per-project overrides are Track B). PARITY (ADR-6/27, the
+                hard part): template.py embeds the :root block UN-MINIFIED on drill/root pages, so the
+                hand-aligned bytes (1/2/3-space gaps inside light-dark to column-align the dark oklch) are
+                in the golden and NOT reconstructable from values. Fix: keep the alignment SKELETON in
+                chrome.py with string.Template $key placeholders, source only VALUES from TOML
+                (_DESIGN_TOKENS_TMPL / _CHROME_CSS_TMPL / _STICKY_CSS_TMPL) → byte-identical, NO golden
+                refresh. H-20 layout literals (bar 18px, ibar 80x6, kpi 88px, grid floors 150/180/360px +
+                bar-row/summary-bar tracks, sticky 120/36px) same mechanism; delta.sparkline_svg defaults
+                60/14 from [layout]. Var NAMES preserved (--accent-primary not --color-*; the DESIGNER 1:1
+                rename would force a 9-page golden refresh → deferred, ADR-28). Q-6: NEW chrome.report_page()
+                dedups open/header/strip/close; routed 5 identical reports (report_key strip, '' when no ab)
+                + dashboard (current_page) + trend_table (bespoke capture-suffix strip rides in body);
+                trend_table empty-state left as-is (direct concat, ungated). NEW verbs: preview
+                (_reports/_chrome_preview.html gallery, no data, deterministic), export-tokens --format
+                toml|json|css (stdout), render --watch (alpha 500ms mtime poll → fresh-subprocess re-render).
+                NEW tests/test_design_tokens.py (12: substitution complete, exact aligned lines incl. 3-space
+                --c-other, layout literals, sparkline 60/14, subst keys cover placeholders, ascii toml,
+                export round-trips, preview golden + determinism) + tests/data/golden_preview/
+                _chrome_preview.html + make_preview_golden.py + _render_util.render_preview(). 47→59 green;
+                test_parity + test_parquet_parity GREEN, golden BYTE-IDENTICAL (git status clean, NO
+                refresh); smoke render-only 9 pages lint clean; wheel ships design_tokens.toml + _tokens.py
+                + preview.py, 0 dups (ADR-10). ADR-27/28 appended; ARCHITECTURE §3/§4 annotated;
+                QUALITY_GATES §21.1d; H-15/H-20/Q-6 ticked. Scoping (ADR-23): responsive @container/print
+                grid overrides + component widths (copy 28/22, search 280, catalog 200) left inline as
+                breakpoint constants (HARDCODE H-20 note). PRIOR: c07 DONE (TOML config layer).
 audit-2026-06-01: Lifecycle quality audit + standing rule. ADR-23 "no patch-fixes" (root-cause or
                 record explicitly; never narrow a gate to go green) — mirrored in CLAUDE.md "How to
                 work" + a cross-session memory. Opened 3 findings from the audit: D-8 (drill HTML bakes
@@ -51,16 +57,12 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    Do c08 (design tokens TOML + preview). Open commits/v02/c08_design_tokens.md. c07 gave
-                the config singleton (config.get_config()), the bundled-TOML + deep-merge loader, and
-                the importlib.resources read pattern — c08's design_tokens.toml reuses all of it (a
-                SEPARATE file by concern: designer-editable tokens vs the c07 config). c08 closes H-15
-                (chrome design tokens) + H-20 (layout literals: bar heights, grid widths, sparkline
-                60x14); H-16 chrome_scrub already moved to c07. Same parity discipline: the emitted CSS
-                + --c-<class> tokens must be byte-identical (assert in test). Then c09 (engine-agnostic
-                classifier — most invasive; note its TOML walker may reach the embedded-3.10 replay
-                side, which is exactly why ADR-26 kept the 3.10 floor), c10, c16. GIT: still on branch
-                v0.2-roadmap-c04 (off main; now + c07; UNPUSHED). Post-release nit (non-blocking): bump
+next_action:    Do c09 (engine-agnostic classifier — most invasive). Open commits/v02/c09_classifier.md.
+                NOTE its TOML walker may reach the embedded-3.10 replay side, which is exactly why ADR-26
+                kept the 3.10 floor (tomli backport). Both c07 config (config.get_config()) and c08
+                _tokens loader use the same tomllib/tomli shim + importlib.resources read pattern c09
+                reuses. Then c10 (env rename RDC_*→BOBFRAMES_*), c16 (report-quality). GIT: still on branch
+                v0.2-roadmap-c04 (off main; c07 + c08 UNPUSHED). Post-release nit (non-blocking): bump
                 CI actions off Node20 (checkout@v5/setup-python@v6 before 2026-06-16).
 DONE-2026-05-31: c19 — bobframes 0.1.0 PUBLISHED. tag v0.1.0 -> CI publish job green (OIDC trusted
                 publishing, ubuntu). Live on PyPI (wheel + sdist) + GitHub Release with both assets.
@@ -105,8 +107,8 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c06a drill-size de-harden](commits/v02/c06a_drill_size_dehardcode.md) | **done** — D-8: dropped getsize size-spans from drill HTML; 37 green, golden refreshed (writer-KB gone) |
 | ☑ | [c06b Parquet parity gate](commits/v02/c06b_parquet_parity_gate.md) | **done** — G-14: writer-independent logical digest over `_data/**/*.parquet` (58 tables), full matrix; 38 green |
 | ☑ | [c07 TOML config layer](commits/v02/c07_toml_config.md) | **done** — tomllib config (tomli<3.11); timeouts/regex/banlist/chrome-scrub/weights/delta lifted; 47 green, byte-parity (H-12/13/14/16/17/21/22/23/30,Q-3) |
-| ☐ | [c08 design tokens TOML + preview](commits/v02/c08_design_tokens.md) | **next** |
-| ☐ | [c09 engine-agnostic classifier](commits/v02/c09_classifier.md) | deferred |
+| ☑ | [c08 design tokens TOML + preview](commits/v02/c08_design_tokens.md) | **done** — design_tokens.toml + value-only Template skeleton (H-15/H-20, ADR-27/28); report_page (Q-6); preview/export-tokens/render --watch verbs; 59 green, byte-parity (no golden refresh) |
+| ☐ | [c09 engine-agnostic classifier](commits/v02/c09_classifier.md) | **next** |
 | ☐ | [c10 env-var rename `RDC_*`→`BOBFRAMES_*`](commits/v02/c10_env_rename.md) | deferred |
 | ☐ | [c16 report-quality polish](commits/v02/c16_report_quality.md) | deferred |
 
@@ -154,6 +156,23 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-01 — c08 DONE (design tokens TOML + preview + Q-6; H-15/H-20/Q-6). NEW reports/design_tokens.toml
+  ([color]/[spacing]/[type]/[motion]/[layout]) + reports/_tokens.py loader (tomllib/tomli shim, bundled-only,
+  no deep-merge — Track A edits the packaged file; per-project overrides are Track B). PARITY (ADR-6/27):
+  template.py embeds the :root block UN-MINIFIED on drill/root, so the hand-aligned bytes (1/2/3-space
+  light-dark gaps) are in the golden and not reconstructable from values → keep the alignment SKELETON in
+  chrome.py with string.Template $key placeholders, source only VALUES from TOML → byte-identical, NO golden
+  refresh. H-20 layout literals (bar/ibar/kpi/grid floors/sticky) same mechanism; delta.sparkline defaults
+  60/14 from [layout]. Var names preserved (--accent-primary; the --color-* rename deferred, ADR-28, would
+  force a 9-page golden refresh). Q-6: NEW chrome.report_page() dedups open/header/strip/close across 5
+  identical reports (report_key strip) + dashboard (current_page) + trend_table (bespoke strip in body);
+  empty-state left as-is (concat, ungated). NEW verbs preview (gallery, no data) / export-tokens
+  (toml|json|css, stdout) / render --watch (alpha mtime poll → subprocess re-render). NEW test_design_tokens.py
+  (12) + golden_preview/_chrome_preview.html + make_preview_golden.py + _render_util.render_preview().
+  47→59 green; test_parity + test_parquet_parity GREEN, golden byte-identical (git clean, no refresh); smoke
+  render-only 9 pages lint clean; wheel ships design_tokens.toml + _tokens.py + preview.py, 0 dups (ADR-10).
+  ADR-27/28; ARCHITECTURE §3/§4 + QUALITY_GATES §21.1d; H-15/H-20/Q-6 ticked. Scoping (ADR-23): responsive
+  @container/print grid overrides + component widths left inline as breakpoint constants. current → c09.
 - 2026-06-01 — c07 DONE (TOML config layer; H-12/13/14/16/17/21/22/23/30 + Q-3). NEW config.py loader
   (tomllib + tomli backport python_version<'3.11', ADR-26: qrenderdoc embeds py3.10 — python310.dll on
   box) → frozen Config dataclass; §6 lookup + bundled _default_config.toml SINGLE-SOURCE base DEEP-MERGED

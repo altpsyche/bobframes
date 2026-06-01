@@ -35,12 +35,12 @@
 | H-12 | `qrd_harness` timeout `600.0` | replay timeout not tunable | `[pipeline] replay_timeout_s` + `--replay-timeout` | [c07](../commits/v02/c07_toml_config.md) | ☑ |
 | H-13 | `rdcmd` timeout `120.0` | convert timeout not tunable | `[pipeline] convert_timeout_s` + flag | c07 | ☑ |
 | H-14 | `lint.BANNED` | inline banlist | `lint_banlist.toml` + `[lint] extra_banned` | c07 | ☑ |
-| H-15 | `chrome` design tokens | tokens as inline Python string | `design_tokens.toml` | [c08](../commits/v02/c08_design_tokens.md) | ☐ |
+| H-15 | `chrome` design tokens | tokens as inline Python string | `design_tokens.toml` (value-only `string.Template` skeleton, ADR-27; byte-identical, no golden refresh) | [c08](../commits/v02/c08_design_tokens.md) | ☑ |
 | H-16 | `formatters._BANNED_CHROME_CHARS` | inline regex | `[formatting] chrome_scrub_chars` in config (re-pointed from c08: it feeds rendered HTML, pairs with the lint banlist) | c07 | ☑ |
 | H-17 | `derive_post_merge` complexity weights | inline literals | `[scoring.complexity]` in config | c07 | ☑ |
 | H-18 | `paths` dir literals (`_data`,`_reports`,`_cache`,`_stage`,`_tmp`,`drill`,`ab`) | scattered | module constants in `paths.py` | [c04](../commits/v02/c04_paths_constants.md) | ☑ |
 | H-19 | `manifest`/`catalog`/`pipeline` literals (`_manifest.json`,`done.marker`) | scattered | `paths.py` constants | [c04](../commits/v02/c04_paths_constants.md) | ☑ |
-| H-20 | `chrome` + `delta` layout literals (bar heights, grid widths, sparkline `60x14`) | inline | `[layout]` in design_tokens.toml | c08 | ☐ |
+| H-20 | `chrome` + `delta` layout literals (bar heights, grid widths, sparkline `60x14`) | inline | `[layout]` in design_tokens.toml (base report tokens; responsive `@container`/print grid overrides + component widths stay inline as breakpoint constants, ADR-27) | c08 | ☑ |
 | H-21 | `delta` `pct >= 8.0` bar-label threshold | inline | `[delta] bar_label_min_pct` | c07 | ☑ |
 | H-22 | `delta` `fmt='{:+,.0f}'` | inline default | config default + per-call override | c07 | ☑ |
 | H-23 | `formatters` `n=12`, `max_len=60` | rigid defaults | `[formatting] id_short_n`, `text_trunc_max` | c07 | ☑ |
