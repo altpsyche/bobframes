@@ -7,6 +7,7 @@ The stubs are never read by render-only (it reads `_data/`) and never committed.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -84,3 +85,74 @@ def rendered_html_files(root: str) -> list[str]:
                     continue
                 out.append(rel)
     return sorted(out)
+
+
+def rendered_parquet_files(root: str) -> list[str]:
+    """Relative paths of every emitted .parquet under <root>/_data, sorted (`\\`->`/`).
+    Excludes the report cache dir. Mirror of `rendered_html_files` for the data path (G-14)."""
+    out = []
+    data_root = _paths.data_root(root)
+    for dirpath, _dirs, files in os.walk(data_root):
+        if os.sep + _paths.CACHE_DIR in dirpath:
+            continue
+        for fn in files:
+            if fn.endswith(".parquet"):
+                rel = os.path.relpath(os.path.join(dirpath, fn), root).replace("\\", "/")
+                out.append(rel)
+    return sorted(out)
+
+
+# Stable sentinels for the IEEE non-finite floats that legitimately occur in the data — e.g.
+# vbo_samples.as_f32_* reinterprets raw vertex bytes as float32, so a non-float attribute reads
+# back as NaN. These are real committed values we WANT to gate (a NaN->number flip is a data-path
+# change worth catching); we canonicalize them to a fixed token rather than mask them (allow_nan
+# would be the patch-fix). All NaN payloads collapse to one token — logically equal, and NaN bits
+# are not a cross-build promise anyway. A dict sentinel can't collide with any str/number/null/list.
+_INF = float("inf")
+
+
+def _nonfinite_to_sentinel(v):
+    if isinstance(v, float):
+        if v != v:
+            return {"__nf__": "nan"}
+        if v == _INF:
+            return {"__nf__": "inf"}
+        if v == -_INF:
+            return {"__nf__": "-inf"}
+    return v
+
+
+def parquet_digest(path: str) -> dict:
+    """Writer-INDEPENDENT logical digest of one parquet file (G-14, ADR-23).
+
+    Gates schema + row order + cell values WITHOUT touching on-disk bytes (the D-8 trap:
+    pyarrow writer version changes compression/encoding but not logical contents). Returns
+    {schema: [[name, type_str], ...], num_rows, rows_sha256}. The hash canonicalizes the
+    logical table via `to_pydict()` serialized in SCHEMA column order, row order preserved.
+    Non-finite floats are mapped to fixed sentinels (see `_nonfinite_to_sentinel`); finite
+    floats go through json's shortest round-trip repr, which is stable across CPython 3.10-3.13.
+    `allow_nan=False` then guarantees no un-canonicalized non-finite slipped through.
+    """
+    import pyarrow.parquet as papq
+
+    t = papq.read_table(path)
+    schema = [[f.name, str(f.type)] for f in t.schema]
+    pydict = t.to_pydict()
+    canon = json.dumps(
+        [[name, [_nonfinite_to_sentinel(v) for v in pydict[name]]] for name, _ in schema],
+        sort_keys=False, ensure_ascii=True, allow_nan=False, separators=(",", ":"),
+    )
+    return {
+        "schema": schema,
+        "num_rows": t.num_rows,
+        "rows_sha256": hashlib.sha256(canon.encode("utf-8")).hexdigest(),
+    }
+
+
+GOLDEN_PARQUET_DIGEST = os.path.join(HERE, "data", "golden_parquet", "digests.json")
+
+
+def compute_digest_map(root: str) -> dict:
+    """{relpath: parquet_digest} for every rendered parquet under <root>/_data."""
+    return {rel: parquet_digest(os.path.join(root, rel))
+            for rel in rendered_parquet_files(root)}

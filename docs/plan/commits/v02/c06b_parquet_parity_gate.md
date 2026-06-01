@@ -1,5 +1,14 @@
 # c06b — Parquet-output parity gate (G-14)   release: v0.2 · phase: De-hardcoding
 
+> **DONE 2026-06-01.** `tests/test_parquet_parity.py` gates a writer-independent logical digest
+> (schema + row order + cell values) over every rendered `_data/**/*.parquet` vs committed
+> `tests/data/golden_parquet/digests.json` (58 tables incl. `_global_entities`). Chose approach
+> **(a)**. Non-finite floats (legit `vbo_samples.as_f32_*` NaN) → fixed sentinels, NOT `allow_nan`
+> masking (ADR-23). Proven digest-identical across py3.10/pa17 ↔ py3.13/pa21 → runs on the full
+> matrix (no `ci.yml --ignore`). Negative test: reversing `build_global_entities`' glob sort fails
+> the gate naming `_global_entities.parquet` (the exact c05 regression). 38 tests green; HTML parity
+> untouched. Refresh via `python -m bobframes.tests.make_parquet_golden`.
+
 ## Goal
 Extend the golden gate so it catches **data-path** regressions, not just HTML render-logic. Today
 `test_parity` walks `.html` only and skips `_data`/`_cache`, so "byte-parity green" silently allows
