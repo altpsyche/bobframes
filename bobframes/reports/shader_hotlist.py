@@ -131,16 +131,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
 
     max_cost = max((c for _, _, _, c in ranked), default=0.0)
 
-    parts = [base.page_open(f'shader hotlist ({stage})', hdr_offset_px=120)]
-    parts.append(base.header(
-        f'shader hotlist ({stage})',
-        drops=len(drops),
-        captures=sum(d.n_captures for d in drops),
-        build_ts=base.now_iso(),
-        crumb_depth=base.crumb_depth(ab),
-    ))
-    parts.append(base.ab_strip(ab))
-    parts.append(base.ab_picker_for(root, 'shader_hotlist', ab=ab))
+    parts = []
 
     # Summary bar: top shader by cost proxy
     if ranked:
@@ -231,9 +222,11 @@ def build(root: str, *, drops: list | None = None, ab=None,
     sec.append('</tbody></table></rdc-sortable-table></div>')
     parts.append(''.join(sec))
 
-    parts.append(base.page_close())
-
-    return base.write_report(out_path, parts)
+    return base.write_report(out_path, [base.report_page(
+        f'shader hotlist ({stage})', parts,
+        drops=len(drops), captures=sum(d.n_captures for d in drops),
+        build_ts=base.now_iso(), crumb_depth=base.crumb_depth(ab),
+        ab=ab, root=root, report_key='shader_hotlist')])
 
 
 if __name__ == '__main__':

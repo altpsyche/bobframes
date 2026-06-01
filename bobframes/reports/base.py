@@ -34,6 +34,7 @@ from .chrome import (
     link,
     page_close,
     page_open,
+    report_page,
     section_card,
     summary_bar,
 )
@@ -94,7 +95,7 @@ __all__ = [
     'chrome_css', 'class_color_var',
     'components_js', 'design_tokens_css', 'footer_legend', 'h', 'header',
     'icon', 'kpi_chip', 'kpi_strip', 'legend', 'link',
-    'page_close', 'page_open', 'section_card', 'summary_bar',
+    'page_close', 'page_open', 'report_page', 'section_card', 'summary_bar',
     # formatters
     'fmt_bytes', 'fmt_float', 'fmt_id_short', 'fmt_int', 'fmt_pct',
     'mesh_hash_short', 'pass_short', 'pass_suffix', 'safe_chrome_text',

@@ -138,6 +138,12 @@ Hatchling chosen: single-file dynamic version, no `setup.py`, native force-inclu
 > qrenderdoc embeds Python 3.10). `tomli` is a build-time TOML parser, not a data dep — the data path
 > stays pyarrow-only. Annotated, not rewritten.
 
+> **Extended for v0.2 by [ADR-27](DECISIONS.md):** c08 ships `reports/design_tokens.toml` (the
+> designer-editable CSS palette) + `reports/_tokens.py` loader, loaded with the same `tomllib`/`tomli`
+> shim but kept SEPARATE from the c07 config (bundled-only, no deep-merge in v0.2). The wheel ships the
+> token TOML the same way as `_default_config.toml` (tracked file under the package, ADR-10; verified
+> 0 dups). Annotated, not rewritten.
+
 > **Python 3.14 caveat (see DECISIONS / QUALITY_GATES):** the `3.14` classifier is intentionally
 > omitted above. `pyarrow>=17` has no cp314 wheels, so a `{3.14, pyarrow 17}` install fails. Add
 > 3.14 only once a compatible pyarrow floor is set for it. CI matrix tops out at 3.13 for v0.1.
@@ -161,7 +167,8 @@ verbs. Long-flag-only (no `-r`/`-a`).
 | `smoke` | `[--data DIR]` | End-to-end against `--data` (defaults to bundled synthetic) |
 
 Not exposed: `probes/whatif.py` (manual qrenderdoc-side; README "Advanced"). No `init`/`config`
-verb. `preview` + `export-tokens` + `render --watch` are **v0.2** (designer track).
+verb. `preview` (gallery, no data) + `export-tokens` (`--format toml|json|css`, stdout) +
+`render --watch` (alpha mtime poll) landed in **c08** (designer track, ADR-27).
 
 **Defaults:**
 - `bobframes` (no args) → `--help`, exit 0. `bobframes <verb>` → `root=.`.

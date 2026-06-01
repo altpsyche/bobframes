@@ -71,16 +71,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     data = _aggregate(drops, ok_caps)
     drop_keys = [d.key for d in drops]
 
-    parts = [base.page_open('pass gpu', hdr_offset_px=120)]
-    parts.append(base.header(
-        'pass gpu',
-        drops=len(drops),
-        captures=sum(d.n_captures for d in drops),
-        build_ts=base.now_iso(),
-        crumb_depth=base.crumb_depth(ab),
-    ))
-    parts.append(base.ab_strip(ab))
-    parts.append(base.ab_picker_for(root, 'pass_gpu', ab=ab))
+    parts = []
 
     # Summary bar: top pass globally + area count
     if data:
@@ -181,9 +172,11 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
             parts.append(f'<h2 id="{base.h(area)}">{base.h(area)}</h2>')
             parts.append(''.join(area_body))
 
-    parts.append(base.page_close())
-
-    return base.write_report(out_path, parts)
+    return base.write_report(out_path, [base.report_page(
+        'pass gpu', parts,
+        drops=len(drops), captures=sum(d.n_captures for d in drops),
+        build_ts=base.now_iso(), crumb_depth=base.crumb_depth(ab),
+        ab=ab, root=root, report_key='pass_gpu')])
 
 
 if __name__ == '__main__':

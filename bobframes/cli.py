@@ -79,12 +79,69 @@ def _cmd_ingest(args: argparse.Namespace) -> int:
 
 def _cmd_render(args: argparse.Namespace) -> int:
     from . import run
-    rargv = ['--root', os.path.abspath(args.root), '--render-only']
+    root = os.path.abspath(args.root)
+    rargv = ['--root', root, '--render-only']
     if args.area:
         rargv += ['--area', args.area]
     if args.label:
         rargv += ['--label', args.label]
+    if getattr(args, 'watch', False):
+        return _render_watch(rargv)
     return run.main(rargv)
+
+
+def _watch_paths() -> list[str]:
+    """Files the render --watch loop polls: the design tokens + the modules that emit chrome."""
+    from .reports import chrome as _c, delta as _d, formatters as _fm
+    tokens = os.path.join(os.path.dirname(_c.__file__), 'design_tokens.toml')
+    return [tokens, _c.__file__, _fm.__file__, _d.__file__]
+
+
+def _render_watch(rargv: list[str]) -> int:
+    """Alpha hot-reload (DESIGNER Track A): 500ms mtime poll on the token/chrome files; re-render in a
+    fresh subprocess on change so edited modules/TOML are reloaded. No watchdog dependency."""
+    import subprocess
+    import time
+    log = logging.getLogger('bobframes')
+    watched = _watch_paths()
+
+    def snapshot() -> dict:
+        return {p: (os.stat(p).st_mtime if os.path.exists(p) else 0.0) for p in watched}
+
+    cmd = [sys.executable, '-m', 'bobframes.run', *rargv]
+    rc = subprocess.run(cmd).returncode
+    log.info(f'watching {len(watched)} files; save an edit to re-render (Ctrl+C to stop)')
+    last = snapshot()
+    try:
+        while True:
+            time.sleep(0.5)
+            now = snapshot()
+            if now != last:
+                last = now
+                log.info('change detected; re-rendering')
+                rc = subprocess.run(cmd).returncode
+    except KeyboardInterrupt:
+        return 4
+    return rc
+
+
+def _cmd_preview(args: argparse.Namespace) -> int:
+    from .reports import preview
+    out = preview.build(os.path.abspath(args.root))
+    print(f'wrote {out}')
+    return 0
+
+
+def _cmd_export_tokens(args: argparse.Namespace) -> int:
+    import json
+    from .reports import _tokens, chrome
+    if args.format == 'toml':
+        sys.stdout.write(_tokens.tokens_toml_text())
+    elif args.format == 'json':
+        print(json.dumps(_tokens.load_tokens(), indent=2))
+    else:  # css
+        sys.stdout.write(chrome.design_tokens_css())
+    return 0
 
 
 def _cmd_ab(args: argparse.Namespace) -> int:
@@ -212,6 +269,8 @@ def _build_parser() -> argparse.ArgumentParser:
     sp.add_argument('root', nargs='?', default='.')
     sp.add_argument('--area')
     sp.add_argument('--label')
+    sp.add_argument('--watch', action='store_true',
+                    help='re-render on design_tokens.toml / chrome edits (alpha, 500ms mtime poll)')
     sp.set_defaults(func=_cmd_render)
 
     sp = sub.add_parser('ab', parents=[common], help='all reports for one drop pair')
@@ -242,6 +301,16 @@ def _build_parser() -> argparse.ArgumentParser:
 
     sp = sub.add_parser('version', parents=[common], help='print version, schema, pyarrow')
     sp.set_defaults(func=_cmd_version)
+
+    sp = sub.add_parser('preview', parents=[common],
+                        help='render the chrome preview gallery (_reports/_chrome_preview.html; no data)')
+    sp.add_argument('root', nargs='?', default='.')
+    sp.set_defaults(func=_cmd_preview)
+
+    sp = sub.add_parser('export-tokens', parents=[common],
+                        help='print design tokens to stdout as toml|json|css')
+    sp.add_argument('--format', choices=['toml', 'json', 'css'], default='toml')
+    sp.set_defaults(func=_cmd_export_tokens)
 
     sp = sub.add_parser('serve', parents=[common], help='static preview server')
     sp.add_argument('root', nargs='?', default='.')

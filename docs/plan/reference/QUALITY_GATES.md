@@ -59,6 +59,19 @@ proving `tomli`↔`tomllib` equivalence, not assuming it. Spawn-safety: the conv
 into the pool worker as an argument (not read from a child-side singleton), gated by
 `test_convert_timeout_threaded_as_argument`.
 
+## 21.1d Design-token + preview parity (c08, ADR-6/27) — see [c08](../commits/v02/c08_design_tokens.md)
+c08 lifts the `chrome` CSS token VALUES + the base layout literals into `reports/design_tokens.toml`,
+routing them through a value-only `string.Template` skeleton (ADR-27), so the emitted `:root` block and
+layout rules are byte-identical — **`test_parity` stays green with no golden refresh**.
+`tests/test_design_tokens.py` adds focused, golden-independent guards: substitution leaves no `$`
+placeholder; the hand-aligned color lines (incl. the 3-space `--c-other` alignment) and every layout
+literal land verbatim; `sparkline_svg` defaults are `(60, 14)` from `[layout]`; the bundled TOML is
+ASCII; and `export-tokens --format {toml,json,css}` round-trips. The new `preview` gallery has a
+dedicated byte-golden at `tests/data/golden_preview/_chrome_preview.html` (OUTSIDE `golden/` so the
+`test_parity` file-set walk is unaffected; refresh via `python -m bobframes.tests.make_preview_golden`)
+and is asserted deterministic (no build timestamp). Q-6's `chrome.report_page(...)` extraction is
+covered transitively by `test_parity` (the 6 reports + dashboard route through it byte-identically).
+
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,
 dropped column, dtype slip). Skip `_`-prefixed (`_catalog`, `_global_entities`). Runs on synthetic +

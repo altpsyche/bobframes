@@ -356,14 +356,9 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     drop_keys_l = [d.key for d in drops]
 
     body_attrs = {'data-multi-section': 'true'} if len(drops) > 1 else None
-    parts = [base.page_open('trend table', hdr_offset_px=120, body_attrs=body_attrs)]
-    parts.append(base.header(
-        'trend table',
-        drops=len(drops),
-        captures=sum(d.n_captures for d in drops),
-        build_ts=base.now_iso(),
-        crumb_depth=base.crumb_depth(ab),
-    ))
+    # trend_table's A/B strip is bespoke (capture-count suffixes, only when ab) so it rides at the
+    # head of the body rather than through report_page's standard report_key strip (Q-6).
+    parts = []
     if ab is not None:
         baseline, compare = ab
         parts.append(base.ab_strip(
@@ -434,10 +429,12 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
 
     parts.append(_class_count_matrix(per_drop_class, all_areas, drops))
 
-    parts.append(base.page_close())
-
     out_path = base.output_path(root, 'trend_table', ab)
-    return base.write_report(out_path, parts)
+    return base.write_report(out_path, [base.report_page(
+        'trend table', parts,
+        drops=len(drops), captures=sum(d.n_captures for d in drops),
+        build_ts=base.now_iso(), crumb_depth=base.crumb_depth(ab),
+        body_attrs=body_attrs)])
 
 
 if __name__ == '__main__':

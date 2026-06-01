@@ -1,0 +1,96 @@
+# BobFrames design tokens (c08): the single source for the report CSS palette.
+#
+# A non-Python designer edits VALUES here; `chrome` substitutes them into the :root block and the
+# layout rules (see chrome._DESIGN_TOKENS_TMPL / _CHROME_CSS_TMPL / _STICKY_CSS_TMPL). The CSS var
+# name is fixed by the skeleton: TOML key `surface_0` -> `--surface-0` (underscore -> hyphen).
+#
+# Preview your edits:   bobframes preview      (writes _reports/_chrome_preview.html, no data needed)
+# Apply to reports:     bobframes render <dir> (rebuilds HTML from existing parquet)
+# Export:               bobframes export-tokens --format <toml|json|css>
+#
+# PARITY (ADR-6): these defaults reproduce today's emitted CSS byte-for-byte (tests/test_design_tokens
+# asserts it; the golden HTML gate guards the rest). The drill + root pages embed the :root block
+# UN-minified, so the inter-argument spacing inside `light-dark(...)` is the current emitted form and
+# is significant for the bundled defaults. Edit a value freely; the output simply follows your edit.
+# Values are single-quoted TOML literal strings (no backslash interpretation), matching c07's config.
+
+[spacing]
+sp_1 = '4px'
+sp_2 = '8px'
+sp_3 = '12px'
+sp_4 = '16px'
+sp_6 = '24px'
+sp_8 = '32px'
+sp_12 = '48px'
+
+[type]
+fs_display = '2.25rem'
+fs_h1 = '1.5rem'
+fs_h2 = '1.1rem'
+fs_h3 = '0.9rem'
+fs_body = '14px'
+fs_mono = '13px'
+fs_small = '11px'
+
+[motion]
+motion_hover = '150ms ease-out'
+motion_focus = '100ms ease-out'
+motion_vt = '200ms ease-in-out'
+motion_disclosure = '180ms ease-out'
+
+[color]
+bg = 'light-dark(oklch(97.2% 0.012 80),  oklch(16.4% 0.012 260))'
+surface_0 = 'var(--bg)'
+surface_1 = 'light-dark(oklch(94.6% 0.018 80),  oklch(19.5% 0.013 260))'
+surface_2 = 'light-dark(oklch(94.6% 0.020 80),  oklch(20.7% 0.014 260))'
+code_bg = 'var(--surface-2)'
+fg = 'light-dark(oklch(22.0% 0.005 80),  oklch(93.6% 0.005 260))'
+text_1 = 'var(--fg)'
+muted = 'light-dark(oklch(49.4% 0.005 80),  oklch(67.5% 0.005 260))'
+text_2 = 'var(--muted)'
+text_3 = 'light-dark(oklch(60.0% 0.012 80),  oklch(56.4% 0.020 280))'
+border = 'light-dark(oklch(84.0% 0.024 82),  oklch(28.0% 0.014 260))'
+border_1 = 'var(--border)'
+border_strong = 'light-dark(oklch(75.0% 0.030 82),  oklch(35.0% 0.018 260))'
+border_2 = 'var(--border-strong)'
+row_alt = 'light-dark(oklch(93.2% 0.022 82),  oklch(20.5% 0.015 260))'
+row_hover = 'light-dark(oklch(90.0% 0.038 82),  oklch(25.0% 0.022 260))'
+accent_primary = 'light-dark(oklch(38.0% 0.020 260), oklch(78.0% 0.015 260))'
+accent_data = 'light-dark(oklch(55.0% 0.155 230), oklch(75.0% 0.115 230))'
+accent = 'var(--accent-primary)'
+status_alarm = 'light-dark(oklch(52.0% 0.180 28),  oklch(70.0% 0.155 28))'
+status_warn = 'light-dark(oklch(70.0% 0.155 85),  oklch(80.0% 0.130 85))'
+status_ok = 'light-dark(oklch(55.0% 0.135 145), oklch(72.0% 0.115 145))'
+status_info = 'light-dark(oklch(55.0% 0.115 260), oklch(75.0% 0.090 260))'
+c_opaque = 'light-dark(oklch(60.5% 0.110 135), oklch(73.5% 0.115 135))'
+c_prepass = 'light-dark(oklch(64.0% 0.135 50),  oklch(73.0% 0.130 50))'
+c_translucent = 'light-dark(oklch(56.0% 0.085 240), oklch(71.0% 0.080 240))'
+c_additive = 'light-dark(oklch(56.0% 0.115 305), oklch(72.0% 0.105 305))'
+c_decal = 'light-dark(oklch(60.0% 0.115 65),  oklch(71.0% 0.115 65))'
+c_shadow = 'light-dark(oklch(42.0% 0.025 285), oklch(55.0% 0.020 285))'
+c_ui = 'light-dark(oklch(71.0% 0.115 90),  oklch(80.0% 0.115 90))'
+c_postprocess = 'light-dark(oklch(66.0% 0.055 240), oklch(78.0% 0.055 240))'
+c_other = 'light-dark(oklch(64.0% 0.000 0),   oklch(75.0% 0.000 0))'
+pos = 'var(--status-ok)'
+neg = 'var(--status-alarm)'
+neutral = 'var(--text-2)'
+
+# Layout literals (H-20): bar/inline-bar sizes, base grid column widths, sticky offsets, sparkline.
+# CSS-string values feed string.Template in chrome (_CHROME_CSS_TMPL / _STICKY_CSS_TMPL); the two
+# integers feed delta.sparkline_svg defaults. Responsive @container / @media print grid overrides and
+# incidental component widths (copy-button, search, catalog-grid) stay inline as breakpoint constants
+# (deliberately out of scope, HARDCODE H-20 note).
+[layout]
+bar_height = '18px'                                  # .bar height + .bar .seg line-height
+ibar_width = '80px'
+ibar_height = '6px'
+kpi_min_height = '88px'                              # .kpi-chip min-height
+kpi_strip_min = '150px'                              # .kpi-strip minmax() column floor
+toc_min = '180px'                                    # nav.toc minmax() column floor
+bar_row_cols = 'minmax(240px, 1fr) 2fr 90px'         # .bar-row grid tracks
+dash_grid_min = '360px'                              # .dash-grid minmax() column floor
+summary_bar_cols = 'minmax(140px, max-content) 1fr auto'   # .summary-bar grid tracks
+hdr_offset = '120px'                                 # body --hdr-offset default
+crumb_height = '36px'                                # body --crumb-h
+sparkline_w = 60                                     # delta.sparkline_svg width
+sparkline_h = 14                                     # delta.sparkline_svg height

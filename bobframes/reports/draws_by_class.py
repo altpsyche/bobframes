@@ -104,14 +104,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
         drops = base.discover_drops(root)
     counts, areas, drop_keys, total_captures = _gather_from_drops(drops)
 
-    parts = [base.page_open('draws by class', hdr_offset_px=120)]
-    parts.append(base.header(
-        'draws by class',
-        drops=len(drops), captures=total_captures, build_ts=base.now_iso(),
-        crumb_depth=base.crumb_depth(ab),
-    ))
-    parts.append(base.ab_strip(ab))
-    parts.append(base.ab_picker_for(root, 'draws_by_class', ab=ab))
+    parts = []
 
     # Summary bar: dominant class
     class_totals: Counter = Counter()
@@ -155,10 +148,11 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     parts.append(_build_table(counts, drop_keys))
     parts.append('</rdc-sortable-table></div>')
 
-    parts.append(base.page_close())
-
     out_path = base.output_path(root, 'draws_by_class', ab)
-    return base.write_report(out_path, parts)
+    return base.write_report(out_path, [base.report_page(
+        'draws by class', parts,
+        drops=len(drops), captures=total_captures, build_ts=base.now_iso(),
+        crumb_depth=base.crumb_depth(ab), ab=ab, root=root, report_key='draws_by_class')])
 
 
 if __name__ == '__main__':

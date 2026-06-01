@@ -3,68 +3,75 @@
 from __future__ import annotations
 
 import html as _html
+import string as _string
 
 from . import formatters as _f
+from . import _tokens
 
 
-_DESIGN_TOKENS = """
+# Design-token VALUES live in reports/design_tokens.toml (c08, H-15); this skeleton owns only the
+# CSS var NAMES + layout/alignment. string.Template substitutes $key -> value (CSS uses no '$', so
+# only our placeholders match). The @media reduced-motion reset (0s) is a fixed a11y behavior, not a
+# designer token, so it stays literal. design_tokens_css() returns this UN-minified (template.py
+# embeds it raw on the drill/root pages), so the inter-arg spacing here is parity-significant.
+_DESIGN_TOKENS_TMPL = """
 :root {
   color-scheme: light dark;
 
-  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
-  --sp-6: 24px; --sp-8: 32px; --sp-12: 48px;
+  --sp-1: ${sp_1};  --sp-2: ${sp_2};  --sp-3: ${sp_3}; --sp-4: ${sp_4};
+  --sp-6: ${sp_6}; --sp-8: ${sp_8}; --sp-12: ${sp_12};
 
-  --fs-display: 2.25rem;
-  --fs-h1: 1.5rem;  --fs-h2: 1.1rem;  --fs-h3: 0.9rem;
-  --fs-body: 14px;  --fs-mono: 13px;  --fs-small: 11px;
+  --fs-display: ${fs_display};
+  --fs-h1: ${fs_h1};  --fs-h2: ${fs_h2};  --fs-h3: ${fs_h3};
+  --fs-body: ${fs_body};  --fs-mono: ${fs_mono};  --fs-small: ${fs_small};
 
-  --motion-hover: 150ms ease-out;
-  --motion-focus: 100ms ease-out;
-  --motion-vt: 200ms ease-in-out;
-  --motion-disclosure: 180ms ease-out;
+  --motion-hover: ${motion_hover};
+  --motion-focus: ${motion_focus};
+  --motion-vt: ${motion_vt};
+  --motion-disclosure: ${motion_disclosure};
 
-  --bg:            light-dark(oklch(97.2% 0.012 80),  oklch(16.4% 0.012 260));
-  --surface-0:     var(--bg);
-  --surface-1:     light-dark(oklch(94.6% 0.018 80),  oklch(19.5% 0.013 260));
-  --surface-2:     light-dark(oklch(94.6% 0.020 80),  oklch(20.7% 0.014 260));
-  --code-bg:       var(--surface-2);
+  --bg:            ${bg};
+  --surface-0:     ${surface_0};
+  --surface-1:     ${surface_1};
+  --surface-2:     ${surface_2};
+  --code-bg:       ${code_bg};
 
-  --fg:            light-dark(oklch(22.0% 0.005 80),  oklch(93.6% 0.005 260));
-  --text-1:        var(--fg);
-  --muted:         light-dark(oklch(49.4% 0.005 80),  oklch(67.5% 0.005 260));
-  --text-2:        var(--muted);
-  --text-3:        light-dark(oklch(60.0% 0.012 80),  oklch(56.4% 0.020 280));
+  --fg:            ${fg};
+  --text-1:        ${text_1};
+  --muted:         ${muted};
+  --text-2:        ${text_2};
+  --text-3:        ${text_3};
 
-  --border:        light-dark(oklch(84.0% 0.024 82),  oklch(28.0% 0.014 260));
-  --border-1:      var(--border);
-  --border-strong: light-dark(oklch(75.0% 0.030 82),  oklch(35.0% 0.018 260));
-  --border-2:      var(--border-strong);
+  --border:        ${border};
+  --border-1:      ${border_1};
+  --border-strong: ${border_strong};
+  --border-2:      ${border_2};
 
-  --row-alt:       light-dark(oklch(93.2% 0.022 82),  oklch(20.5% 0.015 260));
-  --row-hover:     light-dark(oklch(90.0% 0.038 82),  oklch(25.0% 0.022 260));
+  --row-alt:       ${row_alt};
+  --row-hover:     ${row_hover};
 
-  --accent-primary: light-dark(oklch(38.0% 0.020 260), oklch(78.0% 0.015 260));
-  --accent-data:    light-dark(oklch(55.0% 0.155 230), oklch(75.0% 0.115 230));
-  --accent:         var(--accent-primary);
+  --accent-primary: ${accent_primary};
+  --accent-data:    ${accent_data};
+  --accent:         ${accent};
 
-  --status-alarm: light-dark(oklch(52.0% 0.180 28),  oklch(70.0% 0.155 28));
-  --status-warn:  light-dark(oklch(70.0% 0.155 85),  oklch(80.0% 0.130 85));
-  --status-ok:    light-dark(oklch(55.0% 0.135 145), oklch(72.0% 0.115 145));
-  --status-info:  light-dark(oklch(55.0% 0.115 260), oklch(75.0% 0.090 260));
+  --status-alarm: ${status_alarm};
+  --status-warn:  ${status_warn};
+  --status-ok:    ${status_ok};
+  --status-info:  ${status_info};
 
-  --c-opaque:      light-dark(oklch(60.5% 0.110 135), oklch(73.5% 0.115 135));
-  --c-prepass:     light-dark(oklch(64.0% 0.135 50),  oklch(73.0% 0.130 50));
-  --c-translucent: light-dark(oklch(56.0% 0.085 240), oklch(71.0% 0.080 240));
-  --c-additive:    light-dark(oklch(56.0% 0.115 305), oklch(72.0% 0.105 305));
-  --c-decal:       light-dark(oklch(60.0% 0.115 65),  oklch(71.0% 0.115 65));
-  --c-shadow:      light-dark(oklch(42.0% 0.025 285), oklch(55.0% 0.020 285));
-  --c-ui:          light-dark(oklch(71.0% 0.115 90),  oklch(80.0% 0.115 90));
-  --c-postprocess: light-dark(oklch(66.0% 0.055 240), oklch(78.0% 0.055 240));
-  --c-other:       light-dark(oklch(64.0% 0.000 0),   oklch(75.0% 0.000 0));
+  --c-opaque:      ${c_opaque};
+  --c-prepass:     ${c_prepass};
+  --c-translucent: ${c_translucent};
+  --c-additive:    ${c_additive};
+  --c-decal:       ${c_decal};
+  --c-shadow:      ${c_shadow};
+  --c-ui:          ${c_ui};
+  --c-postprocess: ${c_postprocess};
+  --c-other:       ${c_other};
 
-  --pos:     var(--status-ok);
-  --neg:     var(--status-alarm);
-  --neutral: var(--text-2);
+  --pos:     ${pos};
+  --neg:     ${neg};
+  --neutral: ${neutral};
 }
 @media (prefers-reduced-motion: reduce) {
   :root {
@@ -76,8 +83,10 @@ _DESIGN_TOKENS = """
 }
 """
 
+_DESIGN_TOKENS = _string.Template(_DESIGN_TOKENS_TMPL).substitute(_tokens.token_subst())
 
-_CHROME_CSS = """
+
+_CHROME_CSS_TMPL = """
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: var(--surface-0); color: var(--text-1); }
 body {
@@ -152,7 +161,7 @@ nav.crumb a + a::before { content: ''; }
 
 .kpi-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(${kpi_strip_min}, 1fr));
   gap: var(--sp-3);
   margin: 0 0 var(--sp-8);
 }
@@ -161,7 +170,7 @@ nav.crumb a + a::before { content: ''; }
   border: 1px solid var(--border-1);
   padding: var(--sp-3) var(--sp-4);
   display: flex; flex-direction: column; gap: var(--sp-1);
-  min-height: 88px;
+  min-height: ${kpi_min_height};
 }
 .kpi-chip .kpi-label {
   font: var(--fs-small) ui-monospace, monospace;
@@ -193,7 +202,7 @@ nav.crumb a + a::before { content: ''; }
 
 nav.toc {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(${toc_min}, 1fr));
   gap: var(--sp-1) var(--sp-3);
   font: var(--fs-mono) ui-monospace, monospace;
   margin: 0 0 var(--sp-6);
@@ -242,7 +251,7 @@ table.report td.area-cell { color: var(--text-2); }
 
 .bar-row {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) 2fr 90px;
+  grid-template-columns: ${bar_row_cols};
   gap: var(--sp-3);
   align-items: center;
   padding: 4px 0;
@@ -252,13 +261,13 @@ table.report td.area-cell { color: var(--text-2); }
                 font-weight: 600; color: var(--text-1); }
 .bar-row .total { text-align: right; font-variant-numeric: tabular-nums;
                   color: var(--text-2); }
-.bar { display: flex; height: 18px; background: var(--surface-2);
+.bar { display: flex; height: ${bar_height}; background: var(--surface-2);
        border: 1px solid var(--border-1); overflow: hidden; }
-.bar .seg { flex: 0 0 auto; color: #fff; font-size: 10px; line-height: 18px;
+.bar .seg { flex: 0 0 auto; color: #fff; font-size: 10px; line-height: ${bar_height};
             text-align: center; overflow: hidden; white-space: nowrap; }
 
 .ibar {
-  display: inline-block; width: 80px; height: 6px;
+  display: inline-block; width: ${ibar_width}; height: ${ibar_height};
   background: var(--surface-2); border: 1px solid var(--border-1);
   vertical-align: middle; margin-left: 6px;
 }
@@ -357,7 +366,7 @@ footer.legend {
 
 .dash-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(${dash_grid_min}, 1fr));
   gap: var(--sp-6);
   margin: 0 0 var(--sp-6);
 }
@@ -374,14 +383,16 @@ a.dash-card table.report { font-size: var(--fs-small); }
 a.dash-card table.report a { pointer-events: none; }
 """
 
+_CHROME_CSS = _string.Template(_CHROME_CSS_TMPL).substitute(_tokens.layout_subst())
 
-_STICKY_CSS = """
+
+_STICKY_CSS_TMPL = """
 /* Sticky stack: crumb (top:0) -> summary-bar (top:crumb-h) -> thead (top:hdr-offset).
    --hdr-offset is the combined height of crumb + summary-bar (pages set per page).
    --crumb-h is the crumb height alone. Defaults work for most pages.
    h2 is NOT sticky: the cascading sticky h2 + thead + summary-bar over-stacks
    on long multi-section pages. Sticky thead is sufficient for table reading. */
-body { --hdr-offset: 120px; --crumb-h: 36px; }
+body { --hdr-offset: ${hdr_offset}; --crumb-h: ${crumb_height}; }
 nav.crumb {
   position: sticky; top: 0; z-index: 3;
   background: var(--bg);
@@ -390,7 +401,7 @@ nav.crumb {
 .summary-bar {
   position: sticky; top: var(--crumb-h); z-index: 3;
   display: grid;
-  grid-template-columns: minmax(140px, max-content) 1fr auto;
+  grid-template-columns: ${summary_bar_cols};
   gap: var(--sp-2) var(--sp-6);
   align-items: center;
   background: var(--surface-1);
@@ -423,6 +434,8 @@ nav.crumb {
 .summary-bar.tone-warn { border-top-color: var(--status-warn); }
 .summary-bar.tone-info { border-top-color: var(--status-info); }
 """
+
+_STICKY_CSS = _string.Template(_STICKY_CSS_TMPL).substitute(_tokens.layout_subst())
 
 
 _LINK_KIND_CSS = """
@@ -1204,6 +1217,32 @@ def link(href: str, text: str, *, kind: str = 'inline',
 
 def page_close() -> str:
     return '</body></html>'
+
+
+def report_page(title: str, body, *, drops: int = 0, captures: int = 0,
+                build_ts: str = '', crumb_depth: int = 1, kpis: list | None = None,
+                current_page: str | None = None, hdr_offset_px: int | None = 120,
+                body_attrs: dict | None = None, ab=None, root: str | None = None,
+                report_key: str | None = None) -> str:
+    """Assemble a standard Layer-2 report page, deduping the open/header/strip/close shared by every
+    report (Q-6). ``body`` is an HTML string or a list of fragments (the report's summary_bar +
+    sections, in order). The fragments are '\\n'-joined exactly as write_report joins a parts list, so
+    routing a report through this helper is byte-identical to the old inline boilerplate.
+
+    The A/B strip + picker are emitted right after the header only when ``report_key`` and ``root``
+    are both given (the cumulative-vs-A/B reports); both self-suppress to '' when ``ab`` is None.
+    Reports with a bespoke strip (trend_table's capture-count suffixes) pass report_key=None and place
+    their strip at the head of ``body`` instead.
+    """
+    parts = [page_open(title, hdr_offset_px=hdr_offset_px, body_attrs=body_attrs),
+             header(title, drops=drops, captures=captures, build_ts=build_ts,
+                    kpis=kpis, crumb_depth=crumb_depth, current_page=current_page)]
+    if report_key is not None and root is not None:
+        parts.append(ab_strip(ab))
+        parts.append(ab_picker_for(root, report_key, ab=ab))
+    parts.extend(body if isinstance(body, (list, tuple)) else [body])
+    parts.append(page_close())
+    return '\n'.join(parts)
 
 
 def header(title: str, *, drops: int = 0, captures: int = 0,

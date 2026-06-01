@@ -377,3 +377,40 @@ pyarrow-only. **Consequence:** the CI matrix keeps its 3.10 cell, so the loader 
 `tomli` (3.10) *and* `tomllib` (3.12/3.13) and the digest gates prove them equivalent (verified
 locally: identical loaded values under py3.10/tomli). ARCHITECTURE §3 is annotated with this ADR
 (frozen, append-only); §1's floor is unchanged.
+
+### ADR-27 — design tokens move to TOML by a value-only Template skeleton (no golden refresh)
+**Context:** c08 (H-15) extracts the `chrome` design-token VALUES to a designer-editable
+`reports/design_tokens.toml`. The blocking constraint: `html/template.py` embeds the token block
+**un-minified** (`<style>{design_tokens_css()}…`) on the drill + root pages, while `chrome.page_open`
+embeds the **minified** form on the report pages — so the hand-aligned `:root` bytes (per-group
+eyeballed column alignment; 1/2/3-space gaps inside `light-dark(a,  b)` to align the dark-mode oklch)
+are baked into the golden. That alignment is not algorithmically reconstructible from key/value pairs.
+Two paths were weighed: (A) emit a canonical token block and accept a whitespace-only golden refresh
+of the un-minified pages; (B) keep the alignment skeleton in `chrome.py` with `string.Template` `$key`
+placeholders and source only the VALUES from TOML. **Decision:** take (B). The skeleton
+(`_DESIGN_TOKENS_TMPL` / `_CHROME_CSS_TMPL` / `_STICKY_CSS_TMPL`) owns the CSS var NAMES + layout, the
+TOML owns the values; `Template.substitute` reinserts each value verbatim, so the emitted CSS is
+byte-identical and **no golden is refreshed** (the c08 "Done when" gate). CSS uses no `$`, so only our
+placeholders match (verified). The token loader (`reports/_tokens.py`) is a SEPARATE concern from the
+c07 config: bundled-only, **no user-file / deep-merge layer** in v0.2 — DESIGNER Track A's documented
+workflow edits the packaged file directly; per-project token overrides are explicitly Track B. H-20
+(layout literals) rides the same mechanism; the bundled defaults reproducing today's bytes is pinned
+by `tests/test_design_tokens.py` (independent of the full-page golden) and ADR-6. ARCHITECTURE §3 is
+annotated with this ADR (frozen, append-only). **Scoping (ADR-23, recorded not hidden):** H-20 covers
+the base report layout tokens; the responsive `@container` / `@media print` grid overrides and
+incidental component widths (copy-button 28/22px, search 280px, catalog-grid 200px, print A4/12mm)
+stay inline as breakpoint/print constants — they are not designer-tunable base tokens. Noted on the
+HARDCODE H-20 row.
+
+### ADR-28 — token CSS var names are preserved; the `--color-*` section-prefixed rename is deferred
+**Context:** [DESIGNER.md](reference/DESIGNER.md) illustrates a "1:1 section-prefixed" naming
+(`color.accent_primary` → `--color-accent-primary`). The current emitted vars are NOT prefixed
+(`--accent-primary`, `--sp-1`, `--c-opaque`, `--bg`, …) and follow no single per-section convention
+(spacing is `--sp-*`, type is `--fs-*`, color has no shared prefix). Adopting the prefixed scheme
+would rename every var + every `var(--…)` reference across all CSS, changing the emitted bytes on all
+9 golden pages — directly contradicting c08's "byte-identical, golden green, no refresh" gate.
+**Decision (user-confirmed):** preserve the exact current var names in c08; the TOML `[color]` /
+`[spacing]` / … sections are organizational only (the var name is fixed by the skeleton). The
+cosmetic rename, if ever wanted, is a separate future commit that intentionally refreshes the golden.
+Recorded here so the DESIGNER.md illustration is understood as superseded for v0.2, not silently
+ignored (ADR-23).

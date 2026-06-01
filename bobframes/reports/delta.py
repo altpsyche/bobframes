@@ -5,7 +5,11 @@ from __future__ import annotations
 import html as _html
 
 from .. import config
+from . import _tokens
 from .chrome import DRAW_CLASSES, class_color_var, h
+
+# Sparkline default dimensions from design_tokens.toml [layout] (c08, H-20: was 60x14 inline).
+_LAYOUT = _tokens.layout()
 
 
 def rank_pill(n: int) -> str:
@@ -134,7 +138,7 @@ def class_segments_bar(weights: dict, total: float | None = None) -> str:
     return ''.join(parts)
 
 
-def sparkline_svg(values: list, w: int = 60, h_: int = 14) -> str:
+def sparkline_svg(values: list, w: int = _LAYOUT['sparkline_w'], h_: int = _LAYOUT['sparkline_h']) -> str:
     """Inline SVG polyline. None values render as segment breaks (multi-polyline)."""
     if not values or all(v is None for v in values):
         return ''
