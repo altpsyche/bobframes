@@ -56,6 +56,14 @@ def layout() -> dict:
     return load_tokens().get('layout', {})
 
 
+def chart() -> dict:
+    """The raw [chart] table (sizes + var() palette) for reports/charts.py (c16b, ADR-33).
+
+    Not a string.Template section, so it never reaches the :root CSS / golden.
+    """
+    return load_tokens().get('chart', {})
+
+
 def tokens_toml_text() -> str:
     """Public alias for the verbatim bundled TOML (export-tokens identity round-trip)."""
     return _toml_text()

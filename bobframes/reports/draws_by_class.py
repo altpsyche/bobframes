@@ -140,21 +140,22 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     if not counts:
         parts.append(base.empty_state('no draws found in any drop'))
     else:
-        # Section 1: stacked share bars
-        parts.append('<h2 id="stacked">stacked share per area / drop</h2>')
-        sec1_body = ['<div class="table-wrap">', base.legend()]
+        # Section 1: flagship charts - class-share donut + per area/drop pct-stacked bars (c16b).
+        parts.append('<h2 id="stacked">class share per area / drop</h2>')
+        parts.append(base.legend())
+        donut_segs = [(c, class_totals.get(c, 0), base.class_color_var(c))
+                      for c in base.DRAW_CLASSES if class_totals.get(c, 0) > 0]
+        parts.append(base.figure(
+            base.donut(donut_segs, center_label=base.fmt_int(grand_total),
+                       title='draw class share',
+                       desc='share of all draws by class across every area and drop'),
+            'draw-class share (all areas / drops)'))
         keys = sorted(counts.keys(), key=lambda k: (k[1], k[0]))
-        for area, date in keys:
-            cc = counts[(area, date)]
-            total = sum(cc.values())
-            label = f'{area} / {date}'
-            sec1_body.append('<div class="bar-row">')
-            sec1_body.append(f'<span class="key" title="{base.h(label)}">{base.h(label)}</span>')
-            sec1_body.append(base.class_segments_bar(dict(cc), total))
-            sec1_body.append(f'<span class="total">{base.fmt_int(total)}</span>')
-            sec1_body.append('</div>')
-        sec1_body.append('</div>')
-        parts.append(''.join(sec1_body))
+        rows = [(f'{area} / {date}', dict(counts[(area, date)])) for area, date in keys]
+        parts.append(base.figure(
+            base.pct_stacked_bar(rows, title='class mix per area / drop',
+                                 desc='each bar is one area/drop normalized to 100% by draw class'),
+            'class mix per area / drop (100%)'))
 
         # Section 2: raw counts table
         parts.append('<h2 id="counts">raw counts per class</h2>')

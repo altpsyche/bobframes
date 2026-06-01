@@ -63,6 +63,18 @@ from .delta import (
     rank_pill,
     sparkline_svg,
 )
+from .charts import (
+    bar_chart,
+    donut,
+    figure,
+    histogram,
+    icicle,
+    line_chart,
+    pct_stacked_bar,
+    scatter,
+    stacked_bar,
+    treemap,
+)
 from .discovery import (
     DropRow,
     DropSet,
@@ -110,6 +122,9 @@ __all__ = [
     # delta
     'class_segments_bar', 'delta_cell', 'delta_pill', 'inline_bar',
     'rank_pill', 'sparkline_svg',
+    # charts (c16b, ADR-33)
+    'bar_chart', 'donut', 'figure', 'histogram', 'icicle', 'line_chart',
+    'pct_stacked_bar', 'scatter', 'stacked_bar', 'treemap',
     # discovery
     'DropRow', 'DropSet', 'discover_drops', 'ok_capture_set', 'resolve_drop_set',
     # cache

@@ -305,6 +305,30 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
                 sec.append('</tr>')
             sec.append('</tbody></table>')
             parts.append(f'<h2 id="{base.h(area)}">{base.h(area)}</h2>')
+
+            # Flagship: sample-rejection % per RT with config warn/alarm rule-lines (c16b).
+            chart_rows = []
+            for label, _rep, _ in rows:
+                lb = None
+                for k in reversed(drop_keys):
+                    b = per_drop_data.get(k, {}).get((area, label))
+                    if b is not None:
+                        lb = b
+                        break
+                if not lb or lb['n_samples'] <= 0:
+                    continue
+                reject = 100.0 * (1.0 - lb['n_passed'] / lb['n_samples'])
+                chart_rows.append((str(label), reject))
+            if chart_rows:
+                parts.append(base.figure(
+                    base.bar_chart(
+                        chart_rows, value_fmt=lambda v: f'{v:.1f}%', max_value=100.0,
+                        thresholds=[(rcfg.overdraw_reject_warn_pct, 'var(--status-warn)', 'warn'),
+                                    (rcfg.overdraw_reject_alarm_pct, 'var(--status-alarm)', 'alarm')],
+                        title='sample rejection % per rt',
+                        desc='percent of shaded samples rejected per render target'),
+                    f'{area}: sample rejection % per RT'))
+
             parts.append(f'<div class="table-wrap"><rdc-sortable-table>{"".join(sec)}</rdc-sortable-table></div>')
 
     return base.write_report(out_path, [base.report_page(

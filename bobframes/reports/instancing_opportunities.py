@@ -185,6 +185,27 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     if not ranked:
         parts.append(base.empty_state('no repeated meshes found'))
     else:
+        # Flagship: estimated wasted indices for the top meshes (c16b).
+        chart_items = []
+        for mh, m in ranked[:12]:
+            try:
+                n_typ_c = int(statistics.median(m['num_indices'])) if m['num_indices'] else 0
+            except statistics.StatisticsError:
+                n_typ_c = 0
+            max_r = max(m['repeat_by_drop'].values()) if m['repeat_by_drop'] else 0
+            wasted_c = (max_r - 1) * n_typ_c
+            if wasted_c <= 0:
+                continue
+            suffix_c = base.pass_suffix(m['pass_paths'].most_common(1)[0][0]) if m['pass_paths'] else '?'
+            dom_c = m['draw_classes'].most_common(1)[0][0] if m['draw_classes'] else ''
+            tag_c = str(mh)[-4:] if mh else ''
+            chart_items.append((f'{dom_c}/{suffix_c}#{tag_c}', wasted_c))
+        if chart_items:
+            parts.append(base.figure(
+                base.bar_chart(chart_items, title='estimated wasted indices',
+                               desc='(max repeat - 1) x typical indices, per mesh'),
+                'estimated wasted indices (top meshes)'))
+
         sec1 = ['<div class="table-wrap"><rdc-sortable-table>',
                 '<table class="report"><thead><tr>', '<th>mesh</th>']
         for i, k in enumerate(drop_keys):

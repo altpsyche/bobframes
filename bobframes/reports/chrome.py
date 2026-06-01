@@ -267,6 +267,18 @@ table.report td.area-cell { color: var(--text-2); }
 .bar .seg { flex: 0 0 auto; color: #fff; font-size: 10px; line-height: ${bar_height};
             text-align: center; overflow: hidden; white-space: nowrap; }
 
+/* Inline-SVG charts (c16b, ADR-33): flagship viz above each report table. */
+figure.chart { margin: 0 0 var(--sp-4); max-width: 720px; }
+figure.chart figcaption { font-size: var(--fs-small); color: var(--text-2);
+                          margin: 0 0 var(--sp-2); }
+.chart-svg { display: block; width: 100%; height: auto;
+             background: var(--surface-1); border: 1px solid var(--border-1);
+             border-radius: 2px; }
+.chart-svg text { font: var(--fs-small) ui-monospace, monospace; fill: var(--text-2); }
+details.secondary-metrics { margin: var(--sp-2) 0 var(--sp-4); }
+details.secondary-metrics > summary { cursor: pointer; color: var(--text-2);
+                                      font-size: var(--fs-small); padding: var(--sp-1) 0; }
+
 .ibar {
   display: inline-block; width: ${ibar_width}; height: ${ibar_height};
   background: var(--surface-2); border: 1px solid var(--border-1);

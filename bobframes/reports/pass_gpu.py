@@ -190,6 +190,35 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
                     area_body.append(''.join(cells))
 
             parts.append(f'<h2 id="{base.h(area)}">{base.h(area)}</h2>')
+
+            # Flagship: GPU-by-pass treemap + top-pass bars, above the per-pass share rows (c16b).
+            chart_items = []
+            for marker, drop_buckets in ranked:
+                g = max((b['gpu'] for b in drop_buckets.values()), default=0.0)
+                if g <= 0:
+                    continue
+                cg = dict(drop_buckets.get(drop_keys[-1], {}).get('class_gpu', {}))
+                if not cg:
+                    for b in drop_buckets.values():
+                        if b.get('class_gpu'):
+                            cg = dict(b['class_gpu'])
+                            break
+                dom = max(cg.items(), key=lambda kv: kv[1])[0] if cg else 'other'
+                short = base.pass_short(marker) or marker or '(root)'
+                chart_items.append((short, g, dom))
+            if chart_items:
+                parts.append(base.figure(
+                    base.treemap([(lbl, g, base.class_color_var(d)) for lbl, g, d in chart_items],
+                                 title='gpu by pass',
+                                 desc='pass area sized by GPU time, colored by dominant draw class'),
+                    f'{area}: GPU time by pass'))
+                parts.append(base.figure(
+                    base.bar_chart([(lbl, g) for lbl, g, _ in chart_items][:10],
+                                   value_fmt=lambda v: f'{v:.3f}',
+                                   title='top passes by gpu (s)',
+                                   desc='heaviest passes by GPU seconds'),
+                    f'{area}: top passes by GPU (s)'))
+
             parts.append(''.join(area_body))
 
     return base.write_report(out_path, [base.report_page(

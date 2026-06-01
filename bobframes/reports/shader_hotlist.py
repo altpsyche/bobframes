@@ -170,6 +170,24 @@ def build(root: str, *, drops: list | None = None, ab=None,
         parts.append(base.empty_state(f'no {stage} shaders found'))
     else:
         single = len(drop_keys) == 1
+
+        # Flagship: complexity x cost scatter (bubble = src bytes) + complexity histogram (c16b).
+        scatter_pts = [
+            (p['complexity'], cost, p['src_len'],
+             f'{p["shader_type"][:4]}-cplx-{int(p["complexity"])}')
+            for sk, p, total_uses, cost in ranked
+        ]
+        parts.append(base.figure(
+            base.scatter(scatter_pts, x_label='complexity', y_label='cost', bubble=True,
+                         title='complexity vs cost',
+                         desc='each point is a shader; x complexity, y cost proxy, bubble src bytes'),
+            'shader complexity vs cost (bubble = src bytes)'))
+        parts.append(base.figure(
+            base.histogram(all_cplx, bins=12, title='complexity distribution',
+                           desc=f'distribution of complexity across {len(all_cplx)} shaders'),
+            'complexity distribution (all shaders)'))
+
+        # Primary (diet) table: shader / complexity / uses / cost / flags / src (c16b column diet).
         sec = ['<div class="table-wrap">'
                '<rdc-sortable-table data-default-sort="cost proxy" data-default-dir="desc">',
                '<table class="report"><thead><tr>', '<th>shader</th>',
@@ -185,10 +203,6 @@ def build(root: str, *, drops: list | None = None, ab=None,
             sec.append('<th class="num">trend</th>')
         sec.extend([
             '<th class="num" title="cost proxy = complexity x total uses">cost proxy</th>',
-            '<th class="num">branches</th>',
-            '<th class="num">loops</th>',
-            '<th class="num">tex samples</th>',
-            '<th class="num">src bytes</th>',
             '<th>flags</th>',
             '<th>src</th>',
             '</tr></thead><tbody>',
@@ -221,10 +235,6 @@ def build(root: str, *, drops: list | None = None, ab=None,
                 sec.append(f'<td class="num">{base.sparkline_svg(series)}</td>')
 
             sec.append(f'<td class="num">{base.heatmap_cell(cost, 0, max_cost, text=base.fmt_float(cost, 1))}</td>')
-            sec.append(f'<td class="num">{base.fmt_int(p["branches"])}</td>')
-            sec.append(f'<td class="num">{base.fmt_int(p["loops"])}</td>')
-            sec.append(f'<td class="num">{base.fmt_int(p["tex_samples"])}</td>')
-            sec.append(f'<td class="num">{base.fmt_int(p["src_len"])}</td>')
 
             flags = []
             if p['fb_fetch']:
@@ -241,6 +251,32 @@ def build(root: str, *, drops: list | None = None, ab=None,
             sec.append('</tr>')
         sec.append('</tbody></table></rdc-sortable-table></div>')
         parts.append(''.join(sec))
+
+        # Secondary metrics (collapsed): per-shader instruction-mix detail (c16b column diet).
+        det = ['<details class="secondary-metrics"><summary>secondary metrics</summary>',
+               '<div class="table-wrap"><rdc-sortable-table>',
+               '<table class="report"><thead><tr>',
+               '<th>shader</th>',
+               '<th class="num">branches</th>',
+               '<th class="num">loops</th>',
+               '<th class="num">discards</th>',
+               '<th class="num">dfdx/dfdy</th>',
+               '<th class="num">tex samples</th>',
+               '<th class="num">src bytes</th>',
+               '</tr></thead><tbody>']
+        for sk, p, total_uses, cost in ranked:
+            shader_label = f'{p["shader_type"][:4]}-cplx-{int(p["complexity"])}'
+            det.append('<tr>')
+            det.append(f'<td>{base.h(shader_label)}</td>')
+            det.append(f'<td class="num">{base.fmt_int(p["branches"])}</td>')
+            det.append(f'<td class="num">{base.fmt_int(p["loops"])}</td>')
+            det.append(f'<td class="num">{base.fmt_int(p["discards"])}</td>')
+            det.append(f'<td class="num">{base.fmt_int(p["dfdx_dfdy"])}</td>')
+            det.append(f'<td class="num">{base.fmt_int(p["tex_samples"])}</td>')
+            det.append(f'<td class="num">{base.fmt_int(p["src_len"])}</td>')
+            det.append('</tr>')
+        det.append('</tbody></table></rdc-sortable-table></div></details>')
+        parts.append(''.join(det))
 
     return base.write_report(out_path, [base.report_page(
         f'shader hotlist ({stage})', parts,
