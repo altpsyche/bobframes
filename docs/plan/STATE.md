@@ -61,7 +61,7 @@ next_action:    Do c06a (drill-size de-harden, D-8) → c06b (Parquet parity gat
                 part (ADR-6): defaults must reproduce output byte-identically (assert regex .pattern +
                 complexity-weight float fmt unchanged). Structure [scoring] as parent w/ subsections
                 (c21 extends). Then c08->c10, c16. GIT: still on branch `v0.2-roadmap-c04` (off main
-                @dedfdfc; now +ea68a63 docs +d8f61d7 c04 +d2870ec c05 +<c06 UNCOMMITTED>; UNPUSHED).
+                @dedfdfc; now +ea68a63 docs +d8f61d7 c04 +d2870ec c05 +c939995 c06+audit; UNPUSHED).
                 Post-release nit (non-blocking): bump CI actions off Node20 (checkout@v5/
                 setup-python@v6 before 2026-06-16).
 DONE-2026-05-31: c19 — bobframes 0.1.0 PUBLISHED. tag v0.1.0 -> CI publish job green (OIDC trusted
@@ -156,6 +156,15 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-01 — R-16 FIXED (real-ingest commit-lock). Root cause: stage tree (with the inheritable
+  _harness.log handle, grabbed by the respawning adb daemon) lived INSIDE <drop>.tmp, and the
+  pre-commit `rmtree(stage, ignore_errors=True)` silently swallowed the locked-log failure (R-12), so
+  `os.replace(tmp, final)` failed [WinError 5] after a fully green ingest. Fix: NEW
+  paths.drop_stage_dir = `<drop>.stage` (SIBLING of the .tmp commit dir, not nested); run.py uses it,
+  clears stale stage at start, and moves stage cleanup to AFTER the commit (best-effort). A held log
+  handle can no longer be inside the renamed dir. NEW test_hardening.test_stage_dir_is_sibling_not_
+  inside_commit_dir locks the invariant. 36→37 green, golden byte-identical. Real end-to-end re-proof
+  (commit survives adb) optional (~20min replay). Follows R-4/ADR-4 lineage; no new ADR.
 - 2026-06-01 — c06 DONE (tool resolver + errors + glob version detect; H-7). NEW config.py:
   resolve_tool/resolve_tool_verbose over one ordered _candidates list — BOBFRAMES_* env > legacy
   RENDERDOCCMD/RENDERDOC_QRENDERDOC (one-shot deprecation log) > [tools] config > shutil.which > known
