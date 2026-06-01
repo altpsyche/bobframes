@@ -312,6 +312,23 @@ def _warn_legacy_once(legacy: str, canonical: str) -> None:
         '%s is deprecated; use %s instead.', legacy, canonical)
 
 
+def getenv_legacy(canonical: str, legacy: str, default: str | None = None) -> str | None:
+    """Read ``$canonical``, falling back to the deprecated ``$legacy`` for one release.
+
+    Returns the canonical value if set; else the legacy value (with a one-shot deprecation
+    warning, shared with the tool-env path via ``_warned_legacy``); else ``default``. The
+    single source for the c10 env-rename cadence (``BOBFRAMES_PIXEL_GRID``/``BOBFRAMES_KEEP_STAGE``),
+    matching the ``_candidates`` precedence used for the tool vars (renderdoccmd/qrenderdoc)."""
+    val = os.environ.get(canonical)
+    if val is not None:
+        return val
+    legacy_val = os.environ.get(legacy)
+    if legacy_val is not None:
+        _warn_legacy_once(legacy, canonical)
+        return legacy_val
+    return default
+
+
 def _config_tool(config, name: str) -> str | None:
     """Read ``[tools].<name>`` from an optional config, tolerating a dataclass or a dict."""
     if config is None:

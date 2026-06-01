@@ -460,3 +460,24 @@ from that engine exists to anonymize), and `custom-template.toml` is the documen
 (shows both marker and state-only predicates). **Consequence:** a literal `presets/ue.toml` is
 deliberately NOT shipped; recorded here so the doc's file list is understood as satisfied by the
 default file, not silently dropped (ADR-23).
+
+### ADR-31 — `RDC_ROOT` is eliminated by threading `project_root` as the parse `cwd`, not by a `parse_init_state` CLI arg
+**Context:** the c10 doc says "pass `--project-root` as an explicit CLI arg to `parse_init_state`"
+to retire `RDC_ROOT` (R-5/Q-5). Investigation shows `parse_init_state.main(argv)` consumes **no**
+project root: it takes 6 positional args and writes every output under the absolute `capture_stage`
+(`xml_path`/`capture_stage` are both absolute via `discovery`/`paths.drop_stage_dir`). It is therefore
+**cwd-independent** — the parse child's working directory cannot affect any output byte. `RDC_ROOT`
+was only ever read in `_parse_one` as that child's `cwd`, and `_do_parse` always set it to
+`project_root` before the pool ran (so the triple-`dirname` fallback was dead). **Decision
+(user-confirmed, "cleaner for the long run"):** add `project_root` to `_parse_one`'s args tuple
+(now a 7-tuple) and pass it directly as `subprocess.run(cwd=project_root)`; delete the global
+`os.environ['RDC_ROOT']` set/restore. Do **not** add a `--project-root` flag to `parse_init_state` —
+that would be dead surface (the ADR-23 anti-pattern). **Consequence:** completes R-5 (no global env
+mutation that leaks across drops) and resolves Q-5 (positional args are canonical; the misleading
+comment is fixed) with **zero** new child surface; byte-identical output (ADR-6), golden untouched.
+The spec's "Files: pipeline, qrd_harness, replay_main" line is stale — the real touch is
+`run.py` + `config.py` + `replay_main.py`; `qrd_harness` is unchanged (only the kept `RDC_INSIDE_ARGS`
+wire). The `BOBFRAMES_PIXEL_GRID` / `BOBFRAMES_KEEP_STAGE` renames keep the one-release legacy `RDC_*`
+fallback via the shared `config.getenv_legacy` helper (reusing the c06 one-shot deprecation machinery);
+`RDC_INSIDE_ARGS` (three consumers: `qrd_harness`, `replay_main`, `probes/whatif`) is the
+qrenderdoc↔harness wire protocol and is renamed nowhere.

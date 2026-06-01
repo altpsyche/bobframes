@@ -2200,8 +2200,11 @@ def main() -> None:
             except Exception:
                 pass
             t0 = time.monotonic()
+            # BOBFRAMES_PIXEL_GRID is set by the host; RDC_PIXEL_GRID kept one release for a
+            # standalone old caller (c10 rename; cannot import the host config helper here, H-6).
             pixel_history = _extract_pixel_history(ctrl, ctx, last_ev,
-                                                   grid=int(os.environ.get('RDC_PIXEL_GRID', '4')))
+                                                   grid=int(os.environ.get('BOBFRAMES_PIXEL_GRID')
+                                                            or os.environ.get('RDC_PIXEL_GRID', '4')))
             print(f'  pixel_history: {len(pixel_history)} rows ({time.monotonic()-t0:.1f}s)')
 
             totals = _build_frame_totals(

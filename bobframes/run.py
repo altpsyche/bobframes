@@ -163,18 +163,17 @@ def _do_export(drop: discovery.Drop, workers: int, convert_timeout: float) -> No
 
 # --- Stage 3: static parse ---------------------------------------------------
 
-def _parse_one(args: tuple[str, str, str, str, str, str]) -> tuple[str, float, str, str]:
-    xml_path, capture_stage, area, drop_date, drop_label, capture = args
+def _parse_one(args: tuple[str, str, str, str, str, str, str]) -> tuple[str, float, str, str]:
+    xml_path, capture_stage, area, drop_date, drop_label, capture, project_root = args
     cmd = [
         sys.executable, '-m', 'bobframes.parsers.parse_init_state',
         xml_path, capture_stage, area, drop_date, drop_label, capture,
     ]
-    cwd = os.path.dirname(os.path.dirname(os.path.dirname(capture_stage)))
-    if not cwd:
-        cwd = os.getcwd()
-    cwd = os.environ.get('RDC_ROOT', cwd) or cwd
+    # project_root is passed explicitly as the child cwd (no global RDC_ROOT env; R-5/Q-5).
+    # parse_init_state writes only under the absolute capture_stage, so cwd is not load-bearing
+    # for output; we set it for a stable, predictable working directory.
     t0 = time.monotonic()
-    p = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd)
+    p = subprocess.run(cmd, capture_output=True, text=True, cwd=project_root)
     elapsed = time.monotonic() - t0
     stderr = p.stderr.strip()
     if p.returncode != 0:
@@ -189,24 +188,17 @@ def _do_parse(drop: discovery.Drop, stage_root: str, workers: int, project_root:
         xml = os.path.join(drop.drop_dir, f'{capture}.zip.xml')
         capture_stage = os.path.join(stage_root, capture)
         os.makedirs(capture_stage, exist_ok=True)
-        args.append((xml, capture_stage, drop.area, drop.drop_date, drop.drop_label, capture))
-    prev_rdc_root = os.environ.get('RDC_ROOT')
-    os.environ['RDC_ROOT'] = project_root
+        # project_root rides as an explicit positional → the child cwd, replacing the old global
+        # RDC_ROOT env mutation that leaked across drops (R-5) and the dual positional/env path (Q-5).
+        args.append((xml, capture_stage, drop.area, drop.drop_date, drop.drop_label, capture, project_root))
     t0 = time.monotonic()
     statuses: dict[str, str] = {}
-    try:
-        with cf.ProcessPoolExecutor(max_workers=workers) as ex:
-            for capture, elapsed, status, stderr in ex.map(_parse_one, args):
-                statuses[capture] = 'ok' if not status.startswith('FAIL') else 'fail'
-                if stderr:  # surface stderr even when rc==0 (R-7)
-                    _log(f'    {capture} stderr: {stderr[-400:]}')
-                _log(f'    {capture}: {status} ({elapsed:.1f}s)')
-    finally:
-        # Restore RDC_ROOT so a later drop never inherits this drop's value (R-5).
-        if prev_rdc_root is None:
-            os.environ.pop('RDC_ROOT', None)
-        else:
-            os.environ['RDC_ROOT'] = prev_rdc_root
+    with cf.ProcessPoolExecutor(max_workers=workers) as ex:
+        for capture, elapsed, status, stderr in ex.map(_parse_one, args):
+            statuses[capture] = 'ok' if not status.startswith('FAIL') else 'fail'
+            if stderr:  # surface stderr even when rc==0 (R-7)
+                _log(f'    {capture} stderr: {stderr[-400:]}')
+            _log(f'    {capture}: {status} ({elapsed:.1f}s)')
     _log(f'  parse done in {time.monotonic()-t0:.1f}s')
     return statuses
 
@@ -215,7 +207,9 @@ def _do_parse(drop: discovery.Drop, stage_root: str, workers: int, project_root:
 
 def _do_replay(drop: discovery.Drop, stage_root: str, pixel_grid: int = 4,
                replay_timeout: float = 600.0) -> dict[str, str]:
-    os.environ['RDC_PIXEL_GRID'] = str(pixel_grid)
+    # The replay child (qrenderdoc embedded py3.10) reads the grid only from the inherited
+    # environment (qrd_harness copies os.environ), so set it here before the harness launches.
+    os.environ['BOBFRAMES_PIXEL_GRID'] = str(pixel_grid)
     _log(f'  replay: {len(drop.captures)} captures (sequential)')
     statuses: dict[str, str] = {}
     # Resolve replay_main.py as a packaged resource so replay works from an installed wheel,
@@ -275,7 +269,7 @@ def process_drop(drop: discovery.Drop, *, force: bool, workers: int,
     parse_status = _do_parse(drop, stage_root, workers=workers, project_root=project_root)
 
     replay_status = _do_replay(drop, stage_root,
-                               pixel_grid=int(os.environ.get('RDC_PIXEL_GRID', '4')),
+                               pixel_grid=int(config.getenv_legacy('BOBFRAMES_PIXEL_GRID', 'RDC_PIXEL_GRID') or '4'),
                                replay_timeout=replay_timeout)
 
     capture_status: dict[str, str] = {}
@@ -343,7 +337,7 @@ def process_drop(drop: discovery.Drop, *, force: bool, workers: int,
 
     # Best-effort stage cleanup (post-commit). If a foreign process still holds a handle
     # (R-16), this tolerantly leaves the sibling dir; the next run clears it (see above).
-    if not os.environ.get('RDC_KEEP_STAGE'):
+    if not config.getenv_legacy('BOBFRAMES_KEEP_STAGE', 'RDC_KEEP_STAGE'):
         shutil.rmtree(stage_root, ignore_errors=True)
 
     # Render per-drop browser HTML to _reports/drill/<area>/<drop>/index.html.
@@ -392,7 +386,8 @@ def main(argv: list[str]) -> int:
         help='per-file renderdoccmd convert budget (s); overrides [pipeline] convert_timeout_s')
     args = ap.parse_args(argv)
 
-    os.environ['RDC_PIXEL_GRID'] = str(args.pixel_grid)
+    # process_drop has no pixel_grid param; carry --pixel-grid to it via the environment.
+    os.environ['BOBFRAMES_PIXEL_GRID'] = str(args.pixel_grid)
     root = os.path.abspath(args.root)
     project_root = root  # the run.py is invoked via `python -m bobframes.run` from project root
 

@@ -7,8 +7,27 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        c10_env_rename    (status: not-started; c09 DONE)
-last_session:   2026-06-01 — c09 DONE (engine-agnostic classifier; H-1/H-2/H-3/H-4/H-5 + D-6). NEW
+current:        c16_report_quality    (status: not-started; c10 DONE)
+last_session:   2026-06-01 — c10 DONE (env-var rename RDC_*→BOBFRAMES_*; completes R-5 + resolves Q-5;
+                ADR-31). NEW config.getenv_legacy(canonical, legacy, default) = the SINGLE source for the
+                one-release legacy cadence, reusing c06's _warn_legacy_once + _warned_legacy one-shot
+                machinery. RDC_KEEP_STAGE→BOBFRAMES_KEEP_STAGE (run.py _do/process_drop cleanup gate) +
+                RDC_PIXEL_GRID→BOBFRAMES_PIXEL_GRID (host sets it in main + _do_replay so the qrenderdoc
+                child inherits it via os.environ; host reads back via getenv_legacy; replay_main reads
+                BOBFRAMES_PIXEL_GRID or RDC_PIXEL_GRID INLINE — embedded py3.10 can't import config, H-6).
+                RDC_ROOT ELIMINATED (ADR-31, user picked the cleaner route): investigation found
+                parse_init_state is cwd-INDEPENDENT (consumes no project root; writes only under the
+                absolute capture_stage), so RDC_ROOT was only ever the parse-child cwd and _do_parse always
+                set it = project_root (triple-dirname fallback dead) → threaded project_root into
+                _parse_one's args (now a 7-tuple) as the explicit subprocess cwd; deleted the global
+                os.environ['RDC_ROOT'] set/restore (R-5). NO --project-root flag added to parse_init_state
+                (would be dead surface — ADR-23). RDC_INSIDE_ARGS kept verbatim (3 consumers:
+                qrd_harness/replay_main/probes.whatif — the qrenderdoc↔harness wire). 70→74 green (+3
+                getenv_legacy precedence/warn-once/default, +1 _do_parse env-untouched R-5 lock; fixed
+                test_hardening _parse_one 6→7-tuple). PARITY (ADR-6): golden HTML + Parquet BYTE-IDENTICAL,
+                git clean, NO refresh; smoke render-only 9 pages lint clean exit 0; grep RDC_ROOT = only
+                comments/test asserts, ZERO reads. Q-5 ticked; ADR-31 appended.
+former_last_c09: 2026-06-01 — c09 DONE (engine-agnostic classifier; H-1/H-2/H-3/H-4/H-5 + D-6). NEW
                 derives/classifier.py = the SINGLE, analysis-layer draw-classification API: a
                 state-capable rule engine (ADR-29) — a rule matches if any marker predicate
                 (marker_contains/marker_suffix) hits OR all `when` field conditions (over any draws
@@ -97,18 +116,17 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    Do c10 (env-var rename RDC_*→BOBFRAMES_*). Open commits/v02/c10_env_rename.md. Relates
-                Q-5 (pipeline._parse_one args dual positional+RDC_ROOT) + R-5 lineage; config.py already
-                honors BOBFRAMES_* with one-shot legacy warnings (c06), so c10 finishes the env surface.
-                Then c16 (report-quality — also lands the c09-deferred dead-code cleanup D-11b:
-                footer_legend/_row_count/dead CSS, golden refresh). NOTE for whoever does c27/c35: the
+next_action:    Do c16 (report-quality polish). Open commits/v02/c16_report_quality.md. ALSO lands the
+                c09-deferred dead-code cleanup D-11b (footer_legend/_row_count/dead footer.legend +
+                .sidecar-list CSS / the replay `if False` branch) — unlike c10, this one DOES refresh the
+                golden. NOTE for whoever does c27/c35: the
                 c09 classifier engine is already STATE-CAPABLE (when{} over any draw column), so the
                 state-first generic preset (D-10, fewer `other`) is a preset, not a rewrite; c35 removes
                 the zeroed passes.draws_by_class_* + slims passes (D-11a). V0.2 CLOSE-OUT (user-requested
                 2026-06-01): before tagging v0.2, run a real FULL ingest of ALL areas (not just Chor
                 bazar — Commercial/Financial/Police station/Resort/Train station/Under construction mall
                 from the Downloads RDC drop), keep the rendered HTML, eyeball the reports. GIT: still on
-                branch v0.2-roadmap-c04 (off main; c07 + c08 + c09 UNPUSHED). Post-release nit (non-blocking):
+                branch v0.2-roadmap-c04 (off main; c07 + c08 + c09 + c10 UNPUSHED). Post-release nit (non-blocking):
                 bump CI actions off Node20 (checkout@v5/setup-python@v6 before 2026-06-16).
 DONE-2026-05-31: c19 — bobframes 0.1.0 PUBLISHED. tag v0.1.0 -> CI publish job green (OIDC trusted
                 publishing, ubuntu). Live on PyPI (wheel + sdist) + GitHub Release with both assets.
@@ -155,8 +173,8 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c07 TOML config layer](commits/v02/c07_toml_config.md) | **done** — tomllib config (tomli<3.11); timeouts/regex/banlist/chrome-scrub/weights/delta lifted; 47 green, byte-parity (H-12/13/14/16/17/21/22/23/30,Q-3) |
 | ☑ | [c08 design tokens TOML + preview](commits/v02/c08_design_tokens.md) | **done** — design_tokens.toml + value-only Template skeleton (H-15/H-20, ADR-27/28); report_page (Q-6); preview/export-tokens/render --watch verbs; 59 green, byte-parity (no golden refresh) |
 | ☑ | [c09 engine-agnostic classifier](commits/v02/c09_classifier.md) | **done** — single state-capable classifier API (H-1..H-5); dead replay copy deleted (D-6); 70 green, byte-parity (no refresh) |
-| ☐ | [c10 env-var rename `RDC_*`→`BOBFRAMES_*`](commits/v02/c10_env_rename.md) | **next** |
-| ☐ | [c16 report-quality polish](commits/v02/c16_report_quality.md) | deferred |
+| ☑ | [c10 env-var rename `RDC_*`→`BOBFRAMES_*`](commits/v02/c10_env_rename.md) | **done** — `getenv_legacy` one-release fallback; `RDC_ROOT` eliminated (R-5/Q-5, ADR-31); 74 green, byte-parity (no refresh) |
+| ☐ | [c16 report-quality polish](commits/v02/c16_report_quality.md) | **next** |
 
 ## v0.3 — CI/automation surface (planned — [ROADMAP](ROADMAP.md))
 
@@ -202,6 +220,22 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-01 — c10 DONE (env-var rename RDC_*→BOBFRAMES_*; completes R-5, resolves Q-5; ADR-31). NEW
+  config.getenv_legacy(canonical, legacy, default) = single source for the one-release legacy cadence,
+  reusing c06's _warn_legacy_once + _warned_legacy one-shot machinery. RDC_KEEP_STAGE→BOBFRAMES_KEEP_STAGE
+  (run.py stage-cleanup gate) + RDC_PIXEL_GRID→BOBFRAMES_PIXEL_GRID (host sets it in main + _do_replay so
+  the qrenderdoc child inherits via os.environ; host reads back via getenv_legacy; replay_main reads
+  BOBFRAMES_PIXEL_GRID or RDC_PIXEL_GRID INLINE — embedded py3.10 can't import config, H-6). RDC_ROOT
+  ELIMINATED (ADR-31, user chose the cleaner route): parse_init_state is cwd-INDEPENDENT (consumes no
+  project root; writes only under the absolute capture_stage), so RDC_ROOT was only ever the parse-child
+  cwd and _do_parse always set it = project_root → threaded project_root into _parse_one's args (now a
+  7-tuple) as the explicit subprocess cwd; deleted the global os.environ['RDC_ROOT'] set/restore. NO
+  --project-root flag added to parse_init_state (dead surface, ADR-23). RDC_INSIDE_ARGS kept verbatim
+  (3 consumers: qrd_harness/replay_main/probes.whatif — the qrenderdoc↔harness wire, renamed nowhere).
+  70→74 green (+3 getenv_legacy precedence/warn-once/default, +1 _do_parse env-untouched R-5 lock; fixed
+  the test_hardening _parse_one 6→7-tuple). PARITY (ADR-6): golden HTML + Parquet BYTE-IDENTICAL, git
+  clean, NO refresh; smoke render-only 9 pages lint clean exit 0; grep RDC_ROOT = only comments/test
+  asserts, ZERO reads. Q-5 ticked; ADR-31 appended. current → c16.
 - 2026-06-01 — c09 DONE (engine-agnostic classifier; H-1/H-2/H-3/H-4/H-5 + D-6). NEW derives/classifier.py
   = the SINGLE analysis-layer draw-classification API: a state-capable rule engine (ADR-29) — rule matches
   if any marker predicate (marker_contains/marker_suffix) hits OR all `when` field conditions (over any
