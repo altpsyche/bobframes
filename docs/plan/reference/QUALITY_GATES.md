@@ -105,12 +105,21 @@ render shows the friendly message), and sparkline null-gaps by `test_delta` (gol
 series never emits `None` today, G-16).
 
 ## 21.1g Inline-SVG chart determinism (c16b, ADR-6/33) — see [c16b](../commits/v02/c16b_report_viz.md)
-c16b leads each report with a visualization from a new `reports/charts.py` — deterministic, dependency-free
-server-side inline SVG (fixed-precision coords, no `random`/timestamps), themed from design tokens, with the
-detail table kept below as the exact/accessible fallback. Because the SVG is logically deterministic it
-**rides the golden byte-parity gate** like the rest of the HTML (no canvas, no vendored JS lib that would
-force a parity carve-out). `test_charts` adds golden-independent guards (determinism, SVG structure, token
-theming, empty-series → safe). Chart-first + table-as-fallback is the report pattern.
+c16b leads each of the 6 reports with a visualization from `reports/charts.py` — deterministic,
+dependency-free server-side inline SVG (fixed-precision coords mirroring `delta.sparkline_svg`, no
+`random`/`Date`/timestamps), themed from `design_tokens.toml` `[chart]` (sizes) + existing CSS `var(--...)`
+colors, with the detail table kept directly below as the exact/accessible fallback. Because the SVG is
+logically deterministic it **rides the golden byte-parity gate** like the rest of the HTML (no `<canvas>`,
+no vendored JS lib that would force a parity carve-out — the ADR-11 trap). The output-changing render means
+the HTML golden is **refreshed here** (`python -m bobframes.tests.make_golden`, reviewed page-by-page:
+the 6 reports gain a `<figure class="chart">` + the shader column-diet reshape; index/dashboard/drill change
+only by the shared chart CSS). `test_parquet_parity` stays green with **no** `digests.json` refresh
+(presentation only, §21.9). `test_charts` adds golden-independent guards (determinism = same input → same
+bytes; SVG structure = `role="img"`/`<title>`/`<desc>`; token theming; empty-series → safe `''`; an
+ASCII-only guard since chart `<text>`/`<title>`/`<desc>` ride **outside** `<table>` and are therefore linted
+— labels are scrubbed via `safe_chrome_text`). Chart-first + table-as-fallback is the report pattern. The
+restructure (section framing, copy buttons, dashboard small-multiples, fuller a11y) is
+[c16c](../commits/v02/c16c_report_restructure.md).
 
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,

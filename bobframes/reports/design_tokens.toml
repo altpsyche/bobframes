@@ -94,3 +94,22 @@ hdr_offset = '120px'                                 # body --hdr-offset default
 crumb_height = '36px'                                # body --crumb-h
 sparkline_w = 60                                     # delta.sparkline_svg width
 sparkline_h = 14                                     # delta.sparkline_svg height
+
+# Chart sizes + palette (c16b, ADR-33): consumed at render time by reports/charts.py (NOT a
+# string.Template :root section, so it never reaches the CSS / golden). Sizes are SVG viewBox units
+# (px). Colors are CSS var() refs so charts follow light-dark() like the rest of the UI; `palette`
+# cycles for categorical non-draw-class series (draw-class series use --c-<class> directly).
+[chart]
+width = 640            # default flagship chart width
+height = 220           # default chart height (bar/scatter/line; some charts derive from width)
+donut = 180            # donut diameter
+bar_h = 16             # horizontal-bar row height
+gap = 6                # gap between bar rows
+pad = 10               # inner padding
+series_color = 'var(--accent-data)'
+axis_color = 'var(--border-2)'
+grid_color = 'var(--border-1)'
+label_color = 'var(--text-2)'
+threshold_warn = 'var(--status-warn)'
+threshold_alarm = 'var(--status-alarm)'
+palette = ['var(--accent-data)', 'var(--c-opaque)', 'var(--c-prepass)', 'var(--c-translucent)', 'var(--c-ui)', 'var(--c-postprocess)', 'var(--c-additive)', 'var(--c-decal)', 'var(--c-shadow)', 'var(--c-other)']

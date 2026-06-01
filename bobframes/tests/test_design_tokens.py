@@ -78,6 +78,26 @@ def test_sparkline_defaults_from_tokens():
     assert _tokens.layout()['sparkline_h'] == 14
 
 
+def test_c16b_chart_block_present():
+    """c16b adds the [chart] token block (sizes + var() palette) consumed by reports/charts.py."""
+    ch = _tokens.chart()
+    assert ch, 'design_tokens.toml missing [chart] block'
+    for k in ('width', 'height', 'donut', 'bar_h', 'gap', 'pad', 'series_color', 'palette'):
+        assert k in ch, f'[chart] missing {k}'
+    assert isinstance(ch['width'], int) and isinstance(ch['palette'], list)
+    # [chart] is NOT a :root section -> it must never leak into the substituted CSS tokens.
+    assert 'series_color' not in chrome._DESIGN_TOKENS
+
+
+def test_c16b_chart_css_present():
+    """c16b adds the chart wrapper CSS (figure.chart / .chart-svg / details.secondary-metrics)."""
+    c = chrome._CHROME_CSS
+    assert 'figure.chart {' in c
+    assert '.chart-svg {' in c
+    assert 'details.secondary-metrics {' in c
+    assert '$' not in c
+
+
 # --- loader contract ----------------------------------------------------------
 
 def test_subst_keys_are_identifiers_and_cover_every_placeholder():

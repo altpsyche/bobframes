@@ -7,8 +7,40 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        c16b_report_viz    (status: not-started; c16 DONE)
-last_session:   2026-06-01 — c16 DONE (report-quality polish + mechanics; user pushed reports 5/10 → aim
+current:        c16c_report_restructure    (status: not-started; c16 + c16b DONE)
+last_session:   2026-06-02 — c16b DONE (report CHARTS; G-15 charts half; ADR-33 implemented). c16b was
+                NARROWED in execution (user-chosen): ships the chart slice + the shader column diet; the
+                heavier restructure split into NEW c16c (section-cards/sticky spread, copy-buttons,
+                dashboard small-multiples, fill-or-hide, fuller a11y) so the golden stays reviewable
+                (ADR-23 documented scoping). NEW reports/charts.py = deterministic dependency-free
+                inline-SVG toolkit (bar/stacked/pct_stacked/donut/scatter+bubble/treemap/icicle/
+                histogram/multi-series line + a figure() wrapper), extends delta.sparkline_svg
+                (fixed-precision coords, NO random/Date/timestamps); colors are CSS var() refs (light-dark
+                aware), draw-class series via class_color_var; ALL emitted text routed through
+                safe_chrome_text (scrub+escape) so data-derived labels can never trip the page lint
+                (charts ride OUTSIDE <table> → linted). NEW [chart] block in design_tokens.toml (sizes +
+                var() palette) + _tokens.chart() accessor (NOT a :root section, never leaks to CSS/golden).
+                Chart wrapper CSS (figure.chart/.chart-svg/details.secondary-metrics) added to
+                _CHROME_CSS_TMPL (literal var()-based, no $); re-exported via base.py. FLAGSHIP per report
+                above its table (table kept as exact/accessible fallback): pass_gpu treemap GPU-by-pass +
+                top-pass bars; draws_by_class class-share donut + per area/drop pct_stacked (replaced the
+                old class_segments_bar bar-rows); shader_hotlist complexity-vs-cost scatter (bubble=src
+                bytes) + complexity histogram; overdraw reject%-per-RT bars with config warn/alarm
+                rule-lines; instancing wasted-index bars; trend_table per-KPI line lead. shader_hotlist
+                COLUMN DIET: 13 → 7-col primary (shader/complexity/uses/cost/flags/src) + collapsible
+                <details class="secondary-metrics"> table (branches/loops/discards/dfdx-dfdy/tex
+                samples/src bytes). NEW tests/test_charts.py (golden-independent: determinism, SVG
+                structure role/title/desc, token theming, empty-series→'', element counts, ASCII guard) +
+                test_design_tokens [chart]-block + chart-CSS asserts. NEW tests/make_golden.py (repeatable
+                HTML-golden refresh: render_fresh→normalize ts→LF, mirrors make_preview_golden). PARITY
+                (ADR-6/32/33): golden HTML REFRESHED (9 pages; reviewed page-by-page — 6 reports gain
+                <figure class="chart">, drill/root/dashboard change only by shared chart CSS) + preview
+                golden; test_parquet_parity GREEN with NO digests refresh (presentation only, §21.9).
+                99 → 108 green; smoke render-only 9 pages lint clean exit 0. No new ADR (ADR-33 covers
+                charts; the c16b→c16b+c16c split recorded in STATE + both commit docs, mirroring the
+                un-ADR'd c16/c16b split). G-15 (charts half) ticked; QUALITY_GATES §21.1g fleshed; c16c
+                authored. current → c16c.
+former_last_c16: 2026-06-01 — c16 DONE (report-quality polish + mechanics; user pushed reports 5/10 → aim
                 10/10, so the work SPLIT into c16 + NEW c16b). MECHANICS: R-13 (reports/cache SHA256
                 sidecar + new load_cached → corrupt/missing/mismatch logs a warning + returns None so
                 readers fall back to a live scan, never silent-empty; missing-column tolerant; routed
@@ -144,23 +176,24 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    Do c16b (report PRESENTATION overhaul). Open commits/v02/c16b_report_viz.md and do
-                exactly that one commit. It builds NEW reports/charts.py = a deterministic dependency-free
-                inline-SVG toolkit (bar/stacked/donut/scatter/treemap/icicle/histogram/line; ADR-33,
-                extends delta.sparkline_svg), gives every report a flagship chart ABOVE its table (table
-                kept as the exact/accessible fallback), then the restructure (shader 13-col diet +
-                collapsible details, section_card + sticky sections, rdc-copy-button on ids, dashboard
-                card insight subtitles + cross-report nav, fuller a11y). Uses c16's chrome builders +
-                config [report] thresholds. Output-changing → refresh the golden (review page-by-page,
-                ADR-23); test_parquet_parity stays green (extraction untouched). Add tests/test_charts.py
-                (golden-independent: determinism, structure, theming, empty-series). NOTE for c27/c35:
+next_action:    Do c16c (report RESTRUCTURE). Open commits/v02/c16c_report_restructure.md and do exactly
+                that one commit. It builds on c16b's charts: route multi-section reports through
+                chrome.section_card + spread rdc-sticky-h2 beyond trend_table; emit rdc-copy-button on
+                copyable IDs (mesh hash / shader id+src / pass path; web component already defined);
+                dashboard small-multiples (mini chart per card via the c16b charts toolkit with smaller
+                [chart] sizes) + insight subtitles + cross-report nav; fill-or-hide the instancing
+                "material batching" empty section; fuller a11y (<caption> + scope="col" on th, non-color
+                status glyphs). The c16b toolkit already ships icicle/stacked_bar primitives (unit-tested)
+                for reuse. Output-changing → refresh the golden via `python -m bobframes.tests.make_golden`
+                + make_preview_golden (review page-by-page, ADR-23); test_parquet_parity stays green, NO
+                digests refresh (presentation only, §21.9). NOTE for c27/c35:
                 the c09 classifier is already STATE-CAPABLE (when{} over any draw column), so the
                 state-first generic preset (D-10) is a preset not a rewrite; c35 removes the zeroed
                 passes.draws_by_class_* + slims passes (D-11a). V0.2 CLOSE-OUT (user-requested 2026-06-01):
                 before tagging v0.2, run a real FULL ingest of ALL areas (not just Chor bazar —
                 Commercial/Financial/Police station/Resort/Train station/Under construction mall from the
                 Downloads RDC drop), keep the rendered HTML, eyeball the reports. GIT: still on branch
-                v0.2-roadmap-c04 (off main; c07 + c08 + c09 + c10 + c16 UNPUSHED). Post-release nit
+                v0.2-roadmap-c04 (off main; c07 + c08 + c09 + c10 + c16 + c16b UNPUSHED). Post-release nit
                 (non-blocking): bump CI actions off Node20 (checkout@v5/setup-python@v6 before 2026-06-16).
 DONE-2026-05-31: c19 — bobframes 0.1.0 PUBLISHED. tag v0.1.0 -> CI publish job green (OIDC trusted
                 publishing, ubuntu). Live on PyPI (wheel + sdist) + GitHub Release with both assets.
@@ -209,7 +242,8 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c09 engine-agnostic classifier](commits/v02/c09_classifier.md) | **done** — single state-capable classifier API (H-1..H-5); dead replay copy deleted (D-6); 70 green, byte-parity (no refresh) |
 | ☑ | [c10 env-var rename `RDC_*`→`BOBFRAMES_*`](commits/v02/c10_env_rename.md) | **done** — `getenv_legacy` one-release fallback; `RDC_ROOT` eliminated (R-5/Q-5, ADR-31); 74 green, byte-parity (no refresh) |
 | ☑ | [c16 report-quality polish](commits/v02/c16_report_quality.md) | **done** — mechanics (R-13/Q-9/D-4/D-7/D-11b) + polish slice (KPI strips, callouts, heatmaps, provenance strip, labels); 99 green, golden refreshed (ADR-32) |
-| ☐ | [c16b report presentation overhaul](commits/v02/c16b_report_viz.md) | **next** — inline-SVG charts + restructure (ADR-33) |
+| ☑ | [c16b report charts](commits/v02/c16b_report_viz.md) | **done** — inline-SVG toolkit (charts.py, ADR-33) + flagship chart per report + shader column-diet; 108 green, golden refreshed |
+| ☐ | [c16c report restructure](commits/v02/c16c_report_restructure.md) | **next** — section-cards/sticky/copy-buttons + dashboard small-multiples + a11y |
 
 ## v0.3 — CI/automation surface (planned — [ROADMAP](ROADMAP.md))
 
@@ -255,6 +289,25 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-02 — c16b DONE (report CHARTS; G-15 charts half; ADR-33 implemented). NARROWED in execution
+  (user-chosen): chart slice + shader column diet now; heavier restructure split into NEW c16c (golden
+  stays reviewable, ADR-23). NEW reports/charts.py = deterministic dependency-free inline-SVG toolkit
+  (bar/stacked/pct_stacked/donut/scatter+bubble/treemap/icicle/histogram/line + figure() wrapper),
+  extends delta.sparkline_svg (fixed-precision coords, NO random/Date/ts); CSS var() colors (light-dark),
+  draw-class via class_color_var; ALL text through safe_chrome_text (scrub+escape) so data labels can't
+  trip the lint (charts ride OUTSIDE <table>). NEW [chart] design-tokens block (sizes + var() palette) +
+  _tokens.chart() (not a :root section → never leaks). Chart wrapper CSS (figure.chart/.chart-svg/
+  details.secondary-metrics) in _CHROME_CSS_TMPL (literal, no $); re-export via base.py. FLAGSHIP per
+  report above its table: pass_gpu treemap + top-pass bars; draws_by_class donut + pct_stacked (replaced
+  class_segments_bar rows); shader_hotlist scatter (bubble=src bytes) + complexity histogram; overdraw
+  reject% bars + config warn/alarm rule-lines; instancing wasted-index bars; trend_table per-KPI line.
+  shader COLUMN DIET 13→7 primary + <details> secondary metrics. NEW tests/test_charts.py (determinism/
+  structure/theming/empty/counts/ASCII) + test_design_tokens [chart]+chart-CSS asserts + tests/
+  make_golden.py (repeatable HTML golden refresh). PARITY (ADR-6/32/33): golden HTML + preview REFRESHED
+  (reviewed page-by-page: 6 reports gain <figure class="chart">, drill/root/dashboard = shared chart CSS
+  only); test_parquet_parity GREEN, NO digests refresh (§21.9). 99→108 green; smoke 9 pages lint clean
+  exit 0. No new ADR (ADR-33 covers charts; split recorded in STATE + c16b/c16c docs). G-15 charts half
+  ticked; QUALITY_GATES §21.1g fleshed; c16c authored. current → c16c.
 - 2026-06-01 — c16 DONE (report-quality polish + mechanics; user pushed 5/10 → 10/10, SPLIT into c16 +
   NEW c16b). R-13 (cache SHA256 sidecar + load_cached: corrupt/missing/mismatch → warn + live-scan
   fallback, missing-col tolerant). Q-9 (_dashboard.py → dashboard.py + 4 refs). D-4 + D-7

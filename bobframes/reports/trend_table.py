@@ -209,12 +209,14 @@ def _device_string(drop: base.DropSet) -> str:
 
 
 def _kpi_matrix(kpi: str, label: str, fmt: str, lower_is_better, threshold,
-                per_drop_area_data: list, areas: list, drops: list) -> str:
-    """Render one KPI matrix as h2 + table-wrap (one per KPI when n_drops >= 2)."""
+                per_drop_area_data: list, areas: list, drops: list, lead: str = '') -> str:
+    """Render one KPI matrix as h2 + (flagship chart) + table-wrap (one per KPI, n_drops >= 2)."""
     is_int = kpi in _INT_KPIS
 
     parts = []
     parts.append(f'<rdc-sticky-h2><h2 id="{base.h(kpi)}">{base.h(label)}</h2></rdc-sticky-h2>')
+    if lead:
+        parts.append(lead)
     parts.append('<div class="table-wrap"><rdc-sortable-table>')
     parts.append('<table class="report"><thead><tr>')
     parts.append('<th>area</th>')
@@ -451,8 +453,17 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
         parts.append('<a href="#class_counts" data-link-kind="crumb">draws by class</a>')
         parts.append('</nav>')
         for kpi, label, fmt, lib, thr in KPIS:
+            # Flagship: per-area line of this KPI across drops, leading the matrix (c16b).
+            series = []
+            for area in all_areas:
+                vals = [per_drop_ft[i].get(area, {}).get(kpi) for i in range(len(drops))]
+                series.append((area, [None if v is None else float(v) for v in vals], None))
+            lead = base.figure(
+                base.line_chart(series, x_labels=drop_keys_l, title=f'{label} trend',
+                                desc=f'{label} per area across {len(drops)} drops'),
+                f'{label}: trend across drops')
             parts.append(_kpi_matrix(kpi, label, fmt, lib, thr,
-                                      per_drop_ft, all_areas, drops))
+                                      per_drop_ft, all_areas, drops, lead=lead))
 
     parts.append(_class_count_matrix(per_drop_class, all_areas, drops))
 
