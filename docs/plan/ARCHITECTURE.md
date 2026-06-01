@@ -144,6 +144,14 @@ Hatchling chosen: single-file dynamic version, no `setup.py`, native force-inclu
 > token TOML the same way as `_default_config.toml` (tracked file under the package, ADR-10; verified
 > 0 dups). Annotated, not rewritten.
 
+> **Extended for v0.2 by [ADR-29](DECISIONS.md):** c09 adds `derives/classifier.py` (the single,
+> state-capable draw-classification API) + `derives/draw_classifier.toml` (UE default) +
+> `derives/presets/{unity,godot,custom-template}.toml`, loaded with the same `tomllib`/`tomli` shim.
+> Classification is now an analysis-layer concern: the replay stage's drifted `_classify_draw` (which
+> fed only the dead `passes.draws_by_class_*`) is **deleted** — replay emits facts only (§4 ingest →
+> render path unchanged; §21.9 holds by construction). The classifier preset TOMLs ship like the other
+> bundled TOMLs (tracked under the package, ADR-10; verified 0 dups). Annotated, not rewritten.
+
 > **Python 3.14 caveat (see DECISIONS / QUALITY_GATES):** the `3.14` classifier is intentionally
 > omitted above. `pyarrow>=17` has no cp314 wheels, so a `{3.14, pyarrow 17}` install fails. Add
 > 3.14 only once a compatible pyarrow floor is set for it. CI matrix tops out at 3.13 for v0.1.

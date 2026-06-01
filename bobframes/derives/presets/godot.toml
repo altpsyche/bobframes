@@ -1,0 +1,60 @@
+# BobFrames draw classifier — Godot preset. ILLUSTRATIVE (ADR-21): not parity-validated against a
+# real Godot capture yet; a validated preset + its own fixture + golden land when a Godot .rdc exists
+# to anonymize (c27+). Select via: [classifier] preset = "godot".
+#
+# Rule semantics identical to draw_classifier.toml (see its header). Only the engine marker keywords
+# change; class_order is the fixed 9-bucket contract and must NOT change between presets.
+
+class_order = ['opaque', 'prepass', 'shadow', 'translucent', 'additive', 'decal', 'ui', 'postprocess', 'other']
+fallback_class = 'other'
+frame_prefix_regex = ''
+
+# --- marker rules (Godot 4 RenderingDevice pass labels) ---------------------------------------------
+[[rule]]
+class = 'shadow'
+marker_contains = ['render shadows', 'shadow']
+
+[[rule]]
+class = 'prepass'
+marker_contains = ['depth pre-pass', 'depth prepass', 'depthprepass']
+
+[[rule]]
+class = 'ui'
+marker_contains = ['canvas', 'gui']
+marker_suffix = ['ui']
+
+[[rule]]
+class = 'postprocess'
+marker_contains = ['post process', 'postprocess', 'tonemap', 'glow', 'bloom']
+
+[[rule]]
+class = 'decal'
+marker_contains = ['decal']
+
+[[rule]]
+class = 'translucent'
+marker_contains = ['transparent', 'alpha pass']
+
+# --- state rules (engine-agnostic) ------------------------------------------------------------------
+[[rule]]
+class = 'additive'
+when = { blend_enable = true, blend_src_color = 'one', blend_dst_color = 'one' }
+
+[[rule]]
+class = 'translucent'
+when = { blend_enable = true }
+
+[[rule]]
+class = 'opaque'
+marker_contains = ['opaque pass', 'render opaque']
+
+[[rule]]
+class = 'opaque'
+when = { depth_write_enable = true }
+
+[pass_strip]
+prefixes = []
+noise_segments = []
+
+[counters]
+gpu_duration_aliases = ['GPU Duration']

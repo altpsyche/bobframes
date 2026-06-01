@@ -119,6 +119,12 @@ class LintCfg:
 
 
 @dataclass(frozen=True)
+class ClassifierCfg:                  # c09 — selects the draw-classifier preset (H-1..H-5)
+    preset: str = 'ue'                # 'ue' -> draw_classifier.toml; '<name>' -> presets/<name>.toml
+    custom_path: str | None = None    # absolute path to a custom classifier TOML (wins over preset)
+
+
+@dataclass(frozen=True)
 class Config:
     schema_version: int = 1
     tools: ToolsCfg = ToolsCfg()
@@ -128,6 +134,7 @@ class Config:
     delta: DeltaCfg = DeltaCfg()
     scoring: ScoringCfg = ScoringCfg()
     lint: LintCfg = LintCfg()
+    classifier: ClassifierCfg = ClassifierCfg()
 
 
 class ConfigError(BobFramesError):
@@ -203,6 +210,7 @@ def _build_config(root: str | None) -> Config:
     dlt = merged.get('delta', {})
     cx = merged.get('scoring', {}).get('complexity', {})
     lint = merged.get('lint', {})
+    cls = merged.get('classifier', {})
 
     return Config(
         schema_version=merged.get('schema_version', 1),
@@ -232,6 +240,10 @@ def _build_config(root: str | None) -> Config:
             src_len_cap=cx.get('src_len_cap', 50.0),
         )),
         lint=LintCfg(extra_banned=_banned_entries(lint.get('extra_banned', []))),
+        classifier=ClassifierCfg(
+            preset=cls.get('preset', 'ue'),
+            custom_path=cls.get('custom_path'),
+        ),
     )
 
 

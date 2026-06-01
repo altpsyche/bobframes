@@ -1,0 +1,78 @@
+# BobFrames draw classifier — UE preset (c09, H-1..H-5). The bundled DEFAULT.
+#
+# Single source for: draw_class buckets (class_order), the frame-prefix strip (H-3), the pass-path
+# strip rules (H-2), and the GPU-duration counter aliases (H-4). Other engines get their own preset
+# (derives/presets/*.toml); select via [classifier] preset = "unity" / custom_path in your config.
+#
+# How a draw is classified (derives.classifier.classify): rules are tried in order; the FIRST rule
+# that matches wins; if none match, fallback_class. A rule matches if ANY of its marker predicates
+# hits OR ALL of its `when` field conditions hold:
+#   marker_contains = [...]   substring(s) in the lowercased marker (parent pass path)
+#   marker_suffix   = [...]   the marker ends with one of these
+#   when = { field = value }  ALL hold; field names are draws columns. value: true/false =>
+#                             truthy/falsy (int coercion); "string" => case-insensitive equality.
+# Markers are an engine REFINEMENT; the `when` rules are engine-agnostic graphics STATE. A state-only
+# preset (no markers) is valid — see presets/custom-template.toml.
+#
+# PARITY (ADR-6): this preset reproduces the former derive_post_merge._classify_draw byte-for-byte
+# (tests/test_classifier asserts it). Rule ORDER is significant — do not reorder. class_order must
+# stay byte-equal to chrome.DRAW_CLASSES (the CSS --c-<name> tokens, H-5; the c33 draws_by_class_* seam).
+# Values are single-quoted TOML literal strings (no backslash interpretation), matching config.py.
+
+class_order = ['opaque', 'prepass', 'shadow', 'translucent', 'additive', 'decal', 'ui', 'postprocess', 'other']
+fallback_class = 'other'
+frame_prefix_regex = '^Frame\s+\d+/?'        # H-3 — strip the 'Frame N/' pass-path prefix
+
+# --- marker rules (UE RDG pass names) ---------------------------------------------------------------
+[[rule]]
+class = 'shadow'
+marker_contains = ['shadow']
+
+[[rule]]
+class = 'prepass'
+marker_contains = ['prepass', 'depthonly']
+
+[[rule]]
+class = 'ui'
+marker_contains = ['slate', '/ui']
+marker_suffix = ['ui']
+
+[[rule]]
+class = 'postprocess'
+marker_contains = ['postprocess', 'tonemap', 'bloom', 'eyeadapt']
+
+[[rule]]
+class = 'decal'
+marker_contains = ['decal']
+
+[[rule]]
+class = 'translucent'
+marker_contains = ['translucen']
+
+# --- state rules (engine-agnostic; blend one,one => additive, else any blend => translucent) --------
+[[rule]]
+class = 'additive'
+when = { blend_enable = true, blend_src_color = 'one', blend_dst_color = 'one' }
+
+[[rule]]
+class = 'translucent'
+when = { blend_enable = true }
+
+# UE MobileBasePass / BasePass draws are scene opaques even when depth_write=0 (the prepass already
+# wrote depth with EarlyZPass=2). Reached only when blend is off (the blend rules above caught blend-on).
+[[rule]]
+class = 'opaque'
+marker_contains = ['basepass']
+
+[[rule]]
+class = 'opaque'
+when = { depth_write_enable = true }
+
+# --- pass-path strip (H-2) — formatters.pass_short ---------------------------------------------------
+[pass_strip]
+prefixes = ['FRDGBuilder::Execute/', 'MobileSceneRender/']
+noise_segments = ['Engine', 'EngineMaterials']
+
+# --- GPU-duration counter aliases (H-4), in fall-through order ---------------------------------------
+[counters]
+gpu_duration_aliases = ['GPU Duration']

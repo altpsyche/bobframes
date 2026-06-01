@@ -16,50 +16,21 @@ Run via: python -m bobframes.derive_post_merge <out_dir>
 from __future__ import annotations
 
 import os
-import re
 import sys
 
 import pyarrow as pa
 import pyarrow.csv as pacsv
 import pyarrow.parquet as papq
 
-_RE_FRAME_PREFIX = re.compile(r'^Frame\s+\d+/?')
+from .derives import classifier
 
 
 def _strip_frame(path: str) -> str:
+    # Frame-prefix regex now lives in the classifier preset (H-3); the default reproduces
+    # the former r'^Frame\s+\d+/?' byte-for-byte (parity, ADR-6).
     if not path:
         return ''
-    return _RE_FRAME_PREFIX.sub('', path)
-
-
-def _classify_draw(blend_enable: int, depth_write: int,
-                   marker_path: str, blend_src_color: str, blend_dst_color: str) -> str:
-    mp = (marker_path or '').lower()
-    if 'shadow' in mp:
-        return 'shadow'
-    if 'prepass' in mp or 'depthonly' in mp:
-        return 'prepass'
-    if 'slate' in mp or '/ui' in mp or mp.endswith('ui'):
-        return 'ui'
-    if 'postprocess' in mp or 'tonemap' in mp or 'bloom' in mp or 'eyeadapt' in mp:
-        return 'postprocess'
-    if 'decal' in mp:
-        return 'decal'
-    if 'translucen' in mp:
-        return 'translucent'
-    if int(blend_enable or 0):
-        bs = (blend_src_color or '').lower()
-        bd = (blend_dst_color or '').lower()
-        if bs == 'one' and bd == 'one':
-            return 'additive'
-        return 'translucent'
-    # MobileBasePass / BasePass draws are scene opaques even when depth_write=0
-    # (prepass already wrote depth with EarlyZPass=2).
-    if 'basepass' in mp:
-        return 'opaque'
-    if int(depth_write or 0):
-        return 'opaque'
-    return 'other'
+    return classifier.frame_prefix_re().sub('', path)
 
 
 def _derive_draws(out_dir: str) -> bool:
@@ -77,8 +48,13 @@ def _derive_draws(out_dir: str) -> bool:
     depth_w = t.column('depth_write_enable').to_pylist() if 'depth_write_enable' in cols else [0] * t.num_rows
     bsc = t.column('blend_src_color').to_pylist() if 'blend_src_color' in cols else [''] * t.num_rows
     bdc = t.column('blend_dst_color').to_pylist() if 'blend_dst_color' in cols else [''] * t.num_rows
-    classes = [_classify_draw(be, dw, p, sc, dc) for be, dw, p, sc, dc
-               in zip(blend_en, depth_w, parent, bsc, bdc)]
+    # Single classifier source (H-1/H-5): the active preset's rule engine over each draw's field
+    # record. The `marker` is the raw parent pass path, as before.
+    spec = classifier.load_spec()
+    classes = [classifier.classify({
+        'marker': p, 'blend_enable': be, 'depth_write_enable': dw,
+        'blend_src_color': sc, 'blend_dst_color': dc,
+    }, spec) for be, dw, p, sc, dc in zip(blend_en, depth_w, parent, bsc, bdc)]
 
     # Build new table in schema order
     from . import schemas
