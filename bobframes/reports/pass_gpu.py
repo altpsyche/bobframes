@@ -161,6 +161,8 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
                     short = base.trunc_left(short, 60)
                 area_body.append(
                     f'<span class="key" title="{base.h(marker)}">'
+                    f'<rdc-copy-button data-value="{base.safe_chrome_text(marker)}" '
+                    f'data-label="copy pass path"></rdc-copy-button>'
                     f'<a href="{base.h(link)}" data-link-kind="drill">'
                     f'{base.safe_chrome_text(short)}</a></span>'
                 )
@@ -189,9 +191,8 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
                     cells.append('</div>')
                     area_body.append(''.join(cells))
 
-            parts.append(f'<h2 id="{base.h(area)}">{base.h(area)}</h2>')
-
             # Flagship: GPU-by-pass treemap + top-pass bars, above the per-pass share rows (c16b).
+            sec = []
             chart_items = []
             for marker, drop_buckets in ranked:
                 g = max((b['gpu'] for b in drop_buckets.values()), default=0.0)
@@ -207,19 +208,23 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
                 short = base.pass_short(marker) or marker or '(root)'
                 chart_items.append((short, g, dom))
             if chart_items:
-                parts.append(base.figure(
+                sec.append(base.figure(
                     base.treemap([(lbl, g, base.class_color_var(d)) for lbl, g, d in chart_items],
                                  title='gpu by pass',
                                  desc='pass area sized by GPU time, colored by dominant draw class'),
                     f'{area}: GPU time by pass'))
-                parts.append(base.figure(
+                sec.append(base.figure(
                     base.bar_chart([(lbl, g) for lbl, g, _ in chart_items][:10],
                                    value_fmt=lambda v: f'{v:.3f}',
                                    title='top passes by gpu (s)',
                                    desc='heaviest passes by GPU seconds'),
                     f'{area}: top passes by GPU (s)'))
 
-            parts.append(''.join(area_body))
+            # c16c: frame the per-area section in a sticky-highlighted card.
+            sec.append(''.join(area_body))
+            parts.append('<rdc-sticky-h2>'
+                         + base.section_card(area, area, ''.join(sec), count=len(ranked))
+                         + '</rdc-sticky-h2>')
 
     return base.write_report(out_path, [base.report_page(
         'pass gpu', parts,

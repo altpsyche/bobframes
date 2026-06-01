@@ -98,6 +98,18 @@ def test_c16b_chart_css_present():
     assert '$' not in c
 
 
+def test_c16c_section_card_css_present():
+    """c16c adds section-card framing + table-caption CSS (consumed by chrome.section_card across
+    every report) and the dashboard small-multiple subtitle/chart rules."""
+    c = chrome._CHROME_CSS
+    assert 'section.card {' in c
+    assert 'section.card > header {' in c
+    assert '.card-subtitle {' in c
+    assert 'table.report > caption {' in c
+    assert 'a.dash-card .dash-sub {' in c
+    assert '$' not in c
+
+
 # --- loader contract ----------------------------------------------------------
 
 def test_subst_keys_are_identifiers_and_cover_every_placeholder():
