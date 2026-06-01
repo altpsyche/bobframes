@@ -1,5 +1,16 @@
 # c06a — de-harden writer-dependent bytes out of the drill HTML (D-8)   release: v0.2 · phase: De-hardcoding
 
+> **STATUS: DONE** (2026-06-01). Dropped the per-link size span (not row count — see below) from the
+> drill download links + the shader_src/jsonl sidecar sizes; removed `_file_size_label`. Zero
+> `os.path.getsize`-derived value now reaches any rendered HTML (`grep getsize bobframes/html/` →
+> empty). Golden drill page refreshed (361 bytes removed, 26 tables × CSV+parquet labels), LF
+> preserved, byte-minimal diff. 37 tests green (incl `test_parity`), lint clean. Decision: **drop the
+> span** rather than the doc's "row count" — the table header already shows `{rows:,} rows, {cols}
+> cols` (row count would triple it), and `csv_sz` is empty on csv-less tables so a row count there
+> would assert a figure for a 404 file. Writer-KB divergence is gone; the floor for un-pinning
+> `test_parity` is now just the float-ULP (`pass_gpu` `pct_share`) case (D-(float)). ci.yml split
+> unchanged this commit.
+
 ## Goal
 Stop the rendered HTML from carrying pyarrow-writer-dependent bytes, so the golden snapshot can hold
 across the pyarrow version range instead of only the canonical cell. This removes the **fixable half**
