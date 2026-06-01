@@ -1,0 +1,70 @@
+# bobframes default lint banlist (c07, H-14). Mirrors the original lint.BANNED list EXACTLY,
+# in order — the sequence is load-bearing (lint reports the first matching label per chunk).
+# Patterns are TOML *literal* (single-quoted) strings; flags = ['I'] reconstructs re.I.
+# Users append more via [lint].extra_banned in their .bobframes.toml (appended after these).
+
+[[banned]]
+pattern = '[—–]'
+label   = 'em/en dash anywhere'
+
+[[banned]]
+pattern = '[…]'
+label   = 'ellipsis unicode'
+
+[[banned]]
+pattern = '[“”‘’]'
+label   = 'curly quote'
+
+[[banned]]
+pattern = '[✓✅↑↓·×⏳→←⚠✨]'
+label   = 'decorative unicode'
+
+[[banned]]
+pattern = '\bcaps\b'
+label   = 'shorthand caps'
+
+[[banned]]
+pattern = '\bcap\b(?![A-Za-z])'
+label   = 'shorthand cap'
+
+[[banned]]
+pattern = '\b(comprehensive|leverage|robust|polished|sleek|seamless)\b'
+label   = 'LLM filler vocabulary'
+flags   = ['I']
+
+[[banned]]
+pattern = '\b(overview|insights?|breakdown of|deep dive|key findings)\b'
+label   = 'report-prose noun'
+flags   = ['I']
+
+[[banned]]
+pattern = '\b(this (report|chart|table|section) shows|as (you can )?see|as shown|the following|let us|we (can )?see|note that|please note|observe that)\b'
+label   = 'reader-address phrase'
+flags   = ['I']
+
+[[banned]]
+pattern = '\b(highlights?|takeaways?|notable|noteworthy|significant|interesting)\b'
+label   = 'editorial verb'
+flags   = ['I']
+
+[[banned]]
+pattern = '\b(in conclusion|to summarize|in summary|overall)\b'
+label   = 'summary opener'
+flags   = ['I']
+
+[[banned]]
+pattern = '\bN/A\b'
+label   = 'NA filler'
+
+[[banned]]
+pattern = 'ranks remaining work'
+label   = 'LLM filler phrase'
+flags   = ['I']
+
+[[banned]]
+pattern = '\*\*(What to do|Why this matters|Verify|Effort|Impact|Detail|Fix|Severity|Title):\*\*'
+label   = 'label scaffolding'
+
+[[banned]]
+pattern = '\betc\.'
+label   = 'filler etc.'

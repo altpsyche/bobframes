@@ -346,3 +346,34 @@ key (`config._version_key`: split digit runs to ints) so `2026.10` correctly out
 regardless of minor width. **Consequence:** §5's "directory-name sort" wording is realized as a
 numeric-aware sort (same intent, robust); `test_config.test_arm_glob_picks_latest_version` asserts the
 two-digit-minor case. Frozen §5 is refined by this ADR, not rewritten.
+
+
+### ADR-25 — config = bundled-default base, deep-merged with the first-found user file
+**Context:** [ARCHITECTURE §6](ARCHITECTURE.md) says the config lookup ($BOBFRAMES_CONFIG >
+`<root>/.bobframes.toml` > `%APPDATA%/bobframes/config.toml`) is "first found wins, no merging,"
+and shows a sparse user file. Taken literally, "no merging" would mean a user file fully *replaces*
+the defaults, so overriding one timeout would silently drop every other default (the de-hardcoded
+weights, regex, banlist). That is hostile UX and brittle as defaults evolve. **Decision (c07):** the
+bundled `bobframes/_default_config.toml` (+ `lint_banlist.toml`) is the single source of truth and is
+always the base; the **first-found user file is deep-merged ON TOP** (per-section, per-key; user
+wins). §6's "no merging" governs **user-file selection** — pick exactly one of the three locations,
+do not merge the three — *not* the default base. So a user sets only what they want to change and
+inherits improved defaults for everything else. **Consequence:** `check --write-config` writes a
+small *commented* starter (not a full dump) so users don't pin every internal default;
+`test_user_file_deep_merge` locks the behavior. §6 is annotated with this ADR (frozen, append-only).
+
+### ADR-26 — config layer adds a conditional `tomli` backport; the Python floor stays 3.10
+**Context:** c07 loads config with stdlib `tomllib`, which exists only on Python 3.11+. The obvious
+shortcut — bump `requires-python` to `>=3.11` — was considered and **rejected on evidence**: the
+replay stage runs inside qrenderdoc's *embedded* Python 3.10 (`replay_main.py` documents it;
+confirmed on the dev box: `Arm Performance Studio 2026.2/renderdoc_for_arm_gpus/python310.dll` +
+`python310.zip`), and [c09](commits/v02/c09_classifier.md) plans to share a TOML-loading classifier
+into that replay side (D-6 collapse), where a missing `tomllib` would crash. The `>=3.10` floor in
+[ARCHITECTURE §1](ARCHITECTURE.md) exists precisely for that embedded interpreter. **Decision:** keep
+`requires-python = ">=3.10,<3.15"`; add `tomli>=2.0; python_version<'3.11'` to dependencies + a 3-line
+import shim (`try: import tomllib except ModuleNotFoundError: import tomli as tomllib`). `tomli` is the
+upstream of `tomllib` (pure-Python, conditional, zero weight on 3.11+); the data path stays
+pyarrow-only. **Consequence:** the CI matrix keeps its 3.10 cell, so the loader is exercised under
+`tomli` (3.10) *and* `tomllib` (3.12/3.13) and the digest gates prove them equivalent (verified
+locally: identical loaded values under py3.10/tomli). ARCHITECTURE §3 is annotated with this ADR
+(frozen, append-only); §1's floor is unchanged.

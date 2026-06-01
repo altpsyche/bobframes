@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html as _html
 
+from .. import config
 from .chrome import DRAW_CLASSES, class_color_var, h
 
 
@@ -31,8 +32,10 @@ def inline_bar(value, max_value, *, color_var: str | None = None) -> str:
 
 
 def delta_pill(curr, prev, *, lower_is_better: bool | None = True,
-               fmt: str = '{:+,.0f}') -> str:
+               fmt: str | None = None) -> str:
     """Same logic as delta_cell but renders <span class='delta-pill'>."""
+    if fmt is None:
+        fmt = config.get_config().delta.fmt   # H-22
     if curr is None and prev is None:
         return '<span class="delta-pill flat"></span>'
     if prev is None:
@@ -59,9 +62,11 @@ def delta_pill(curr, prev, *, lower_is_better: bool | None = True,
 
 def delta_cell(curr, prev, *,
                lower_is_better: bool | None = True,
-               fmt: str = '{:+,.0f}',
+               fmt: str | None = None,
                regression_threshold_pct: float | None = None) -> str:
     """Render <td> for a per-KPI delta. ASCII signs only. CSS class encodes direction."""
+    if fmt is None:
+        fmt = config.get_config().delta.fmt   # H-22
     if curr is None and prev is None:
         return '<td class="delta flat"></td>'
     if prev is None:
@@ -104,6 +109,7 @@ def class_segments_bar(weights: dict, total: float | None = None) -> str:
         total_f = 0.0
     if total_f <= 0:
         return '<div class="bar"></div>'
+    min_pct = config.get_config().delta.bar_label_min_pct   # H-21
     parts = ['<div class="bar">']
     for cls in DRAW_CLASSES:
         n = weights.get(cls, 0)
@@ -115,7 +121,7 @@ def class_segments_bar(weights: dict, total: float | None = None) -> str:
             continue
         pct = n_f * 100.0 / total_f
         label = ''
-        if pct >= 8.0:
+        if pct >= min_pct:
             if isinstance(n, float) and not n.is_integer():
                 label = f'{n_f:,.2f}'
             else:

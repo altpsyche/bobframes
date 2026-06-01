@@ -1,0 +1,49 @@
+# bobframes bundled default config (c07). Single source of truth for de-hardcoded literals.
+# Values here reproduce today's output byte-identically (ADR-6). A user .bobframes.toml is
+# deep-merged ON TOP of this (override one key without restating the rest — ADR-25).
+#
+# Regex / format-string values MUST be TOML *literal* (single-quoted) strings: a basic
+# (double-quoted) string interprets backslash escapes and breaks on \d. Do NOT "fix" a decode
+# error by double-escaping — that silently changes the pattern (ADR-23 trap).
+
+schema_version = 1
+
+[tools]
+# renderdoccmd = "..."   # unset by default; resolve_tool falls through to PATH / known paths
+# qrenderdoc   = "..."
+
+[pipeline]
+replay_timeout_s  = 600.0    # H-12 — per-capture qrenderdoc replay budget (seconds)
+convert_timeout_s = 120.0    # H-13 — per-file renderdoccmd convert budget (seconds)
+# workers / pixel_grid / keep_stage are §6 keys but NOT wired in c07 (argparse remains the
+# source; workers default is min(4, os.cpu_count()), so wiring it would change behavior).
+
+[discovery]
+dated_re = '^(\d{4}-\d{2}-\d{2})(?:_(.*))?$'    # H-30 — dated drop-folder pattern
+
+[formatting]
+id_short_n         = 12                          # H-23 — id/hash truncation length
+text_trunc_max     = 60                          # H-23 — mid/left text truncation length
+chrome_scrub_chars = '[—–…“”‘’→←↑↓×·]'           # H-16 — chars scrubbed from rendered chrome
+
+[delta]
+fmt               = '{:+,.0f}'                   # H-22 — default signed delta format
+bar_label_min_pct = 8.0                          # H-21 — min segment % to draw an inline label
+
+[scoring.complexity]                             # H-17 / Q-3 — shader complexity_score weights
+w_texture_samples = 2.0
+w_branches        = 0.5
+w_loops           = 2.0
+w_discards        = 0.3
+w_dfdx_dfdy       = 0.5
+w_mat4            = 0.3
+src_len_divisor   = 100.0
+src_len_cap       = 50.0
+
+[lint]
+# User-appended banned tokens, same shape as lint_banlist.toml [[banned]] entries:
+#   [[lint.extra_banned]]
+#   pattern = 'foo'
+#   label   = 'why'
+#   flags   = ['I']
+extra_banned = []

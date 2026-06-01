@@ -2,11 +2,25 @@
 
 from __future__ import annotations
 
+import functools
 import html as _html
 import re
 
+from .. import config
 
+# Default-compiled alias kept for back-compat re-export (base.__all__). The ACTIVE scrub pattern
+# comes from config (H-16); a test asserts this default equals the config default.
 _BANNED_CHROME_CHARS = re.compile(r'[—–…“”‘’→←↑↓×·]')
+
+
+@functools.lru_cache(maxsize=None)
+def _chrome_scrub_compiled(pattern: str) -> re.Pattern:
+    return re.compile(pattern)
+
+
+def _chrome_scrub() -> re.Pattern:
+    """The chrome-char scrub pattern from config (H-16), compiled+cached by pattern string."""
+    return _chrome_scrub_compiled(config.get_config().formatting.chrome_scrub_chars)
 
 
 def fmt_int(v) -> str:
@@ -40,14 +54,16 @@ def fmt_pct(v, prec: int = 1) -> str:
         return ''
 
 
-def fmt_id_short(v, n: int = 12) -> str:
+def fmt_id_short(v, n: int | None = None) -> str:
     if not v:
         return ''
+    if n is None:
+        n = config.get_config().formatting.id_short_n   # H-23
     s = str(v)
     return s[:n] if len(s) > n else s
 
 
-def mesh_hash_short(hsh, n: int = 12) -> str:
+def mesh_hash_short(hsh, n: int | None = None) -> str:
     return fmt_id_short(hsh, n)
 
 
@@ -55,13 +71,15 @@ def safe_chrome_text(s) -> str:
     """Escape + scrub banned chrome chars. Apply to all chrome strings outside <table>."""
     if s is None:
         return ''
-    scrubbed = _BANNED_CHROME_CHARS.sub('_', str(s))
+    scrubbed = _chrome_scrub().sub('_', str(s))
     return _html.escape(scrubbed)
 
 
-def trunc_mid(s: str | None, max_len: int = 60) -> str:
+def trunc_mid(s: str | None, max_len: int | None = None) -> str:
     if s is None:
         return ''
+    if max_len is None:
+        max_len = config.get_config().formatting.text_trunc_max   # H-23
     s = str(s)
     if len(s) <= max_len:
         return s
@@ -71,10 +89,12 @@ def trunc_mid(s: str | None, max_len: int = 60) -> str:
     return s[:head] + '...' + s[-tail:]
 
 
-def trunc_left(s: str | None, max_len: int = 60) -> str:
+def trunc_left(s: str | None, max_len: int | None = None) -> str:
     """Truncate from the left, keep the suffix. For pass paths whose tail carries the signal."""
     if s is None:
         return ''
+    if max_len is None:
+        max_len = config.get_config().formatting.text_trunc_max   # H-23
     s = str(s)
     if len(s) <= max_len:
         return s

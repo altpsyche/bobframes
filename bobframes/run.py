@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import concurrent.futures as cf
 import datetime as _dt
+import functools
 import logging
 import os
 import shutil
@@ -31,7 +32,7 @@ import time
 from dataclasses import dataclass
 
 from . import (
-    catalog, derive_post_merge, discovery, global_entities, lint, manifest,
+    catalog, config, derive_post_merge, discovery, global_entities, lint, manifest,
     parquetize, paths, qrd_harness, query_examples, rdcmd, resource_labels, schemas,
 )
 from .derives import pass_class_breakdown, texture_usage
@@ -119,8 +120,12 @@ def _preflight(drop: discovery.Drop, force: bool, project_root: str) -> tuple[bo
 
 # --- Stage 2: export ---------------------------------------------------------
 
-def _export_one(rdc_path: str) -> tuple[str, dict[str, float]]:
-    """Returns (capture, {fmt: elapsed_s})."""
+def _export_one(rdc_path: str, convert_timeout: float | None = None) -> tuple[str, dict[str, float]]:
+    """Returns (capture, {fmt: elapsed_s}).
+
+    ``convert_timeout`` is passed explicitly (not read from config) because this runs in a spawned
+    pool worker, where the parent's loaded config singleton + CLI override are not visible (H-13).
+    """
     drop_dir = os.path.dirname(rdc_path)
     capture = os.path.basename(rdc_path)[:-4]
     timings: dict[str, float] = {}
@@ -129,11 +134,13 @@ def _export_one(rdc_path: str) -> tuple[str, dict[str, float]]:
         if not rdcmd.needs_export(rdc_path, out):
             timings[fmt] = 0.0
             continue
-        timings[fmt] = rdcmd.convert(rdc_path, out, fmt=fmt)
+        # None → let rdcmd.convert use its built-in default (the safety net); a resolved float overrides.
+        kw = {} if convert_timeout is None else {'timeout_s': convert_timeout}
+        timings[fmt] = rdcmd.convert(rdc_path, out, fmt=fmt, **kw)
     return capture, timings
 
 
-def _do_export(drop: discovery.Drop, workers: int) -> None:
+def _do_export(drop: discovery.Drop, workers: int, convert_timeout: float) -> None:
     todo: list[str] = []
     for capture in drop.captures:
         rdc = os.path.join(drop.drop_dir, f'{capture}.rdc')
@@ -148,8 +155,9 @@ def _do_export(drop: discovery.Drop, workers: int) -> None:
 
     _log(f'  export: {len(todo)}/{len(drop.captures)} captures need export (workers={workers})')
     t0 = time.monotonic()
+    worker = functools.partial(_export_one, convert_timeout=convert_timeout)
     with cf.ProcessPoolExecutor(max_workers=workers) as ex:
-        results = list(ex.map(_export_one, todo))
+        results = list(ex.map(worker, todo))
     _log(f'  export done in {time.monotonic()-t0:.1f}s')
 
 
@@ -205,7 +213,8 @@ def _do_parse(drop: discovery.Drop, stage_root: str, workers: int, project_root:
 
 # --- Stage 4: replay ---------------------------------------------------------
 
-def _do_replay(drop: discovery.Drop, stage_root: str, pixel_grid: int = 4) -> dict[str, str]:
+def _do_replay(drop: discovery.Drop, stage_root: str, pixel_grid: int = 4,
+               replay_timeout: float = 600.0) -> dict[str, str]:
     os.environ['RDC_PIXEL_GRID'] = str(pixel_grid)
     _log(f'  replay: {len(drop.captures)} captures (sequential)')
     statuses: dict[str, str] = {}
@@ -221,7 +230,7 @@ def _do_replay(drop: discovery.Drop, stage_root: str, pixel_grid: int = 4) -> di
                 str(script),
                 payload_args=[drop.drop_dir, capture, drop.area, drop.drop_date, drop.drop_label, stage_root],
                 log_path=log_path,
-                timeout_s=600,
+                timeout_s=replay_timeout,
             )
             if rc == 0:
                 statuses[capture] = 'ok'
@@ -245,7 +254,8 @@ class DropResult:
 
 
 def process_drop(drop: discovery.Drop, *, force: bool, workers: int,
-                 project_root: str) -> DropResult:
+                 project_root: str,
+                 replay_timeout: float = 600.0, convert_timeout: float = 120.0) -> DropResult:
     _log(f'== drop: {drop.area} / {drop.drop_date}_{drop.drop_label} ({len(drop.captures)} captures) ==')
     skip, rotated_from = _preflight(drop, force, project_root)
     if skip:
@@ -260,12 +270,13 @@ def process_drop(drop: discovery.Drop, *, force: bool, workers: int,
     shutil.rmtree(stage_root, ignore_errors=True)  # clear any stale stage from a prior failed run
     os.makedirs(stage_root, exist_ok=True)
 
-    _do_export(drop, workers=workers)
+    _do_export(drop, workers=workers, convert_timeout=convert_timeout)
 
     parse_status = _do_parse(drop, stage_root, workers=workers, project_root=project_root)
 
     replay_status = _do_replay(drop, stage_root,
-                               pixel_grid=int(os.environ.get('RDC_PIXEL_GRID', '4')))
+                               pixel_grid=int(os.environ.get('RDC_PIXEL_GRID', '4')),
+                               replay_timeout=replay_timeout)
 
     capture_status: dict[str, str] = {}
     for s in drop.captures:
@@ -375,11 +386,21 @@ def main(argv: list[str]) -> int:
         help='skip export/parse/replay; rebuild HTML + catalog from existing Parquet')
     ap.add_argument('--workers', type=int, default=min(4, os.cpu_count() or 4))
     ap.add_argument('--pixel-grid', type=int, default=4)
+    ap.add_argument('--replay-timeout', type=float, default=None,
+        help='per-capture qrenderdoc replay budget (s); overrides [pipeline] replay_timeout_s')
+    ap.add_argument('--convert-timeout', type=float, default=None,
+        help='per-file renderdoccmd convert budget (s); overrides [pipeline] convert_timeout_s')
     args = ap.parse_args(argv)
 
     os.environ['RDC_PIXEL_GRID'] = str(args.pixel_grid)
     root = os.path.abspath(args.root)
     project_root = root  # the run.py is invoked via `python -m bobframes.run` from project root
+
+    # Load the config singleton against the resolved root so <root>/.bobframes.toml is honored (§6).
+    cfg = config.load_config(root)
+    # Value precedence: CLI flag > config (which already folds env/file/default).
+    replay_timeout = args.replay_timeout if args.replay_timeout is not None else cfg.pipeline.replay_timeout_s
+    convert_timeout = args.convert_timeout if args.convert_timeout is not None else cfg.pipeline.convert_timeout_s
 
     if args.positional:
         drops = [discovery.parse_single_drop_arg(args.positional, root)]
@@ -452,7 +473,8 @@ def main(argv: list[str]) -> int:
     for drop in drops:
         try:
             r = process_drop(drop, force=args.force, workers=args.workers,
-                             project_root=project_root)
+                             project_root=project_root,
+                             replay_timeout=replay_timeout, convert_timeout=convert_timeout)
             results.append(r)
         except Exception as e:
             _log(f'  drop FAILED: {e}')

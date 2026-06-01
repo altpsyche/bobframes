@@ -133,6 +133,11 @@ Hatchling chosen: single-file dynamic version, no `setup.py`, native force-inclu
 > opt-in extra (`pip install bobframes[query]`); the `schema` introspection verb ships in the
 > pyarrow-only core. This block is annotated, not rewritten (frozen, append-only).
 
+> **Extended for v0.2 by [ADR-26](DECISIONS.md):** the c07 config layer adds
+> `tomli>=2.0; python_version<'3.11'` (stdlib `tomllib` is 3.11+; the `>=3.10` floor stays because
+> qrenderdoc embeds Python 3.10). `tomli` is a build-time TOML parser, not a data dep — the data path
+> stays pyarrow-only. Annotated, not rewritten.
+
 > **Python 3.14 caveat (see DECISIONS / QUALITY_GATES):** the `3.14` classifier is intentionally
 > omitted above. `pyarrow>=17` has no cp314 wheels, so a `{3.14, pyarrow 17}` install fails. Add
 > 3.14 only once a compatible pyarrow floor is set for it. CI matrix tops out at 3.13 for v0.1.
@@ -241,6 +246,11 @@ ansi_color  = "auto"                # "auto" | "always" | "never"
 - `RDC_INSIDE_ARGS` → **kept verbatim** (qrenderdoc ↔ harness wire protocol).
 
 **Precedence rule:** CLI flag > env var > config file > built-in default.
+
+> **Clarified for v0.2 by [ADR-25](DECISIONS.md):** "first found wins, no merging" governs *user-file
+> selection* (pick one of the three locations). The bundled `_default_config.toml` is always the base
+> and the selected user file is **deep-merged on top** (per-key; user wins), so a user overrides one
+> key without restating the rest. Implemented in c07. Annotated, not rewritten.
 
 ## 9. Portability + path audit
 

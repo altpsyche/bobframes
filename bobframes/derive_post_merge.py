@@ -247,14 +247,16 @@ def _derive_complexity_score(out_dir: str) -> bool:
     df = _col('total_dfdx_dfdy')
     m4 = _col('total_mat4_constructors')
     sl = _col('src_len')
+    from . import config
+    w = config.get_config().scoring.complexity   # H-17 / Q-3
     scores = [
-        float(ts[i] or 0) * 2.0
-        + float(br[i] or 0) * 0.5
-        + float(lo[i] or 0) * 2.0
-        + float(di[i] or 0) * 0.3
-        + float(df[i] or 0) * 0.5
-        + float(m4[i] or 0) * 0.3
-        + min(float(sl[i] or 0) / 100.0, 50.0)
+        float(ts[i] or 0) * w.w_texture_samples
+        + float(br[i] or 0) * w.w_branches
+        + float(lo[i] or 0) * w.w_loops
+        + float(di[i] or 0) * w.w_discards
+        + float(df[i] or 0) * w.w_dfdx_dfdy
+        + float(m4[i] or 0) * w.w_mat4
+        + min(float(sl[i] or 0) / w.src_len_divisor, w.src_len_cap)
         for i in range(t.num_rows)
     ]
 

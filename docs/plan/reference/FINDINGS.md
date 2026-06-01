@@ -37,7 +37,7 @@
 |---|---|---|---|---|
 | Q-1 | `parquetize._apply_stable_key` | 60-line if-elif; collapse to a `dict[table → (cols, key_fn)]` loop | v0.2 | ☐ |
 | Q-2 | `parquetize._cast_value` | swallows coercion errors silently → 0/0.0 | aggregate failure counts, log summary | v0.2 | ☐ |
-| Q-3 | `derive_post_merge` complexity weights | magic numbers → module constant dict | [c07](../commits/v02/c07_toml_config.md) | ☐ |
+| Q-3 | `derive_post_merge` complexity weights | magic numbers → module constant dict | [c07](../commits/v02/c07_toml_config.md) | ☑ |
 | Q-4 | `derive_post_merge` zip | no length assertion; silent truncation on drift | `strict=True` (Py3.10+) | v0.2 | ☐ |
 | Q-5 | `pipeline._parse_one` | args passed both positional + `RDC_ROOT`; comment disagrees | pick one (positional) | [c10](../commits/v02/c10_env_rename.md) | ☐ |
 | Q-6 | report emitters | header/strip/open/close boilerplate duplicated ×6 | extract `chrome.report_page(...)` | v0.2 | ☐ |

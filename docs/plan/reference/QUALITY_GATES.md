@@ -44,6 +44,21 @@ logical, this gate runs on the **FULL matrix** (proven identical py3.10/pa17 ↔
 HTML parity which [ADR-11](../DECISIONS.md) pins to the canonical cell. **Refresh** (only on
 intentional data-path change): `python -m bobframes.tests.make_parquet_golden` → review diff in PR.
 
+## 21.1c Config defaults reproduce literals (c07, ADR-6) — see [c07](../commits/v02/c07_toml_config.md)
+The c07 TOML config lifts timeouts, the drop-folder regex, the lint banlist, the chrome-scrub regex,
+complexity weights, and delta/formatter knobs out of code. Bundled defaults (`_default_config.toml` +
+`lint_banlist.toml`) must reproduce today's output **byte-identically**, so `tests/test_config.py`
+asserts: regex `.pattern` equality (`dated_re`, `chrome_scrub_chars`), `delta.fmt` string identity,
+and **bit-for-bit** floats (`struct.pack('>d', …)`) for every complexity weight + threshold + timeout
+(tomllib must parse `0.3`/`2.0`/`8.0` to the same double as the Python literal). The banlist TOML
+round-trips to the exact original 15-entry `lint.BANNED` (patterns + flags + order). Because the
+defaults are bit-identical, **`test_parity` + `test_parquet_parity` stay green with no golden refresh**.
+The **CI matrix is unchanged** (3.10 retained, ADR-26): the loader runs under `tomli` on the 3.10 cell
+and stdlib `tomllib` on 3.12/3.13, and the digest gates assert identical loaded values across cells —
+proving `tomli`↔`tomllib` equivalence, not assuming it. Spawn-safety: the convert timeout is threaded
+into the pool worker as an argument (not read from a child-side singleton), gated by
+`test_convert_timeout_threaded_as_argument`.
+
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,
 dropped column, dtype slip). Skip `_`-prefixed (`_catalog`, `_global_entities`). Runs on synthetic +

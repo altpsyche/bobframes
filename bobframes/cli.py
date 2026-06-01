@@ -70,6 +70,10 @@ def _cmd_ingest(args: argparse.Namespace) -> int:
     if args.render_only:
         rargv += ['--render-only']
     rargv += ['--workers', str(args.workers), '--pixel-grid', str(args.pixel_grid)]
+    if args.replay_timeout is not None:
+        rargv += ['--replay-timeout', str(args.replay_timeout)]
+    if args.convert_timeout is not None:
+        rargv += ['--convert-timeout', str(args.convert_timeout)]
     return run.main(rargv)
 
 
@@ -132,11 +136,11 @@ def _cmd_check(args: argparse.Namespace) -> int:
         print('bobframes v1 is Windows-only (qrenderdoc replay requirement). '
               'Track GH issue for Linux/macOS support.', file=sys.stderr)
         return 3
-    if args.write_config:
-        print('--write-config is a v0.2 feature (config layer); not available yet.',
-              file=sys.stderr)
-        return 2
     from . import config
+    if args.write_config:
+        path, written = config.write_config_stub(os.path.abspath('.'))
+        print(f'wrote {path}' if written else f'{path} already exists; left unchanged')
+        return 0
     from .errors import EXIT_TOOL_MISSING, ToolNotFound
     missing = False
     for name in ('renderdoccmd', 'qrenderdoc'):
@@ -197,6 +201,10 @@ def _build_parser() -> argparse.ArgumentParser:
     sp.add_argument('--render-only', action='store_true')
     sp.add_argument('--workers', type=int, default=min(4, os.cpu_count() or 4))
     sp.add_argument('--pixel-grid', type=int, default=4)
+    sp.add_argument('--replay-timeout', type=float, default=None,
+                    help='per-capture qrenderdoc replay budget (s); overrides config')
+    sp.add_argument('--convert-timeout', type=float, default=None,
+                    help='per-file renderdoccmd convert budget (s); overrides config')
     sp.set_defaults(func=_cmd_ingest)
 
     sp = sub.add_parser('render', parents=[common],
@@ -228,7 +236,8 @@ def _build_parser() -> argparse.ArgumentParser:
     sp.set_defaults(func=_cmd_lint)
 
     sp = sub.add_parser('check', parents=[common], help='resolve external tool paths')
-    sp.add_argument('--write-config', action='store_true', help='(v0.2)')
+    sp.add_argument('--write-config', action='store_true',
+                    help='write a starter .bobframes.toml to the current dir (skip if present)')
     sp.set_defaults(func=_cmd_check)
 
     sp = sub.add_parser('version', parents=[common], help='print version, schema, pyarrow')
@@ -262,6 +271,14 @@ def main(argv: list[str] | None = None) -> int:
 
     _configure_logging(getattr(args, 'verbose', False))
     try:
+        # Load the config singleton against the verb's root so <root>/.bobframes.toml is honored
+        # (§6) for report/catalog/ab/render/ingest/serve. Verbs without a root (version/check/lint)
+        # lazily load bundled defaults (cwd) on first get_config(). ingest/render re-load via
+        # run.main (idempotent). ConfigError surfaces as a typed BobFramesError below.
+        root = getattr(args, 'root', None)
+        if root is not None:
+            from . import config
+            config.load_config(os.path.abspath(root))
         return args.func(args)
     except KeyboardInterrupt:
         print('interrupted', file=sys.stderr)

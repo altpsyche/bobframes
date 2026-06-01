@@ -25,6 +25,9 @@ classifiers = [
 ]
 dependencies = [
   "pyarrow>=17,<22",
+  # tomllib is stdlib only on 3.11+; the floor stays 3.10 because qrenderdoc embeds Python 3.10
+  # (the replay stage runs there). tomli is the conditional backport for that cell (ADR-26).
+  "tomli>=2.0; python_version<'3.11'",
 ]
 
 [project.optional-dependencies]

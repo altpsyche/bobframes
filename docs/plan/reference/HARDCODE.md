@@ -32,18 +32,18 @@
 | H-9 | `global_entities._ENTITY_TABLES` | 7 entity tables literal | derive from `schemas.entity_tables()`; id_col by convention + depluralized kind (RT→texture override) | c05 | ☑ |
 | H-10 | `catalog._CATALOG_TABLE_KEYS` | 29 table names | `tuple(schemas.TABLES.keys())` (TABLES reordered to catalog order to hold byte parity) | c05 | ☑ |
 | H-11 | `html/template._CATEGORY_MAP` | table groupings | `category` field on `schemas.TABLES`; within-cat display order kept in `template._TABLE_DISPLAY_ORDER` | c05 | ☑ |
-| H-12 | `qrd_harness` timeout `600.0` | replay timeout not tunable | `[pipeline] replay_timeout_s` + `--replay-timeout` | [c07](../commits/v02/c07_toml_config.md) | ☐ |
-| H-13 | `rdcmd` timeout `120.0` | convert timeout not tunable | `[pipeline] convert_timeout_s` + flag | c07 | ☐ |
-| H-14 | `lint.BANNED` | inline banlist | `lint_banlist.toml` + `[lint] extra_banned` | c07 | ☐ |
+| H-12 | `qrd_harness` timeout `600.0` | replay timeout not tunable | `[pipeline] replay_timeout_s` + `--replay-timeout` | [c07](../commits/v02/c07_toml_config.md) | ☑ |
+| H-13 | `rdcmd` timeout `120.0` | convert timeout not tunable | `[pipeline] convert_timeout_s` + flag | c07 | ☑ |
+| H-14 | `lint.BANNED` | inline banlist | `lint_banlist.toml` + `[lint] extra_banned` | c07 | ☑ |
 | H-15 | `chrome` design tokens | tokens as inline Python string | `design_tokens.toml` | [c08](../commits/v02/c08_design_tokens.md) | ☐ |
-| H-16 | `formatters._BANNED_CHROME_CHARS` | inline regex | move to lint/token TOML | c08 | ☐ |
-| H-17 | `derive_post_merge` complexity weights | inline literals | `[scoring.complexity]` in config | c07 | ☐ |
+| H-16 | `formatters._BANNED_CHROME_CHARS` | inline regex | `[formatting] chrome_scrub_chars` in config (re-pointed from c08: it feeds rendered HTML, pairs with the lint banlist) | c07 | ☑ |
+| H-17 | `derive_post_merge` complexity weights | inline literals | `[scoring.complexity]` in config | c07 | ☑ |
 | H-18 | `paths` dir literals (`_data`,`_reports`,`_cache`,`_stage`,`_tmp`,`drill`,`ab`) | scattered | module constants in `paths.py` | [c04](../commits/v02/c04_paths_constants.md) | ☑ |
 | H-19 | `manifest`/`catalog`/`pipeline` literals (`_manifest.json`,`done.marker`) | scattered | `paths.py` constants | [c04](../commits/v02/c04_paths_constants.md) | ☑ |
 | H-20 | `chrome` + `delta` layout literals (bar heights, grid widths, sparkline `60x14`) | inline | `[layout]` in design_tokens.toml | c08 | ☐ |
-| H-21 | `delta` `pct >= 8.0` bar-label threshold | inline | `[layout] bar_label_min_pct` | c07 | ☐ |
-| H-22 | `delta` `fmt='{:+,.0f}'` | inline default | config default + per-call override | c07 | ☐ |
-| H-23 | `formatters` `n=12`, `max_len=60` | rigid defaults | `[formatting] id_short_n`, `text_trunc_max` | c07 | ☐ |
+| H-21 | `delta` `pct >= 8.0` bar-label threshold | inline | `[delta] bar_label_min_pct` | c07 | ☑ |
+| H-22 | `delta` `fmt='{:+,.0f}'` | inline default | config default + per-call override | c07 | ☑ |
+| H-23 | `formatters` `n=12`, `max_len=60` | rigid defaults | `[formatting] id_short_n`, `text_trunc_max` | c07 | ☑ |
 | H-38 | `qrd_harness`/`rdcmd`/`cli` | platform process model: forced `.exe` suffix, `taskkill /T /F` tree-kill, `_cmd_check` `sys.platform!='win32'` gate (extends H-7's Arm-path) | per-OS locator in `resolve_tool` + platform-dispatched `kill_process_tree` (`os.killpg`+`start_new_session` on POSIX) + relaxed `check` gate | [c36](../commits/v06/c36_cross_platform.md) (ADR-18) | ☐ |
 
 ## P1 — wire protocol / stable-key / manifest
@@ -56,7 +56,7 @@
 | H-27 | `stable_keys._sha` | SHA256 no version prefix; rule change orphans keys (G-11) | add `KEY_VERSION=1`, prepend version byte | [c03](../commits/v01/c03_hardening.md) | ☑ |
 | H-28 | `manifest`/`cli` timestamps | UTC vs local mixed | single `now_iso()` UTC helper | [c03](../commits/v01/c03_hardening.md) | ☑ |
 | H-29 | `schemas.ID_COLS` | `(area, drop_date, drop_label, capture)` layout assumption | **frozen v1 contract**; v2 may relax | v2.0 |
-| H-30 | `discovery.DATED_RE` | `YYYY-MM-DD[_label]` locked | `[discovery] drop_folder_regex` | [c07](../commits/v02/c07_toml_config.md) | ☐ |
+| H-30 | `discovery.DATED_RE` | `YYYY-MM-DD[_label]` locked | `[discovery] dated_re` (module `DATED_RE` kept as fallback) | [c07](../commits/v02/c07_toml_config.md) | ☑ |
 | H-31 | English UI strings everywhere | i18n impossible | out of scope v1; roadmap only | — |
 
 ## P2 — cosmetic (leave as-is)

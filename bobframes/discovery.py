@@ -11,11 +11,26 @@ Finds the newest dated drop per area; filters by --area / --label / --capture.
 
 from __future__ import annotations
 
+import functools
 import os
 import re
 from dataclasses import dataclass
 
+from . import config
+
+# Fallback / back-compat default. The active pattern comes from config (H-30); this is the
+# compiled default used if config is unavailable and kept so the module-level name still resolves.
 DATED_RE = re.compile(r'^(\d{4}-\d{2}-\d{2})(?:_(.*))?$')
+
+
+@functools.lru_cache(maxsize=None)
+def _dated_re_compiled(pattern: str) -> re.Pattern:
+    return re.compile(pattern)
+
+
+def _dated_re() -> re.Pattern:
+    """The dated-drop pattern from config (H-30), compiled+cached by pattern string."""
+    return _dated_re_compiled(config.get_config().discovery.dated_re)
 
 
 @dataclass(frozen=True)
@@ -41,8 +56,9 @@ def _list_areas(root: str) -> list[tuple[str, str]]:
 def _latest_drop_dir(area_dir: str) -> tuple[str, str, str] | None:
     """Return (drop_date, drop_label, drop_dir) for newest dated sub-dir, else None."""
     dated = []
+    pat = _dated_re()
     for entry in os.listdir(area_dir):
-        m = DATED_RE.match(entry)
+        m = pat.match(entry)
         if not m:
             continue
         full = os.path.join(area_dir, entry)
@@ -117,7 +133,7 @@ def parse_single_drop_arg(arg: str, root: str) -> Drop:
     if len(parts) < 2:
         raise ValueError(f'expected <area>/<dated_drop>, got {arg!r}')
     area, dated = parts[-2], parts[-1]
-    m = DATED_RE.match(dated)
+    m = _dated_re().match(dated)
     if not m:
         raise ValueError(f'not a dated drop folder: {dated!r}')
     drop_dir = os.path.join(root, area, dated)
