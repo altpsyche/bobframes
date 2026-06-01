@@ -7,8 +7,25 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        c06a_drill_size_dehardcode    (status: not-started — c06 DONE; foundation-first per audit)
-last_session:   2026-06-01 — c06 DONE (tool resolver + errors + glob version detect, H-7). NEW
+current:        c06b_parquet_parity_gate    (status: not-started — c06a DONE; foundation-first per audit)
+last_session:   2026-06-01 — c06a DONE (D-8 drill-size de-harden). Dropped every os.path.getsize-derived
+                value from rendered HTML in html/template.py: the per-table CSV/parquet download-link
+                size span in _inline_table_with_data (CSV (X KB)/parquet (X KB) → bare CSV/parquet — the
+                writer-dependent D-8 byte), plus the shader_src `// 1024` per-file size and the jsonl
+                sidecar _file_size_label span in _sidecar_category (not in synthetic golden, but feed real
+                HTML); removed the now-unused _file_size_label helper. `grep getsize bobframes/html/` is
+                empty (grep gate green, repo-convention manual). DECISION (user deferred "do what's better
+                for tool lifespan"): drop the span, NOT the commit-doc's "row count" — header already shows
+                {rows:,} rows/{cols} cols (row count would triple it on the page) and csv_sz is empty on
+                csv-less tables so a row count would assert a figure for a 404 file. Golden drill page
+                refreshed by byte-level regex (>CSV (...)</a> → >CSV</a>, same for parquet) to preserve LF
+                + keep a minimal git diff: 361 bytes removed across 26 tables, no other line touched. 37
+                tests green (was 37 baseline incl R-16) — test_parity green on canonical cell. lint golden
+                clean. WRITER-KB DIVERGENCE GONE: the floor for un-pinning test_parity is now just the
+                float-ULP (pass_gpu pct_share .2f) case → D-(float). ci.yml --ignore=test_parity split
+                UNCHANGED this commit (still needed for the float half). D-8 ticked → c06a. Left _row_count
+                (template.py, already dead pre-c06a) + unused .sidecar-list span/.ct CSS untouched (out of
+                D-8 scope). PRIOR: c06 DONE (tool resolver + errors + glob version detect, H-7). NEW
                 config.py: resolve_tool(name)/resolve_tool_verbose(name) walk one ordered candidate
                 list `_candidates(name, config)` (BOBFRAMES_* env > legacy RENDERDOCCMD/
                 RENDERDOC_QRENDERDOC env w/ one-shot deprecation log > [tools] config > shutil.which >
@@ -52,8 +69,12 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    Do c06a (drill-size de-harden, D-8) → c06b (Parquet parity gate, G-14) → c07.
-                Open commits/v02/c06a_drill_size_dehardcode.md. c07 (later): NEW config.py loader (tomllib → dataclass, §6 lookup
+next_action:    Do c06b (Parquet parity gate, G-14) → c07. Open commits/v02/c06b_parquet_parity_gate.md.
+                c06b adds a Parquet-snapshot gate (golden parity currently covers rendered HTML only, so
+                c05's _global_entities row-order change slipped ungated). Note for c06b: with c06a's
+                writer-KB now out of the HTML, a Parquet-bytes gate must itself stay writer-stable — gate
+                on schema + row content/order, NOT raw on-disk bytes (which still vary pa17 vs pa21).
+                c07 (later): NEW config.py loader (tomllib → dataclass, §6 lookup
                 $BOBFRAMES_CONFIG > <root>/.bobframes.toml > %APPDATA%/bobframes/config.toml) +
                 _default_config.toml; resolve_tool gains the loaded singleton as its default `config`;
                 readers (qrd_harness/rdcmd timeouts, lint banlist, derive_post_merge scoring,
@@ -104,8 +125,8 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c04 paths.py constants](commits/v02/c04_paths_constants.md) | **done** — 10 layout constants in paths.py; literals swept from all modules + tests; 32 green, byte-parity (H-18/H-19) |
 | ☑ | [c05 registry from `schemas.TABLES`](commits/v02/c05_registry_consolidation.md) | **done** — TableSpec record (api reserved); catalog/entities/template/reports all derive; 32 green, byte-parity (H-8/9/10/11, D-1) |
 | ☑ | [c06 tool resolver + glob version detect](commits/v02/c06_tool_resolver.md) | **done** — `config.resolve_tool()` + `errors.py` (§4 exit-map) + Arm glob (H-7, ADR-24 natural-sort); `check` real (0/3 + §5); 36 green, byte-parity |
-| ☐ | [c06a drill-size de-harden](commits/v02/c06a_drill_size_dehardcode.md) | **next** — audit fix (D-8): drop writer-KB from drill HTML; golden refresh |
-| ☐ | [c06b Parquet parity gate](commits/v02/c06b_parquet_parity_gate.md) | planned — audit fix (G-14): gate Parquet outputs, not HTML-only |
+| ☑ | [c06a drill-size de-harden](commits/v02/c06a_drill_size_dehardcode.md) | **done** — D-8: dropped getsize size-spans from drill HTML; 37 green, golden refreshed (writer-KB gone) |
+| ☐ | [c06b Parquet parity gate](commits/v02/c06b_parquet_parity_gate.md) | **next** — audit fix (G-14): gate Parquet outputs, not HTML-only |
 | ☐ | [c07 TOML config layer](commits/v02/c07_toml_config.md) | deferred |
 | ☐ | [c08 design tokens TOML + preview](commits/v02/c08_design_tokens.md) | deferred |
 | ☐ | [c09 engine-agnostic classifier](commits/v02/c09_classifier.md) | deferred |
@@ -156,6 +177,19 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-01 — c06a DONE (D-8 drill-size de-harden; no-patch-fix per ADR-23). Removed all three
+  os.path.getsize-derived values that reached rendered HTML in html/template.py: the per-table
+  CSV/parquet download-link size in _inline_table_with_data (the writer-dependent byte behind ADR-11 —
+  pa17 15.1KB vs pa21 12.3KB), plus the shader_src `// 1024` size and the jsonl sidecar _file_size_label
+  span in _sidecar_category; deleted the now-unused _file_size_label. `grep getsize bobframes/html/` is
+  empty. Chose to DROP the span (user: "do what's better for tool lifespan"), not the doc's "row count" —
+  the table header already prints {rows:,} rows/{cols} cols (row count would triple it) and csv_sz is
+  empty on csv-less tables (a row count would lie about a 404 link). Refreshed the one golden drill page
+  via byte-level regex to keep LF + a minimal diff (361 bytes, 26 tables × CSV+parquet; no other line
+  changed). 37 green (test_parity on canonical cell), lint clean. Writer-KB divergence is GONE → the
+  un-pin floor for test_parity is now just the float-ULP (pass_gpu pct_share); ci.yml --ignore split
+  unchanged (still needed for the float half). FINDINGS D-8 ticked → c06a. current → c06b. _row_count
+  (already dead) + unused .sidecar-list span/.ct CSS left untouched (out of scope).
 - 2026-06-01 — R-16 FIXED (real-ingest commit-lock). Root cause: stage tree (with the inheritable
   _harness.log handle, grabbed by the respawning adb daemon) lived INSIDE <drop>.tmp, and the
   pre-commit `rmtree(stage, ignore_errors=True)` silently swallowed the locked-log failure (R-12), so

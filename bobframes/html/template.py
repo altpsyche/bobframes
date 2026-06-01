@@ -601,17 +601,6 @@ def _row_count(pq_path: str) -> int:
         return 0
 
 
-def _file_size_label(path: str) -> str:
-    if not os.path.exists(path):
-        return ''
-    n = os.path.getsize(path)
-    if n < 1024:
-        return f'{n} B'
-    if n < 1024 * 1024:
-        return f'{n / 1024:.1f} KB'
-    return f'{n / 1024 / 1024:.1f} MB'
-
-
 def _table_payload(table_name: str, out_dir: str) -> dict | None:
     pq = os.path.join(out_dir, f'{table_name}.parquet')
     if not os.path.exists(pq):
@@ -642,8 +631,6 @@ def _inline_table_with_data(table_name: str, out_dir: str,
         return None
     n_total = len(payload['rows'])
     n_cols = len(payload['cols'])
-    pq_sz = _file_size_label(os.path.join(out_dir, f'{table_name}.parquet'))
-    csv_sz = _file_size_label(os.path.join(out_dir, f'{table_name}.csv'))
 
     prefix = '' if sidecar_rel in ('.', '') else sidecar_rel.rstrip('/') + '/'
 
@@ -656,8 +643,8 @@ def _inline_table_with_data(table_name: str, out_dir: str,
     section.append('<div class="controls">')
     section.append(f'<input type="search" placeholder="filter {table_name}...">')
     section.append('<span class="ct visible-count"></span>')
-    section.append(f'<a class="dl" href="{prefix}{table_name}.csv">CSV ({csv_sz})</a>')
-    section.append(f'<a class="dl" href="{prefix}{table_name}.parquet">parquet ({pq_sz})</a>')
+    section.append(f'<a class="dl" href="{prefix}{table_name}.csv">CSV</a>')
+    section.append(f'<a class="dl" href="{prefix}{table_name}.parquet">parquet</a>')
     section.append('</div>')
     section.append(f'<div class="table-scroll" data-table="{table_name}"></div>')
     section.append('</section>')
@@ -746,9 +733,7 @@ def _sidecar_category(out_dir: str, sidecar_rel: str = '.') -> str:
         body_parts.append(f'<h3>shader_src ({len(files)} files)</h3>')
         body_parts.append('<ul class="sidecar-list">')
         for f in files:
-            sz = os.path.getsize(os.path.join(src_dir, f))
-            sz_str = f'{sz // 1024}K' if sz >= 1024 else f'{sz}B'
-            body_parts.append(f'<li><a href="{prefix}shader_src/{_h(f)}">{_h(f)}</a><span>{sz_str}</span></li>')
+            body_parts.append(f'<li><a href="{prefix}shader_src/{_h(f)}">{_h(f)}</a></li>')
         body_parts.append('</ul>')
 
     hist_dir = os.path.join(out_dir, 'histogram')
@@ -767,8 +752,7 @@ def _sidecar_category(out_dir: str, sidecar_rel: str = '.') -> str:
         if os.path.exists(p):
             counts.append(jsonl)
             body_parts.append(f'<h3>{_h(jsonl)}</h3>')
-            body_parts.append(f'<p><a href="{prefix}{_h(jsonl)}">download</a> '
-                              f'<span class="ct">{_file_size_label(p)}</span></p>')
+            body_parts.append(f'<p><a href="{prefix}{_h(jsonl)}">download</a></p>')
 
     if not body_parts:
         return ''
