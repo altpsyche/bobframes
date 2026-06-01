@@ -434,32 +434,11 @@ def _primitives_for(topology_short: str, ni: int, ic: int) -> int:
     return (ni // 3) * max(ic, 1)  # fallback triangle
 
 
-# --- Draw classification ----------------------------------------------------
-
-def _classify_draw(blend_enable: int, depth_write: int, marker_path: str,
-                   blend_src_color: str, blend_dst_color: str) -> str:
-    mp = (marker_path or '').lower()
-    if 'shadow' in mp or 'shadowdepth' in mp:
-        return 'shadow'
-    if 'prepass' in mp or 'depthonly' in mp:
-        return 'prepass'
-    if 'slate' in mp or 'ui' in mp:
-        return 'ui'
-    if 'postprocess' in mp or 'tonemap' in mp or 'bloom' in mp or 'eyeadapt' in mp:
-        return 'postprocess'
-    if 'decal' in mp:
-        return 'decal'
-    if blend_enable:
-        bs = (blend_src_color or '').lower()
-        bd = (blend_dst_color or '').lower()
-        if bs == 'one' and bd == 'one':
-            return 'additive'
-        if 'src_alpha' in bs and 'one_minus_src_alpha' in bd:
-            return 'translucent'
-        return 'translucent'
-    if depth_write:
-        return 'opaque'
-    return 'other'
+# Draw classification was removed here (c09, D-6): it was a drifted duplicate of the host
+# derive_post_merge classifier and fed only the dead passes.draws_by_class_* columns (no reader;
+# superseded by the host-derived pass_class_breakdown table). draw_class is host-derived from facts
+# (ADR-9 / ADR-29); the replay stage now emits facts only. Those 9 columns stay zeroed (PASSES_COLS
+# is frozen at SCHEMA_VERSION 3); full removal is deferred to the c35 bump (FINDINGS D-6/D-11).
 
 
 # --- Pipeline state read per draw ------------------------------------------
@@ -1747,8 +1726,7 @@ def _build_state_change_rows(sd, parent_by_event, chunk_name_by_event,
 
 # --- Passes (markers aggregation) -------------------------------------------
 
-def _build_passes(events: list[dict], event_durations: dict[int, float],
-                  draw_classes: dict[int, str], ctx,
+def _build_passes(events: list[dict], event_durations: dict[int, float], ctx,
                   draws_by_event: dict[int, dict] | None = None,
                   bindings_by_event: dict[int, list] | None = None) -> list[dict]:
     """Aggregate per-marker_path stats. Populates unique_programs/shaders/
@@ -1806,10 +1784,8 @@ def _build_passes(events: list[dict], event_durations: dict[int, float],
                 ni = e['num_indices']; ic = e['num_instances'] or 1
                 p['num_vertices_pre_vs'] += ni * ic
                 p['num_primitives_pre_vs'] += (ni // 3) * ic
-                cls = draw_classes.get(ev, 'other')
-                col = f'draws_by_class_{cls}'
-                if col in p:
-                    p[col] += 1
+                # draws_by_class_* stay at their zero-init (dead/unread; host derives the live
+                # per-class counts in pass_class_breakdown — c09, D-6).
                 if d_row is not None:
                     pid = d_row.get('program_id') or 0
                     vs = d_row.get('vs_shader_id') or 0
@@ -2075,7 +2051,6 @@ def main() -> None:
             fbo_state_per_event: dict[int, list[dict]] = {}
             uniforms_per_pass_rows: list[dict] = []
             seen_marker_paths: set = set()
-            draw_classes: dict[int, str] = {}
             mesh_hash_cache: dict = {}
             buffer_map: dict = {_rid_int(b.resourceId): b for b in ctrl.GetBuffers()}
             unique_programs = set(); unique_shaders = set(); unique_textures = set()
@@ -2106,11 +2081,6 @@ def main() -> None:
                             uniforms_per_pass_rows.append(u_obj)
                     except Exception as ex:
                         print(f'    uniforms {ev_id} failed: {ex}')
-                cls = _classify_draw(
-                    row['blend_enable'], row['depth_write_enable'], parent,
-                    row['blend_src_color'], row['blend_dst_color'],
-                )
-                draw_classes[ev_id] = cls
                 if row['program_id']: unique_programs.add(row['program_id'])
                 if row['vs_shader_id']: unique_shaders.add(row['vs_shader_id'])
                 if row['fs_shader_id']: unique_shaders.add(row['fs_shader_id'])
@@ -2200,7 +2170,7 @@ def main() -> None:
                 bindings_by_event.setdefault(b['event_id'], []).append(b)
 
             t0 = time.monotonic()
-            passes = _build_passes(tree['events'], event_durations, draw_classes, ctx,
+            passes = _build_passes(tree['events'], event_durations, ctx,
                                    draws_by_event=draws_by_event,
                                    bindings_by_event=bindings_by_event)
             print(f'  passes: {len(passes)} ({time.monotonic()-t0:.1f}s)')

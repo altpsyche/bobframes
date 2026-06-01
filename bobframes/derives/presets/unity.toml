@@ -1,0 +1,61 @@
+# BobFrames draw classifier — Unity preset. ILLUSTRATIVE (ADR-21): not parity-validated against a
+# real Unity capture yet; a validated Unity preset + its own synthetic fixture + golden land when a
+# Unity .rdc exists to anonymize (c27+). Select via: [classifier] preset = "unity".
+#
+# Rule semantics are identical to draw_classifier.toml (the UE default — see its header). Only the
+# engine marker keywords change; the `when` state rules are engine-agnostic. class_order is the fixed
+# 9-bucket contract and must NOT change between presets.
+
+class_order = ['opaque', 'prepass', 'shadow', 'translucent', 'additive', 'decal', 'ui', 'postprocess', 'other']
+fallback_class = 'other'
+frame_prefix_regex = ''        # Unity profiler markers carry no 'Frame N/' prefix
+
+# --- marker rules (Unity URP / Built-in render-pass profiler names) ---------------------------------
+[[rule]]
+class = 'shadow'
+marker_contains = ['shadowcaster', 'rendershadows', 'shadow']
+
+[[rule]]
+class = 'prepass'
+marker_contains = ['depthprepass', 'depthnormalprepass', 'depthonly']
+
+[[rule]]
+class = 'ui'
+marker_contains = ['uitoolkit', 'canvas', 'ugui']
+marker_suffix = ['ui']
+
+[[rule]]
+class = 'postprocess'
+marker_contains = ['postprocess', 'uberpost', 'bloom', 'tonemap', 'finalblit']
+
+[[rule]]
+class = 'decal'
+marker_contains = ['dbuffer', 'decal']
+
+[[rule]]
+class = 'translucent'
+marker_contains = ['transparent']
+
+# --- state rules (engine-agnostic) ------------------------------------------------------------------
+[[rule]]
+class = 'additive'
+when = { blend_enable = true, blend_src_color = 'one', blend_dst_color = 'one' }
+
+[[rule]]
+class = 'translucent'
+when = { blend_enable = true }
+
+[[rule]]
+class = 'opaque'
+marker_contains = ['drawopaque', 'forwardlit', 'gbuffer']
+
+[[rule]]
+class = 'opaque'
+when = { depth_write_enable = true }
+
+[pass_strip]
+prefixes = ['UniversalRenderPass/', 'ScriptableRenderPass/']
+noise_segments = []
+
+[counters]
+gpu_duration_aliases = ['GPU Duration']

@@ -7,6 +7,7 @@ import string as _string
 
 from . import formatters as _f
 from . import _tokens
+from ..derives import classifier as _classifier
 
 
 # Design-token VALUES live in reports/design_tokens.toml (c08, H-15); this skeleton owns only the
@@ -1090,11 +1091,11 @@ def h(s) -> str:
     return _html.escape(str(s if s is not None else ''))
 
 
-# Canonical class order + colors. Reports use this order in stacks.
-DRAW_CLASSES = [
-    'opaque', 'prepass', 'shadow', 'translucent', 'additive',
-    'decal', 'ui', 'postprocess', 'other',
-]
+# Canonical class order + colors. Reports use this order in stacks. Single source = the active
+# classifier preset's class_order (H-5); the UE default reproduces the former literal byte-for-byte
+# (pinned by tests/test_classifier). The hand-aligned --c-<name> CSS tokens live in the design-token
+# skeleton above and are asserted to cover every class here.
+DRAW_CLASSES = list(_classifier.class_order())
 
 
 def class_color_var(cls: str) -> str:

@@ -47,3 +47,7 @@ src_len_cap       = 50.0
 #   label   = 'why'
 #   flags   = ['I']
 extra_banned = []
+
+[classifier]                # c09 — draw-classification preset (H-1..H-5)
+preset = "ue"               # draw_classifier.toml (UE default); "unity"/"godot"/... -> presets/<name>.toml
+# custom_path = "C:/path/to/my_engine.toml"   # absolute path to a custom preset (wins over `preset`)

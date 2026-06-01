@@ -7,6 +7,7 @@ import html as _html
 import re
 
 from .. import config
+from ..derives import classifier
 
 # Default-compiled alias kept for back-compat re-export (base.__all__). The ACTIVE scrub pattern
 # comes from config (H-16); a test asserts this default equals the config default.
@@ -102,27 +103,29 @@ def trunc_left(s: str | None, max_len: int | None = None) -> str:
 
 
 def pass_short(path: str | None) -> str:
-    """Reduce a UE pass path to its meaningful tail.
+    """Reduce an engine pass path to its meaningful tail.
 
-    Strips FRDGBuilder::Execute/MobileSceneRender/ prefix.
-    Collapses /Engine/EngineMaterials/<Name>.<Name>/ to <Name>/.
-    Collapses any `/<Foo>.<Foo>` repeated-name asset pattern to `/<Foo>`.
+    Strips the leading ``[pass_strip].prefixes`` (UE default: FRDGBuilder::Execute/MobileSceneRender/)
+    and drops ``[pass_strip].noise_segments`` (UE default: Engine/EngineMaterials) — both from the
+    active classifier preset (H-2). The structural `/<Foo>.<Foo>` FName-redundancy collapse stays in
+    code (engine-agnostic).
     """
     if not path:
         return ''
     s = str(path)
-    if s.startswith('FRDGBuilder::Execute/'):
-        s = s[len('FRDGBuilder::Execute/'):]
-    if s.startswith('MobileSceneRender/'):
-        s = s[len('MobileSceneRender/'):]
-    # Collapse /A/B/C.../<Name>.<Name> SM_X  → <Name> SM_X (UE FName redundant)
+    strip = classifier.pass_strip()
+    for pre in strip.get('prefixes', ()):
+        if s.startswith(pre):
+            s = s[len(pre):]
+    noise = set(strip.get('noise_segments', ()))
+    # Collapse /A/B/C.../<Name>.<Name> SM_X  → <Name> SM_X (FName redundant)
     parts = s.split('/')
     cleaned = []
     for p in parts:
         if not p:
             continue
         # asset prefix like "/Engine/EngineMaterials" is just noise
-        if p in ('Engine', 'EngineMaterials'):
+        if p in noise:
             continue
         # collapse "Name.Name" → "Name"
         if '.' in p:

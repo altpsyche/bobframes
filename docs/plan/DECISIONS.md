@@ -414,3 +414,49 @@ would rename every var + every `var(--…)` reference across all CSS, changing t
 cosmetic rename, if ever wanted, is a separate future commit that intentionally refreshes the golden.
 Recorded here so the DESIGNER.md illustration is understood as superseded for v0.2, not silently
 ignored (ADR-23).
+
+### ADR-29 — the classifier is an analysis-layer, single-source, state-capable rule engine; the dead replay copy is deleted
+**Context:** [c09](commits/v02/c09_classifier.md) externalizes UE-specific draw classification
+(H-1..H-5). [D-6](reference/FINDINGS.md) flagged `_classify_draw` as two drifted copies
+(host `derive_post_merge` vs `replay_main`) and asked whether the replay copy is dead. A first design
+would have pushed a shared classifier *into* qrenderdoc's embedded Python 3.10 (which can't import the
+package or parse TOML) via a JSON-spec hand-off. **Investigation (recorded so the rejected path is
+owned):** the replay copy feeds **only** `passes.draws_by_class_*` — 9 columns with **zero readers**,
+superseded by the host-derived `pass_class_breakdown` table; and durable GPU tools (RenderDoc, AMD
+RGP, Unity Frame Debugger) classify from **structured state / render passes / shader pass-tags**,
+treating debug markers as *display grouping* only. **Decision (user-confirmed):**
+1. Classification is an **analysis-layer, single-source** concern. One `derives/classifier.py` API
+   (`classify(fields, spec)`) is the only `draw_class` computation site; `pass_class_breakdown`,
+   `draws_by_class`, etc. *read* the derived column. Rules live in TOML presets
+   (`draw_classifier.toml` = UE default; `presets/*.toml`).
+2. The engine is a **state-capable predicate engine**: a rule matches if any marker predicate
+   (`marker_contains`/`marker_suffix`) hits OR all `when` field conditions (over any draw column —
+   blend/depth/…/color-write/RT) hold; first match wins; else `fallback_class`. Markers are a
+   *refinement* layer, not the foundation — so a state-first "generic" preset (c27) needs no
+   rearchitecting. The bundled UE preset reproduces the former host `_classify_draw` **byte-for-byte**
+   (parity, ADR-6; `tests/test_classifier` runs a 300+ case oracle battery + the `draw_class` golden
+   gates hold with no refresh).
+3. **D-6 is collapsed by DELETING the dead replay copy**, not by feeding it: the replay stage now
+   emits **facts only** (so QUALITY_GATES §21.9 "de-hardcoding does not change extraction" holds *by
+   construction*). The 9 dead `passes.draws_by_class_*` columns stay **zeroed** (PASSES_COLS is frozen
+   at SCHEMA_VERSION 3; the c13 drift gate stays green); full column removal + `passes`-table slim is
+   deferred to the c35 bump (D-11). The synthetic fixture's committed `passes.draws_by_class_*` predate
+   the deletion (replay is never run in render-only) — harmless because unread, recorded not hidden.
+**Consequence:** `classifier.py` reuses the ADR-26 `tomllib`/`tomli` shim + `importlib.resources` so
+it imports under embedded 3.10 (the walker is pure-Python, rules-as-data) even though replay no longer
+calls it. Accuracy improvements (state-first generic preset, robust shadow-by-state, "fewer other")
+are opt-in and deferred (D-10 → c27 / §21.5 / ADR-21). The frozen ARCHITECTURE §3/§4 is annotated by
+pointer, not rewritten. Real-`.rdc` re-validation (replay still runs after the deletion) is the
+self-hosted/nightly smoke (ADR-6; CI never runs replay, §21.6).
+
+### ADR-30 — classifier preset layout: `draw_classifier.toml` is the canonical UE default; no duplicate `ue.toml`
+**Context:** the c09 doc lists `presets/{ue,unity,godot,custom-template}.toml`. Shipping a separate
+`presets/ue.toml` *and* the default `draw_classifier.toml` (both UE) would reintroduce a dual-edit
+duplication — the exact hazard H-5 closes. **Decision (user-confirmed):** `draw_classifier.toml` IS
+the canonical UE default; `[classifier] preset = "ue"` (the default) resolves to it. Ship
+`presets/{unity,godot,custom-template}.toml` as alternates/examples; per ADR-21 the Unity/Godot
+presets are **illustrative** (manual-check only — no per-engine fixture/golden until a real `.rdc`
+from that engine exists to anonymize), and `custom-template.toml` is the documented starting point
+(shows both marker and state-only predicates). **Consequence:** a literal `presets/ue.toml` is
+deliberately NOT shipped; recorded here so the doc's file list is understood as satisfied by the
+default file, not silently dropped (ADR-23).

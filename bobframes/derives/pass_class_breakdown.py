@@ -15,6 +15,7 @@ import pyarrow.csv as pacsv
 import pyarrow.parquet as papq
 
 from .. import schemas
+from . import classifier
 
 
 def build(out_dir: str) -> int:
@@ -42,8 +43,9 @@ def build(out_dir: str) -> int:
         ev = ct.column('event_id').to_pylist()
         cn = ct.column('counter_name').to_pylist()
         vd = ct.column('value_double').to_pylist()
+        gpu_aliases = set(classifier.gpu_duration_aliases())   # H-4 — was the literal 'GPU Duration'
         for i in range(ct.num_rows):
-            if cn[i] == 'GPU Duration':
+            if cn[i] in gpu_aliases:
                 durations[(ar[i], dd[i], dl[i], cp[i], ev[i])] = float(vd[i] or 0.0)
 
     agg: dict[tuple, dict] = defaultdict(lambda: {

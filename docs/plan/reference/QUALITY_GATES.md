@@ -72,6 +72,24 @@ dedicated byte-golden at `tests/data/golden_preview/_chrome_preview.html` (OUTSI
 and is asserted deterministic (no build timestamp). Q-6's `chrome.report_page(...)` extraction is
 covered transitively by `test_parity` (the 6 reports + dashboard route through it byte-identically).
 
+## 21.1e Classifier parity + the D-6 deletion (c09, ADR-6/29) — see [c09](../commits/v02/c09_classifier.md)
+c09 lifts UE draw classification + pass-strip + frame-prefix + GPU-counter aliases into TOML presets
+(`derives/draw_classifier.toml` = UE default) behind one analysis-layer API (`derives/classifier.py`),
+a **state-capable** rule engine (`when{}` over any draw column; markers are a refinement). Bundled
+defaults reproduce today's output **byte-identically** — `test_parity` + `test_parquet_parity` stay
+green with **no golden refresh**. `tests/test_classifier.py` adds golden-independent guards: the UE
+preset matches a frozen copy of the former `derive_post_merge._classify_draw` over a 300+ case oracle
+battery (every rule + sub-pattern + blend/depth precedence); `frame_prefix_re().pattern` /
+`pass_strip()` / `gpu_duration_aliases()` / `class_order()` equal the former literals; every
+`--c-<name>` for name in `class_order` is present in the emitted `:root` block (H-5 names↔order); a
+`when{}`-only mini-spec classifies without markers (the c27 generic-preset path); a Unity preset
+reclassifies a Unity-style marker; and `replay_main` no longer defines `_classify_draw`. **D-6
+collapse:** the drifted replay-side classifier (fed only the dead `passes.draws_by_class_*`, superseded
+by `pass_class_breakdown`) is **deleted**, so the replay stage emits facts only (§21.9 by
+construction); those 9 columns stay zeroed under the frozen schema (the §21.3 replay-drift gate stays
+green), full removal deferred to c35. Real-`.rdc` re-validation that replay still runs is the
+self-hosted/nightly smoke (CI never runs replay, §21.6).
+
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,
 dropped column, dtype slip). Skip `_`-prefixed (`_catalog`, `_global_entities`). Runs on synthetic +

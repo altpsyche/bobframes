@@ -7,8 +7,41 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        c09_classifier    (status: not-started; c08 DONE)
-last_session:   2026-06-01 — c08 DONE (design tokens TOML + preview + Q-6; H-15/H-20/Q-6). NEW
+current:        c10_env_rename    (status: not-started; c09 DONE)
+last_session:   2026-06-01 — c09 DONE (engine-agnostic classifier; H-1/H-2/H-3/H-4/H-5 + D-6). NEW
+                derives/classifier.py = the SINGLE, analysis-layer draw-classification API: a
+                state-capable rule engine (ADR-29) — a rule matches if any marker predicate
+                (marker_contains/marker_suffix) hits OR all `when` field conditions (over any draws
+                column: blend/depth/...) hold; first match wins; else fallback_class. Markers are a
+                REFINEMENT, not the foundation. NEW derives/draw_classifier.toml (UE default) +
+                presets/{unity,godot,custom-template}.toml (unity/godot ILLUSTRATIVE, manual-check
+                only per ADR-21; no dup ue.toml — ADR-30). Reuses c07/c08 tomllib/tomli shim (ADR-26,
+                3.10-safe) + importlib.resources. config.py +[classifier] preset/custom_path. Host
+                wiring: derive_post_merge (classify + frame_prefix_re, H-1/H-3), formatters.pass_short
+                ([pass_strip], H-2), pass_class_breakdown (gpu_duration_aliases, H-4), chrome.DRAW_CLASSES
+                = classifier.class_order() (H-5). DEEP REVIEW changed the direction (user pushed twice):
+                a first plan would push a shared classifier INTO the embedded-3.10 replay via JSON — but
+                investigation found the replay-side _classify_draw is DEAD (feeds only passes.draws_by_
+                class_*, 9 cols, ZERO readers, superseded by pass_class_breakdown). So D-6 COLLAPSE =
+                DELETE the dead replay copy (not feed it): replay_main._classify_draw + draw_classes
+                plumbing removed; the 9 cols stay ZEROED (PASSES_COLS frozen v3; replay-drift gate green);
+                full removal deferred to c35 (D-11). Replay now emits FACTS ONLY → §21.9 holds by
+                construction. PARITY (ADR-6, hard part): UE preset reproduces the former host
+                _classify_draw BYTE-FOR-BYTE — proven by a 300+ case oracle battery in NEW
+                tests/test_classifier.py (11 tests: frame_prefix/.pattern, pass_strip, gpu_aliases,
+                class_order==old literal, every --c-<name> in :root, oracle battery, marker-beats-blend
+                precedence, state-only spec classifies w/o markers, unity reclassify, custom_path
+                override, replay has no _classify_draw). 59→70 green; test_parity + test_parquet_parity
+                GREEN, golden BYTE-IDENTICAL (git clean, NO refresh); smoke render-only 9 pages lint
+                clean; wheel ships classifier.py + 4 TOMLs, 150/150 unique 0 dups (ADR-10). Dead-code
+                sweep (3 agents): only true redundancy = passes.draws_by_class_* (handled); ~30
+                "dead" cols are NOT dead (drill browser surfaces every col); genuinely-dead
+                fns/CSS/branch (footer_legend, _row_count, footer.legend+.sidecar-list CSS, replay
+                `if False`) recorded → c16; col removal → c35. ADR-29/30; HARDCODE H-1..5 ticked; D-6
+                ticked; D-10 (marker-first fragility → c27) + D-11 (dead-code sweep) opened;
+                QUALITY_GATES §21.1e; ARCHITECTURE §3 annotated. NOT run: real-ingest smoke (replay
+                still runs post-deletion) — self-hosted/nightly, ADR-6/§21.6.
+former_last_c08: 2026-06-01 — c08 DONE (design tokens TOML + preview + Q-6; H-15/H-20/Q-6). NEW
                 reports/design_tokens.toml (designer-editable [color]/[spacing]/[type]/[motion]/[layout])
                 + reports/_tokens.py loader (tomllib/tomli shim ADR-26, bundled-only, NO deep-merge —
                 Track A edits the packaged file; per-project overrides are Track B). PARITY (ADR-6/27, the
@@ -57,13 +90,16 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    Do c09 (engine-agnostic classifier — most invasive). Open commits/v02/c09_classifier.md.
-                NOTE its TOML walker may reach the embedded-3.10 replay side, which is exactly why ADR-26
-                kept the 3.10 floor (tomli backport). Both c07 config (config.get_config()) and c08
-                _tokens loader use the same tomllib/tomli shim + importlib.resources read pattern c09
-                reuses. Then c10 (env rename RDC_*→BOBFRAMES_*), c16 (report-quality). GIT: still on branch
-                v0.2-roadmap-c04 (off main; c07 + c08 UNPUSHED). Post-release nit (non-blocking): bump
-                CI actions off Node20 (checkout@v5/setup-python@v6 before 2026-06-16).
+next_action:    Do c10 (env-var rename RDC_*→BOBFRAMES_*). Open commits/v02/c10_env_rename.md. Relates
+                Q-5 (pipeline._parse_one args dual positional+RDC_ROOT) + R-5 lineage; config.py already
+                honors BOBFRAMES_* with one-shot legacy warnings (c06), so c10 finishes the env surface.
+                Then c16 (report-quality — also lands the c09-deferred dead-code cleanup D-11b:
+                footer_legend/_row_count/dead CSS, golden refresh). NOTE for whoever does c27/c35: the
+                c09 classifier engine is already STATE-CAPABLE (when{} over any draw column), so the
+                state-first generic preset (D-10, fewer `other`) is a preset, not a rewrite; c35 removes
+                the zeroed passes.draws_by_class_* + slims passes (D-11a). GIT: still on branch
+                v0.2-roadmap-c04 (off main; c07 + c08 + c09 UNPUSHED). Post-release nit (non-blocking):
+                bump CI actions off Node20 (checkout@v5/setup-python@v6 before 2026-06-16).
 DONE-2026-05-31: c19 — bobframes 0.1.0 PUBLISHED. tag v0.1.0 -> CI publish job green (OIDC trusted
                 publishing, ubuntu). Live on PyPI (wheel + sdist) + GitHub Release with both assets.
                 Post-install verify from a clean PyPI install: version (0.1.0 schema 3 pyarrow 21.0.0),
@@ -108,8 +144,8 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c06b Parquet parity gate](commits/v02/c06b_parquet_parity_gate.md) | **done** — G-14: writer-independent logical digest over `_data/**/*.parquet` (58 tables), full matrix; 38 green |
 | ☑ | [c07 TOML config layer](commits/v02/c07_toml_config.md) | **done** — tomllib config (tomli<3.11); timeouts/regex/banlist/chrome-scrub/weights/delta lifted; 47 green, byte-parity (H-12/13/14/16/17/21/22/23/30,Q-3) |
 | ☑ | [c08 design tokens TOML + preview](commits/v02/c08_design_tokens.md) | **done** — design_tokens.toml + value-only Template skeleton (H-15/H-20, ADR-27/28); report_page (Q-6); preview/export-tokens/render --watch verbs; 59 green, byte-parity (no golden refresh) |
-| ☐ | [c09 engine-agnostic classifier](commits/v02/c09_classifier.md) | **next** |
-| ☐ | [c10 env-var rename `RDC_*`→`BOBFRAMES_*`](commits/v02/c10_env_rename.md) | deferred |
+| ☑ | [c09 engine-agnostic classifier](commits/v02/c09_classifier.md) | **done** — single state-capable classifier API (H-1..H-5); dead replay copy deleted (D-6); 70 green, byte-parity (no refresh) |
+| ☐ | [c10 env-var rename `RDC_*`→`BOBFRAMES_*`](commits/v02/c10_env_rename.md) | **next** |
 | ☐ | [c16 report-quality polish](commits/v02/c16_report_quality.md) | deferred |
 
 ## v0.3 — CI/automation surface (planned — [ROADMAP](ROADMAP.md))
@@ -156,6 +192,27 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-01 — c09 DONE (engine-agnostic classifier; H-1/H-2/H-3/H-4/H-5 + D-6). NEW derives/classifier.py
+  = the SINGLE analysis-layer draw-classification API: a state-capable rule engine (ADR-29) — rule matches
+  if any marker predicate (marker_contains/marker_suffix) hits OR all `when` field conditions (over any
+  draws column) hold; first match wins; else fallback_class. Markers are a REFINEMENT, not the foundation.
+  NEW derives/draw_classifier.toml (UE default) + presets/{unity,godot,custom-template}.toml (unity/godot
+  ILLUSTRATIVE per ADR-21; no dup ue.toml, ADR-30). tomllib/tomli shim (ADR-26, 3.10-safe) +
+  importlib.resources. config +[classifier] preset/custom_path. Host: derive_post_merge (classify +
+  frame_prefix_re), formatters.pass_short ([pass_strip]), pass_class_breakdown (gpu_duration_aliases),
+  chrome.DRAW_CLASSES=class_order(). DEEP REVIEW (user pushed twice) flipped the direction: a first plan
+  pushed a shared classifier INTO embedded-3.10 replay via JSON — but the replay _classify_draw is DEAD
+  (feeds only passes.draws_by_class_*, 9 cols, ZERO readers, superseded by pass_class_breakdown). So D-6 =
+  DELETE the dead replay copy; 9 cols stay ZEROED (PASSES_COLS frozen v3; replay-drift gate green); removal
+  → c35 (D-11). Replay emits FACTS ONLY → §21.9 by construction. PARITY (ADR-6): UE preset reproduces the
+  former host _classify_draw BYTE-FOR-BYTE — proven by a 300+ case oracle battery in NEW test_classifier.py
+  (11 tests). 59→70 green; test_parity + test_parquet_parity GREEN, golden BYTE-IDENTICAL (git clean, NO
+  refresh); smoke 9 pages lint clean; wheel ships classifier.py + 4 TOMLs, 150/150 unique 0 dups (ADR-10).
+  Dead-code sweep (3 agents): only true redundancy = passes.draws_by_class_* (handled); ~30 "dead" cols
+  NOT dead (drill browser surfaces every col); dead fns/CSS/branch (footer_legend/_row_count/footer.legend
+  + .sidecar-list CSS/replay `if False`) → c16; col removal → c35. ADR-29/30; H-1..5 + D-6 ticked; D-10
+  (marker-first fragility → c27) + D-11 (dead-code) opened; QUALITY_GATES §21.1e; ARCHITECTURE §3 annotated.
+  Real-ingest smoke (replay runs post-deletion) NOT run — self-hosted/nightly (ADR-6/§21.6). current → c10.
 - 2026-06-01 — c08 DONE (design tokens TOML + preview + Q-6; H-15/H-20/Q-6). NEW reports/design_tokens.toml
   ([color]/[spacing]/[type]/[motion]/[layout]) + reports/_tokens.py loader (tomllib/tomli shim, bundled-only,
   no deep-merge — Track A edits the packaged file; per-project overrides are Track B). PARITY (ADR-6/27):

@@ -1,0 +1,52 @@
+# BobFrames draw classifier — CUSTOM TEMPLATE. Copy this, edit the rules, and point at it with:
+#   [classifier]
+#   custom_path = "C:/path/to/my_engine.toml"
+# (or drop it in as derives/presets/<name>.toml and set preset = "<name>").
+#
+# A draw is classified by derives.classifier.classify: rules are tried IN ORDER; the first rule that
+# matches wins; if none match, fallback_class. A rule matches if ANY of its marker predicates hits OR
+# ALL of its `when` field conditions hold. You can mix marker presets and pure-state presets freely.
+#
+# Predicate keys (any combination per rule):
+#   marker_contains = ['a', 'b']   # substring(s) in the lowercased marker (the parent pass path)
+#   marker_suffix   = ['x']        # the marker ends with one of these (lowercased)
+#   when = { field = value, ... }  # ALL hold. field = a draws-table column name. value:
+#                                  #   true  -> field is truthy   (e.g. blend_enable = true)
+#                                  #   false -> field is falsy
+#                                  #   "str" -> case-insensitive string equality (e.g. = 'one')
+#                                  #   int   -> exact numeric equality
+#
+# class_order is the fixed bucket set + display/legend/color order; keep these 9 names unless you also
+# extend the report color tokens (chrome --c-<name>). fallback_class catches everything unmatched.
+
+class_order = ['opaque', 'prepass', 'shadow', 'translucent', 'additive', 'decal', 'ui', 'postprocess', 'other']
+fallback_class = 'other'
+frame_prefix_regex = ''        # e.g. '^Frame\s+\d+/?' to strip a per-frame pass-path prefix
+
+# --- STATE-ONLY example (no engine markers needed — works on any API) -------------------------------
+# Additive blend (one,one) is additive on every engine:
+[[rule]]
+class = 'additive'
+when = { blend_enable = true, blend_src_color = 'one', blend_dst_color = 'one' }
+
+# Any other blend-enabled draw is translucent:
+[[rule]]
+class = 'translucent'
+when = { blend_enable = true }
+
+# Depth-writing, non-blended draws are opaque:
+[[rule]]
+class = 'opaque'
+when = { depth_write_enable = true }
+
+# --- MARKER example (uncomment + adapt to your engine's pass names) ---------------------------------
+# [[rule]]
+# class = 'shadow'
+# marker_contains = ['shadow']
+
+[pass_strip]
+prefixes = []          # leading pass-path segments to strip, e.g. ['MyRenderer/']
+noise_segments = []    # path segments dropped anywhere, e.g. ['Engine']
+
+[counters]
+gpu_duration_aliases = ['GPU Duration']   # counter name(s) that carry per-event GPU time

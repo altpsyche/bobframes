@@ -9,11 +9,11 @@
 
 | ID | Where | Hardcoded | Remediation | resolved-by | status |
 |---|---|---|---|---|---|
-| H-1 | `derive_post_merge._classify_draw` | UE keyword switch (basepass/shadow/prepass/…) | externalize to `derives/draw_classifier.toml`; 10-line walker; ship UE preset | [c09](../commits/v02/c09_classifier.md) | ☐ |
-| H-2 | `formatters.pass_short` | UE marker strips (`FRDGBuilder::Execute`, `MobileSceneRender`, `/Engine/EngineMaterials`) | `[pass_strip]` in same TOML | c09 | ☐ |
-| H-3 | `derive_post_merge._RE_FRAME_PREFIX` | UE `^Frame\s+\d+/?` | `frame_prefix_regex` in TOML | c09 | ☐ |
-| H-4 | `derives/pass_class_breakdown` | counter literal `'GPU Duration'` (Arm-specific) | `[counters] gpu_duration_aliases` fall-through | c09 | ☐ |
-| H-5 | `chrome.DRAW_CLASSES` + `_classify_draw` | DRAW_CLASSES enum duplicated in two places | single source: classifier `class_order`; chrome iterates it | c09 | ☐ |
+| H-1 | `derive_post_merge._classify_draw` | UE keyword switch (basepass/shadow/prepass/…) | externalize to `derives/draw_classifier.toml`; state-capable rule engine (ADR-29); ship UE preset | [c09](../commits/v02/c09_classifier.md) | ☑ |
+| H-2 | `formatters.pass_short` | UE marker strips (`FRDGBuilder::Execute`, `MobileSceneRender`, `/Engine/EngineMaterials`) | `[pass_strip]` in same TOML | c09 | ☑ |
+| H-3 | `derive_post_merge._RE_FRAME_PREFIX` | UE `^Frame\s+\d+/?` | `frame_prefix_regex` in TOML (`classifier.frame_prefix_re()`) | c09 | ☑ |
+| H-4 | `derives/pass_class_breakdown` | counter literal `'GPU Duration'` (Arm-specific) | `[counters] gpu_duration_aliases` fall-through | c09 | ☑ |
+| H-5 | `chrome.DRAW_CLASSES` + `_classify_draw` | DRAW_CLASSES enum duplicated in two places | single source: `classifier.class_order()`; chrome derives it; `--c-<name>` tokens asserted to cover it | c09 | ☑ |
 | H-6 | `replay/replay_main` `*_COLS` tuples | schema cols duplicated from `schemas.py` (qrenderdoc import unreliable) | **kept by design**; CI drift detector | [c13](../commits/v01/c13_replay_drift_ci.md) | ☑ |
 
 ## P0 — graphics-API lock-in (the v0.5 epic)
