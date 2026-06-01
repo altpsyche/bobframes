@@ -315,3 +315,34 @@ engine gets its own synthetic fixture + golden**, anonymized/down-sampled from a
 golden on the canonical cell; functional gates run the full matrix. **Consequence:** this refines
 QUALITY_GATES §21 — the golden set is `{golden (GL/UE), golden-vk, golden-generic, …}`; every
 output-changing commit refreshes the affected golden(s) in-PR.
+
+### ADR-23 — no patch-fixes: root-cause or record, never narrow the gate to go green
+**Context:** a lifecycle audit (2026-06-01) asked whether fixes across v0.1/v0.2 were thought-through
+or "green-chasing." The trail was mostly principled, but it surfaced cases where a gate was *scoped
+down* to pass rather than the underlying wart removed (ADR-11 pins parity to one env because the
+rendered HTML embeds env-sensitive bytes; the golden gate covers HTML only, so a Parquet row-order
+change slipped through at c05; a test picked version numbers that dodged a lexicographic-sort flaw).
+The user set a standing rule. **Decision (user-confirmed):** **never patch-fix.** Concretely, the
+following are banned as a way to reach green: masking or narrowing a test/gate's scope to hide a real
+divergence; choosing fixture/test data that sidesteps a known flaw; catching-and-swallowing to silence
+a symptom; shipping known-weak code with a vague "fix later." The required response to a failure is to
+**root-cause it and fix the cause**, OR — when the true fix is genuinely out of the current commit's
+scope — **record it explicitly** as a `FINDINGS`/`HARDCODE` row (symbol-anchored) **and** an ADR
+stating the deliberate scoping and its rationale, so the limitation is visible and owned, not silent.
+A documented, rationalized scoping decision (e.g. ADR-11's "byte-snapshot equality across numpy/pyarrow
+builds is not a deliverable") is legitimate **because** it is explicit; an undocumented one is the
+thing this ADR forbids. **Consequence:** every commit's "Done when" gate must pass on its real intent,
+not a narrowed proxy. New gate-coverage and root-cause findings opened by the audit: D-8, D-9, G-14.
+This rule is mirrored as a one-line principle in the repo `CLAUDE.md` ("How to work").
+
+### ADR-24 — Arm version pick uses a natural-numeric sort, not literal lexicographic (refines §5)
+**Context:** [ARCHITECTURE §5](ARCHITECTURE.md) / [c06](commits/v02/c06_tool_resolver.md) say the
+glob over `Arm Performance Studio *` picks the latest "by directory-name sort." A literal
+lexicographic sort mis-ranks once a minor version reaches two digits (`'2026.2' > '2026.10'` as
+strings), which would silently select an older install. Arm's real naming has kept minors single-digit
+so the literal form happens to work today, but relying on that is exactly the kind of undocumented
+fragility ADR-23 forbids. **Decision:** implement the "latest install" *intent* with a natural-numeric
+key (`config._version_key`: split digit runs to ints) so `2026.10` correctly outranks `2026.2`,
+regardless of minor width. **Consequence:** §5's "directory-name sort" wording is realized as a
+numeric-aware sort (same intent, robust); `test_config.test_arm_glob_picks_latest_version` asserts the
+two-digit-minor case. Frozen §5 is refined by this ADR, not rewritten.

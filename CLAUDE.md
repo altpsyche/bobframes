@@ -23,6 +23,12 @@ commit.
 - Every change must keep the golden-snapshot parity gate green — see
   `docs/plan/reference/QUALITY_GATES.md`. Output is byte-identical unless a commit explicitly
   refreshes the golden.
+- **No patch-fixes (ADR-23).** Never reach green by narrowing a gate's scope, picking test data that
+  dodges a known flaw, swallowing a symptom, or shipping known-weak code with a vague "fix later".
+  Root-cause and fix the cause; if the true fix is out of the current commit's scope, **record it
+  explicitly** (a symbol-anchored `FINDINGS`/`HARDCODE` row + an ADR stating the deliberate scoping
+  and its rationale) rather than hiding it. Documented, rationalized scoping is fine; silent scoping
+  is not.
 - The package is named `bobframes` from the start (decided at scaffold — see DECISIONS ADR-7; the
   old c14 rename is collapsed). Do not work from `docs/plan/CLI_PLAN.archive.md` — superseded.
 

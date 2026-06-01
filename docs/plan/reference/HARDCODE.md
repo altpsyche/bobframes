@@ -27,7 +27,7 @@
 
 | ID | Where | Hardcoded | Remediation | resolved-by | status |
 |---|---|---|---|---|---|
-| H-7 | `qrd_harness`, `rdcmd` | Arm `2026.2` path baked (breaks quarterly) | glob `Arm Performance Studio */…`, pick latest; `resolve_tool()` | [c06](../commits/v02/c06_tool_resolver.md) (ADR-2: pull-forward candidate) | ☐ |
+| H-7 | `qrd_harness`, `rdcmd` | Arm `2026.2` path baked (breaks quarterly) | glob `Arm Performance Studio */…`, pick latest; `resolve_tool()` | [c06](../commits/v02/c06_tool_resolver.md) (ADR-2: pull-forward candidate) | ☑ |
 | H-8 | `orchestrator._REPORT_MODULES` + `ab._MODULES` | 6-report list duplicated (two names) | `reports/__init__.all_reports()` (runtime-augmentable accessor; frozen `ALL_REPORTS` tuple rejected per c05) | [c05](../commits/v02/c05_registry_consolidation.md) | ☑ |
 | H-9 | `global_entities._ENTITY_TABLES` | 7 entity tables literal | derive from `schemas.entity_tables()`; id_col by convention + depluralized kind (RT→texture override) | c05 | ☑ |
 | H-10 | `catalog._CATALOG_TABLE_KEYS` | 29 table names | `tuple(schemas.TABLES.keys())` (TABLES reordered to catalog order to hold byte parity) | c05 | ☑ |

@@ -17,6 +17,8 @@ import logging
 import os
 import sys
 
+from .errors import BobFramesError
+
 # CLI report name -> reports submodule. `build(root)` on each builds one report.
 _REPORTS = {
     'draws-by-class': 'draws_by_class',
@@ -134,16 +136,20 @@ def _cmd_check(args: argparse.Namespace) -> int:
         print('--write-config is a v0.2 feature (config layer); not available yet.',
               file=sys.stderr)
         return 2
-    from . import qrd_harness, rdcmd
+    from . import config
+    from .errors import EXIT_TOOL_MISSING, ToolNotFound
     missing = False
-    for name, finder in (('renderdoccmd', rdcmd.find_renderdoccmd),
-                         ('qrenderdoc', qrd_harness.find_qrenderdoc)):
+    for name in ('renderdoccmd', 'qrenderdoc'):
         try:
-            print(f'{name}: {finder()}')
-        except FileNotFoundError:
-            print(f'{name}: NOT FOUND', file=sys.stderr)
+            path, source = config.resolve_tool_verbose(name)
+            # `source` is the winning step's description; for env/config/PATH it explains the
+            # precedence, but for a known-path hit it IS the path -> don't print it twice.
+            suffix = '' if source == path else f'  (via {source})'
+            print(f'{name}: {path}{suffix}')
+        except ToolNotFound as e:
+            print(str(e), file=sys.stderr)
             missing = True
-    return 3 if missing else 0
+    return EXIT_TOOL_MISSING if missing else 0
 
 
 def _cmd_serve(args: argparse.Namespace) -> int:
@@ -260,6 +266,10 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         print('interrupted', file=sys.stderr)
         return 4
+    except BobFramesError as e:
+        # Typed pipeline/tool errors carry their own exit code (errors.py / ARCHITECTURE §4).
+        print(str(e), file=sys.stderr)
+        return e.exit_code
 
 
 if __name__ == '__main__':

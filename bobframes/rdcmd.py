@@ -1,6 +1,6 @@
 """renderdoccmd wrapper.
 
-Locates renderdoccmd.exe via env or the known Arm Performance Studio path
+Locates renderdoccmd.exe via config.resolve_tool (env > config > PATH > known paths, c06)
 and exposes a convert() helper that produces .xml / .zip.xml from .rdc.
 """
 
@@ -11,22 +11,12 @@ import subprocess
 import sys
 import time
 
-_DEFAULT_PATHS = [
-    r'c:/Program Files/Arm/Arm Performance Studio 2026.2/renderdoc_for_arm_gpus/renderdoccmd.exe',
-]
+from . import config
 
 
 def find_renderdoccmd() -> str:
-    env = os.environ.get('RENDERDOCCMD', '').strip()
-    if env and os.path.exists(env):
-        return env
-    for p in _DEFAULT_PATHS:
-        if os.path.exists(p):
-            return p
-    raise FileNotFoundError(
-        'renderdoccmd not found. Set RENDERDOCCMD env var or install '
-        'Arm Performance Studio 2026.2 at the default path.'
-    )
+    """Resolve renderdoccmd.exe (delegates to config.resolve_tool; raises ToolNotFound)."""
+    return config.resolve_tool('renderdoccmd')
 
 
 def convert(rdc_path: str, out_path: str, fmt: str = 'xml', timeout_s: float = 120.0) -> float:
