@@ -33,6 +33,17 @@ tests/data/
 **Refresh** (only on intentional output change): re-render synthetic → copy to `golden/` → review
 diff in PR.
 
+## 21.1b Parquet-output parity (G-14) — see [c06b](../commits/v02/c06b_parquet_parity_gate.md)
+`test_parity` gates **HTML only** (it skips `_data`/`_cache`), so a data-path regression — e.g.
+c05's `_global_entities` row-order shift — is invisible to it. `tests/test_parquet_parity.py` closes
+that: render synthetic → walk every `_data/**/*.parquet` → compare a **writer-independent logical
+digest** (schema + row order + cell values) against `tests/data/golden_parquet/digests.json`.
+The digest hashes `Table.to_pydict()` in schema column order (non-finite floats → fixed sentinels),
+**NOT on-disk bytes** — those vary by pyarrow writer version (the D-8 trap). Because the digest is
+logical, this gate runs on the **FULL matrix** (proven identical py3.10/pa17 ↔ py3.13/pa21), unlike
+HTML parity which [ADR-11](../DECISIONS.md) pins to the canonical cell. **Refresh** (only on
+intentional data-path change): `python -m bobframes.tests.make_parquet_golden` → review diff in PR.
+
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,
 dropped column, dtype slip). Skip `_`-prefixed (`_catalog`, `_global_entities`). Runs on synthetic +

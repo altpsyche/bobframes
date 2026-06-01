@@ -7,8 +7,33 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        c06b_parquet_parity_gate    (status: not-started — c06a DONE; foundation-first per audit)
-last_session:   2026-06-01 — c06a DONE (D-8 drill-size de-harden). Dropped every os.path.getsize-derived
+current:        c07_toml_config    (status: not-started — c06b DONE; v0.2 audit foundation complete)
+last_session:   2026-06-01 — c06b DONE (G-14: Parquet-output parity gate). NEW
+                tests/test_parquet_parity.py renders the synthetic fixture, walks every
+                rendered _data/**/*.parquet (58 tables: 28 per-drop for the latest drop + 27 static
+                copies of the older drop + _catalog + _global_entities), and compares a
+                WRITER-INDEPENDENT logical digest vs committed tests/data/golden_parquet/digests.json.
+                Digest = ordered schema [(name, str(type))] + num_rows + sha256 over Table.to_pydict()
+                serialized in schema column order, row order preserved (NOT on-disk bytes — those vary
+                pa17↔pa21, the D-8 trap). Chose approach (a) from the commit doc. NEW helpers in
+                _render_util.py: rendered_parquet_files (mirror of rendered_html_files; excludes
+                _cache) + parquet_digest + compute_digest_map; NEW tests/make_parquet_golden.py refresh
+                script (mirrors make_synthetic.py; run by hand on intentional data-path change).
+                NO-PATCH-FIX moment (ADR-23): allow_nan=False caught a NaN — root-caused to
+                vbo_samples.as_f32_0..3 (raw VBO bytes reinterpreted as float32 → legit NaN; pyarrow
+                float64 prints as type "double", which an initial scan missed). Did NOT flip to
+                allow_nan; instead canonicalize non-finite floats to FIXED sentinels ({"__nf__":nan/inf})
+                so the values stay GATED (a NaN→number flip is a real regression). FULL-MATRIX PROVEN:
+                rendered+digested under py3.10/pa17, py3.12/pa21, py3.13/pa21 — all 58 digests
+                byte-identical to the canonical-cell golden → gate is NOT in ci.yml's --ignore (runs
+                every cell, unlike HTML parity which ADR-11 pins). NEGATIVE TEST: reversing
+                build_global_entities' glob sort makes the gate FAIL naming _global_entities.parquet,
+                same num_rows + different rows_sha256 (the exact c05 regression that slipped ungated).
+                Note: render-only re-derives ONLY the latest discovered drop (discovery._latest_drop_dir
+                returns one drop/area); the older drop's parquet are untouched fixture copies — matches
+                the HTML golden (only the latest drop has a drill page). 37→38 tests green; HTML parity
+                + determinism/schema/perf untouched; smoke render-only clean; lint golden exit 0. G-14
+                ticked → c06b; QUALITY_GATES §21.1b added. PRIOR: c06a DONE (D-8 drill-size de-harden). Dropped every os.path.getsize-derived
                 value from rendered HTML in html/template.py: the per-table CSV/parquet download-link
                 size span in _inline_table_with_data (CSV (X KB)/parquet (X KB) → bare CSV/parquet — the
                 writer-dependent D-8 byte), plus the shader_src `// 1024` per-file size and the jsonl
@@ -69,12 +94,15 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    Do c06b (Parquet parity gate, G-14) → c07. Open commits/v02/c06b_parquet_parity_gate.md.
-                c06b adds a Parquet-snapshot gate (golden parity currently covers rendered HTML only, so
-                c05's _global_entities row-order change slipped ungated). Note for c06b: with c06a's
-                writer-KB now out of the HTML, a Parquet-bytes gate must itself stay writer-stable — gate
-                on schema + row content/order, NOT raw on-disk bytes (which still vary pa17 vs pa21).
-                c07 (later): NEW config.py loader (tomllib → dataclass, §6 lookup
+next_action:    Do c07 (TOML config layer). Open commits/v02/c07_toml_config.md. The v0.2 audit
+                foundation (c06a D-8 + c06b G-14) is now complete — data-path regressions are gated
+                (test_parquet_parity) and the writer-KB is out of the HTML, so c07's parity work has a
+                stable floor. NOTE for c07: the NEW Parquet gate means any change to derive scoring /
+                formatters that shifts a parquet cell value will now FAIL test_parquet_parity (not just
+                HTML) — if c07's defaults are truly byte-identical it stays green; if a float fmt or
+                weight intentionally changes, refresh BOTH goldens (HTML via re-render + parquet via
+                `python -m bobframes.tests.make_parquet_golden`).
+                c07: NEW config.py loader (tomllib → dataclass, §6 lookup
                 $BOBFRAMES_CONFIG > <root>/.bobframes.toml > %APPDATA%/bobframes/config.toml) +
                 _default_config.toml; resolve_tool gains the loaded singleton as its default `config`;
                 readers (qrd_harness/rdcmd timeouts, lint banlist, derive_post_merge scoring,
@@ -126,8 +154,8 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c05 registry from `schemas.TABLES`](commits/v02/c05_registry_consolidation.md) | **done** — TableSpec record (api reserved); catalog/entities/template/reports all derive; 32 green, byte-parity (H-8/9/10/11, D-1) |
 | ☑ | [c06 tool resolver + glob version detect](commits/v02/c06_tool_resolver.md) | **done** — `config.resolve_tool()` + `errors.py` (§4 exit-map) + Arm glob (H-7, ADR-24 natural-sort); `check` real (0/3 + §5); 36 green, byte-parity |
 | ☑ | [c06a drill-size de-harden](commits/v02/c06a_drill_size_dehardcode.md) | **done** — D-8: dropped getsize size-spans from drill HTML; 37 green, golden refreshed (writer-KB gone) |
-| ☐ | [c06b Parquet parity gate](commits/v02/c06b_parquet_parity_gate.md) | **next** — audit fix (G-14): gate Parquet outputs, not HTML-only |
-| ☐ | [c07 TOML config layer](commits/v02/c07_toml_config.md) | deferred |
+| ☑ | [c06b Parquet parity gate](commits/v02/c06b_parquet_parity_gate.md) | **done** — G-14: writer-independent logical digest over `_data/**/*.parquet` (58 tables), full matrix; 38 green |
+| ☐ | [c07 TOML config layer](commits/v02/c07_toml_config.md) | **next** |
 | ☐ | [c08 design tokens TOML + preview](commits/v02/c08_design_tokens.md) | deferred |
 | ☐ | [c09 engine-agnostic classifier](commits/v02/c09_classifier.md) | deferred |
 | ☐ | [c10 env-var rename `RDC_*`→`BOBFRAMES_*`](commits/v02/c10_env_rename.md) | deferred |
@@ -177,6 +205,22 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-01 — c06b DONE (G-14: Parquet-output parity gate; no-patch-fix per ADR-23). NEW
+  tests/test_parquet_parity.py: render synthetic → walk every rendered _data/**/*.parquet (58 tables
+  incl. _catalog + _global_entities) → compare a WRITER-INDEPENDENT logical digest (ordered schema +
+  num_rows + sha256 over Table.to_pydict() in schema column order, row order kept; NOT on-disk bytes,
+  the D-8 trap) vs committed tests/data/golden_parquet/digests.json. NEW _render_util helpers
+  (rendered_parquet_files / parquet_digest / compute_digest_map) + tests/make_parquet_golden.py
+  refresh script. NaN HIT root-caused not masked: allow_nan=False tripped on vbo_samples.as_f32_*
+  (raw VBO bytes as float32 → legit NaN; pyarrow float64 str is "double" so first scan missed it) →
+  canonicalize non-finite floats to fixed sentinels ({"__nf__":...}) so values stay GATED, NOT
+  allow_nan. PROVEN full-matrix: digests byte-identical under py3.10/pa17, py3.12/pa21, py3.13/pa21 →
+  gate runs every CI cell (not in ci.yml --ignore, unlike ADR-11-pinned HTML parity). Negative test:
+  reversing build_global_entities' glob sort fails the gate naming _global_entities.parquet (same
+  num_rows, diff rows_sha256 — the exact c05 regression). render-only re-derives only the latest
+  discovered drop; older drop served as fixture copies (matches HTML golden's single drill page).
+  37→38 green; HTML parity/determinism/schema/perf untouched; smoke + lint golden clean. G-14 ticked
+  → c06b; QUALITY_GATES §21.1b added. current → c07.
 - 2026-06-01 — c06a DONE (D-8 drill-size de-harden; no-patch-fix per ADR-23). Removed all three
   os.path.getsize-derived values that reached rendered HTML in html/template.py: the per-table
   CSV/parquet download-link size in _inline_table_with_data (the writer-dependent byte behind ADR-11 —

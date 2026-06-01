@@ -95,7 +95,7 @@
 | G-13 | `texture_usage` computed in pipeline + tracked in catalog but never surfaced as a report | [c28](../commits/v04/c28_texture_usage_report.md) | ☐ |
 | G-11 | `stable_keys` SHA256 has no version prefix — rule change orphans keys | [c03](../commits/v01/c03_hardening.md) (`KEY_VERSION=1`; H-27) | ☑ |
 | G-12 | `tests/smoke.py` brittle hardcoded constants | [c15](../commits/v01/c15_smoke_tests.md) | ☑ |
-| G-14 | **Golden parity gates rendered HTML only — Parquet outputs are ungated.** `test_parity` (via `_render_util.rendered_html_files`) walks `.html` and explicitly skips `_cache`/`_data`, so "byte-parity green" means *render logic unchanged*, NOT *all outputs unchanged*: c05's `_global_entities` row-order change was invisible to the gate and "accepted." Add a Parquet-snapshot parity gate (stable schema + row order, or a content hash per table) so data-path regressions are caught, not just HTML. | v0.2 (new gate; relates [c21](../commits/v03/c21_regression_gating.md); audit 2026-06-01) | ☐ |
+| G-14 | **Golden parity gates rendered HTML only — Parquet outputs are ungated.** `test_parity` (via `_render_util.rendered_html_files`) walks `.html` and explicitly skips `_cache`/`_data`, so "byte-parity green" means *render logic unchanged*, NOT *all outputs unchanged*: c05's `_global_entities` row-order change was invisible to the gate and "accepted." Add a Parquet-snapshot parity gate (stable schema + row order, or a content hash per table) so data-path regressions are caught, not just HTML. | [c06b](../commits/v02/c06b_parquet_parity_gate.md) (writer-independent logical digest over `_data/**/*.parquet`, full matrix; relates [c21](../commits/v03/c21_regression_gating.md); audit 2026-06-01) | ☑ |
 
 ## XSS / safety — no findings (recorded)
 
