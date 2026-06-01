@@ -7,37 +7,63 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        c06_tool_resolver    (status: not-started — c05 DONE)
-last_session:   2026-05-31 — c05 DONE (registry consolidation, H-8/H-9/H-10/H-11 + D-1). schemas.TABLES
-                values migrated from the raw 3-tuple to a TableSpec NamedTuple (cols, size_class,
-                is_entity, category, api="core" reserved for c33). The dict was REORDERED to the old
-                catalog._CATALOG_TABLE_KEYS order so catalog can derive `tuple(schemas.TABLES.keys())`
-                byte-identically (render_root bakes the catalog column order into the golden root
-                index.html). Added helpers table_category()/entity_tables(); expected_columns/
-                is_entity_table/size_class now read named fields. catalog.py: _CATALOG_TABLE_KEYS =
-                tuple(schemas.TABLES.keys()). global_entities.py: iterate schemas.entity_tables(), id_col
-                by convention (col after stable_key), kind = depluralize(stem) + {render_targets:texture}
-                override. template.py: dropped _CATEGORY_MAP — category now from the record; within-cat
-                DISPLAY order kept in a presentation-only _TABLE_DISPLAY_ORDER tuple (a third ordering
-                that matches neither TABLES nor catalog order — verified empirically — so it can't be
-                derived). reports/__init__.py: NEW all_reports() accessor + register_report() (lazy
-                imports; runtime-augmentable per c38; frozen ALL_REPORTS tuple intentionally rejected);
-                orchestrator + ab both consume it (drops _REPORT_MODULES/_MODULES). test_schemas_unit
-                fixed (5-field record unpack). Baseline 32-green BEFORE; 32-green AFTER, byte-identical
-                (no golden refresh). Scratch in-memory sanity: a dummy is_entity table auto-appears in
-                catalog + entity_tables + template (tails its category; existing order preserved).
-                _global_entities row order shifts (ungated parquet, not in golden) — accepted.
-next_action:    Do c06 — config.resolve_tool() + errors.py + glob version detection (H-7). Open
-                commits/v02/c06_tool_resolver.md and do exactly that commit. NEW config.py
-                (resolve_tool: BOBFRAMES_* env > [tools] config > shutil.which > known Win paths >
-                ToolNotFound) + errors.py (ToolNotFound/PipelineError/exit-map); rewire rdcmd.py +
-                qrd_harness.py off inline discovery (keep _SEP + RDC_INSIDE_ARGS wire); make `check`
-                real (exit 0/3). Golden parity green (discovery doesn't touch render). Then c07->c10,
-                c16. Roadmap: ROADMAP.md + commits/v03..v06 (c20-c39) + ADR-14..22. GIT: still on branch
-                `v0.2-roadmap-c04` (off main @dedfdfc; now +ea68a63 docs +d8f61d7 c04 +<c05>; UNPUSHED).
-                REAL-INGEST: run the deferred real-rdc smoke AFTER c06 — one run covers c04+c05+c06's
-                ingest-path changes (ADR-6). Post-release nit (non-blocking): bump CI actions off Node20
-                (checkout@v5/setup-python@v6 before 2026-06-16).
+current:        c06a_drill_size_dehardcode    (status: not-started — c06 DONE; foundation-first per audit)
+last_session:   2026-06-01 — c06 DONE (tool resolver + errors + glob version detect, H-7). NEW
+                config.py: resolve_tool(name)/resolve_tool_verbose(name) walk one ordered candidate
+                list `_candidates(name, config)` (BOBFRAMES_* env > legacy RENDERDOCCMD/
+                RENDERDOC_QRENDERDOC env w/ one-shot deprecation log > [tools] config > shutil.which >
+                known Win paths > raise ToolNotFound). Arm glob `_ARM_GLOB` = 'C:/Program Files/Arm/Arm
+                Performance Studio */renderdoc_for_arm_gpus/{name}.exe', pick latest by a
+                natural-numeric key (_version_key, ADR-24 — 2026.10 > 2026.2, not lexicographic);
+                vanilla/LOCALAPPDATA in `_KNOWN_PATH_TEMPLATES` (skips template whose env unset). [tools] read defensively (getattr .tools then dict-fallback) so c07's
+                dataclass needs no signature change; config=None branch dormant (no loader yet).
+                .exe + Win paths intentionally hardcoded (Windows-only v1; c36 drops .exe per-OS) —
+                commented. NEW errors.py: EXIT_* constants + BobFramesError/PipelineError/ToolNotFound;
+                ToolNotFound.format_message() renders the ARCHITECTURE §5 block from attempts
+                (kind∈{env,config,path,file} → status). Rewired rdcmd.find_renderdoccmd/
+                qrd_harness.find_qrenderdoc to thin config.resolve_tool wrappers (names kept — manifest
+                + test_hardening monkeypatch them); dropped _DEFAULT_PATHS/_DEFAULT_QRD; _SEP +
+                RDC_INSIDE_ARGS wire untouched. cli._cmd_check uses resolve_tool_verbose (prints path +
+                'via <source>' only when source≠path; exit 0 found / 3 + §5 block on miss);
+                cli.main now catches BobFramesError → e.exit_code (§4 exit-map). NEW tests/test_config.py
+                (4 hermetic tests: env>known precedence, legacy honored + warns-once, Arm glob picks
+                latest version, ToolNotFound exit_code==3 + §5 msg). Baseline 32-green BEFORE; 36-green
+                AFTER, golden byte-identical (no refresh — discovery doesn't touch render). Live check
+                on dev box: real Arm 2026.2 resolved via the `*` glob (H-7 proven), exit 0; forced-miss
+                in-process → full §5 block + exit 3.
+audit-2026-06-01: Lifecycle quality audit + standing rule. ADR-23 "no patch-fixes" (root-cause or
+                record explicitly; never narrow a gate to go green) — mirrored in CLAUDE.md "How to
+                work" + a cross-session memory. Opened 3 findings from the audit: D-8 (drill HTML bakes
+                writer-dependent Parquet KB via html.template._file_size_label → the real root behind
+                ADR-11's one-env parity pin; fix the content to drop env-sensitive bytes, then parity
+                can hold across pyarrow), G-14 (golden parity gates rendered HTML only — Parquet
+                ungated, so c05's _global_entities row-order change slipped; add a Parquet-snapshot
+                gate), D-9 (_TABLE_DISPLAY_ORDER pinned empirically, origin unrecorded). c06's Arm
+                sort hardened to natural-numeric (ADR-24) before commit. SEQUENCING (user-confirmed):
+                FOUNDATION FIRST — c06a (D-8) then c06b (G-14) BEFORE c07. Both commit docs written.
+REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest on the real drop in
+                C:\Users\vsiva\Downloads\RDC mainline r110565 25-05-2026. export+parse+replay(5×rc=0,
+                177-220s)+parquetize(597199 rows)+derives(program_transitions 415, pass_class_breakdown
+                4245, texture_usage 5)+resource_labels ALL GREEN. parquetize 597199 + global_entities
+                16651 are BYTE-IDENTICAL to the prior pre-release validation → c04+c05+c06 don't change
+                ingest output. The atomic COMMIT (os.replace tmp→final) failed [WinError 5] — adb server
+                (respawns, inherits the inheritable _harness.log handle that lives inside <drop>.tmp\
+                _stage) held the dir. Filed R-16 (keep harness log outside the committed .tmp / open
+                non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
+                dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
+                dashboard + root index, lint clean). Validation GREEN with R-16 noted.
+next_action:    Do c06a (drill-size de-harden, D-8) → c06b (Parquet parity gate, G-14) → c07.
+                Open commits/v02/c06a_drill_size_dehardcode.md. c07 (later): NEW config.py loader (tomllib → dataclass, §6 lookup
+                $BOBFRAMES_CONFIG > <root>/.bobframes.toml > %APPDATA%/bobframes/config.toml) +
+                _default_config.toml; resolve_tool gains the loaded singleton as its default `config`;
+                readers (qrd_harness/rdcmd timeouts, lint banlist, derive_post_merge scoring,
+                formatters, delta, discovery regex) switch to the config singleton. PARITY is the hard
+                part (ADR-6): defaults must reproduce output byte-identically (assert regex .pattern +
+                complexity-weight float fmt unchanged). Structure [scoring] as parent w/ subsections
+                (c21 extends). Then c08->c10, c16. GIT: still on branch `v0.2-roadmap-c04` (off main
+                @dedfdfc; now +ea68a63 docs +d8f61d7 c04 +d2870ec c05 +<c06 UNCOMMITTED>; UNPUSHED).
+                Post-release nit (non-blocking): bump CI actions off Node20 (checkout@v5/
+                setup-python@v6 before 2026-06-16).
 DONE-2026-05-31: c19 — bobframes 0.1.0 PUBLISHED. tag v0.1.0 -> CI publish job green (OIDC trusted
                 publishing, ubuntu). Live on PyPI (wheel + sdist) + GitHub Release with both assets.
                 Post-install verify from a clean PyPI install: version (0.1.0 schema 3 pyarrow 21.0.0),
@@ -77,7 +103,9 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 |---|---|---|
 | ☑ | [c04 paths.py constants](commits/v02/c04_paths_constants.md) | **done** — 10 layout constants in paths.py; literals swept from all modules + tests; 32 green, byte-parity (H-18/H-19) |
 | ☑ | [c05 registry from `schemas.TABLES`](commits/v02/c05_registry_consolidation.md) | **done** — TableSpec record (api reserved); catalog/entities/template/reports all derive; 32 green, byte-parity (H-8/9/10/11, D-1) |
-| ☐ | [c06 tool resolver + glob version detect](commits/v02/c06_tool_resolver.md) | deferred |
+| ☑ | [c06 tool resolver + glob version detect](commits/v02/c06_tool_resolver.md) | **done** — `config.resolve_tool()` + `errors.py` (§4 exit-map) + Arm glob (H-7, ADR-24 natural-sort); `check` real (0/3 + §5); 36 green, byte-parity |
+| ☐ | [c06a drill-size de-harden](commits/v02/c06a_drill_size_dehardcode.md) | **next** — audit fix (D-8): drop writer-KB from drill HTML; golden refresh |
+| ☐ | [c06b Parquet parity gate](commits/v02/c06b_parquet_parity_gate.md) | planned — audit fix (G-14): gate Parquet outputs, not HTML-only |
 | ☐ | [c07 TOML config layer](commits/v02/c07_toml_config.md) | deferred |
 | ☐ | [c08 design tokens TOML + preview](commits/v02/c08_design_tokens.md) | deferred |
 | ☐ | [c09 engine-agnostic classifier](commits/v02/c09_classifier.md) | deferred |
@@ -128,6 +156,22 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-01 — c06 DONE (tool resolver + errors + glob version detect; H-7). NEW config.py:
+  resolve_tool/resolve_tool_verbose over one ordered _candidates list — BOBFRAMES_* env > legacy
+  RENDERDOCCMD/RENDERDOC_QRENDERDOC (one-shot deprecation log) > [tools] config > shutil.which > known
+  Win paths > ToolNotFound. Arm glob (_ARM_GLOB 'Arm Performance Studio */renderdoc_for_arm_gpus/
+  {name}.exe', latest by dir-name reverse sort) kills the baked 2026.2 path; vanilla/LOCALAPPDATA in
+  _KNOWN_PATH_TEMPLATES. [tools] read defensively (getattr .tools then dict) → no signature churn when
+  c07 passes a dataclass singleton; config=None branch dormant. .exe/Win paths kept hardcoded for
+  Windows-only v1 (c36 drops per-OS), commented. NEW errors.py: EXIT_* + BobFramesError/PipelineError/
+  ToolNotFound; ToolNotFound.format_message renders the §5 block from attempts. Rewired rdcmd/
+  qrd_harness finders to thin resolve_tool wrappers (names kept for manifest + test_hardening
+  monkeypatch); dropped _DEFAULT_PATHS/_DEFAULT_QRD; _SEP + RDC_INSIDE_ARGS untouched. cli._cmd_check
+  → resolve_tool_verbose (path + 'via <source>' when ≠path; 0/3 + §5); cli.main catches BobFramesError
+  → e.exit_code. NEW tests/test_config.py (4 hermetic: env>known precedence, legacy warns-once, Arm
+  glob latest-version pick, ToolNotFound exit3+§5). Baseline 32-green before; 36-green after, golden
+  byte-identical (no refresh). Live: real Arm 2026.2 resolved via `*` glob (H-7 proven) exit 0;
+  forced-miss → §5 block + exit 3. H-7 ticked. current → c07; REAL-INGEST smoke now due (ADR-6).
 - 2026-05-31 — c05 DONE (registry consolidation; H-8/9/10/11 + D-1). Migrated schemas.TABLES values to
   a TableSpec NamedTuple (cols, size_class, is_entity, category, api="core" reserved for c33) and
   REORDERED the dict to the old catalog key order so `catalog._CATALOG_TABLE_KEYS = tuple(TABLES.keys())`

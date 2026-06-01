@@ -12,10 +12,7 @@ import subprocess
 import sys
 import time
 
-_DEFAULT_QRD = (
-    r'c:/Program Files/Arm/Arm Performance Studio 2026.2'
-    r'/renderdoc_for_arm_gpus/qrenderdoc.exe'
-)
+from . import config
 
 _SEP = '\x1f'
 
@@ -35,15 +32,8 @@ def _kill_tree(pid: int) -> None:
 
 
 def find_qrenderdoc() -> str:
-    env = os.environ.get('RENDERDOC_QRENDERDOC', '').strip()
-    if env and os.path.exists(env):
-        return env
-    if os.path.exists(_DEFAULT_QRD):
-        return _DEFAULT_QRD
-    raise FileNotFoundError(
-        'qrenderdoc.exe not found. Set RENDERDOC_QRENDERDOC env var or install '
-        'Arm Performance Studio 2026.2.'
-    )
+    """Resolve qrenderdoc.exe (delegates to config.resolve_tool; raises ToolNotFound)."""
+    return config.resolve_tool('qrenderdoc')
 
 
 def run(
