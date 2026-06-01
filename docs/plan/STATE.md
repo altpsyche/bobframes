@@ -39,8 +39,15 @@ last_session:   2026-06-01 — c09 DONE (engine-agnostic classifier; H-1/H-2/H-3
                 fns/CSS/branch (footer_legend, _row_count, footer.legend+.sidecar-list CSS, replay
                 `if False`) recorded → c16; col removal → c35. ADR-29/30; HARDCODE H-1..5 ticked; D-6
                 ticked; D-10 (marker-first fragility → c27) + D-11 (dead-code sweep) opened;
-                QUALITY_GATES §21.1e; ARCHITECTURE §3 annotated. NOT run: real-ingest smoke (replay
-                still runs post-deletion) — self-hosted/nightly, ADR-6/§21.6.
+                QUALITY_GATES §21.1e; ARCHITECTURE §3 annotated. REAL-INGEST VALIDATED (Chor bazar,
+                5 captures, junctioned C:\tmp root, Downloads read-only): export+parse+replay(5×rc=0,
+                182-225s)+parquetize(597199 rows)+derives(pass_class_breakdown=4245, texture_usage=5)+
+                catalog(1 drop/5 caps)+global_entities(16651)+6 reports+dashboard+root = `smoke --data`
+                exit 0, lint clean; atomic commit survived (R-16). Counts BYTE-IDENTICAL to the pre-c09
+                baseline (597199 / 4245 / 16651) → §21.9 holds on REAL data. D-6 confirmed on output
+                parquet: passes.draws_by_class_* ALL ZERO (dead replay classifier gone); draws.draw_class
+                fully populated, 0 empty (opaque 2710/prepass 2705/ui 384/shadow 62/translucent 15/
+                postprocess 15) via the host TOML walker.
 former_last_c08: 2026-06-01 — c08 DONE (design tokens TOML + preview + Q-6; H-15/H-20/Q-6). NEW
                 reports/design_tokens.toml (designer-editable [color]/[spacing]/[type]/[motion]/[layout])
                 + reports/_tokens.py loader (tomllib/tomli shim ADR-26, bundled-only, NO deep-merge —
@@ -212,7 +219,10 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
   NOT dead (drill browser surfaces every col); dead fns/CSS/branch (footer_legend/_row_count/footer.legend
   + .sidecar-list CSS/replay `if False`) → c16; col removal → c35. ADR-29/30; H-1..5 + D-6 ticked; D-10
   (marker-first fragility → c27) + D-11 (dead-code) opened; QUALITY_GATES §21.1e; ARCHITECTURE §3 annotated.
-  Real-ingest smoke (replay runs post-deletion) NOT run — self-hosted/nightly (ADR-6/§21.6). current → c10.
+  REAL-INGEST VALIDATED (Chor bazar 5 caps, junctioned C:\tmp, Downloads read-only): 5×rc=0,
+  parquetize 597199 + pass_class_breakdown 4245 + global_entities 16651 = BYTE-IDENTICAL to pre-c09
+  baseline (§21.9 on real data); smoke --data exit 0, lint clean, R-16 commit survived. D-6 confirmed
+  on output: passes.draws_by_class_* ALL ZERO; draws.draw_class fully populated (0 empty). current → c10.
 - 2026-06-01 — c08 DONE (design tokens TOML + preview + Q-6; H-15/H-20/Q-6). NEW reports/design_tokens.toml
   ([color]/[spacing]/[type]/[motion]/[layout]) + reports/_tokens.py loader (tomllib/tomli shim, bundled-only,
   no deep-merge — Track A edits the packaged file; per-project overrides are Track B). PARITY (ADR-6/27):
