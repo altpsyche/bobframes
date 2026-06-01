@@ -45,6 +45,7 @@
 | H-22 | `delta` `fmt='{:+,.0f}'` | inline default | config default + per-call override | c07 | ☑ |
 | H-23 | `formatters` `n=12`, `max_len=60` | rigid defaults | `[formatting] id_short_n`, `text_trunc_max` | c07 | ☑ |
 | H-38 | `qrd_harness`/`rdcmd`/`cli` | platform process model: forced `.exe` suffix, `taskkill /T /F` tree-kill, `_cmd_check` `sys.platform!='win32'` gate (extends H-7's Arm-path) | per-OS locator in `resolve_tool` + platform-dispatched `kill_process_tree` (`os.killpg`+`start_new_session` on POSIX) + relaxed `check` gate | [c36](../commits/v06/c36_cross_platform.md) (ADR-18) | ☐ |
+| H-39 | `overdraw`/`instancing`/`trend_table` report-severity literals (overdraw `70`/`40`% reject, instancing batching `>= 4`, trend regression `10.0`%) | lifted to `config [report]` (`overdraw_reject_alarm_pct`/`_warn_pct`, `instancing_repeat_min`, `gpu_regression_pct`, `shader_complexity_high`) — `ReportCfg`; drive callout severity | [c16](../commits/v02/c16_report_quality.md) | ☑ |
 
 ## P1 — wire protocol / stable-key / manifest
 

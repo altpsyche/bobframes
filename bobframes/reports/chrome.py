@@ -353,17 +353,34 @@ details.matrix > .matrix-body, details.category > .cat-body {
             color: var(--text-3); font-variant-numeric: tabular-nums; }
 .spark { display: inline-block; vertical-align: middle; color: var(--text-2); }
 
-footer.legend {
-  font: var(--fs-small) ui-monospace, monospace;
-  color: var(--text-2);
-  margin-top: var(--sp-12);
-  padding-top: var(--sp-3);
-  border-top: 1px solid var(--border-1);
-  display: block;
-}
-
 .note { font-size: var(--fs-small); color: var(--text-2);
         margin-top: var(--sp-2); }
+
+.callout {
+  display: flex; align-items: flex-start; gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4); margin: 0 0 var(--sp-4);
+  background: var(--surface-1); border: 1px solid var(--border-1);
+  border-left: 3px solid var(--text-3); font-size: var(--fs-small);
+}
+.callout .icon { flex: 0 0 auto; margin-top: 2px; color: var(--text-3); }
+.callout .co-body { display: flex; flex-direction: column; gap: 2px; }
+.callout .co-title { font-weight: 600; color: var(--text-1); }
+.callout .co-detail { color: var(--text-2); }
+.callout a { color: var(--accent-primary); }
+.callout.sev-ok { border-left-color: var(--status-ok); }
+.callout.sev-ok .icon { color: var(--status-ok); }
+.callout.sev-warn { border-left-color: var(--status-warn); }
+.callout.sev-warn .icon { color: var(--status-warn); }
+.callout.sev-alarm { border-left-color: var(--status-alarm); }
+.callout.sev-alarm .icon { color: var(--status-alarm); }
+
+.empty-state {
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-4); margin: 0 0 var(--sp-4);
+  color: var(--text-2); font-size: var(--fs-small);
+  background: var(--surface-1); border: 1px dashed var(--border-1);
+}
+.empty-state .icon { flex: 0 0 auto; color: var(--text-3); }
 
 .dash-grid {
   display: grid;
@@ -1163,6 +1180,68 @@ def summary_bar(label: str, headline: str, *,
     return ''.join(parts)
 
 
+def empty_state(message: str, *, icon_name: str = 'warn') -> str:
+    """Friendly empty-state card (icon + message) for a report/section with no rows (c16). Replaces a
+    bare `<p class="note">` / blank `<tbody>` so a sparse drop reads as 'no data', not 'broken'."""
+    return f'<div class="empty-state">{icon(icon_name)}<span>{h(message)}</span></div>'
+
+
+def callout(severity: str, title: str, detail: str = '', *,
+            href: str | None = None, link_text: str = 'view',
+            icon_name: str | None = None) -> str:
+    """Render a ranked-finding callout — the report's 'so what' (c16).
+
+    severity in {ok, warn, alarm, info, neutral}; controls the left-border + icon color. warn/alarm
+    wrap in <rdc-alarm-banner> so the finding is announced to assistive tech (role/aria-live set by
+    the component). ``detail`` is a sub-line; ``href``/``link_text`` an optional primary action.
+    """
+    sev = severity if severity in ('ok', 'warn', 'alarm', 'info') else 'neutral'
+    ic = icon_name or ('warn' if sev in ('alarm', 'warn') else 'arrow-right')
+    wrap_open = wrap_close = ''
+    if sev in ('alarm', 'warn'):
+        wrap_open = f'<rdc-alarm-banner data-severity="{"high" if sev == "alarm" else "low"}">'
+        wrap_close = '</rdc-alarm-banner>'
+    body = [f'<div class="co-body"><div class="co-title">{h(title)}</div>']
+    if detail:
+        body.append(f'<div class="co-detail">{h(detail)}</div>')
+    if href:
+        body.append(f'<a href="{h(href)}" data-link-kind="inline">{h(link_text)}</a>')
+    body.append('</div>')
+    return f'{wrap_open}<div class="callout sev-{sev}">{icon(ic)}{"".join(body)}</div>{wrap_close}'
+
+
+def heatmap_cell(value, lo, hi, *, direction: str = 'hot', text: str | None = None) -> str:
+    """Inline data-shaded cell via the rdc-heatmap-cell web-component (c16). The server emits
+    value+min+max; the component shades client-side, so the emitted HTML stays deterministic. Returns
+    the element only — wrap it in a `<td class="num">`. ``direction`` 'hot' = high values are intense."""
+    disp = text if text is not None else value
+    return (f'<rdc-heatmap-cell data-value="{h(value)}" data-min="{h(lo)}" data-max="{h(hi)}" '
+            f'data-direction="{h(direction)}">{h(disp)}</rdc-heatmap-cell>')
+
+
+def provenance_strip(host_info: dict | None, tool_versions: dict | None) -> str:
+    """Capture-context strip: GPU/driver/CPU/OS + external tool versions (G-6/G-7) recorded at ingest.
+
+    Renders the .device-strip primitive under the page header so every report shows the machine + tool
+    versions the data came from. Omits the bobframes version on purpose (a release bump must not churn
+    the golden). Returns '' when no provenance was recorded (older manifests).
+    """
+    host_info = host_info or {}
+    tool_versions = tool_versions or {}
+    fields = []
+    for key, label in (('gpu', 'gpu'), ('gpu_driver', 'driver'), ('cpu', 'cpu'), ('os', 'os')):
+        v = host_info.get(key)
+        if v:
+            fields.append(f'{label} <strong>{h(v)}</strong>')
+    for tool in ('renderdoccmd', 'qrenderdoc'):
+        v = tool_versions.get(tool)
+        if v:
+            fields.append(f'{tool} <strong>{h(v)}</strong>')
+    if not fields:
+        return ''
+    return f'<div class="device-strip">{" | ".join(fields)}</div>'
+
+
 def ab_picker(options: list, current_href: str | None = None) -> str:
     """Render A/B picker dropdown.
 
@@ -1224,7 +1303,7 @@ def report_page(title: str, body, *, drops: int = 0, captures: int = 0,
                 build_ts: str = '', crumb_depth: int = 1, kpis: list | None = None,
                 current_page: str | None = None, hdr_offset_px: int | None = 120,
                 body_attrs: dict | None = None, ab=None, root: str | None = None,
-                report_key: str | None = None) -> str:
+                report_key: str | None = None, device: str = '') -> str:
     """Assemble a standard Layer-2 report page, deduping the open/header/strip/close shared by every
     report (Q-6). ``body`` is an HTML string or a list of fragments (the report's summary_bar +
     sections, in order). The fragments are '\\n'-joined exactly as write_report joins a parts list, so
@@ -1238,6 +1317,8 @@ def report_page(title: str, body, *, drops: int = 0, captures: int = 0,
     parts = [page_open(title, hdr_offset_px=hdr_offset_px, body_attrs=body_attrs),
              header(title, drops=drops, captures=captures, build_ts=build_ts,
                     kpis=kpis, crumb_depth=crumb_depth, current_page=current_page)]
+    if device:
+        parts.append(device)
     if report_key is not None and root is not None:
         parts.append(ab_strip(ab))
         parts.append(ab_picker_for(root, report_key, ab=ab))
@@ -1331,11 +1412,6 @@ def section_card(section_id: str, title: str, body: str, *,
             f'{sub}'
             f'{body}'
             f'</section>')
-
-
-def footer_legend(extra: str = '') -> str:
-    """Deprecated stub. Returns empty string; callers should be removed."""
-    return ''
 
 
 def ab_strip(ab, *, baseline_suffix: str = '', compare_suffix: str = '') -> str:

@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import functools
+import hashlib
 import json
+import logging
 import os
 
 import pyarrow as pa
 import pyarrow.parquet as papq
 
+from .. import manifest as _manifest
 from .. import paths as _paths
 from .discovery import DropSet, discover_drops
 
@@ -46,6 +49,27 @@ def label_for(drop_dir: str, capture, kind: str, rid) -> str:
     return bucket.get(str(rid), '')
 
 
+def newest_drop_provenance(root: str, drops: list | None = None) -> tuple[dict, dict]:
+    """(host_info, tool_versions) from the newest drop's manifest, for the provenance strip (G-6/G-7).
+
+    `drops` come date-asc from discover_drops, so the last is newest. Returns ({}, {}) if no manifest
+    is readable (older drops, or none) — the strip then renders nothing.
+    """
+    if drops is None:
+        drops = discover_drops(root)
+    if not drops:
+        return {}, {}
+    for r in drops[-1].rows:
+        if not r.drop_dir:
+            continue
+        try:
+            m = _manifest.read_manifest(r.drop_dir)
+        except Exception:
+            continue
+        return m.get('host_info') or {}, m.get('tool_versions') or {}
+    return {}, {}
+
+
 def cache_dir(root: str) -> str:
     d = _paths.reports_cache_dir(root)
     os.makedirs(d, exist_ok=True)
@@ -54,6 +78,63 @@ def cache_dir(root: str) -> str:
 
 def cache_path(root: str, table: str) -> str:
     return os.path.join(cache_dir(root), f'{table}_per_drop.parquet')
+
+
+def _to_dict_of_lists(t) -> dict:
+    """Materialize a pyarrow Table as {column: python list} (Q-7: the repeated idiom, one place)."""
+    return {c: t.column(c).to_pylist() for c in t.column_names}
+
+
+def _sha256_file(path: str) -> str:
+    h = hashlib.sha256()
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(65536), b''):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _write_cache_sidecar(parquet_path: str) -> None:
+    """Write `<parquet>.sha256` next to a freshly written cache parquet (R-13 integrity guard)."""
+    with open(parquet_path + '.sha256', 'w', encoding='utf-8') as f:
+        f.write(_sha256_file(parquet_path) + '\n')
+
+
+def load_cached(root: str, table: str, columns: list[str] | None = None):
+    """Load a per-drop cache table, validating its SHA256 sidecar (R-13). Returns a pyarrow Table or None.
+
+    On a missing / unreadable / sha256-mismatched cache (or a missing sidecar) this logs a warning on
+    the 'bobframes' logger and returns None, so the caller falls back to a live per-drop scan rather
+    than silently returning empty. `columns` is filtered to those present in the schema (missing-column
+    tolerance) so a partial/older cache degrades with a warning instead of raising.
+    """
+    log = logging.getLogger('bobframes')
+    p = cache_path(root, table)
+    name = os.path.basename(p)
+    if not os.path.exists(p):
+        return None
+    sidecar = p + '.sha256'
+    if not os.path.exists(sidecar):
+        log.warning(f'cache {name} has no integrity sidecar; ignoring (rebuilds next render)')
+        return None
+    try:
+        with open(sidecar, 'r', encoding='utf-8') as f:
+            expected = f.read().strip()
+        if _sha256_file(p) != expected:
+            log.warning(f'cache {name} failed integrity check (sha256 mismatch); ignoring, falling back to live scan')
+            return None
+        if columns is None:
+            return papq.read_table(p)
+        schema_cols = set(papq.read_schema(p).names)
+        want = [c for c in columns if c in schema_cols]
+        missing = [c for c in columns if c not in schema_cols]
+        if missing:
+            log.warning(f'cache {name} missing columns {missing}; reading the {len(want)} present')
+        if not want:
+            return None
+        return papq.read_table(p, columns=want)
+    except Exception as e:
+        log.warning(f'cache {name} unreadable ({e}); ignoring, falling back to live scan')
+        return None
 
 
 def _read_drop_parquet(drop: DropSet, table: str, cols: list[str]):
@@ -102,7 +183,7 @@ def build_per_drop_cache(root: str) -> dict:
              'parent_pass_path_norm', 'draw_class', 'num_indices', 'num_instances'])
         if t is None or t.num_rows == 0:
             continue
-        cols = {c: t.column(c).to_pylist() for c in t.column_names}
+        cols = _to_dict_of_lists(t)
         n = t.num_rows
         for i in range(n):
             draws_rows.append({
@@ -121,7 +202,9 @@ def build_per_drop_cache(root: str) -> dict:
             })
     if draws_rows:
         tbl = pa.Table.from_pylist(draws_rows)
-        papq.write_table(tbl, cache_path(root, 'draws_summary'), compression='snappy')
+        cp = cache_path(root, 'draws_summary')
+        papq.write_table(tbl, cp, compression='snappy')
+        _write_cache_sidecar(cp)
         out['draws_summary'] = len(draws_rows)
 
     shader_rows: list[dict] = []
@@ -134,7 +217,7 @@ def build_per_drop_cache(root: str) -> dict:
              'fb_fetch', 'uses_cubemap'])
         if t is None or t.num_rows == 0:
             continue
-        cols = {c: t.column(c).to_pylist() for c in t.column_names}
+        cols = _to_dict_of_lists(t)
         n = t.num_rows
         for i in range(n):
             shader_rows.append({k: cols[k][i] for k in cols})
@@ -142,7 +225,9 @@ def build_per_drop_cache(root: str) -> dict:
             shader_rows[-1]['drop_label'] = d.label
     if shader_rows:
         tbl = pa.Table.from_pylist(shader_rows)
-        papq.write_table(tbl, cache_path(root, 'shader_summary'), compression='snappy')
+        cp = cache_path(root, 'shader_summary')
+        papq.write_table(tbl, cp, compression='snappy')
+        _write_cache_sidecar(cp)
         out['shader_summary'] = len(shader_rows)
 
     return out

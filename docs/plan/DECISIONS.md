@@ -481,3 +481,36 @@ wire). The `BOBFRAMES_PIXEL_GRID` / `BOBFRAMES_KEEP_STAGE` renames keep the one-
 fallback via the shared `config.getenv_legacy` helper (reusing the c06 one-shot deprecation machinery);
 `RDC_INSIDE_ARGS` (three consumers: `qrd_harness`, `replay_main`, `probes/whatif`) is the
 qrenderdoc↔harness wire protocol and is renamed nowhere.
+
+### ADR-32 — report contract: every report leads with KPI strip + insight callout + provenance, over a de-hardcoded threshold set (c16)
+**Context.** A review of the rendered golden found the reports were verbose monospace tables that
+under-used a strong chrome library: `kpi_strip` called by 0/6 reports, `rdc-heatmap-cell` by 1,
+`.device-strip` CSS unused, and no "so what" layer (G-15). **Decision.** A report's shared shape is now:
+hero **KPI strip** (`report_page(kpis=...)`), one or more **insight callouts** (`chrome.callout(severity,
+title, detail)` — `rdc-alarm-banner`-wrapped for warn/alarm so findings are announced), a header
+**provenance/device strip** (`chrome.provenance_strip` over the newest drop's `host_info`/`tool_versions`,
+the previously-unused `.device-strip`), and **heatmap shading** on ranked numeric columns
+(`chrome.heatmap_cell` over the existing `rdc-heatmap-cell`). Severity thresholds are **de-hardcoded** to
+`config [report]` (`ReportCfg`: `shader_complexity_high`, `overdraw_reject_{warn,alarm}_pct`,
+`instancing_repeat_min`, `gpu_regression_pct`), tunable per project like the c07 layer. The provenance
+strip deliberately **omits** `host_info['bobframes']` so a release bump never churns the golden, and is
+shown in the header on **every** report (superseding the c16-doc's dashboard-only "footer" — same data,
+better UX; it still appears on the dashboard, satisfying the Done-when). Friendly **empty-state** cards
+(`chrome.empty_state`, icon + message) replace blank tables/`.note` on sparse data. **Consequence.**
+Output-changing → the golden is refreshed in c16 (reviewed; the only drill/root deltas are the D-11b dead-CSS
+removal + the shared `.callout`/`.empty-state` rules). Parquet parity holds (data untouched). Reaches ~8/10;
+the chart-first restructure to 10/10 is c16b (ADR-33). This is additive to ADR-27 (the chrome CSS stays a
+value-only Template skeleton; new rules use `var()` tokens, no `$`).
+
+### ADR-33 — charts are deterministic server-side inline SVG, not a JS chart lib (c16b)
+**Context.** Reaching a 10/10 presentation needs real visualizations (treemap/flame for GPU passes, donut
++ stacked bars for draw classes, scatter for shaders, trend lines), not just dressed-up tables — but the
+golden-parity gate (ADR-6/11) requires byte-stable output, and the reports are offline static HTML with no
+network. **Decision (user-chosen).** A new `reports/charts.py` generates **deterministic, dependency-free,
+server-side inline SVG** (fixed-precision coords, no `random`/timestamps), themed entirely from design
+tokens — extending the existing `delta.sparkline_svg` precedent. **No** vendored JS chart library and **no**
+`<canvas>` (canvas pixels are not byte-stable → would force the parity gate to skip chart regions, the
+ADR-11 trap we are paying down, not extending). Each chart is `role="img"` with `<title>`/`<desc>` and keeps
+its detail **table directly below as the exact, accessible data fallback** (chart = at-a-glance, table =
+source of truth). **Consequence.** Charts ride the normal golden byte-parity gate like the rest of the HTML;
+they print (vector) and are reduced-motion-safe (static). This is the spine of [c16b](commits/v02/c16b_report_viz.md).

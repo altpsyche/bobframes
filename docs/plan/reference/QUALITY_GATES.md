@@ -90,6 +90,28 @@ construction); those 9 columns stay zeroed under the frozen schema (the §21.3 r
 green), full removal deferred to c35. Real-`.rdc` re-validation that replay still runs is the
 self-hosted/nightly smoke (CI never runs replay, §21.6).
 
+## 21.1f Report-quality polish (c16, ADR-6/32) — see [c16](../commits/v02/c16_report_quality.md)
+c16 adds hero KPI strips, insight callouts (`chrome.callout`, config `[report]` thresholds), heatmap
+shading (`chrome.heatmap_cell`), a header provenance/device strip (`chrome.provenance_strip`, deterministic
+via the synthetic manifest's stub `host_info`/`tool_versions`; the `bobframes` version is deliberately
+**not** rendered, so a release bump never churns the golden), and icon empty-states — across all reports.
+This **changes rendered HTML**, so the golden is **refreshed** here (reviewed: the only drill/root deltas
+are the D-11b dead-CSS removal + the shared `.callout`/`.empty-state` rules). `test_parquet_parity` stays
+green with **no** `digests.json` refresh (extraction untouched, §21.9). The manifest schema-version guard
+(D-7) is **parity-neutral**: a current-version synthetic manifest passes, so every render gate stays green;
+`test_manifest_guard` forces the mismatch. Cache integrity (R-13) is covered by `test_cache` (SHA256 sidecar
++ corrupt→warn→None + missing-column tolerance), empty-state by `test_report_polish` (a 0-row synthetic
+render shows the friendly message), and sparkline null-gaps by `test_delta` (golden-independent; the live
+series never emits `None` today, G-16).
+
+## 21.1g Inline-SVG chart determinism (c16b, ADR-6/33) — see [c16b](../commits/v02/c16b_report_viz.md)
+c16b leads each report with a visualization from a new `reports/charts.py` — deterministic, dependency-free
+server-side inline SVG (fixed-precision coords, no `random`/timestamps), themed from design tokens, with the
+detail table kept below as the exact/accessible fallback. Because the SVG is logically deterministic it
+**rides the golden byte-parity gate** like the rest of the HTML (no canvas, no vendored JS lib that would
+force a parity carve-out). `test_charts` adds golden-independent guards (determinism, SVG structure, token
+theming, empty-series → safe). Chart-first + table-as-fallback is the report pattern.
+
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,
 dropped column, dtype slip). Skip `_`-prefixed (`_catalog`, `_global_entities`). Runs on synthetic +

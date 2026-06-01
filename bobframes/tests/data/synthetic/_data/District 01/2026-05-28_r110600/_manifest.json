@@ -47,5 +47,16 @@
     "post_vs_samples": 60,
     "texture_samples": 60
   },
+  "tool_versions": {
+    "renderdoccmd": "renderdoccmd v1.x (synthetic)",
+    "qrenderdoc": "qrenderdoc v1.x (synthetic)"
+  },
+  "host_info": {
+    "gpu": "Synthetic GPU",
+    "gpu_driver": "0.0.0.0",
+    "cpu": "Synthetic CPU",
+    "os": "Synthetic OS",
+    "bobframes": "0.0.0"
+  },
   "rotated_from": null
 }

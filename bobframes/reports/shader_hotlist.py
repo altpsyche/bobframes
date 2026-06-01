@@ -13,6 +13,7 @@ from collections import Counter, defaultdict
 import pyarrow.parquet as papq
 
 from . import base
+from ..config import get_config
 
 
 _SHADER_COLS = [
@@ -25,19 +26,15 @@ _SHADER_COLS = [
 
 
 def _iter_shaders(root: str, drops: list):
-    cache = base.cache_path(root, 'shader_summary')
-    if os.path.exists(cache):
-        try:
-            t = papq.read_table(cache)
-            cols = {c: t.column(c).to_pylist() for c in t.column_names}
-            wanted = {(d.date, d.label) for d in drops}
-            for i in range(t.num_rows):
-                if (cols['drop_date'][i], cols['drop_label'][i]) not in wanted:
-                    continue
-                yield {c: cols[c][i] for c in cols}
-            return
-        except Exception:
-            pass
+    t = base.load_cached(root, 'shader_summary')  # validates sha256 sidecar; None -> live scan (R-13)
+    if t is not None:
+        cols = base._to_dict_of_lists(t)
+        wanted = {(d.date, d.label) for d in drops}
+        for i in range(t.num_rows):
+            if (cols['drop_date'][i], cols['drop_label'][i]) not in wanted:
+                continue
+            yield {c: cols[c][i] for c in cols}
+        return
     for d in drops:
         for r in d.rows:
             p = os.path.join(r.drop_dir, 'shaders.parquet')
@@ -132,6 +129,19 @@ def build(root: str, *, drops: list | None = None, ab=None,
     max_cost = max((c for _, _, _, c in ranked), default=0.0)
 
     parts = []
+    rcfg = get_config().report
+
+    # Hero KPIs + over-budget count, computed across ALL shaders (not just the top 50).
+    all_cplx = [p['complexity'] for p in per_key.values()]
+    max_cplx = max(all_cplx, default=0.0)
+    n_over = sum(1 for c in all_cplx if c >= rcfg.shader_complexity_high)
+    kpis = [
+        {'label': f'{stage} shaders', 'value': base.fmt_int(len(per_key))},
+        {'label': 'max complexity', 'value': base.fmt_float(max_cplx, 1),
+         'tone': 'neg' if max_cplx >= rcfg.shader_complexity_high else 'neutral'},
+        {'label': f'>= cplx {base.fmt_float(rcfg.shader_complexity_high, 0)}',
+         'value': base.fmt_int(n_over)},
+    ]
 
     # Summary bar: top shader by cost proxy
     if ranked:
@@ -145,88 +155,100 @@ def build(root: str, *, drops: list | None = None, ab=None,
             link_text='table',
             tone='neutral',
         ))
+        # Insight: shaders above the complexity budget are the optimization targets.
+        if n_over > 0:
+            sev = 'warn' if max_cplx >= rcfg.shader_complexity_high * 1.25 else 'info'
+            parts.append(base.callout(
+                sev,
+                f'{n_over} {stage} shader(s) exceed complexity {base.fmt_float(rcfg.shader_complexity_high, 0)}',
+                f'highest is {base.fmt_float(max_cplx, 1)} - review instruction count / variants on the '
+                f'hot shaders (cost = complexity x uses).',
+                href='#shaders', link_text='shader table'))
 
-    sec = []
-    sec.append(f'<h2 id="shaders">top {stage} shaders by complexity * uses</h2>')
-    sec.append('<div class="table-wrap"><rdc-sortable-table data-default-sort="cost proxy" data-default-dir="desc">')
-    sec.append('<table class="report"><thead><tr>')
-    sec.append('<th>shader</th>')
-    sec.append('<th class="num">complexity</th>')
-    sec.append('<th class="num">uses total</th>')
-    single = len(drop_keys) == 1
-    for i, k in enumerate(drop_keys):
-        head = 'uses' if single else f'uses@{base.h(k)}'
-        sec.append(f'<th class="num">{head}</th>')
-        if i > 0:
-            latest = ' delta-latest' if i == len(drop_keys) - 1 else ''
-            sec.append(f'<th class="num{latest}">delta</th>')
-    if len(drop_keys) >= 3:
-        sec.append('<th class="num">trend</th>')
-    sec.extend([
-        '<th class="num">cost proxy</th>',
-        '<th class="num">branches</th>',
-        '<th class="num">loops</th>',
-        '<th class="num">tex samples</th>',
-        '<th class="num">src bytes</th>',
-        '<th>flags</th>',
-        '<th>src</th>',
-        '</tr></thead><tbody>',
-    ])
-
-    for rank_i, (sk, p, total_uses, cost) in enumerate(ranked, 1):
-        sec.append('<tr>')
-        rp = base.rank_pill(rank_i) if rank_i <= 3 else ''
-        shader_label = f'{p["shader_type"][:4]}-cplx-{int(p["complexity"])}'
-        drop_dir = _drop_dir_first(drops, p['rep_drop_date'], p['rep_drop_label'])
-        src_link = base.rel_path_to_drop_file(out_dir, drop_dir, p['rep_src_path'])
-        if src_link:
-            sec.append(f'<td>{rp}<a href="{base.h(src_link)}" data-link-kind="inline" target="_blank" rel="noopener">{base.h(shader_label)}{base.icon("link-out")}</a></td>')
-        else:
-            sec.append(f'<td>{rp}{base.h(shader_label)}</td>')
-        sec.append(f'<td class="num">{base.fmt_float(p["complexity"], 2)}</td>')
-        sec.append(f'<td class="num">{base.fmt_int(total_uses)}</td>')
-        prev = None
-        series = []
+    parts.append(f'<h2 id="shaders">top {stage} shaders by cost</h2>')
+    if not ranked:
+        parts.append(base.empty_state(f'no {stage} shaders found'))
+    else:
+        single = len(drop_keys) == 1
+        sec = ['<div class="table-wrap">'
+               '<rdc-sortable-table data-default-sort="cost proxy" data-default-dir="desc">',
+               '<table class="report"><thead><tr>', '<th>shader</th>',
+               '<th class="num" title="shader complexity score (weighted instruction proxy)">complexity</th>',
+               '<th class="num">uses total</th>']
         for i, k in enumerate(drop_keys):
-            v = p['uses_by_drop'].get(k, 0)
-            series.append(v)
-            sec.append(f'<td class="num">{base.fmt_int(v)}</td>')
+            head = 'uses' if single else f'uses@{base.h(k)}'
+            sec.append(f'<th class="num">{head}</th>')
             if i > 0:
-                sec.append(base.delta_cell(v, prev,
-                    lower_is_better=None, fmt='{:+,.0f}',
-                    regression_threshold_pct=None))
-            prev = v
+                latest = ' delta-latest' if i == len(drop_keys) - 1 else ''
+                sec.append(f'<th class="num{latest}">delta</th>')
         if len(drop_keys) >= 3:
-            sec.append(f'<td class="num">{base.sparkline_svg(series)}</td>')
+            sec.append('<th class="num">trend</th>')
+        sec.extend([
+            '<th class="num" title="cost proxy = complexity x total uses">cost proxy</th>',
+            '<th class="num">branches</th>',
+            '<th class="num">loops</th>',
+            '<th class="num">tex samples</th>',
+            '<th class="num">src bytes</th>',
+            '<th>flags</th>',
+            '<th>src</th>',
+            '</tr></thead><tbody>',
+        ])
 
-        bar = base.inline_bar(cost, max_cost) if max_cost > 0 else ''
-        sec.append(f'<td class="num">{base.fmt_float(cost, 1)}{bar}</td>')
-        sec.append(f'<td class="num">{base.fmt_int(p["branches"])}</td>')
-        sec.append(f'<td class="num">{base.fmt_int(p["loops"])}</td>')
-        sec.append(f'<td class="num">{base.fmt_int(p["tex_samples"])}</td>')
-        sec.append(f'<td class="num">{base.fmt_int(p["src_len"])}</td>')
+        for rank_i, (sk, p, total_uses, cost) in enumerate(ranked, 1):
+            sec.append('<tr>')
+            rp = base.rank_pill(rank_i) if rank_i <= 3 else ''
+            shader_label = f'{p["shader_type"][:4]}-cplx-{int(p["complexity"])}'
+            drop_dir = _drop_dir_first(drops, p['rep_drop_date'], p['rep_drop_label'])
+            src_link = base.rel_path_to_drop_file(out_dir, drop_dir, p['rep_src_path'])
+            if src_link:
+                sec.append(f'<td>{rp}<a href="{base.h(src_link)}" data-link-kind="inline" target="_blank" rel="noopener">{base.h(shader_label)}{base.icon("link-out")}</a></td>')
+            else:
+                sec.append(f'<td>{rp}{base.h(shader_label)}</td>')
+            sec.append(f'<td class="num">{base.heatmap_cell(p["complexity"], 0, max_cplx, text=base.fmt_float(p["complexity"], 2))}</td>')
+            sec.append(f'<td class="num">{base.fmt_int(total_uses)}</td>')
+            prev = None
+            series = []
+            for i, k in enumerate(drop_keys):
+                v = p['uses_by_drop'].get(k, 0)
+                series.append(v)
+                sec.append(f'<td class="num">{base.fmt_int(v)}</td>')
+                if i > 0:
+                    sec.append(base.delta_cell(v, prev,
+                        lower_is_better=None, fmt='{:+,.0f}',
+                        regression_threshold_pct=None))
+                prev = v
+            if len(drop_keys) >= 3:
+                sec.append(f'<td class="num">{base.sparkline_svg(series)}</td>')
 
-        flags = []
-        if p['fb_fetch']:
-            flags.append('fb_fetch')
-        if p['uses_cubemap']:
-            flags.append('cubemap')
-        sec.append(f'<td>{base.h(",".join(flags))}</td>')
+            sec.append(f'<td class="num">{base.heatmap_cell(cost, 0, max_cost, text=base.fmt_float(cost, 1))}</td>')
+            sec.append(f'<td class="num">{base.fmt_int(p["branches"])}</td>')
+            sec.append(f'<td class="num">{base.fmt_int(p["loops"])}</td>')
+            sec.append(f'<td class="num">{base.fmt_int(p["tex_samples"])}</td>')
+            sec.append(f'<td class="num">{base.fmt_int(p["src_len"])}</td>')
 
-        if src_link:
-            sec.append(f'<td><a href="{base.h(src_link)}" data-link-kind="inline" target="_blank" rel="noopener">{base.h(p["rep_src_path"])}{base.icon("file")}</a></td>')
-        else:
-            sec.append('<td></td>')
+            flags = []
+            if p['fb_fetch']:
+                flags.append('fb_fetch')
+            if p['uses_cubemap']:
+                flags.append('cubemap')
+            sec.append(f'<td>{base.h(",".join(flags))}</td>')
 
-        sec.append('</tr>')
-    sec.append('</tbody></table></rdc-sortable-table></div>')
-    parts.append(''.join(sec))
+            if src_link:
+                sec.append(f'<td><a href="{base.h(src_link)}" data-link-kind="inline" target="_blank" rel="noopener">{base.h(p["rep_src_path"])}{base.icon("file")}</a></td>')
+            else:
+                sec.append('<td></td>')
+
+            sec.append('</tr>')
+        sec.append('</tbody></table></rdc-sortable-table></div>')
+        parts.append(''.join(sec))
 
     return base.write_report(out_path, [base.report_page(
         f'shader hotlist ({stage})', parts,
         drops=len(drops), captures=sum(d.n_captures for d in drops),
         build_ts=base.now_iso(), crumb_depth=base.crumb_depth(ab),
-        ab=ab, root=root, report_key='shader_hotlist')])
+        ab=ab, root=root, report_key='shader_hotlist',
+        kpis=kpis,
+        device=base.provenance_strip(*base.newest_drop_provenance(root, drops)))])
 
 
 if __name__ == '__main__':

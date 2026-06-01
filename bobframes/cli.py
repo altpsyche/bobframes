@@ -27,7 +27,7 @@ _REPORTS = {
     'pass-gpu': 'pass_gpu',
     'shader': 'shader_hotlist',
     'overdraw': 'overdraw',
-    'dashboard': '_dashboard',
+    'dashboard': 'dashboard',
 }
 
 

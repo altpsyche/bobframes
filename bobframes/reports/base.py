@@ -20,13 +20,15 @@ from .chrome import (
     ab_picker,
     ab_picker_for,
     ab_strip,
+    callout,
     chrome_css,
     class_color_var,
     components_js,
     design_tokens_css,
-    footer_legend,
+    empty_state,
     h,
     header,
+    heatmap_cell,
     icon,
     kpi_chip,
     kpi_strip,
@@ -34,6 +36,7 @@ from .chrome import (
     link,
     page_close,
     page_open,
+    provenance_strip,
     report_page,
     section_card,
     summary_bar,
@@ -69,12 +72,15 @@ from .discovery import (
 )
 from .cache import (
     _read_drop_parquet,
+    _to_dict_of_lists,
     build_per_drop_cache,
     cache_dir,
     cache_path,
     label_for,
+    load_cached,
     load_global_entities,
     load_labels,
+    newest_drop_provenance,
 )
 from .cli import (
     _lint_or_raise,
@@ -91,11 +97,12 @@ from .cli import (
 
 __all__ = [
     # chrome
-    'DRAW_CLASSES', 'ab_picker', 'ab_picker_for', 'ab_strip',
+    'DRAW_CLASSES', 'ab_picker', 'ab_picker_for', 'ab_strip', 'callout',
     'chrome_css', 'class_color_var',
-    'components_js', 'design_tokens_css', 'footer_legend', 'h', 'header',
+    'components_js', 'design_tokens_css', 'empty_state', 'h', 'header', 'heatmap_cell',
     'icon', 'kpi_chip', 'kpi_strip', 'legend', 'link',
-    'page_close', 'page_open', 'report_page', 'section_card', 'summary_bar',
+    'page_close', 'page_open', 'provenance_strip', 'report_page', 'section_card', 'summary_bar',
+    'newest_drop_provenance',
     # formatters
     'fmt_bytes', 'fmt_float', 'fmt_id_short', 'fmt_int', 'fmt_pct',
     'mesh_hash_short', 'pass_short', 'pass_suffix', 'safe_chrome_text',
@@ -107,7 +114,7 @@ __all__ = [
     'DropRow', 'DropSet', 'discover_drops', 'ok_capture_set', 'resolve_drop_set',
     # cache
     'build_per_drop_cache', 'cache_dir', 'cache_path', 'label_for',
-    'load_global_entities', 'load_labels',
+    'load_cached', 'load_global_entities', 'load_labels',
     # cli
     '_lint_or_raise', 'ab_subdir', 'crumb_depth', 'now_iso',
     'output_path', 'rel_path_to_drop_file', 'rel_path_to_drop_index',

@@ -13,6 +13,7 @@ from collections import defaultdict
 import pyarrow.parquet as papq
 
 from . import base
+from ..config import get_config
 
 
 _PH_COLS = ['area', 'drop_date', 'drop_label', 'capture', 'rt_id',
@@ -144,6 +145,28 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
         by_area[area].append(label)
 
     parts = []
+    rcfg = get_config().report
+
+    # Hero KPIs: worst rejection %, #RTs over the warn threshold, total samples.
+    rejects = []
+    total_samples = 0
+    for area_key, label in all_keys:
+        rep = next((per_drop_data.get(k, {}).get((area_key, label))
+                    for k in drop_keys if per_drop_data.get(k, {}).get((area_key, label))), None)
+        ns = rep.get('n_samples', 0) if rep else 0
+        if ns <= 0:
+            continue
+        total_samples += ns
+        rejects.append(100.0 * (1.0 - rep.get('n_passed', 0) / ns))
+    worst_reject = max(rejects, default=0.0)
+    n_over = sum(1 for x in rejects if x >= rcfg.overdraw_reject_warn_pct)
+    kpis = [
+        {'label': 'worst reject %', 'value': base.fmt_pct(worst_reject),
+         'tone': 'neg' if worst_reject >= rcfg.overdraw_reject_alarm_pct else 'neutral'},
+        {'label': f'rts >= {base.fmt_float(rcfg.overdraw_reject_warn_pct, 0)}%',
+         'value': base.fmt_int(n_over)},
+        {'label': 'samples', 'value': base.fmt_int(total_samples)},
+    ]
 
     # Summary bar: worst shadow RT rejection % (or worst RT rejection if no shadow)
     worst_rt = None
@@ -173,7 +196,8 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     if worst_rt is not None:
         area_w, label_w, pct_w, is_shadow_w = worst_rt
         kind = 'shadow rejection' if is_shadow_w else 'rt rejection'
-        tone = 'alarm' if pct_w >= 70 else ('warn' if pct_w >= 40 else 'neutral')
+        tone = ('alarm' if pct_w >= rcfg.overdraw_reject_alarm_pct
+                else 'warn' if pct_w >= rcfg.overdraw_reject_warn_pct else 'neutral')
         parts.append(base.summary_bar(
             f'worst {kind}',
             f'{area_w} / {label_w}',
@@ -182,6 +206,14 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
             link_text='area',
             tone=tone,
         ))
+        # Insight: high sample rejection = overdraw paid then discarded -> cull earlier.
+        sev = ('alarm' if pct_w >= rcfg.overdraw_reject_alarm_pct
+               else 'warn' if pct_w >= rcfg.overdraw_reject_warn_pct else 'info')
+        parts.append(base.callout(
+            sev,
+            f'{area_w} / {label_w} rejects {base.fmt_float(pct_w, 1)}% of samples',
+            'shading paid then thrown away - cull earlier (backface / shadow / depth pre-pass).',
+            href=f'#{base.h(area_w)}', link_text='jump to area'))
 
     parts.append('<div class="legend">')
     for cls, name in [('opaque', 'passed'), ('prepass', 'depth failed'),
@@ -198,7 +230,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
         parts.append(f'<p class="note">no pixel_history rows in drops: {msg}</p>')
 
     if not by_area:
-        parts.append('<p class="note">no pixel_history data across all drops</p>')
+        parts.append(base.empty_state('no pixel_history data across all drops'))
     else:
         for area in sorted(by_area.keys()):
             rows = []
@@ -279,7 +311,9 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
         'overdraw', parts,
         drops=len(drops), captures=sum(d.n_captures for d in drops),
         build_ts=base.now_iso(), crumb_depth=base.crumb_depth(ab),
-        ab=ab, root=root, report_key='overdraw')])
+        ab=ab, root=root, report_key='overdraw',
+        kpis=kpis,
+        device=base.provenance_strip(*base.newest_drop_provenance(root, drops)))])
 
 
 if __name__ == '__main__':

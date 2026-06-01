@@ -14,6 +14,7 @@ from collections import defaultdict
 import pyarrow.parquet as papq
 
 from . import base
+from ..config import get_config
 
 
 # (col_name, label, fmt, lower_is_better, regression_pct)
@@ -284,11 +285,7 @@ def _single_drop_matrix(per_drop_ft: list, areas: list, drops: list) -> str:
             else:
                 val_str = base.fmt_float(v, 3)
             if v is not None and cmax > 0:
-                parts.append(
-                    f'<td class="num"><rdc-heatmap-cell data-value="{v}" '
-                    f'data-min="0" data-max="{cmax}" data-direction="hot">'
-                    f'{val_str}</rdc-heatmap-cell></td>'
-                )
+                parts.append(f'<td class="num">{base.heatmap_cell(v, 0, cmax, text=val_str)}</td>')
             else:
                 parts.append(f'<td class="num">{val_str}</td>')
         parts.append('</tr>')
@@ -330,7 +327,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
             f.write(base.page_open('trend table'))
             f.write(base.header('trend table', drops=0, captures=0,
                                 build_ts=base.now_iso()))
-            f.write('<p class="note">no drops found in catalog</p>')
+            f.write(base.empty_state('no drops found in catalog'))
             f.write(base.page_close())
         base._lint_or_raise(out_path)
         return out_path
@@ -354,6 +351,30 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
 
     all_areas = sorted({a for d in per_drop_ft for a in d.keys()})
     drop_keys_l = [d.key for d in drops]
+
+    rcfg = get_config().report
+
+    # Hero KPIs: latest total GPU, delta vs previous drop, regression count.
+    def _sum_gpu(ft):
+        return sum(float(ft.get(a, {}).get('total_gpu_duration_s', 0) or 0) for a in all_areas)
+    latest_gpu = _sum_gpu(per_drop_ft[-1])
+    kpis = [
+        {'label': 'latest gpu (s)', 'value': base.fmt_float(latest_gpu, 3)},
+        {'label': 'areas',          'value': base.fmt_int(len(all_areas))},
+    ]
+    if len(drops) > 1:
+        d_gpu = latest_gpu - _sum_gpu(per_drop_ft[-2])
+        n_reg = 0
+        for _kpi, _lbl, *_ in KPIS:
+            for a in all_areas:
+                cur = per_drop_ft[-1].get(a, {}).get(_kpi)
+                prv = per_drop_ft[-2].get(a, {}).get(_kpi)
+                if (cur is not None and prv not in (None, 0) and float(prv) > 0
+                        and 100.0 * (float(cur) - float(prv)) / float(prv) >= rcfg.gpu_regression_pct):
+                    n_reg += 1
+        kpis.insert(1, {'label': 'gpu delta (s)', 'value': base.fmt_float(d_gpu, 3),
+                        'tone': 'neg' if d_gpu > 0 else ('pos' if d_gpu < 0 else 'neutral')})
+        kpis.append({'label': 'regressions', 'value': base.fmt_int(n_reg)})
 
     body_attrs = {'data-multi-section': 'true'} if len(drops) > 1 else None
     # trend_table's A/B strip is bespoke (capture-count suffixes, only when ab) so it rides at the
@@ -397,17 +418,23 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
                         pct = 100.0 * (float(cur) - float(prev)) / float(prev)
                         if pct > worst_pct:
                             worst_pct = pct
-                            worst_tuple = (area, label, pct, drops[di-1].key, drop.key)
+                            worst_tuple = (kpi, area, label, pct, drops[di-1].key, drop.key)
                     prev = cur
         if worst_tuple is not None:
-            area, label, pct, prev_key, cur_key = worst_tuple
-            tone = 'alarm' if pct >= 10.0 else 'warn'
+            kpi, area, label, pct, prev_key, cur_key = worst_tuple
+            tone = 'alarm' if pct >= rcfg.gpu_regression_pct else 'warn'
             parts.append(base.summary_bar(
                 'biggest regression',
                 f'{area} / {label} +{base.fmt_float(pct, 1)}%',
                 sub=f'{prev_key} to {cur_key}',
                 tone=tone,
             ))
+            # Insight: the largest cross-drop increase is the regression to chase first.
+            parts.append(base.callout(
+                tone,
+                f'{area} / {label} regressed +{base.fmt_float(pct, 1)}%',
+                f'{prev_key} to {cur_key} - investigate the change between these drops.',
+                href=f'#{base.h(kpi)}', link_text='see trend'))
 
     if any(device_strings):
         chips = []
@@ -434,7 +461,8 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
         'trend table', parts,
         drops=len(drops), captures=sum(d.n_captures for d in drops),
         build_ts=base.now_iso(), crumb_depth=base.crumb_depth(ab),
-        body_attrs=body_attrs)])
+        body_attrs=body_attrs, kpis=kpis,
+        device=base.provenance_strip(*base.newest_drop_provenance(root, drops)))])
 
 
 if __name__ == '__main__':

@@ -14,6 +14,7 @@ from collections import Counter, defaultdict
 import pyarrow.parquet as papq
 
 from . import base
+from ..config import get_config
 
 
 _DRAWS_COLS = [
@@ -25,19 +26,15 @@ _DRAWS_COLS = [
 
 def _iter_draws(root: str, drops: list):
     """Yield row dicts from cache, else live-scan each drop."""
-    cache = base.cache_path(root, 'draws_summary')
-    if os.path.exists(cache):
-        try:
-            t = papq.read_table(cache)
-            cols = {c: t.column(c).to_pylist() for c in t.column_names}
-            wanted_keys = {(d.date, d.label) for d in drops}
-            for i in range(t.num_rows):
-                if (cols['drop_date'][i], cols['drop_label'][i]) not in wanted_keys:
-                    continue
-                yield {c: cols[c][i] for c in cols}
-            return
-        except Exception:
-            pass
+    t = base.load_cached(root, 'draws_summary')  # validates sha256 sidecar; None -> live scan (R-13)
+    if t is not None:
+        cols = base._to_dict_of_lists(t)
+        wanted_keys = {(d.date, d.label) for d in drops}
+        for i in range(t.num_rows):
+            if (cols['drop_date'][i], cols['drop_label'][i]) not in wanted_keys:
+                continue
+            yield {c: cols[c][i] for c in cols}
+        return
     for d in drops:
         for r in d.rows:
             p = os.path.join(r.drop_dir, 'draws.parquet')
@@ -140,6 +137,14 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
                           if per_mesh else 0)) * 100.0 if per_mesh else 0.0
 
     parts = []
+    rcfg = get_config().report
+
+    # Hero KPIs: top repeat, unique meshes, worst wasted-index estimate.
+    kpis = [
+        {'label': 'top mesh repeat', 'value': base.fmt_int(top_repeat)},
+        {'label': 'unique meshes',   'value': base.fmt_int(n_unique_meshes)},
+        {'label': 'max wasted idx',  'value': base.fmt_int(max_wasted)},
+    ]
 
     # Summary bar: top 3 meshes by repeat
     top3 = []
@@ -166,103 +171,110 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
             link_text='table',
             tone='neutral',
         ))
+        # Insight: a mesh drawn many times is the prime instance/batch target.
+        if top_repeat >= rcfg.instancing_repeat_min:
+            parts.append(base.callout(
+                'info',
+                f'{top3[0][0]} is drawn {base.fmt_int(top_repeat)}x',
+                f'~{base.fmt_int(max_wasted)} indices re-submitted across repeats - instance or batch '
+                f'the hottest meshes to cut draw calls.',
+                href='#top_meshes', link_text='top meshes'))
 
-    sec1 = []
     single = len(drop_keys) == 1
-    sec1.append('<h2 id="top_meshes">top meshes by repeat</h2>')
-    sec1.append('<div class="table-wrap"><rdc-sortable-table>')
-    sec1.append('<table class="report"><thead><tr>')
-    sec1.append('<th>mesh</th>')
-    for i, k in enumerate(drop_keys):
-        head = 'repeat' if single else f'repeat@{base.h(k)}'
-        sec1.append(f'<th class="num">{head}</th>')
-        if i > 0:
-            latest = ' delta-latest' if i == len(drop_keys) - 1 else ''
-            sec1.append(f'<th class="num{latest}">delta</th>')
-    if len(drop_keys) >= 3:
-        sec1.append('<th class="num">trend</th>')
-    sec1.extend([
-        '<th>areas</th>',
-        '<th>dominant pass</th>',
-        '<th class="num">indices typical</th>',
-        '<th class="num">wasted indices</th>',
-        '</tr></thead><tbody>',
-    ])
-
-    for rank_i, (mh, m) in enumerate(ranked, 1):
-        max_repeat = max(m['repeat_by_drop'].values()) if m['repeat_by_drop'] else 0
-        try:
-            n_typ = int(statistics.median(m['num_indices'])) if m['num_indices'] else 0
-        except statistics.StatisticsError:
-            n_typ = 0
-        wasted = (max_repeat - 1) * n_typ
-        rep_row = m['rep_row'] or {}
-        rep_drop_dir = _drop_dir_for(drops, rep_row.get('drop_date'),
-                                      rep_row.get('drop_label'), rep_row.get('area'))
-        dominant_pass = m['pass_paths'].most_common(1)[0][0] if m['pass_paths'] else ''
-        dominant_cls = m['draw_classes'].most_common(1)[0][0] if m['draw_classes'] else ''
-        suffix = base.pass_suffix(dominant_pass) or '?'
-        hash_tag = str(mh)[-4:] if mh else ''
-        mesh_label = f'{dominant_cls}/{suffix}/{n_typ}v#{hash_tag}'
-
-        sec1.append('<tr>')
-        link = base.rel_path_to_drop_index(out_dir, rep_drop_dir, 'draws') if rep_drop_dir else '#'
-        rp = base.rank_pill(rank_i) if rank_i <= 3 else ''
-        sec1.append(
-            f'<td>{rp}<a href="{base.h(link)}" data-link-kind="drill">{base.h(mesh_label)}</a></td>'
-        )
-        prev = None
-        series = []
+    parts.append('<h2 id="top_meshes">top meshes by repeat</h2>')
+    if not ranked:
+        parts.append(base.empty_state('no repeated meshes found'))
+    else:
+        sec1 = ['<div class="table-wrap"><rdc-sortable-table>',
+                '<table class="report"><thead><tr>', '<th>mesh</th>']
         for i, k in enumerate(drop_keys):
-            v = m['repeat_by_drop'].get(k, 0)
-            series.append(v)
-            sec1.append(f'<td class="num">{base.fmt_int(v)}</td>')
+            head = 'repeat' if single else f'repeat@{base.h(k)}'
+            sec1.append(f'<th class="num">{head}</th>')
             if i > 0:
-                sec1.append(base.delta_cell(v, prev,
-                    lower_is_better=True, fmt='{:+,.0f}',
-                    regression_threshold_pct=20.0))
-            prev = v
+                latest = ' delta-latest' if i == len(drop_keys) - 1 else ''
+                sec1.append(f'<th class="num{latest}">delta</th>')
         if len(drop_keys) >= 3:
-            sec1.append(f'<td class="num">{base.sparkline_svg(series)}</td>')
+            sec1.append('<th class="num">trend</th>')
+        sec1.extend([
+            '<th>areas</th>',
+            '<th>dominant pass</th>',
+            '<th class="num">indices typical</th>',
+            '<th class="num" title="(max repeat - 1) x typical indices: index data re-submitted across repeats">wasted indices</th>',
+            '</tr></thead><tbody>',
+        ])
+        for rank_i, (mh, m) in enumerate(ranked, 1):
+            max_repeat = max(m['repeat_by_drop'].values()) if m['repeat_by_drop'] else 0
+            try:
+                n_typ = int(statistics.median(m['num_indices'])) if m['num_indices'] else 0
+            except statistics.StatisticsError:
+                n_typ = 0
+            wasted = (max_repeat - 1) * n_typ
+            rep_row = m['rep_row'] or {}
+            rep_drop_dir = _drop_dir_for(drops, rep_row.get('drop_date'),
+                                          rep_row.get('drop_label'), rep_row.get('area'))
+            dominant_pass = m['pass_paths'].most_common(1)[0][0] if m['pass_paths'] else ''
+            dominant_cls = m['draw_classes'].most_common(1)[0][0] if m['draw_classes'] else ''
+            suffix = base.pass_suffix(dominant_pass) or '?'
+            hash_tag = str(mh)[-4:] if mh else ''
+            mesh_label = f'{dominant_cls}/{suffix}/{n_typ}v#{hash_tag}'
 
-        areas_str = ', '.join(sorted(m['areas']))
-        sec1.append(f'<td>{base.h(areas_str)}</td>')
-        sec1.append(f'<td>{base.h(base.pass_short(dominant_pass))}</td>')
-        sec1.append(f'<td class="num">{base.fmt_int(n_typ)}</td>')
-        bar = base.inline_bar(wasted, max_wasted) if max_wasted > 0 else ''
-        sec1.append(f'<td class="num">{base.fmt_int(wasted)}{bar}</td>')
-        sec1.append('</tr>')
-    sec1.append('</tbody></table></rdc-sortable-table></div>')
-    parts.append(''.join(sec1))
+            sec1.append('<tr>')
+            link = base.rel_path_to_drop_index(out_dir, rep_drop_dir, 'draws') if rep_drop_dir else '#'
+            rp = base.rank_pill(rank_i) if rank_i <= 3 else ''
+            sec1.append(
+                f'<td>{rp}<a href="{base.h(link)}" data-link-kind="drill">{base.h(mesh_label)}</a></td>'
+            )
+            prev = None
+            series = []
+            for i, k in enumerate(drop_keys):
+                v = m['repeat_by_drop'].get(k, 0)
+                series.append(v)
+                sec1.append(f'<td class="num">{base.fmt_int(v)}</td>')
+                if i > 0:
+                    sec1.append(base.delta_cell(v, prev,
+                        lower_is_better=True, fmt='{:+,.0f}',
+                        regression_threshold_pct=20.0))
+                prev = v
+            if len(drop_keys) >= 3:
+                sec1.append(f'<td class="num">{base.sparkline_svg(series)}</td>')
 
-    sec2 = []
-    sec2.append('<h2 id="batching">potential material batching</h2>')
-    sec2.append('<div class="table-wrap"><rdc-sortable-table>')
-    sec2.append('<table class="report"><thead><tr>')
-    sec2.append('<th>pass</th>')
-    sec2.append('<th>class</th>')
-    sec2.append('<th class="num">repeat</th>')
-    sec2.append('<th class="num">distinct meshes</th>')
-    sec2.append('<th>drops</th>')
-    sec2.append('</tr></thead><tbody>')
-    top_batch = [(k, v) for k, v in batching_groups.items() if v >= 4]
+            areas_str = ', '.join(sorted(m['areas']))
+            sec1.append(f'<td>{base.h(areas_str)}</td>')
+            sec1.append(f'<td>{base.h(base.pass_short(dominant_pass))}</td>')
+            sec1.append(f'<td class="num">{base.fmt_int(n_typ)}</td>')
+            sec1.append(f'<td class="num">{base.heatmap_cell(wasted, 0, max_wasted, text=base.fmt_int(wasted))}</td>')
+            sec1.append('</tr>')
+        sec1.append('</tbody></table></rdc-sortable-table></div>')
+        parts.append(''.join(sec1))
+
+    parts.append('<h2 id="batching">potential material batching</h2>')
+    top_batch = [(k, v) for k, v in batching_groups.items() if v >= rcfg.instancing_repeat_min]
     top_batch.sort(key=lambda kv: kv[1], reverse=True)
-    for (pass_norm, fs, cls), n in top_batch[:30]:
-        sec2.append('<tr>')
-        sec2.append(f'<td>{base.h(base.pass_short(pass_norm))}</td>')
-        sec2.append(f'<td>{base.h(cls)}</td>')
-        sec2.append(f'<td class="num">{base.fmt_int(n)}</td>')
-        sec2.append(f'<td class="num">{base.fmt_int(len(batching_meshes[(pass_norm, fs, cls)]))}</td>')
-        sec2.append(f'<td>{base.h(", ".join(sorted(batching_drops[(pass_norm, fs, cls)])))}</td>')
-        sec2.append('</tr>')
-    sec2.append('</tbody></table></rdc-sortable-table></div>')
-    parts.append(''.join(sec2))
+    if not top_batch:
+        parts.append(base.empty_state('no material-batching candidates found'))
+    else:
+        sec2 = ['<div class="table-wrap"><rdc-sortable-table>',
+                '<table class="report"><thead><tr>', '<th>pass</th>', '<th>class</th>',
+                '<th class="num">repeat</th>', '<th class="num">distinct meshes</th>',
+                '<th>drops</th>', '</tr></thead><tbody>']
+        for (pass_norm, fs, cls), n in top_batch[:30]:
+            sec2.append('<tr>')
+            sec2.append(f'<td>{base.h(base.pass_short(pass_norm))}</td>')
+            sec2.append(f'<td>{base.h(cls)}</td>')
+            sec2.append(f'<td class="num">{base.fmt_int(n)}</td>')
+            sec2.append(f'<td class="num">{base.fmt_int(len(batching_meshes[(pass_norm, fs, cls)]))}</td>')
+            sec2.append(f'<td>{base.h(", ".join(sorted(batching_drops[(pass_norm, fs, cls)])))}</td>')
+            sec2.append('</tr>')
+        sec2.append('</tbody></table></rdc-sortable-table></div>')
+        parts.append(''.join(sec2))
 
     return base.write_report(out_path, [base.report_page(
         'instancing opportunities', parts,
         drops=len(drops), captures=sum(d.n_captures for d in drops),
         build_ts=base.now_iso(), crumb_depth=base.crumb_depth(ab),
-        ab=ab, root=root, report_key='instancing_opportunities')])
+        ab=ab, root=root, report_key='instancing_opportunities',
+        kpis=kpis,
+        device=base.provenance_strip(*base.newest_drop_provenance(root, drops)))])
 
 
 if __name__ == '__main__':

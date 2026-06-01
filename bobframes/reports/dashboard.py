@@ -18,16 +18,12 @@ from .. import paths as _paths
 
 def _top_meshes(root: str, drops: list, n: int = 3) -> list:
     """Return [(label, repeat, indices_med)] where label is a human-readable synthetic."""
-    cache = base.cache_path(root, 'draws_summary')
-    if not os.path.exists(cache):
+    t = base.load_cached(root, 'draws_summary', columns=[
+        'mesh_hash', 'num_indices', 'program_id',
+        'draw_class', 'parent_pass_path_norm'])  # sha256-validated; None -> warn + [] (R-13)
+    if t is None:
         return []
-    try:
-        t = papq.read_table(cache, columns=[
-            'mesh_hash', 'num_indices', 'program_id',
-            'draw_class', 'parent_pass_path_norm'])
-    except Exception:
-        return []
-    cols = {c: t.column(c).to_pylist() for c in t.column_names}
+    cols = base._to_dict_of_lists(t)
     counts: Counter = Counter()
     indices: dict = defaultdict(list)
     cls_by_mesh: dict = {}
@@ -79,16 +75,12 @@ def _top_passes(drops: list, n: int = 3) -> list:
 
 def _top_shaders(root: str, n: int = 3) -> list:
     """Return [(label, complexity, cost_proxy)] where label is `frag-cplx-{int(cplx)}`."""
-    cache = base.cache_path(root, 'shader_summary')
-    if not os.path.exists(cache):
+    t = base.load_cached(root, 'shader_summary',
+        columns=['stable_key', 'shader_type', 'complexity_score',
+                 'used_by_draw_count'])  # sha256-validated; None -> warn + [] (R-13)
+    if t is None:
         return []
-    try:
-        t = papq.read_table(cache,
-            columns=['stable_key', 'shader_type', 'complexity_score',
-                     'used_by_draw_count'])
-    except Exception:
-        return []
-    cols = {c: t.column(c).to_pylist() for c in t.column_names}
+    cols = base._to_dict_of_lists(t)
     cost: dict = defaultdict(float)
     cplx: dict = {}
     stype: dict = {}
@@ -232,6 +224,8 @@ def _global_kpis(drops: list) -> list:
 
 
 def _card_table(rows: list, columns: list) -> str:
+    if not rows:
+        return base.empty_state('no data yet')
     parts = ['<table class="report"><thead><tr>']
     for col_name, _, num in columns:
         cls = ' class="num"' if num else ''
@@ -412,8 +406,10 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     return base.write_report(out_path, [base.report_page(
         'reports dashboard', parts,
         drops=len(drops), captures=sum(d.n_captures for d in drops),
-        build_ts=base.now_iso(), crumb_depth=1, current_page='dashboard')])
+        build_ts=base.now_iso(), crumb_depth=1, current_page='dashboard',
+        kpis=_global_kpis(drops),
+        device=base.provenance_strip(*base.newest_drop_provenance(root, drops)))])
 
 
 if __name__ == '__main__':
-    sys.exit(base.run_report(build, module_name='_dashboard'))
+    sys.exit(base.run_report(build, module_name='dashboard'))
