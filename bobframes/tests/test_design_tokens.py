@@ -148,6 +148,22 @@ def test_c16d_depth_over_borders_css():
     assert 'box-shadow: none;' in chrome._PRINT_CSS
 
 
+def test_c16d_micro_interactions_pacing_dimming():
+    """c16d-d: card hover lift (reduced-motion-safe via --hover-scale), resting affordance on the
+    copy-button, bigger section-card padding, and a .dim utility for secondary data."""
+    c = chrome._CHROME_CSS
+    base = chrome._COMPONENTS_CSS_BASE
+    # hover lift uses the --hover-scale var (reduced-motion -> 1) + spring easing (-> 0s)
+    assert 'transform: scale(var(--hover-scale));' in c
+    assert 'transform var(--motion-spring)' in c
+    # pacing: section card padding bumped to --sp-6
+    assert 'padding: var(--sp-6); margin: 0 0 var(--sp-6);' in c
+    # secondary-data dim utility
+    assert '.dim { color: var(--text-3); font-weight: 400; }' in c
+    # resting affordance: copy-button carries a faint tint before hover
+    assert 'background: color-mix(in oklch, var(--accent-primary) 7%, transparent);' in base
+
+
 # --- loader contract ----------------------------------------------------------
 
 def test_subst_keys_are_identifiers_and_cover_every_placeholder():
