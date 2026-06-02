@@ -44,7 +44,7 @@ def _iter_draws(root: str, drops: list):
                 t = papq.read_table(p, columns=_DRAWS_COLS)
             except Exception:
                 continue
-            cols = {c: t.column(c).to_pylist() for c in t.column_names}
+            cols = base._to_dict_of_lists(t)   # Q-7
             for i in range(t.num_rows):
                 row = {c: cols[c][i] for c in cols}
                 row['drop_date'] = r.drop_date

@@ -73,7 +73,7 @@ def _top_passes(drops: list, n: int = 3) -> list:
                                                  'sum_gpu_duration_s'])
             except Exception:
                 continue
-            cols = {c: t.column(c).to_pylist() for c in t.column_names}
+            cols = base._to_dict_of_lists(t)   # Q-7
             for i in range(t.num_rows):
                 key = (cols['area'][i], cols['marker_path_norm'][i] or '')
                 agg[key] += cols['sum_gpu_duration_s'][i] or 0.0
@@ -132,7 +132,7 @@ def _per_area_draws(drops: list) -> tuple[dict, Counter]:
                 t = papq.read_table(p, columns=['area', 'draw_class', 'n_draws'])
             except Exception:
                 continue
-            cols = {c: t.column(c).to_pylist() for c in t.column_names}
+            cols = base._to_dict_of_lists(t)   # Q-7
             for i in range(t.num_rows):
                 a = cols['area'][i]
                 cls = cols['draw_class'][i] or 'other'
@@ -194,7 +194,7 @@ def _worst_overdraw(drops: list, n: int = 3) -> list:
                 continue
             if t.num_rows == 0:
                 continue
-            cols = {c: t.column(c).to_pylist() for c in t.column_names}
+            cols = base._to_dict_of_lists(t)   # Q-7
             for i in range(t.num_rows):
                 key = (cols['area'][i], cols['rt_id'][i])
                 agg[key]['n_samples'] += 1

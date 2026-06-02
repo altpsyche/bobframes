@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import csv
 import json
+import logging
 import os
 import shutil
 from typing import Iterable
@@ -25,6 +26,8 @@ import pyarrow.csv as pacsv
 import pyarrow.parquet as papq
 
 from . import paths, schemas, stable_keys
+
+_LOG = logging.getLogger('bobframes')
 
 
 def _list_stage_dirs(stage_root: str) -> list[str]:
@@ -71,7 +74,11 @@ def _read_csv_compat(path: str, expected_cols: tuple[str, ...]) -> tuple[list[li
         return out_rows, pos_map
 
 
-def _cast_value(v: str, dtype: str):
+def _cast_value(v: str, dtype: str, fails: dict | None = None):
+    """Coerce a CSV string cell to `dtype`. An empty/None cell is a legit default (0/0.0/False/'')
+    and is NOT a failure; a value that fails to coerce is defaulted too, but (Q-2) when `fails` is
+    given the per-dtype failure count is incremented so the caller can log an aggregate summary
+    instead of swallowing genuine data loss silently."""
     if v == '' or v is None:
         if dtype == 'int':   return 0
         if dtype == 'float': return 0.0
@@ -84,6 +91,8 @@ def _cast_value(v: str, dtype: str):
         if dtype == 'float': return float(v)
         if dtype == 'bool':  return v not in ('0', '', 'False', 'false')
     except (ValueError, TypeError):
+        if fails is not None:
+            fails[dtype] = fails.get(dtype, 0) + 1
         if dtype == 'int':   return 0
         if dtype == 'float': return 0.0
         if dtype == 'bool':  return False
@@ -97,65 +106,73 @@ def _as_int(v) -> int:
         return 0
 
 
-def _apply_stable_key(table_stem: str, columns: dict[str, list]) -> None:
-    """For entity tables, fill the stable_key column from row content.
+def _shaders_key(g) -> str:
+    return g('src_hash')
 
-    Called BEFORE dtype coercion; all column values are still strings here.
-    Numeric inputs are cast via _as_int.
+
+def _texture_key(g) -> str:
+    return stable_keys.texture_key(
+        g('label'), g('format'), _as_int(g('width')), _as_int(g('height')),
+        _as_int(g('depth')), _as_int(g('mip_levels')), _as_int(g('sample_count')))
+
+
+def _sampler_key(g) -> str:
+    return stable_keys.sampler_key(
+        g('min_filter'), g('mag_filter'), g('wrap_s'), g('wrap_t'), g('wrap_r'),
+        _as_int(g('max_anisotropy')), g('compare_mode'), g('compare_func'))
+
+
+def _buffer_key(g) -> str:
+    tgts = g('target_history')
+    return stable_keys.buffer_key(
+        g('usage_hint'), _as_int(g('allocated_size_bytes')),
+        tgts.split(';')[0] if tgts else '')
+
+
+def _program_key(g) -> str:
+    ids = g('attached_shader_ids')
+    id_list = [x for x in ids.split(';') if x] if ids else []
+    return stable_keys.program_key(id_list) if id_list else ''
+
+
+def _fbo_key(g) -> str:
+    rid = g('resource_id')
+    return stable_keys.fbo_key([rid]) if rid and rid != '0' else ''
+
+
+# Q-1: per-entity-table stable-key builders, one row-function each (was a 60-line if/elif chain).
+# Each builder takes a `get(col) -> str` accessor (missing/None/'' -> ''); textures + render_targets
+# share the texture key. Byte-identical to the old chain - locked by test_stable_keys' oracle battery.
+_KEY_BUILDERS = {
+    'shaders': _shaders_key,
+    'textures': _texture_key,
+    'render_targets': _texture_key,
+    'samplers': _sampler_key,
+    'buffers': _buffer_key,
+    'programs': _program_key,
+    'fbos': _fbo_key,
+}
+
+
+def _apply_stable_key(table_stem: str, columns: dict[str, list]) -> None:
+    """For entity tables, fill the stable_key column from row content (Q-1).
+
+    Called BEFORE dtype coercion; all column values are still strings here. Numeric inputs are cast
+    via _as_int. A per-row `get(col)` reads the i-th value, defaulting a missing/None/empty cell to ''
+    (the CSV merge never produces None, so this matches the old per-branch `... or ''`).
     """
-    n = len(next(iter(columns.values())))
     if 'stable_key' not in columns:
         return
+    n = len(next(iter(columns.values())))
+    builder = _KEY_BUILDERS.get(table_stem)
+    if builder is None:
+        columns['stable_key'] = ['' for _ in range(n)]
+        return
 
-    keys: list[str] = ['' for _ in range(n)]
+    def _get_at(i):
+        return lambda col: ((columns.get(col) or [''] * n)[i] or '')
 
-    if table_stem == 'shaders':
-        for i in range(n):
-            keys[i] = (columns.get('src_hash') or [''] * n)[i] or ''
-    elif table_stem in ('textures', 'render_targets'):
-        for i in range(n):
-            keys[i] = stable_keys.texture_key(
-                (columns.get('label') or [''] * n)[i],
-                (columns.get('format') or [''] * n)[i],
-                _as_int((columns.get('width') or [''] * n)[i]),
-                _as_int((columns.get('height') or [''] * n)[i]),
-                _as_int((columns.get('depth') or [''] * n)[i]),
-                _as_int((columns.get('mip_levels') or [''] * n)[i]),
-                _as_int((columns.get('sample_count') or [''] * n)[i]),
-            )
-    elif table_stem == 'samplers':
-        for i in range(n):
-            keys[i] = stable_keys.sampler_key(
-                (columns.get('min_filter') or [''] * n)[i],
-                (columns.get('mag_filter') or [''] * n)[i],
-                (columns.get('wrap_s') or [''] * n)[i],
-                (columns.get('wrap_t') or [''] * n)[i],
-                (columns.get('wrap_r') or [''] * n)[i],
-                _as_int((columns.get('max_anisotropy') or [''] * n)[i]),
-                (columns.get('compare_mode') or [''] * n)[i],
-                (columns.get('compare_func') or [''] * n)[i],
-            )
-    elif table_stem == 'buffers':
-        for i in range(n):
-            tgts = (columns.get('target_history') or [''] * n)[i]
-            first_target = (tgts.split(';')[0] if tgts else '')
-            keys[i] = stable_keys.buffer_key(
-                (columns.get('usage_hint') or [''] * n)[i],
-                _as_int((columns.get('allocated_size_bytes') or [''] * n)[i]),
-                first_target,
-            )
-    elif table_stem == 'programs':
-        for i in range(n):
-            ids = (columns.get('attached_shader_ids') or [''] * n)[i]
-            id_list = [x for x in ids.split(';') if x] if ids else []
-            if id_list:
-                keys[i] = stable_keys.program_key(id_list)
-    elif table_stem == 'fbos':
-        for i in range(n):
-            rid = (columns.get('resource_id') or [''] * n)[i] or ''
-            keys[i] = stable_keys.fbo_key([rid]) if rid and rid != '0' else ''
-
-    columns['stable_key'] = keys
+    columns['stable_key'] = [builder(_get_at(i)) for i in range(n)]
 
 
 def _build_table(table_stem: str, stage_root: str) -> tuple[pa.Table | None, int]:
@@ -185,17 +202,23 @@ def _build_table(table_stem: str, stage_root: str) -> tuple[pa.Table | None, int
         _apply_stable_key(table_stem, columns)
 
     arrays: dict[str, pa.Array] = {}
+    fails: dict[str, int] = {}   # Q-2: per-dtype coercion-failure tally (defaulted values, not silent)
     for col in expected_cols:
         dtype = schemas.infer_dtype(col)
         raw = columns[col]
         if dtype == 'int':
-            arrays[col] = pa.array([_cast_value(v, 'int') for v in raw], type=pa.int64())
+            arrays[col] = pa.array([_cast_value(v, 'int', fails) for v in raw], type=pa.int64())
         elif dtype == 'float':
-            arrays[col] = pa.array([_cast_value(v, 'float') for v in raw], type=pa.float64())
+            arrays[col] = pa.array([_cast_value(v, 'float', fails) for v in raw], type=pa.float64())
         elif dtype == 'bool':
-            arrays[col] = pa.array([_cast_value(v, 'bool') for v in raw], type=pa.bool_())
+            arrays[col] = pa.array([_cast_value(v, 'bool', fails) for v in raw], type=pa.bool_())
         else:
             arrays[col] = pa.array(raw, type=pa.string())
+
+    if fails:
+        _LOG.warning('parquetize %s: %d cell(s) failed dtype coercion and were defaulted (%s)',
+                     table_stem, sum(fails.values()),
+                     ', '.join(f'{k}x{v}' for k, v in sorted(fails.items())))
 
     return pa.table(arrays), n_rows
 

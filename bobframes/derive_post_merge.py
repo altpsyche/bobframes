@@ -54,7 +54,7 @@ def _derive_draws(out_dir: str) -> bool:
     classes = [classifier.classify({
         'marker': p, 'blend_enable': be, 'depth_write_enable': dw,
         'blend_src_color': sc, 'blend_dst_color': dc,
-    }, spec) for be, dw, p, sc, dc in zip(blend_en, depth_w, parent, bsc, bdc)]
+    }, spec) for be, dw, p, sc, dc in zip(blend_en, depth_w, parent, bsc, bdc, strict=True)]  # Q-4
 
     # Build new table in schema order
     from . import schemas
@@ -273,7 +273,7 @@ def _derive_frame_totals_bytes(out_dir: str) -> bool:
         tx = papq.read_table(tx_path, columns=['capture', 'est_bytes'])
         cap = tx.column('capture').to_pylist()
         eb = tx.column('est_bytes').to_pylist()
-        for c, b in zip(cap, eb):
+        for c, b in zip(cap, eb, strict=True):   # Q-4: same-table columns, strict guards drift
             tex_by_cap[c] = tex_by_cap.get(c, 0) + int(b or 0)
 
     vbo_by_cap: dict[str, int] = {}
@@ -287,7 +287,7 @@ def _derive_frame_totals_bytes(out_dir: str) -> bool:
         v = bf.column('used_as_vbo').to_pylist()
         i = bf.column('used_as_ibo').to_pylist()
         u = bf.column('used_as_ubo').to_pylist()
-        for ci, s, vi, ii, ui in zip(cap, sz, v, i, u):
+        for ci, s, vi, ii, ui in zip(cap, sz, v, i, u, strict=True):   # Q-4
             if vi: vbo_by_cap[ci] = vbo_by_cap.get(ci, 0) + int(s or 0)
             if ii: ibo_by_cap[ci] = ibo_by_cap.get(ci, 0) + int(s or 0)
             if ui: ubo_by_cap[ci] = ubo_by_cap.get(ci, 0) + int(s or 0)

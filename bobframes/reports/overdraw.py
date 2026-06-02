@@ -38,7 +38,7 @@ def _read_rts(drop: base.DropSet) -> dict:
             t = papq.read_table(p, columns=want)
         except Exception:
             continue
-        cols = {c: t.column(c).to_pylist() for c in t.column_names}
+        cols = base._to_dict_of_lists(t)   # Q-7
         for i in range(t.num_rows):
             key = (cols.get('area', [''])[i] if 'area' in cols else r.area,
                    cols['capture'][i],
@@ -76,7 +76,7 @@ def _agg_pixel_history(drop: base.DropSet, rt_meta: dict) -> dict:
         if t.num_rows == 0:
             continue
         any_data = True
-        cols = {c: t.column(c).to_pylist() for c in t.column_names}
+        cols = base._to_dict_of_lists(t)   # Q-7
         for i in range(t.num_rows):
             cap = cols.get('capture', [''])[i] if 'capture' in cols else ''
             rt_id = cols.get('rt_id', [0])[i] if 'rt_id' in cols else 0

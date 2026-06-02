@@ -369,6 +369,8 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c16d report aesthetics](commits/v02/c16d_report_aesthetics.md) | **done** — visual-design pass in 4 sub-commits (a depth+tokens / b vendored-Inter+type / c chart-finish / d micro+pacing); G-17 closed, ADR-34; 128 green, golden refreshed + browser-reviewed |
 | ☑ | [c16e run model (per-run truth)](commits/v02/c16e_run_model.md) | **done** — killed the cumulative-union flaw (G-19, ADR-35): dashboard + 5 single-state reports report ONE current run (default newest) via discovery.current_run/baseline_run/RunContext threaded as report_page(run=); removed items drop out or move to a separated "resolved since <baseline>" card; trend_table + A/B unchanged. 132 -> 142 green; golden refreshed (dashboard + 5 reports only); parquet digests untouched; QUALITY_GATES §21.1j |
 | ☑ | [c16f multi-run UX](commits/v02/c16f_multirun_ux.md) | **done** — run selector via pre-rendered per-run pages (_reports/run/<key>/, reuse rdc-ab-picker) + fixed prior baseline + "current vs baseline" banner + distinct run chips + "viewing an older run" cue + dashboard->report persistence (G-18); bounded by [report] max_prerendered_runs. 142 -> 148 green; golden +6 per-run pages, no digests refresh; QUALITY_GATES §21.1k. G-20 (3+-run col collapse) deferred (no 3+-run data to verify) |
+| ☑ | c16g quality sweep | **done** — pre-tag, behaviour-neutral: Q-1 (stable_key dict-of-builders, oracle-locked), Q-2 (cast-failure tally + warn), Q-4 (zip strict on derive), Q-7 (`_to_dict_of_lists` callers), Q-8 (dead buffers no-op deleted), D-3 (coupling doc), D-9 (`_TABLE_DISPLAY_ORDER` origin recovered + recorded). 148 -> 160 green; golden + digests frozen; no new ADR |
+| ☐ | c16h reliability sweep | **next** — R-12 (log stage-cleanup failures), R-14 (warn on UTF-8 decode replacement), R-11 (doc single-process sidecar), R-15 (marker-gate already covers the half-write risk + guard/doc); R-10 deferred (OOM-gated) |
 
 ## v0.3 — CI/automation surface (planned — [ROADMAP](ROADMAP.md))
 
@@ -414,6 +416,21 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-02 — c16g DONE (v0.2 quality sweep; Q-1/Q-2/Q-4/Q-7/Q-8 + D-3/D-9 closed). Pre-tag cleanup,
+  all behaviour-neutral (golden + Parquet digests frozen). Q-1: collapsed parquetize._apply_stable_key's
+  60-line if/elif into a dict-of-builders + a per-row get() accessor (byte-identical; oracle-locked in
+  NEW test_parquetize against stable_keys.*). Q-2: _cast_value gained a `fails` accumulator + a per-table
+  warn summary (empty cells are NOT failures) so silent coercion-to-0 is surfaced. Q-4: zip(..., strict=True)
+  on derive_post_merge's 3 sites (same-table/num_rows lengths -> asserts drift, never changes output;
+  exercised by test_parquet_parity). Q-7: routed the 6 full-column report callers through
+  base._to_dict_of_lists (discovery left inline - a discovery->cache import would cycle). Q-8: deleted the
+  dead `buffers target_history` no-op (buffers have no label column per BUFFERS_COLS). D-3: documented the
+  one-way run->reports.orchestrator coupling at the import. D-9: RECOVERED + recorded _TABLE_DISPLAY_ORDER's
+  origin (a deliberate editorial within-category relevance/pipeline-flow order, not derivable; per-category
+  rationale in the template.py comment; new tables tail their category; golden-gated). 148 -> 160 green
+  (+12 test_parquetize). test_parquet_parity GREEN, NO digests refresh; smoke 15 pages lint clean exit 0.
+  No new ADR. FINDINGS Q-1/Q-2/Q-4/Q-7/Q-8 + D-3/D-9 ticked. UNPUSHED. NEXT: c16h reliability sweep, then
+  v0.2 close-out re-ingest + tag.
 - 2026-06-02 — c16f DONE (multi-run UX: the run selector; G-18 closed; builds on ADR-35). Layered the
   navigation UX on c16e's run model via PRE-RENDERED per-run pages: top-level _reports/<report>.html = newest
   (default); each OLDER run gets a self-contained set under _reports/run/<run_key>/ (mirrors _reports/ab/),

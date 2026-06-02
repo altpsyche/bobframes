@@ -32,7 +32,7 @@ def _aggregate(drops: list, ok_caps: set) -> dict:
                 t = papq.read_table(p)
             except Exception:
                 continue
-            cols = {c: t.column(c).to_pylist() for c in t.column_names}
+            cols = base._to_dict_of_lists(t)   # Q-7
             for i in range(t.num_rows):
                 cap = cols['capture'][i]
                 key = (r.area, r.drop_date, r.drop_label, cap)
