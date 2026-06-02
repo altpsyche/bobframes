@@ -105,6 +105,9 @@ def bar_chart(items, *, color: str | None = None, value_fmt=None, thresholds=Non
     n = len(items)
     H = pad * 2 + n * (bar_h + gap) - gap
     label_w = int(W * 0.36)
+    # clip the label to what the label column can actually hold (~6.5px/char at fs-small mono) so it
+    # never overruns into the bars at small widths; capped at 30 so wide charts are byte-unchanged.
+    lbl_max = min(30, max(6, int(label_w / 6.5)))
     val_w = 64
     bar_x = label_w
     bar_w = max(1, W - label_w - pad - val_w)
@@ -121,7 +124,7 @@ def bar_chart(items, *, color: str | None = None, value_fmt=None, thresholds=Non
         y = pad + i * (bar_h + gap)
         w = max(0.0, (v / mx) * bar_w)
         out.append(f'<text x="{_c(pad)}" y="{_c(y + bar_h * 0.74)}" '
-                   f'fill="{_t("label_color")}">{_h(_clip(lbl, 30))}</text>')
+                   f'fill="{_t("label_color")}">{_h(_clip(lbl, lbl_max))}</text>')
         out.append(f'<rect x="{_c(bar_x)}" y="{_c(y)}" width="{_c(w)}" height="{bar_h}" '
                    f'fill="{color}" rx="1"/>')
         out.append(f'<text x="{_c(bar_x + w + 4)}" y="{_c(y + bar_h * 0.74)}" '

@@ -279,23 +279,29 @@ details.secondary-metrics { margin: var(--sp-2) 0 var(--sp-4); }
 details.secondary-metrics > summary { cursor: pointer; color: var(--text-2);
                                       font-size: var(--fs-small); padding: var(--sp-1) 0; }
 
-/* Section cards (c16c): consistent framing for every report section + the preview gallery.
-   Light frame only (no fill) so nested charts/tables keep their own surfaces. */
+/* Section cards (c16c): each report section is ONE framed card, and the card is the SINGLE frame -
+   inner table-wraps go borderless/flush so we never stack box-in-box. The leading h2 keeps its
+   --accent rule (also the target the sticky-h2 highlight recolours). */
 section.card {
-  border: 1px solid var(--border-1); border-radius: 2px;
-  padding: var(--sp-4) var(--sp-4) var(--sp-2);
-  margin: 0 0 var(--sp-6);
+  border: 1px solid var(--border-1); border-radius: 4px;
+  padding: var(--sp-4); margin: 0 0 var(--sp-6);
 }
 section.card > header {
   display: flex; align-items: baseline; gap: var(--sp-3);
-  margin: 0 0 var(--sp-3);
+  margin: 0 0 var(--sp-4);
 }
 section.card > header > h2 { margin: 0; }
+section.card > :last-child { margin-bottom: 0; }
+section.card .table-wrap { border: 0; border-radius: 0; margin: 0; }
+/* A sticky header that detaches and floats over a framed card reads as broken (a lone data row ends
+   up above it). Pin the header only on the un-carded drill page - not inside report/dashboard cards. */
+section.card table.report thead th,
+a.dash-card table.report thead th { position: static; top: auto; z-index: auto; }
 .card-count {
   font: 600 var(--fs-small) ui-monospace, monospace; color: var(--text-2);
-  background: var(--surface-2); padding: 1px 8px; border-radius: 2px;
+  background: var(--surface-2); padding: 1px 8px; border-radius: 3px;
 }
-.card-subtitle { margin: 0 0 var(--sp-3); color: var(--text-2); font-size: var(--fs-small); }
+.card-subtitle { margin: 0 0 var(--sp-4); color: var(--text-2); font-size: var(--fs-small); }
 table.report > caption {
   caption-side: top; text-align: left; color: var(--text-2);
   font-size: var(--fs-small); padding: 0 0 var(--sp-2);
