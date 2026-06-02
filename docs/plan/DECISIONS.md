@@ -574,6 +574,11 @@ spine of [c16e](commits/v02/c16e_run_model.md); the run-switching + comparison *
 [c16f](commits/v02/c16f_multirun_ux.md) (G-18). Additive to ADR-32 (report contract).
 
 ### ADR-36 — reports become an offline static SPA (app folder), with a single-file export (v0.2 SPA epic)
+> **SUPERSEDED by ADR-37 (2026-06-02, before any code).** On a lifespan review we judged a bespoke
+> client-side SPA a *local maximum* — slicker now, a perpetual web-framework maintenance tax that weakens
+> the golden-as-correctness gate, loses JS-optional content, and constrains the v0.6 plugin / cross-platform
+> future. ADR-37 keeps presentation server-rendered + static and invests the durable effort in the data
+> contract instead. ADR-36 is retained for the decision trail; do NOT implement it.
 **Context.** Three design reviews (`docs/plan/{overall_overhaul_proposal,readability_and_presentation_review,report_roadmap}.md`)
 surfaced three real problems: the per-drop drill bakes ~21 MB of inline data (slow TTI), every page
 duplicates the design system + the base64 font, and the catalog/drill layer (`html/template.py`) is dense +
@@ -635,3 +640,42 @@ optional):**
 Plus: sidecar links (shader-src `.glsl`, histograms) stay **relative file links**, not routes (c16l);
 route changes manage focus + `aria-live` on EVERY view (a sustained a11y cost, not one-time); the root
 `index.html` is repurposed (catalog → shell) so c16j defines the default route.
+
+### ADR-37 — keep reports server-rendered + static; fix only the heavy data; invest in the data contract (supersedes ADR-36)
+**Context.** ADR-36 (accepted hours earlier, no code) proposed turning the whole output into a bespoke
+offline SPA. On a deliberate **lifespan** review (what is best over v0.2->v1.0+: more report types, more
+CI/automation consumers, plugins, cross-platform) we concluded the full SPA is a **local maximum**. The
+durability hierarchy: (1) the **data** (parquet + a versioned JSON contract) outlasts any UI; (2)
+**server-rendered static HTML** is near-indestructible — zero runtime deps, renders with JS off, archivable,
+and *the file IS the output so the byte-golden actually proves correctness*; (3) a **bespoke SPA**
+(hand-rolled router/loader/fragments) is a mini web-framework maintained forever, shifts correctness into JS
+the golden cannot see, loses JS-optional content, and makes the v0.6 plugin story (a plugin emitting a
+page/section) + cross-platform harder. The tool's trajectory is toward **machine consumers** (v0.3 `--json` /
+gating / verify / diff, v0.4 query, v0.5 schema) — so the lasting investment is the **data contract**, not a
+presentation engine. **Decision.** Reject the bespoke SPA (ADR-36). Keep presentation **server-rendered,
+static, multi-page, with browser-native links** (the most durable, accessible, zero-maintenance navigation
+there is). Specifically:
+- **Reports + dashboard stay self-contained single HTML files** — unchanged. Their good properties are
+  *preserved*: email-one-file, JS-optional content (JS is progressive enhancement only), and golden-as-output.
+  The per-page font/CSS duplication (~40 KB/page) is **accepted** — negligible next to the data, not worth
+  trading the single-file property for. (No shared `_assets/` extraction; revisit only on a *measured* size
+  problem.)
+- **Fix the one real perf problem — the ~21 MB inline-data drill/catalog** — by **decoupling only the heavy
+  VTable payload** into a `_data/<key>.js` loaded via an injected `<script src>` (file://-safe, no `fetch`, no
+  server) with `onload` sequencing. Those pages were **never** portable-as-one-file (21 MB) and **never**
+  JS-optional (the VTable is JS), so decoupling their data costs nothing real and fixes TTI. No router, no
+  fragments, no whole-output rewrite — the pages stay static HTML with normal links; the golden stays a
+  meaningful byte-gate over the page + its data file.
+- **Catalog/drill readability** (type split, roomier rows, heatmap cells, collapsible column groups — G-21)
+  proceeds on the static `html/template.py` layer (the revived **c16i**).
+- **The durable layer is the data contract:** lean on the already-roadmapped **c20 (`--json`)** + **c30
+  (schema + query)** as the versioned machine-readable output that outlives any UI; do not build a parallel
+  presentation-coupled data layer. The `_data/*.js` decoupling is a presentation convenience, not the contract.
+**This supersedes ADR-36** and **re-affirms ADR-6** (offline byte-deterministic single HTML files remain the
+default — only the genuinely-heavy catalog/drill become a small page+data-file pair) and **ADR-34** (font
+stays inlined per page). **Epic re-scoped:** the SPA commits **c16k-c16n are voided**; **c16i** (catalog/drill
+readability) is **revived**; **c16j** is **repurposed** to the static heavy-data decoupling. **Consequence.**
+Far smaller, lower-risk, durable: no bespoke framework, no re-homing of the just-finished c16b-f reports, the
+golden keeps proving correctness, JS-optional + single-file survive for the reports, and the lasting effort
+routes to the data contract (c20/c30). G-22 resolved as **"SPA rejected; heavy-data decoupling done statically
+(c16j); durable data contract = c20/c30."** Additive to ADR-6/27/32/33/34/35; supersedes ADR-36.

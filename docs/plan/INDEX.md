@@ -31,8 +31,8 @@ Everything else is reference — open it only when a commit doc points you there
 | [reference/HARDCODE.md](reference/HARDCODE.md) | Hardcode/inflexibility catalog (H-*). Mostly v0.2. | Burndown |
 | [reference/QUALITY_GATES.md](reference/QUALITY_GATES.md) | Testing strategy, golden-parity, schema/drift/determinism gates, CI matrix, pre-merge checklist | Reference each PR |
 | [reference/DESIGNER.md](reference/DESIGNER.md) | Designer-tooling track (v0.2) | Reference (v0.2) |
-| [adr36_spa_architecture_proposal.md](adr36_spa_architecture_proposal.md) | **ADR-36** (accepted): reports become an offline static SPA (app folder via `<script src>`, no server) + single-file export. Full proposal/rationale; frozen decision in DECISIONS. Drives the v0.2 SPA epic **c16j–c16n**. | Reference (SPA epic) |
-| [report_roadmap.md](report_roadmap.md) · [readability_and_presentation_review.md](readability_and_presentation_review.md) · [overall_overhaul_proposal.md](overall_overhaul_proposal.md) | The three design reviews (2026-06-02) that led to ADR-36. | Provenance for ADR-36 |
+| [adr36_spa_architecture_proposal.md](adr36_spa_architecture_proposal.md) | The SPA proposal (ADR-36) — **SUPERSEDED by ADR-37** on a lifespan review (bespoke SPA = a web-framework maintenance tax; weakens golden-as-correctness; loses JS-optional; hurts plugins/cross-platform). Kept for the decision trail. **The live direction (ADR-37):** reports stay static; decouple only the heavy data ([c16j](commits/v02/c16j_data_decoupling.md)); readability ([c16i](commits/v02/c16i_catalog_drill_readability.md)); durable data contract = c20/c30. | Provenance (superseded) |
+| [report_roadmap.md](report_roadmap.md) · [readability_and_presentation_review.md](readability_and_presentation_review.md) · [overall_overhaul_proposal.md](overall_overhaul_proposal.md) | The three design reviews (2026-06-02) that led to ADR-36/37 + c16i/c16j. | Provenance |
 | [CLI_PLAN.archive.md](CLI_PLAN.archive.md) | **SUPERSEDED.** The original monolith this set was carved from. Provenance only — do not edit, do not execute from it. | Never |
 
 ## Conventions
