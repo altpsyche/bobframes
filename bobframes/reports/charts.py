@@ -104,11 +104,15 @@ def bar_chart(items, *, color: str | None = None, value_fmt=None, thresholds=Non
     bar_h, gap, pad = int(_t('bar_h')), int(_t('gap')), int(_t('pad'))
     n = len(items)
     H = pad * 2 + n * (bar_h + gap) - gap
-    label_w = int(W * 0.36)
-    # clip the label to what the label column can actually hold (~6.5px/char at fs-small mono) so it
-    # never overruns into the bars at small widths; capped at 30 so wide charts are byte-unchanged.
-    lbl_max = min(30, max(6, int(label_w / 6.5)))
     val_w = 64
+    # Size the label column to the LONGEST actual label so the bar starts right after the text -
+    # no fixed-fraction dead space (~6.6px/char at fs-small mono + 8px gap), capped at 60% of width
+    # so bars never vanish. lbl_max is derived back from the (capped) column so a label can never
+    # overrun the bar; hard-capped at 30 chars (c16c).
+    _CHAR_W = 6.6
+    longest = max((len(str(lbl)) for lbl, _ in items), default=0)
+    label_w = max(pad + 8, min(int(W * 0.6), pad + int(longest * _CHAR_W) + 8))
+    lbl_max = min(30, max(4, int((label_w - pad - 8) / _CHAR_W)))
     bar_x = label_w
     bar_w = max(1, W - label_w - pad - val_w)
     mx = float(max_value if max_value is not None else max((v for _, v in items), default=0.0))
