@@ -28,11 +28,15 @@ lines as much as the data.
   non-`:root` blocks stay out of the CSS golden like `[chart]`).
 
 ### 2. Typography + hierarchy
-- KPI display numbers (`.kpi-value`): use the geometric **sans** stack already in chrome
-  (`'Inter', 'Segoe UI', system-ui, sans-serif`) with `tabular-nums`, NOT `ui-monospace`. **Do NOT
-  load a web font** — keep the graceful named-fallback stack ('Inter' only renders if the OS has it,
-  else system sans). A CDN/`@font-face` fetch would break offline rendering + byte determinism. Reserve
+- KPI display numbers (`.kpi-value`) + the summary `.sb-headline`: use the geometric **sans** stack
+  (`'Inter', 'Segoe UI', system-ui, sans-serif`) with `tabular-nums`, NOT `ui-monospace`. Reserve
   `ui-monospace` strictly for inline code paths (`shadow/p8`) and dense table columns.
+- **DECISION CHANGED (c16d-b, ADR-34, user signoff 2026-06-02):** this doc originally said "Do NOT
+  load a web font" (keep the named-fallback stack). The user re-opened the dependency posture and
+  chose to **VENDOR a subset of Inter** (Latin + tabular figures, wght 400-600) baked into the wheel
+  and inlined as a base64 `@font-face` data URI — pixel-identical type on every OS. This stays
+  offline + byte-deterministic (a committed woff2, no network); the cost (wheel + ~40KB/page) was
+  accepted. A *CDN*/network web-font is still forbidden. See `reports/assets/README.md` + ADR-34.
 - Mute the noise: dim secondary data (raw index counts, dates, drop keys) to `var(--text-3)`; keep the
   actionable columns (cost proxy, wasted indices, reject %) at `var(--text-1)`.
 - Remove `border-left: 3px solid var(--accent)` from in-card `h2`. Reserve the left-accent rule for
