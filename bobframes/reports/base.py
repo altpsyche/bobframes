@@ -38,6 +38,9 @@ from .chrome import (
     page_open,
     provenance_strip,
     report_page,
+    run_compare_banner,
+    run_picker,
+    run_picker_for,
     section_card,
     summary_bar,
 )
@@ -83,6 +86,7 @@ from .discovery import (
     current_run,
     discover_drops,
     ok_capture_set,
+    prerendered_runs,
     resolve_drop_set,
     run_context,
 )
@@ -107,6 +111,7 @@ from .cli import (
     rel_path_to_drop_file,
     rel_path_to_drop_index,
     run_report,
+    run_subdir,
     write_report,
 )
 
@@ -117,7 +122,8 @@ __all__ = [
     'chrome_css', 'class_color_var',
     'components_js', 'design_tokens_css', 'empty_state', 'h', 'header', 'heatmap_cell',
     'icon', 'kpi_chip', 'kpi_strip', 'legend', 'link',
-    'page_close', 'page_open', 'provenance_strip', 'report_page', 'section_card', 'summary_bar',
+    'page_close', 'page_open', 'provenance_strip', 'report_page', 'run_compare_banner',
+    'run_picker', 'run_picker_for', 'section_card', 'summary_bar',
     'newest_drop_provenance',
     # formatters
     'fmt_bytes', 'fmt_float', 'fmt_id_short', 'fmt_int', 'fmt_pct',
@@ -131,12 +137,13 @@ __all__ = [
     'pct_stacked_bar', 'scatter', 'stacked_bar', 'treemap',
     # discovery
     'DropRow', 'DropSet', 'RunContext', 'baseline_run', 'current_run',
-    'discover_drops', 'ok_capture_set', 'resolve_drop_set', 'run_context',
+    'discover_drops', 'ok_capture_set', 'prerendered_runs', 'resolve_drop_set',
+    'run_context',
     # cache
     'build_per_drop_cache', 'cache_dir', 'cache_path', 'label_for',
     'load_cached', 'load_global_entities', 'load_labels',
     # cli
     '_lint_or_raise', 'ab_subdir', 'crumb_depth', 'now_iso',
     'output_path', 'rel_path_to_drop_file', 'rel_path_to_drop_index',
-    'run_report', 'write_report',
+    'run_report', 'run_subdir', 'write_report',
 ]

@@ -1374,6 +1374,67 @@ def ab_picker_for(root: str, report_name: str, *, ab=None) -> str:
     return ab_picker(options)
 
 
+def run_picker(options: list, current_href: str | None = None) -> str:
+    """Run selector (c16f): a static <select> of per-run page links, reusing the rdc-ab-picker web
+    component (it navigates to select.value on change - no new JS). Distinct select id from the A/B
+    picker so both can coexist on one page; no 'none' option (a report is always for some run)."""
+    if not options:
+        return ''
+    parts = ['<rdc-ab-picker><label for="rdc-run-select">run</label>',
+             '<select id="rdc-run-select">']
+    for label, href in options:
+        sel = ' selected' if current_href == href else ''
+        parts.append(f'<option value="{_html.escape(href)}"{sel}>'
+                     f'{_html.escape(label)}</option>')
+    parts.append('</select></rdc-ab-picker>')
+    return ''.join(parts)
+
+
+def run_picker_for(run, report_name: str, *, reports_up: str = '',
+                   max_older: int = 10) -> str:
+    """Emit the run selector for `report_name` from a RunContext (c16f). '' when <=1 run.
+
+    Lists the pre-rendered runs (newest + the `max_older` most-recent older) as links: the newest is
+    the top-level `<report>.html`, older runs are `run/<key>/<report>.html`, each prefixed by
+    `reports_up` ('' from a top-level page, '../../' from a per-run page) so links resolve from both
+    locations. The current run's own option is marked selected. Labels via safe_chrome_text.
+    """
+    from .discovery import prerendered_runs as _prerendered
+    from .. import paths as _paths
+    if run is None or getattr(run, 'n_runs', 0) <= 1:
+        return ''
+    shown = {d.key for d in _prerendered(run.drops, max_older)}
+    newest_key = run.drops[-1].key
+    cur_key = run.current.key if getattr(run, 'current', None) else newest_key
+    n = run.n_runs
+    options = []
+    current_href = None
+    for i, d in enumerate(run.drops):
+        if d.key not in shown:
+            continue
+        is_new = d.key == newest_key
+        label = _f.safe_chrome_text(
+            f'run {i + 1}/{n}: {d.key}' + (' (newest)' if is_new else ''))
+        href = (f'{reports_up}{report_name}.html' if is_new
+                else f'{reports_up}{_paths.RUN_DIR}/{d.key}/{report_name}.html')
+        options.append((label, href))
+        if d.key == cur_key:
+            current_href = href
+    return run_picker(options, current_href)
+
+
+def run_compare_banner(current, baseline) -> str:
+    """The 'current <x> vs baseline <y>' banner (c16f). '' when there is no baseline.
+
+    Reuses the .ab-strip chrome; the baseline key is dimmed (--text-3 via .dim). Keys are
+    data-derived -> routed through safe_chrome_text.
+    """
+    if current is None or baseline is None:
+        return ''
+    return (f'<div class="ab-strip">current: {_f.safe_chrome_text(current.key)} '
+            f'| baseline: <span class="dim">{_f.safe_chrome_text(baseline.key)}</span></div>')
+
+
 def link(href: str, text: str, *, kind: str = 'inline',
          icon_name: str | None = None, target_blank: bool = False) -> str:
     """Render <a data-link-kind=...> with optional trailing icon.
@@ -1395,7 +1456,8 @@ def report_page(title: str, body, *, drops: int = 0, captures: int = 0,
                 build_ts: str = '', crumb_depth: int = 1, kpis: list | None = None,
                 current_page: str | None = None, hdr_offset_px: int | None = 120,
                 body_attrs: dict | None = None, ab=None, root: str | None = None,
-                report_key: str | None = None, device: str = '', run=None) -> str:
+                report_key: str | None = None, device: str = '', run=None,
+                run_nav_key: str | None = None) -> str:
     """Assemble a standard Layer-2 report page, deduping the open/header/strip/close shared by every
     report (Q-6). ``body`` is an HTML string or a list of fragments (the report's summary_bar +
     sections, in order). The fragments are '\\n'-joined exactly as write_report joins a parts list, so
@@ -1407,7 +1469,10 @@ def report_page(title: str, body, *, drops: int = 0, captures: int = 0,
     their strip at the head of ``body`` instead.
 
     ``run`` is the report's RunContext (c16e, ADR-35); when it has a current run the header names it
-    ("run 2 of 2: <key>"). c16f reuses the same object for the run picker + baseline banner + cue.
+    ("run 2 of 2: <key>"). c16f layers the navigation UX on the same object: an "older run" cue when
+    not viewing the newest, a run selector, and a "current vs baseline" banner. ``run_nav_key`` is the
+    page's own file stem for the run-selector hrefs (defaults to ``report_key``; the dashboard passes
+    'index' since it carries no report_key).
     """
     parts = [page_open(title, hdr_offset_px=hdr_offset_px, body_attrs=body_attrs),
              header(title, drops=drops, captures=captures, build_ts=build_ts,
@@ -1415,12 +1480,37 @@ def report_page(title: str, body, *, drops: int = 0, captures: int = 0,
                     run=run)]
     if device:
         parts.append(device)
-    if report_key is not None and root is not None:
+    nav_key = run_nav_key or report_key
+    reports_up = '../' * (crumb_depth - 1)   # '' from a top-level page, '../../' from a per-run page
+    # "older run" cue: viewing a non-newest run is easy to misread as current (c16f).
+    if run is not None and nav_key and getattr(run, 'current', None) is not None \
+            and not run.is_newest:
+        parts.append(callout(
+            'warn', 'viewing an older run',
+            f'this is run {run.ordinal} ({run.run_label}); the newest run is {run.drops[-1].key}',
+            href=f'{reports_up}{nav_key}.html', link_text='go to newest'))
+    # A/B strip + picker: only on top-level (newest) pages - per-run pages omit it (a per-run snapshot
+    # is single-run; A/B comparison lives on the top-level pages, and its links are _reports-relative).
+    if report_key is not None and root is not None and (run is None or run.is_newest):
         parts.append(ab_strip(ab))
         parts.append(ab_picker_for(root, report_key, ab=ab))
+    # Run selector + "current vs baseline" banner (every page with >1 run, except A/B pages).
+    if ab is None and run is not None and nav_key:
+        parts.append(run_picker_for(run, nav_key, reports_up=reports_up,
+                                    max_older=_report_max_prerendered_runs()))
+        parts.append(run_compare_banner(run.current, getattr(run, 'baseline', None)))
     parts.extend(body if isinstance(body, (list, tuple)) else [body])
     parts.append(page_close())
     return '\n'.join(parts)
+
+
+def _report_max_prerendered_runs() -> int:
+    """The [report] max_prerendered_runs cap (c16f); defensive default for no-config contexts."""
+    try:
+        from ..config import get_config
+        return int(get_config().report.max_prerendered_runs)
+    except Exception:
+        return 10
 
 
 def header(title: str, *, drops: int = 0, captures: int = 0,

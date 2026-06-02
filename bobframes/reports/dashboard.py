@@ -288,27 +288,35 @@ def _card(href: str, title: str, subtitle: str, chart: str, table: str) -> str:
             f'<h3>{base.h(title)}</h3>{sub}{chart}{table}</a>')
 
 
-def build(root: str, *, drops: list | None = None, ab=None) -> str:
+def build(root: str, *, drops: list | None = None, ab=None,
+          run_label=None, run_date=None) -> str:
     if drops is None:
         drops = base.discover_drops(root)
 
     # Run model (ADR-35): the dashboard reports the CURRENT run only (default newest); prior runs
     # are baselines for trend context, never summed into a headline. Aggregators that loop a drop
     # list receive just the current run; the cache-readers filter to its (date, label).
-    rc = base.run_context(drops)
+    rc = base.run_context(drops, run_label=run_label, run_date=run_date)
     cur = rc.current
     cur_drops = [cur] if cur else []
 
-    out_dir = _paths.reports_dir(root)
+    # c16f: a per-run dashboard lives at _reports/run/<key>/index.html; its sibling reports (instancing
+    # etc.) are pre-rendered there too, so their links stay bare. trend_table is NOT per-run (it is the
+    # across-run view), so its link is prefixed up to the top-level _reports/ on a per-run dashboard.
+    crumb = base.crumb_depth(None, run=rc)
+    up = '../' * (crumb - 1)            # '' on the top-level dashboard, '../../' on a per-run one
+    tt_href = f'{up}trend_table.html'
+    reports_top = _paths.reports_dir(root)   # the A/B index always lives at the top level
+    out_path = base.output_path(root, 'index', None, run=rc)
+    out_dir = os.path.dirname(out_path)
     os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, _paths.INDEX_HTML)
 
     parts = []
     cards = []
 
     # Cross-report nav: jump chips to every report (c16c).
     _NAV = [
-        ('trend_table.html', 'trend table'),
+        (tt_href, 'trend table'),
         ('instancing_opportunities.html', 'instancing'),
         ('pass_gpu.html', 'pass gpu'),
         ('shader_hotlist.html', 'shader hotlist'),
@@ -327,7 +335,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
             worst_area,
             sub=(f'rank 1 of {n_areas} areas; this area {base.fmt_int(worst_draws)} draws; '
                  f'all areas {base.fmt_int(total_draws)} draws'),
-            link_href=f'trend_table.html#gpu',
+            link_href=f'{tt_href}#gpu',
             link_text='trend',
             tone='neutral',
         ))
@@ -354,7 +362,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
         caption='per-area GPU + draw load (avg draws per captured frame)')
     sub_tt = ('GPU time per area in the current run.'
               + (f' worst: {top_a[0][0]} {base.fmt_float(top_a[0][1], 3)}s' if top_a else ''))
-    cards.append(_card('trend_table.html', 'trend table', sub_tt, chart_tt, body_tt))
+    cards.append(_card(tt_href, 'trend table', sub_tt, chart_tt, body_tt))
 
     # Card: instancing - repeat per mesh (mini bars).
     top_m = _top_meshes(root, cur)
@@ -459,9 +467,10 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     )
     parts.append(f'<div class="dash-grid">{"".join(cards)}</div>')
 
-    # A/B section
-    ab_root = os.path.join(out_dir, 'ab')
-    if os.path.isdir(ab_root):
+    # A/B section: only on the top-level (newest) dashboard. A per-run dashboard is a single-run
+    # snapshot; the A/B comparison index lives at the top level and its links are _reports-relative.
+    ab_root = os.path.join(reports_top, 'ab')
+    if rc.is_newest and os.path.isdir(ab_root):
         ab_pairs = sorted(d for d in os.listdir(ab_root)
                           if os.path.isdir(os.path.join(ab_root, d)))
         if ab_pairs:
@@ -487,8 +496,8 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     return base.write_report(out_path, [base.report_page(
         'reports dashboard', parts,
         drops=len(drops), captures=sum(d.n_captures for d in drops),
-        build_ts=base.now_iso(), crumb_depth=1, current_page='dashboard',
-        kpis=_global_kpis(cur_drops), run=rc,
+        build_ts=base.now_iso(), crumb_depth=crumb, current_page='dashboard',
+        kpis=_global_kpis(cur_drops), run=rc, root=root, run_nav_key='index',
         device=base.provenance_strip(*base.newest_drop_provenance(root, cur_drops)))])
 
 

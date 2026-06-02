@@ -61,15 +61,16 @@ def _drop_dir_for_area(drops: list, drop_key: str, area: str) -> str:
     return ''
 
 
-def build(root: str, *, drops: list | None = None, ab=None) -> str:
+def build(root: str, *, drops: list | None = None, ab=None,
+          run_label=None, run_date=None) -> str:
     if drops is None:
         drops = base.discover_drops(root)
     # Run model (ADR-35): GPU headline + treemap + per-area ranking reflect the CURRENT run; the
     # per-drop GPU comparison rows below keep every run.
-    rc = base.run_context(drops)
+    rc = base.run_context(drops, run_label=run_label, run_date=run_date)
     cur = rc.current
     ck = cur.key if cur else None
-    out_path = base.output_path(root, 'pass_gpu', ab)
+    out_path = base.output_path(root, 'pass_gpu', ab, run=rc)
     out_dir = os.path.dirname(out_path)
 
     ok_caps = base.ok_capture_set(root)
@@ -232,7 +233,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     return base.write_report(out_path, [base.report_page(
         'pass gpu', parts,
         drops=len(drops), captures=sum(d.n_captures for d in drops),
-        build_ts=base.now_iso(), crumb_depth=base.crumb_depth(ab),
+        build_ts=base.now_iso(), crumb_depth=base.crumb_depth(ab, run=rc),
         ab=ab, root=root, report_key='pass_gpu',
         kpis=kpis, run=rc,
         device=base.provenance_strip(*base.newest_drop_provenance(root, [cur] if cur else [])))])

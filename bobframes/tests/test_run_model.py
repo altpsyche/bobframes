@@ -177,3 +177,65 @@ def test_resolved_since_is_a_separate_card(pages):
         html = pages[f'_reports/{name}.html']
         if 'id="resolved"' in html:
             assert '<rdc-sticky-h2><section class="card" id="resolved"' in html, name
+
+
+# --- c16f: run-selector UX ---------------------------------------------------
+
+_OLDER_RUN = '2026-05-27_r110565'   # the synthetic's older run (newest is 2026-05-28_r110600)
+
+
+def test_per_run_pages_emitted(pages):
+    # each OLDER run gets a self-contained page set under run/<key>/ (newest stays the top-level
+    # default); trend_table is the across-run view and is NOT pre-rendered per run.
+    for name in _SINGLE_STATE + ['index']:
+        assert f'_reports/run/{_OLDER_RUN}/{name}.html' in pages, name
+    assert f'_reports/run/{_OLDER_RUN}/trend_table.html' not in pages
+
+
+def test_run_picker_lists_runs_marks_current(root, pages):
+    keys = [d.key for d in _drops(root)]
+    top = pages['_reports/index.html']
+    assert 'id="rdc-run-select"' in top
+    for k in keys:
+        assert f': {k}' in top                      # every run is an option
+    # newest is the selected option on the top-level page; links resolve from _reports/
+    assert re.search(r'<option value="index.html" selected>run \d+/\d+: ' + re.escape(keys[-1]), top)
+    assert f'<option value="run/{_OLDER_RUN}/index.html">' in top
+    # on the older run's page the older run is selected; links are depth-prefixed (../../)
+    per = pages[f'_reports/run/{_OLDER_RUN}/index.html']
+    assert f'<option value="../../run/{_OLDER_RUN}/index.html" selected>' in per
+    assert '<option value="../../index.html">' in per
+
+
+def test_older_run_cue_only_on_nonnewest(pages):
+    assert 'viewing an older run' not in pages['_reports/index.html']
+    per = pages[f'_reports/run/{_OLDER_RUN}/index.html']
+    assert 'viewing an older run' in per
+    assert 'href="../../index.html"' in per          # cue links back up to the newest page
+
+
+def test_baseline_banner(root, pages):
+    drops = _drops(root)
+    top = pages['_reports/index.html']
+    assert f'current: {drops[-1].key} | baseline: <span class="dim">{drops[-2].key}' in top
+    # the oldest run has no prior -> no banner
+    assert 'baseline: <span class="dim">' not in pages[f'_reports/run/{_OLDER_RUN}/index.html']
+
+
+def test_nav_persists_within_run_dir(pages):
+    per = pages[f'_reports/run/{_OLDER_RUN}/index.html']
+    # the 5 per-run reports are bare siblings -> selecting a run persists into that run's dir
+    assert 'href="instancing_opportunities.html"' in per
+    # trend_table is not per-run -> its link points up to the top level
+    assert 'href="../../trend_table.html"' in per
+
+
+def test_ab_page_suppresses_run_picker(root):
+    # an A/B page is a fixed pair; the run selector + "current vs baseline" banner must not appear
+    # on it (ab is not None). Pure-function check - no A/B pages in the default render.
+    drops = _drops(root)
+    rc = base.run_context(drops)
+    html = base.report_page('x', ['<p>body</p>'], crumb_depth=3, ab=(drops[0], drops[1]),
+                            root=root, report_key='pass_gpu', run=rc)
+    assert 'id="rdc-run-select"' not in html
+    assert 'class="ab-strip">current:' not in html

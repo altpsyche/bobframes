@@ -125,15 +125,16 @@ def _rejection_bar(b: dict) -> str:
     return base.class_segments_bar(weights, n)
 
 
-def build(root: str, *, drops: list | None = None, ab=None) -> str:
+def build(root: str, *, drops: list | None = None, ab=None,
+          run_label=None, run_date=None) -> str:
     if drops is None:
         drops = base.discover_drops(root)
     # Run model (ADR-35): live render targets = those sampled in the CURRENT run; per-drop sample
     # columns below keep every run. A representative bucket is the current run's, not the oldest.
-    rc = base.run_context(drops)
+    rc = base.run_context(drops, run_label=run_label, run_date=run_date)
     cur = rc.current
     ck = cur.key if cur else None
-    out_path = base.output_path(root, 'overdraw', ab)
+    out_path = base.output_path(root, 'overdraw', ab, run=rc)
 
     drop_keys = [d.key for d in drops]
     per_drop_data: dict = {}
@@ -321,7 +322,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     return base.write_report(out_path, [base.report_page(
         'overdraw', parts,
         drops=len(drops), captures=sum(d.n_captures for d in drops),
-        build_ts=base.now_iso(), crumb_depth=base.crumb_depth(ab),
+        build_ts=base.now_iso(), crumb_depth=base.crumb_depth(ab, run=rc),
         ab=ab, root=root, report_key='overdraw',
         kpis=kpis, run=rc,
         device=base.provenance_strip(*base.newest_drop_provenance(root, [cur] if cur else [])))])

@@ -131,6 +131,7 @@ class ReportCfg:                      # c16 — report-presentation thresholds (
     overdraw_reject_alarm_pct: float = 70.0
     instancing_repeat_min: int = 4
     gpu_regression_pct: float = 10.0
+    max_prerendered_runs: int = 10    # c16f — cap on pre-rendered older-run pages (per-run UX)
 
 
 @dataclass(frozen=True)
@@ -261,6 +262,7 @@ def _build_config(root: str | None) -> Config:
             overdraw_reject_alarm_pct=rpt.get('overdraw_reject_alarm_pct', 70.0),
             instancing_repeat_min=rpt.get('instancing_repeat_min', 4),
             gpu_regression_pct=rpt.get('gpu_regression_pct', 10.0),
+            max_prerendered_runs=rpt.get('max_prerendered_runs', 10),
         ),
     )
 

@@ -37,6 +37,7 @@ CACHE_DIR = '_cache'         # per-project report cache (under _reports/)
 STAGE_SUFFIX = '.stage'      # per-drop staging tree; SIBLING of the .tmp commit dir (R-16)
 DRILL_DIR = 'drill'          # per-drop browser HTML (under _reports/)
 AB_DIR = 'ab'                # A/B report pairs (under _reports/)
+RUN_DIR = 'run'              # per-run report pages (under _reports/run/<run_key>/, c16f)
 TMP_SUFFIX = '.tmp'          # atomic-commit staging suffix (dir + file)
 MANIFEST_NAME = '_manifest.json'
 DONE_MARKER = 'done.marker'

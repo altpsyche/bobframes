@@ -183,6 +183,29 @@ live list). Output-changing -> the HTML golden (dashboard + 5 reports) is **refr
 `template.render_drop`/`render_root`); `test_parquet_parity` stays green with **no** `digests.json` refresh
 (aggregation/presentation only, extraction untouched, §21.9). 132 -> 142 green.
 
+## 21.1k Multi-run UX: the run selector (c16f, ADR-6/35) — see [c16f](../commits/v02/c16f_multirun_ux.md)
+c16f layers the navigation/comparison UX on the c16e run model (G-18). Mechanism = **pre-rendered per-run
+pages**: top-level `_reports/<report>.html` is the newest run (the default); each OLDER run gets a
+self-contained page set under `_reports/run/<run_key>/` (mirroring `_reports/ab/<pair>/`), bounded by
+`[report] max_prerendered_runs` (default 10) with the orchestrator **logging** anything dropped beyond the cap
+(no silent truncation, ADR-23; overflow stays reachable via `trend_table`, which is NOT pre-rendered per run).
+A **run selector** reuses the `rdc-ab-picker` web component (a static `<select>` whose `value` is a relative
+link - no network, no new JS; a distinct `rdc-run-select` id so it coexists with the A/B picker); links are
+depth-prefixed so they resolve from both the top level and `run/<key>/`. A fixed (immediately-prior) baseline
+drives a **"current vs baseline" banner** (reusing the `.ab-strip` chrome, baseline dimmed via `.dim`); a
+**"viewing an older run" callout** appears only on non-newest pages and links back to the newest. Selection
+**persists dashboard -> per-report** because each `run/<key>/` dir is a self-contained sibling set (the
+dashboard's report links stay bare; only `trend_table` + the A/B index point up to the top level). **A/B pages
+suppress** the run selector + banner (`ab is not None`). **`test_run_model`** gains the c16f gate: the per-run
+page set is emitted (5 single-state reports + dashboard per older run; trend_table excluded), the picker lists
+every run + marks the current one + its links resolve from both depths, the older-run cue shows only on
+non-newest, the baseline banner shows current+prior (and is absent on the oldest run), nav persists within
+`run/<key>/`, and an A/B page has no run picker. `test_config` pins `max_prerendered_runs == 10`. Output-changing
+-> the HTML golden gains the 6 per-run pages + the picker/banner on the 6 top-level pages, **refreshed +
+browser-reviewed** (light/dark, top-level + per-run); drill/root/preview goldens unchanged; `test_parquet_parity`
+green with **no** `digests.json` refresh (§21.9). 142 -> 148 green. (G-20, collapsing the per-drop columns at
+3+ runs, is deferred - no 3+-run data to verify; see FINDINGS.)
+
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,
 dropped column, dtype slip). Skip `_`-prefixed (`_catalog`, `_global_entities`). Runs on synthetic +
