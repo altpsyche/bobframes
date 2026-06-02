@@ -522,12 +522,11 @@ def parse(xml_path: str) -> _Acc:
             _handle_sampler_parameter(acc, body, cidx, cname)
         elif cname in _CHUNK_HANDLERS:
             _CHUNK_HANDLERS[cname](acc, body, cidx)
-    # apply labels to entity rows
+    # apply labels to entity rows (Q-8: buffers carry no `label` column - see schemas.BUFFERS_COLS -
+    # so there is nothing to apply for them; the former no-op self-assign branch was dead and removed).
     for rid, label in acc.labels.items():
         if rid in acc.textures:
             acc.textures[rid]['label'] = label
-        if rid in acc.buffers:
-            acc.buffers[rid]['target_history'] = acc.buffers[rid]['target_history']  # noop
         if rid in acc.programs:
             acc.programs[rid]['label'] = label
         if rid in acc.samplers:

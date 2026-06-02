@@ -26,9 +26,19 @@ from ..reports import base as reports_base
 
 
 # Category ASSIGNMENT now lives on schemas.TABLES[*].category (H-11). What stays here is the
-# presentation-only WITHIN-category display order — a third ordering that matches neither the
-# registry key order nor the catalog order, so it can't be derived from TABLES iteration. A table
-# absent from this tuple (e.g. a newly registered one) sorts to its category's tail.
+# presentation-only WITHIN-category display order for the per-drop drill browser.
+#
+# D-9 (origin, recovered + recorded): this is a deliberate EDITORIAL "what a perf engineer reads
+# first" ordering, NOT a derivable one - it matches neither the registry key order nor the catalog
+# order (both effectively insertion/alpha), so it cannot be reconstructed from TABLES iteration.
+# Within-category intent:
+#   - aggregates: most-summary first (whole-pass timing -> class breakdown -> frame totals -> texture)
+#   - entities:   most-inspected GPU resources first (shaders/textures), housekeeping last (fbos)
+#   - actions:    the primary action (draws) first, then bindings/events/state, rare/derived last
+#   - samples:    vertex-pipeline flow (vbo -> ibo -> post-VS -> textures -> pixel history)
+# It is a relevance judgment, so there is no rule to derive. A NEW table absent from this tuple sorts
+# to its category's TAIL (insert it at the relevance-appropriate spot to place it sooner). The order
+# is gated by the HTML golden (drill page), so an accidental reshuffle fails parity.
 _TABLE_DISPLAY_ORDER = (
     # aggregates
     'passes', 'pass_class_breakdown', 'frame_totals', 'texture_usage',

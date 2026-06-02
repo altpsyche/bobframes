@@ -39,6 +39,10 @@ from .derives import pass_class_breakdown, texture_usage
 from .html import template
 from .parsers import derive_program_transitions
 from .replay import replay_script_path
+# D-3 (expected coupling, recorded): the dependency is strictly one-way - the ingest pipeline (run.py)
+# depends on reports.orchestrator to render the final HTML, never the reverse. The report layer must
+# stay import-clean of run/pipeline (it is also driven standalone via `reports.<mod>` __main__ and the
+# `render` verb), so this top-level import is safe and intentional, not a latent cycle.
 from .reports import orchestrator as reports_orchestrator
 
 
