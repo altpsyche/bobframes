@@ -83,6 +83,22 @@ def test_dashboard_small_multiples_and_nav(rendered):
     assert idx.count('<th ') == idx.count('scope="col"')
 
 
+def test_dashboard_kpi_totals_paired_with_averages(rendered):
+    """Raw totals read as alarming on their own; the dashboard pairs each with a per-frame / per-area
+    average so the hero strip informs a budget decision instead of just scaring execs."""
+    import re
+    idx = rendered['_reports/index.html']
+    labels = re.findall(r'class="kpi-label">([^<]*)<', idx)
+    values = re.findall(r'class="kpi-value">([^<]*)<', idx)
+    assert labels == ['total gpu (s)', 'avg gpu / frame (s)', 'total draws',
+                      'avg draws / frame', 'avg draws / area', 'areas']
+    kv = dict(zip(labels, values))
+    to_num = lambda s: float(s.replace(',', ''))
+    # the average must be a fraction of the total (n_frames > 1 in the synthetic: 2 drops x 5 frames)
+    assert to_num(kv['avg draws / frame']) < to_num(kv['total draws'])
+    assert to_num(kv['avg gpu / frame (s)']) < to_num(kv['total gpu (s)'])
+
+
 def test_no_banned_unicode(rendered):
     # whole-page (incl. inside-table data) ASCII guard - stricter than the orchestrator lint,
     # which only inspects text outside <table>/<script>/<style>.

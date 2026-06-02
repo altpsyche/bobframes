@@ -196,13 +196,18 @@ def _worst_overdraw(drops: list, n: int = 3) -> list:
 
 
 def _global_kpis(drops: list) -> list:
-    """Cheap-to-compute global numbers from frame_totals across drops."""
+    """Cheap-to-compute global numbers from frame_totals across drops.
+
+    Totals are paired with PER-FRAME and PER-AREA averages: a raw "total draws" reads as alarming on
+    its own, but the mean per captured frame (and per area) is the number that actually informs a
+    budget decision. n_frames is the count of frame rows that fed the totals, so each average is the
+    true arithmetic mean of the summed values (self-consistent with the total).
+    """
     total_gpu = 0.0
     total_draws = 0
-    captures = 0
+    n_frames = 0
     areas: set = set()
     for d in drops:
-        captures += d.n_captures
         areas.update(d.areas)
         for r in d.rows:
             p = os.path.join(r.drop_dir, 'frame_totals.parquet')
@@ -212,16 +217,24 @@ def _global_kpis(drops: list) -> list:
                 t = papq.read_table(p, columns=['total_gpu_duration_s', 'n_draws'])
             except Exception:
                 continue
+            n_frames += t.num_rows
             for v in t.column('total_gpu_duration_s').to_pylist():
                 if v is not None:
                     total_gpu += float(v)
             for v in t.column('n_draws').to_pylist():
                 if v is not None:
                     total_draws += int(v)
+    n_areas = len(areas)
+    avg_gpu_frame = (total_gpu / n_frames) if n_frames else 0.0
+    avg_draws_frame = (total_draws / n_frames) if n_frames else 0.0
+    avg_draws_area = (total_draws / n_areas) if n_areas else 0.0
     return [
-        {'label': 'total gpu (s)', 'value': base.fmt_float(total_gpu, 3)},
-        {'label': 'total draws',    'value': base.fmt_int(total_draws)},
-        {'label': 'areas',          'value': base.fmt_int(len(areas))},
+        {'label': 'total gpu (s)',      'value': base.fmt_float(total_gpu, 3)},
+        {'label': 'avg gpu / frame (s)', 'value': base.fmt_float(avg_gpu_frame, 4)},
+        {'label': 'total draws',        'value': base.fmt_int(total_draws)},
+        {'label': 'avg draws / frame',  'value': base.fmt_int(round(avg_draws_frame))},
+        {'label': 'avg draws / area',   'value': base.fmt_int(round(avg_draws_area))},
+        {'label': 'areas',              'value': base.fmt_int(n_areas)},
     ]
 
 

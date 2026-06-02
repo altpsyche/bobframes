@@ -350,6 +350,13 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-02 — dashboard KPI averages (user-requested, post-c16d). The hero strip showed only TOTALS
+  (total gpu, total draws) which read as alarming to execs out of context. _global_kpis now pairs each
+  total with a PER-FRAME and PER-AREA average (avg gpu/frame, avg draws/frame, avg draws/area), computed
+  from the same frame_totals rows that fed the totals (n_frames = frame-row count -> the average is the
+  true mean, self-consistent). Strip is now 6 chips (total -> avg adjacency). Presentation-only (reads
+  existing frame_totals): golden dashboard page refreshed, test_parquet_parity GREEN no digests refresh;
+  128 -> 129 green (+test_report_structure: KPI label order + avg < total). smoke clean. UNPUSHED.
 - 2026-06-02 — c16d DONE (report VISUAL OVERHAUL / design-language pass; G-17 closed; ADR-34). Shipped as 4
   reviewable sub-commits, each golden-refreshed + BROWSER-reviewed (light/dark/reduced-motion/print via
   Chrome headless): (a) 9079013 depth over borders - surface + soft elevation shadows (NEW [shadow] block
