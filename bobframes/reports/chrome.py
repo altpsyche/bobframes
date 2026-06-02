@@ -1395,7 +1395,7 @@ def report_page(title: str, body, *, drops: int = 0, captures: int = 0,
                 build_ts: str = '', crumb_depth: int = 1, kpis: list | None = None,
                 current_page: str | None = None, hdr_offset_px: int | None = 120,
                 body_attrs: dict | None = None, ab=None, root: str | None = None,
-                report_key: str | None = None, device: str = '') -> str:
+                report_key: str | None = None, device: str = '', run=None) -> str:
     """Assemble a standard Layer-2 report page, deduping the open/header/strip/close shared by every
     report (Q-6). ``body`` is an HTML string or a list of fragments (the report's summary_bar +
     sections, in order). The fragments are '\\n'-joined exactly as write_report joins a parts list, so
@@ -1405,10 +1405,14 @@ def report_page(title: str, body, *, drops: int = 0, captures: int = 0,
     are both given (the cumulative-vs-A/B reports); both self-suppress to '' when ``ab`` is None.
     Reports with a bespoke strip (trend_table's capture-count suffixes) pass report_key=None and place
     their strip at the head of ``body`` instead.
+
+    ``run`` is the report's RunContext (c16e, ADR-35); when it has a current run the header names it
+    ("run 2 of 2: <key>"). c16f reuses the same object for the run picker + baseline banner + cue.
     """
     parts = [page_open(title, hdr_offset_px=hdr_offset_px, body_attrs=body_attrs),
              header(title, drops=drops, captures=captures, build_ts=build_ts,
-                    kpis=kpis, crumb_depth=crumb_depth, current_page=current_page)]
+                    kpis=kpis, crumb_depth=crumb_depth, current_page=current_page,
+                    run=run)]
     if device:
         parts.append(device)
     if report_key is not None and root is not None:
@@ -1421,7 +1425,7 @@ def report_page(title: str, body, *, drops: int = 0, captures: int = 0,
 
 def header(title: str, *, drops: int = 0, captures: int = 0,
            build_ts: str = '', kpis: list | None = None,
-           crumb_depth: int = 1, current_page: str | None = None) -> str:
+           crumb_depth: int = 1, current_page: str | None = None, run=None) -> str:
     """Render top page header: h1 + data strip + crumb + optional kpi strip.
 
     crumb_depth = number of '../' segments to root index.html.
@@ -1429,6 +1433,9 @@ def header(title: str, *, drops: int = 0, captures: int = 0,
 
     current_page: if 'dashboard', drops the dashboard self-link from crumb.
                   if 'root', drops the root-catalog self-link.
+
+    run: a RunContext (c16e, ADR-35). When it carries a current run, a "run <ordinal>: <key>" fact
+         span is added so the reported run is visible (data-derived key via safe_chrome_text).
     """
     up = '../' * crumb_depth
     crumb_links = []
@@ -1439,6 +1446,10 @@ def header(title: str, *, drops: int = 0, captures: int = 0,
     fact_spans = [f'<span>built <strong>{_html.escape(build_ts)}</strong></span>']
     if drops > 1:
         fact_spans.append(f'<span>drops <strong>{drops}</strong></span>')
+    if run is not None and getattr(run, 'current', None):
+        fact_spans.append(
+            f'<span>run <strong>{_f.safe_chrome_text(run.ordinal)}</strong>: '
+            f'<strong>{_f.safe_chrome_text(run.run_label)}</strong></span>')
     parts = [
         f'<h1>{_html.escape(title)}</h1>',
         '<header class="strip">',

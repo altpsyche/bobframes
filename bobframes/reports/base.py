@@ -78,9 +78,13 @@ from .charts import (
 from .discovery import (
     DropRow,
     DropSet,
+    RunContext,
+    baseline_run,
+    current_run,
     discover_drops,
     ok_capture_set,
     resolve_drop_set,
+    run_context,
 )
 from .cache import (
     _read_drop_parquet,
@@ -126,7 +130,8 @@ __all__ = [
     'bar_chart', 'donut', 'figure', 'histogram', 'icicle', 'line_chart',
     'pct_stacked_bar', 'scatter', 'stacked_bar', 'treemap',
     # discovery
-    'DropRow', 'DropSet', 'discover_drops', 'ok_capture_set', 'resolve_drop_set',
+    'DropRow', 'DropSet', 'RunContext', 'baseline_run', 'current_run',
+    'discover_drops', 'ok_capture_set', 'resolve_drop_set', 'run_context',
     # cache
     'build_per_drop_cache', 'cache_dir', 'cache_path', 'label_for',
     'load_cached', 'load_global_entities', 'load_labels',

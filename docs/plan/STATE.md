@@ -7,13 +7,40 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        c16e_run_model    (status: not-started; AUTHORED 2026-06-02 - planning + impl in a NEW
-                chat. The real Perf 2-run ingest exposed two report design flaws -> NEW c16e + c16f
-                authored before the v0.2 tag. c16d DONE; dashboard avg-KPIs done; real-ingest fixes
-                D-12 + R-17 landed + 6 run2 left manual-salvaged (re-test next run). ORDER: c16e (per-run
-                truth) -> c16f (multi-run UX) -> v0.2 close-out (re-ingest validation) -> tag v0.2
-                (irreversible, authorize first) -> c20. Release NOT closed yet.)
-last_session:   2026-06-02 — c16d DONE (report VISUAL OVERHAUL / design-language pass; G-17 closed; ADR-34).
+current:        c16f_multirun_ux    (status: not-started; c16e DONE this session. The real Perf 2-run ingest
+                exposed two report design flaws -> c16e (per-run truth, DONE) + c16f (multi-run UX, NEXT).
+                ORDER: c16f -> v0.2 close-out (re-ingest validation) -> tag v0.2 (irreversible, authorize
+                first) -> c20. Release NOT closed yet. 6 run2 captures still manual-salvaged - re-test in
+                the close-out re-ingest.)
+last_session:   2026-06-02 — c16e DONE (per-run truth; the run model; G-19 closed; ADR-35). The real Perf
+                2-run ingest exposed that the dashboard + 5 single-state reports defaulted to
+                discover_drops=ALL drops and aggregated CUMULATIVELY, so work removed in the newer run still
+                showed (total draws = run1+run2 summed; instancing listed a run1-only mesh as live; the
+                draws-by-class donut summed both). FIX = a single run model: NEW reports/discovery.py
+                current_run/baseline_run + a RunContext carrier (resolved per build via run_context,
+                re-exported via base), threaded into chrome.report_page/header as ONE run= arg -> every
+                report names its run ("run 2 of 2: <key>") and a new report gets per-run truth for free
+                (can't silently re-introduce the bug). Rerouted dashboard (_global_kpis + _top_* helpers
+                scoped to [current]; the 2 cache-readers _top_meshes/_top_shaders filter the global cache by
+                (drop_date,drop_label)) + instancing (live = current-run meshes; batching ALSO scoped -
+                corrected on review; per-drop repeat/delta cols kept; resolved-since card) + draws_by_class
+                (donut/headline = current run; raw per-(area,drop) table keeps both) + shader_hotlist (rank
+                shaders PRESENT in current run by current cost; resolved-since by presence; KPIs over
+                present; uses-total col -> "uses (current)") + pass_gpu (hero/treemap/ranking off the
+                current-run bucket not cross-drop max; per-drop GPU cols kept) + overdraw (live RTs = current
+                run; rep/latest bucket = current not oldest; renamed a shadowing loop-var `cur`->`cur_n` to
+                protect the RunContext - the D-12 class of bug). trend_table + A/B UNTOUCHED (across-run
+                views; A/B's pair makes current=compare for free). VERIFIED numerically (dashboard total
+                draws 4,417 = newest drop only, not 12,374 summed) + by EYE in a real browser (light + dark,
+                all 6 reports: each names its run, donut centre 60 = current run while the raw table keeps
+                both 60+60, resolved-since renders as a separate card on instancing + shaders). PARITY
+                (ADR-6/35): HTML golden REFRESHED (dashboard + 5 reports ONLY; trend_table/drill/root/preview
+                + parquet digests BYTE-UNCHANGED - exactly the predicted scope); test_parquet_parity GREEN,
+                NO digests refresh (§21.9). 132 -> 142 green (+8 test_run_model resolver/invariant/header,
+                +2 test_report_structure header+resolved). smoke render-only 9 pages lint clean exit 0.
+                ADR-35 appended; G-19 ticked + G-20 opened (3+-run column collapse -> c16f); QUALITY_GATES
+                §21.1j added. Commits on v0.2-roadmap-c04, UNPUSHED. current -> c16f.
+former_last_c16d: 2026-06-02 — c16d DONE (report VISUAL OVERHAUL / design-language pass; G-17 closed; ADR-34).
                 Shipped as 4 reviewable sub-commits, each golden-refreshed + BROWSER-reviewed (light/dark/
                 reduced-motion/print via Chrome headless; minified pages are not line-diffable). (a) DEPTH
                 over borders [9079013]: cards/chrome read by surface + soft elevation shadow (NEW [shadow]
@@ -242,19 +269,24 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    DO c16e FIRST (per-run truth), THEN c16f (multi-run UX) - both AUTHORED 2026-06-02 from
-                the real Perf 2-run ingest. Open commits/v02/c16e_run_model.md, do exactly that one
-                commit (planning + impl in a NEW chat), then c16f. c16e (G-19, ADR-35): the dashboard +
-                single-state reports (instancing/draws_by_class/shader_hotlist/pass_gpu/overdraw) default
-                to discover_drops=ALL drops and aggregate CUMULATIVELY, so work fixed/removed in the newer
-                run still shows (e.g. instancing lists a run1-only mesh as a live candidate; "total draws"
-                = run1+run2 summed). Fix: anchor each report to ONE current run (default newest) as the
-                truth; prior runs are baselines for delta only; absent items drop out (or go to a separated
-                "resolved since <baseline>" section). c16f (G-18): run selector + baseline selector +
-                "current vs baseline" banner + distinct run labels + "viewing older run" cue, reusing the
-                A/B picker. Both presentation/aggregation-only -> refresh golden (now VISIBLE on the 2-drop
-                synthetic), test_parquet_parity GREEN no digests refresh (§21.9). Append ADR-35 (run model)
-                + QUALITY_GATES §21.1j/§21.1k.
+next_action:    DO c16f (multi-run UX) - c16e (per-run truth) DONE this session. Open
+                commits/v02/c16f_multirun_ux.md and do exactly that one commit. c16f (G-18, builds on
+                ADR-35): pre-rendered per-run pages under _reports/run/<run_key>/<report>.html (mirror the
+                _reports/ab/<pair>/ layout; newest stays the top-level default, SKIP rendering it under
+                run/) + a run picker reusing chrome.ab_picker (depth-prefixed static <select>, NO network)
+                + a fixed immediately-prior baseline + a "current <x> vs baseline <y>" banner (reuse
+                .ab-strip CSS, baseline dimmed via .dim) + distinct run chips (current accented) + a
+                "viewing an older run" callout cue when not newest + selection that PERSISTS dashboard ->
+                per-report (each run dir is a self-contained sibling set). BOUNDED emission: cap older runs
+                at NEW config [report] max_prerendered_runs (default 10), LOG when skipped (no silent cap -
+                ADR-23); overflow reachable via trend_table. Per-run pages render at incremented crumb_depth
+                so crumb/root/drill/ab links resolve. The build() signatures gain run_label/run_date (feed
+                run_context); orchestrator adds the per-run render loop; cli.run_report gains
+                --run-label/--run-date. CLOSES G-18 + G-20 (collapse the wide per-drop numeric cols to
+                current+baseline+delta+sparkline - no-op at 2 runs, visible at 3+). Presentation-only ->
+                refresh golden (+~7 pages: 1 older run x 7), test_parquet_parity GREEN no digests refresh
+                (§21.9). Add QUALITY_GATES §21.1k. User-switchable baseline (the N*(N-1) matrix) is DEFERRED
+                past v0.2 (user-chosen).
                 THEN the v0.2 close-out gates:
                 (1) V0.2 CLOSE-OUT: re-ingest the real Perf drop (now the cumulative flaw is fixed + the
                 R-17 replay salvage is automatic - re-test the 6 manual-flipped run2 captures) and eyeball
@@ -317,8 +349,8 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c16b report charts](commits/v02/c16b_report_viz.md) | **done** — inline-SVG toolkit (charts.py, ADR-33) + flagship chart per report + shader column-diet; 108 green, golden refreshed |
 | ☑ | [c16c report restructure](commits/v02/c16c_report_restructure.md) | **done** — section-cards + sticky-h2 + copy-buttons + dashboard small-multiples + caption/scope a11y + fill-or-hide; 115 green, golden refreshed (G-15 fully closed) |
 | ☑ | [c16d report aesthetics](commits/v02/c16d_report_aesthetics.md) | **done** — visual-design pass in 4 sub-commits (a depth+tokens / b vendored-Inter+type / c chart-finish / d micro+pacing); G-17 closed, ADR-34; 128 green, golden refreshed + browser-reviewed |
-| ☐ | [c16e run model (per-run truth)](commits/v02/c16e_run_model.md) | **next** — kill the cumulative-union flaw (G-19, ADR-35): dashboard + single-state reports report ONE current run (default newest), not the sum of all runs; removed items stop lingering. Real-ingest-driven. Plan/impl in a new chat |
-| ☐ | [c16f multi-run UX](commits/v02/c16f_multirun_ux.md) | **after c16e** — run selector + baseline selector + "current vs baseline" + distinct run labels + "older run" cue (G-18), reusing the A/B picker |
+| ☑ | [c16e run model (per-run truth)](commits/v02/c16e_run_model.md) | **done** — killed the cumulative-union flaw (G-19, ADR-35): dashboard + 5 single-state reports report ONE current run (default newest) via discovery.current_run/baseline_run/RunContext threaded as report_page(run=); removed items drop out or move to a separated "resolved since <baseline>" card; trend_table + A/B unchanged. 132 -> 142 green; golden refreshed (dashboard + 5 reports only); parquet digests untouched; QUALITY_GATES §21.1j |
+| ☐ | [c16f multi-run UX](commits/v02/c16f_multirun_ux.md) | **next** — run selector (pre-rendered per-run pages, reuse A/B picker) + fixed prior baseline + "current vs baseline" banner + distinct run chips + "older run" cue + dashboard->report persistence (G-18); collapse 3+-run cols (G-20) |
 
 ## v0.3 — CI/automation surface (planned — [ROADMAP](ROADMAP.md))
 
@@ -364,6 +396,24 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-02 — c16e DONE (per-run truth; the run model; G-19 closed; ADR-35). Killed the cumulative-union
+  flaw the real Perf 2-run ingest exposed: dashboard + 5 single-state reports defaulted to
+  discover_drops=ALL drops and summed/unioned them, so removed work lingered (total draws = run1+run2;
+  instancing listed a run1-only mesh as live; donut summed both). One run model: NEW discovery.current_run/
+  baseline_run + a RunContext carrier (resolved per build via run_context, re-exported via base) threaded
+  into chrome.report_page/header as ONE run= arg -> each report names its run + a new report gets per-run
+  truth for free. Rerouted dashboard (helpers scoped to [current]; 2 cache-readers filter by
+  drop_date/label) + instancing (live=current meshes, batching scoped too, resolved-since card) +
+  draws_by_class (donut/headline=current, raw table keeps both) + shader_hotlist (rank present-in-current,
+  resolved-since by presence) + pass_gpu (hero/treemap off the current bucket not cross-drop max) + overdraw
+  (live RTs=current, rep=current not oldest, renamed a shadowing `cur`->`cur_n`). trend_table + A/B
+  untouched. VERIFIED numerically (dashboard total draws 4,417 = newest only, not 12,374) + by EYE in a
+  browser (light+dark, all 6: each names its run; donut centre 60=current while raw table keeps 60+60;
+  resolved-since a separate card on instancing+shaders). PARITY (ADR-6/35): HTML golden REFRESHED (dashboard
+  + 5 reports ONLY; trend_table/drill/root/preview + parquet digests BYTE-UNCHANGED); test_parquet_parity
+  GREEN, NO digests refresh (§21.9). 132 -> 142 green (+8 test_run_model, +2 test_report_structure). smoke
+  9 pages lint clean exit 0. ADR-35 appended; G-19 ticked + G-20 opened (3+-run col collapse -> c16f);
+  QUALITY_GATES §21.1j. UNPUSHED on v0.2-roadmap-c04. current -> c16f.
 - 2026-06-02 — c16e + c16f AUTHORED (from the real Perf 2-run ingest; planning + impl in a NEW chat).
   c16e_run_model (G-19, ADR-35): the dashboard + single-state reports default to discover_drops=ALL
   drops and aggregate CUMULATIVELY, so work removed in the newer run still shows (instancing lists a

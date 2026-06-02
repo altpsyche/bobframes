@@ -16,10 +16,16 @@ from . import base
 from .. import paths as _paths
 
 
-def _top_meshes(root: str, drops: list, n: int = 3) -> list:
-    """Return [(label, repeat, indices_med)] where label is a human-readable synthetic."""
+def _top_meshes(root: str, current, n: int = 3) -> list:
+    """Return [(label, repeat, indices_med)] where label is a human-readable synthetic.
+
+    Scoped to the CURRENT run (ADR-35): the global cache carries drop_date/drop_label per row,
+    so we filter to the current run's (date, label) rather than counting repeats across all runs.
+    """
+    if current is None:
+        return []
     t = base.load_cached(root, 'draws_summary', columns=[
-        'mesh_hash', 'num_indices', 'program_id',
+        'drop_date', 'drop_label', 'mesh_hash', 'num_indices', 'program_id',
         'draw_class', 'parent_pass_path_norm'])  # sha256-validated; None -> warn + [] (R-13)
     if t is None:
         return []
@@ -29,6 +35,8 @@ def _top_meshes(root: str, drops: list, n: int = 3) -> list:
     cls_by_mesh: dict = {}
     pass_by_mesh: dict = {}
     for i in range(t.num_rows):
+        if (cols['drop_date'][i], cols['drop_label'][i]) != (current.date, current.label):
+            continue
         mh = cols['mesh_hash'][i]
         prog = cols['program_id'][i] or 0
         n_idx = cols['num_indices'][i] or 0
@@ -73,11 +81,16 @@ def _top_passes(drops: list, n: int = 3) -> list:
     return [(a, base.pass_suffix(m) or m, g) for (a, m), g in ranked]
 
 
-def _top_shaders(root: str, n: int = 3) -> list:
-    """Return [(label, complexity, cost_proxy)] where label is `frag-cplx-{int(cplx)}`."""
+def _top_shaders(root: str, current, n: int = 3) -> list:
+    """Return [(label, complexity, cost_proxy)] where label is `frag-cplx-{int(cplx)}`.
+
+    Scoped to the CURRENT run (ADR-35) via the cache's drop_date/drop_label columns.
+    """
+    if current is None:
+        return []
     t = base.load_cached(root, 'shader_summary',
-        columns=['stable_key', 'shader_type', 'complexity_score',
-                 'used_by_draw_count'])  # sha256-validated; None -> warn + [] (R-13)
+        columns=['drop_date', 'drop_label', 'stable_key', 'shader_type',
+                 'complexity_score', 'used_by_draw_count'])  # sha256-validated; None -> warn + [] (R-13)
     if t is None:
         return []
     cols = base._to_dict_of_lists(t)
@@ -85,6 +98,8 @@ def _top_shaders(root: str, n: int = 3) -> list:
     cplx: dict = {}
     stype: dict = {}
     for i in range(t.num_rows):
+        if (cols['drop_date'][i], cols['drop_label'][i]) != (current.date, current.label):
+            continue
         if cols['shader_type'][i] != 'fragment':
             continue
         sk = cols['stable_key'][i] or ''
@@ -277,6 +292,13 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     if drops is None:
         drops = base.discover_drops(root)
 
+    # Run model (ADR-35): the dashboard reports the CURRENT run only (default newest); prior runs
+    # are baselines for trend context, never summed into a headline. Aggregators that loop a drop
+    # list receive just the current run; the cache-readers filter to its (date, label).
+    rc = base.run_context(drops)
+    cur = rc.current
+    cur_drops = [cur] if cur else []
+
     out_dir = _paths.reports_dir(root)
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, _paths.INDEX_HTML)
@@ -294,8 +316,8 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
         ('draws_by_class.html', 'draws by class'),
     ]
 
-    # Summary bar: worst area by GPU rank + global counts
-    top_a = _top_areas_gpu(drops, n=999)
+    # Summary bar: worst area by GPU rank + current-run counts
+    top_a = _top_areas_gpu(cur_drops, n=999)
     n_areas = len(top_a)
     total_draws = sum(t[2] for t in top_a)
     if top_a:
@@ -330,12 +352,12 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
             ('avg draws / frame', lambda r: base.fmt_int(round(r[3])), True),
         ],
         caption='per-area GPU + draw load (avg draws per captured frame)')
-    sub_tt = ('GPU time per area across drops.'
+    sub_tt = ('GPU time per area in the current run.'
               + (f' worst: {top_a[0][0]} {base.fmt_float(top_a[0][1], 3)}s' if top_a else ''))
     cards.append(_card('trend_table.html', 'trend table', sub_tt, chart_tt, body_tt))
 
     # Card: instancing - repeat per mesh (mini bars).
-    top_m = _top_meshes(root, drops)
+    top_m = _top_meshes(root, cur)
     chart_im = base.figure(base.bar_chart(
         [(lbl, rep) for lbl, rep, _ in top_m], value_fmt=lambda v: base.fmt_int(int(v)), width=280,
         title='repeat per mesh', desc='most-repeated meshes', chart_id='dash-im'))
@@ -353,7 +375,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
                        sub_im, chart_im, body_im))
 
     # Card: pass gpu - GPU per pass (mini bars).
-    top_p = _top_passes(drops)
+    top_p = _top_passes(cur_drops)
     chart_pg = base.figure(base.bar_chart(
         [(pl, g) for _, pl, g in top_p], value_fmt=lambda v: f'{v:.3f}', width=280,
         title='gpu (s) per pass', desc='heaviest passes by GPU seconds', chart_id='dash-pg'))
@@ -371,7 +393,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     cards.append(_card('pass_gpu.html', 'pass gpu', sub_pg, chart_pg, body_pg))
 
     # Card: shader hotlist - cost proxy per shader (mini bars).
-    top_s = _top_shaders(root)
+    top_s = _top_shaders(root, cur)
     chart_sh = base.figure(base.bar_chart(
         [(lbl, cost) for lbl, _, cost in top_s], value_fmt=lambda v: f'{v:.1f}', width=280,
         title='cost proxy per shader', desc='costliest shaders', chart_id='dash-sh'))
@@ -388,7 +410,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     cards.append(_card('shader_hotlist.html', 'shader hotlist', sub_sh, chart_sh, body_sh))
 
     # Card: overdraw - rejection % per RT (mini bars, 0-100 scale).
-    wo = _worst_overdraw(drops)
+    wo = _worst_overdraw(cur_drops)
     chart_od = base.figure(base.bar_chart(
         [(rt, pct) for _, rt, pct, _ in wo], value_fmt=lambda v: f'{v:.1f}%',
         max_value=100.0, width=280,
@@ -406,7 +428,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     cards.append(_card('overdraw.html', 'overdraw', sub_od, chart_od, body_od))
 
     # Card: draws by class - class-share donut (matching the draws_by_class flagship).
-    pa, class_totals = _per_area_draws(drops)
+    pa, class_totals = _per_area_draws(cur_drops)
     pa_rows = sorted(pa.items(), key=lambda kv: kv[1]['n_draws'], reverse=True)[:5]
     grand = sum(class_totals.values())
     donut_segs = [(cls, class_totals.get(cls, 0), base.class_color_var(cls))
@@ -466,8 +488,8 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
         'reports dashboard', parts,
         drops=len(drops), captures=sum(d.n_captures for d in drops),
         build_ts=base.now_iso(), crumb_depth=1, current_page='dashboard',
-        kpis=_global_kpis(drops),
-        device=base.provenance_strip(*base.newest_drop_provenance(root, drops)))])
+        kpis=_global_kpis(cur_drops), run=rc,
+        device=base.provenance_strip(*base.newest_drop_provenance(root, cur_drops)))])
 
 
 if __name__ == '__main__':

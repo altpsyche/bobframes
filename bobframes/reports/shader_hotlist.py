@@ -65,6 +65,12 @@ def build(root: str, *, drops: list | None = None, ab=None,
           stage: str = 'fragment') -> str:
     if drops is None:
         drops = base.discover_drops(root)
+    # Run model (ADR-35): the hotlist ranks the CURRENT run's shaders; prior runs feed the per-drop
+    # comparison columns + the resolved-since section, never the cost ranking.
+    rc = base.run_context(drops)
+    cur = rc.current
+    bl = rc.baseline
+    ck = cur.key if cur else None
     out_path = base.output_path(root, 'shader_hotlist', ab)
     out_dir = os.path.dirname(out_path)
 
@@ -118,11 +124,16 @@ def build(root: str, *, drops: list | None = None, ab=None,
             p['rep_src_path'] = row.get('src_file_path') or ''
             p['rep_capture'] = row.get('capture') or ''
 
+    # Run model (ADR-35): rank the shaders PRESENT in the current run (a shader appears in a drop iff
+    # ck is a key in its uses_by_drop), ordered by current-run cost proxy. Presence - not uses>0 - is
+    # the scope so the report still lists shaders when used_by_draw_count is unpopulated; a shader
+    # present only in an older run drops out (it surfaces in resolved-since instead).
+    present = [(sk, p) for sk, p in per_key.items() if ck in p['uses_by_drop']]
     ranked = []
-    for sk, p in per_key.items():
-        total_uses = sum(p['uses_by_drop'].values())
-        cost = p['complexity'] * total_uses
-        ranked.append((sk, p, total_uses, cost))
+    for sk, p in present:
+        cur_uses = p['uses_by_drop'].get(ck, 0)
+        cost = p['complexity'] * cur_uses
+        ranked.append((sk, p, cur_uses, cost))
     ranked.sort(key=lambda x: x[3], reverse=True)
     ranked = ranked[:50]
 
@@ -131,12 +142,12 @@ def build(root: str, *, drops: list | None = None, ab=None,
     parts = []
     rcfg = get_config().report
 
-    # Hero KPIs + over-budget count, computed across ALL shaders (not just the top 50).
-    all_cplx = [p['complexity'] for p in per_key.values()]
-    max_cplx = max(all_cplx, default=0.0)
-    n_over = sum(1 for c in all_cplx if c >= rcfg.shader_complexity_high)
+    # Hero KPIs + over-budget count, over the shaders present in the CURRENT run (not the top 50).
+    live_cplx = [p['complexity'] for _, p in present]
+    max_cplx = max(live_cplx, default=0.0)
+    n_over = sum(1 for c in live_cplx if c >= rcfg.shader_complexity_high)
     kpis = [
-        {'label': f'{stage} shaders', 'value': base.fmt_int(len(per_key))},
+        {'label': f'{stage} shaders', 'value': base.fmt_int(len(present))},
         {'label': 'max complexity', 'value': base.fmt_float(max_cplx, 1),
          'tone': 'neg' if max_cplx >= rcfg.shader_complexity_high else 'neutral'},
         {'label': f'>= cplx {base.fmt_float(rcfg.shader_complexity_high, 0)}',
@@ -150,7 +161,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
         parts.append(base.summary_bar(
             'top shader',
             f'{label_top}',
-            sub=f'{base.fmt_int(total_uses)} uses across drops',
+            sub=f'{base.fmt_int(total_uses)} uses in the current run',
             link_href='#shaders',
             link_text='table',
             tone='neutral',
@@ -185,10 +196,10 @@ def build(root: str, *, drops: list | None = None, ab=None,
                          chart_id='shader-sc'),
             'shader complexity vs cost (bubble = src bytes)'))
         sbody.append(base.figure(
-            base.histogram(all_cplx, bins=12, title='complexity distribution',
-                           desc=f'distribution of complexity across {len(all_cplx)} shaders',
+            base.histogram(live_cplx, bins=12, title='complexity distribution',
+                           desc=f'distribution of complexity across {len(live_cplx)} current-run shaders',
                            chart_id='shader-hist'),
-            'complexity distribution (all shaders)'))
+            'complexity distribution (current run)'))
 
         # Primary (diet) table: shader / complexity / uses / cost / flags / src (c16b column diet).
         sec = ['<div class="table-wrap">'
@@ -197,7 +208,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
                f'<caption>top {stage} shaders ranked by cost proxy</caption>',
                '<thead><tr>', '<th scope="col">shader</th>',
                '<th class="num" scope="col" title="shader complexity score (weighted instruction proxy)">complexity</th>',
-               '<th class="num" scope="col">uses total</th>']
+               '<th class="num" scope="col" title="used-by-draw count in the current run">uses (current)</th>']
         for i, k in enumerate(drop_keys):
             head = 'uses' if single else f'uses<span class="dim">@{base.h(k)}</span>'
             sec.append(f'<th class="num" scope="col">{head}</th>')
@@ -293,13 +304,42 @@ def build(root: str, *, drops: list | None = None, ab=None,
                                      ''.join(sbody), count=len(ranked))
                  + '</rdc-sticky-h2>')
 
+    # Resolved since baseline (ADR-35): shaders used in the baseline run but unused in the current run
+    # - a win, surfaced separately (fill-or-hide) so it never inflates the live hotlist.
+    if bl is not None:
+        resolved = sorted(
+            ((sk, p) for sk, p in per_key.items()
+             if bl.key in p['uses_by_drop'] and ck not in p['uses_by_drop']),
+            key=lambda kv: (kv[1]['uses_by_drop'].get(bl.key, 0), kv[1]['complexity']),
+            reverse=True)
+        if resolved:
+            rbody = ['<div class="table-wrap"><rdc-sortable-table>',
+                     '<table class="report">',
+                     f'<caption>{stage} shaders present in {base.h(bl.key)} but gone in {base.h(ck)} - removed or retired</caption>',
+                     '<thead><tr>', '<th scope="col">shader</th>',
+                     '<th class="num" scope="col">complexity</th>',
+                     f'<th class="num" scope="col">uses@{base.h(bl.key)}</th>',
+                     '</tr></thead><tbody>']
+            for sk, p in resolved[:30]:
+                shader_label = f'{p["shader_type"][:4]}-cplx-{int(p["complexity"])}'
+                rbody.append('<tr>')
+                rbody.append(f'<td>{base.h(shader_label)}</td>')
+                rbody.append(f'<td class="num">{base.fmt_float(p["complexity"], 2)}</td>')
+                rbody.append(f'<td class="num">{base.fmt_int(p["uses_by_drop"].get(bl.key, 0))}</td>')
+                rbody.append('</tr>')
+            rbody.append('</tbody></table></rdc-sortable-table></div>')
+            parts.append('<rdc-sticky-h2>'
+                         + base.section_card('resolved', f'resolved since {bl.key}',
+                                             ''.join(rbody), count=len(resolved))
+                         + '</rdc-sticky-h2>')
+
     return base.write_report(out_path, [base.report_page(
         f'shader hotlist ({stage})', parts,
         drops=len(drops), captures=sum(d.n_captures for d in drops),
         build_ts=base.now_iso(), crumb_depth=base.crumb_depth(ab),
         ab=ab, root=root, report_key='shader_hotlist',
-        kpis=kpis,
-        device=base.provenance_strip(*base.newest_drop_provenance(root, drops)))])
+        kpis=kpis, run=rc,
+        device=base.provenance_strip(*base.newest_drop_provenance(root, [cur] if cur else [])))])
 
 
 if __name__ == '__main__':

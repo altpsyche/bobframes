@@ -542,3 +542,33 @@ report contract. The committed woff2 makes the inlined base64 byte-stable on any
 parity gate; `test_parquet_parity` is untouched (presentation only, §21.9). This is the spine of
 [c16d](commits/v02/c16d_report_aesthetics.md); additive to ADR-27 (tokens) / ADR-32 (report contract) /
 ADR-33 (charts).
+
+### ADR-35 — the run model: a report renders for ONE current run, prior runs are baselines (c16e)
+**Context.** The real Perf ingest (2 runs x 7 areas) exposed a data-model flaw (G-19): the dashboard + the
+five single-state reports (`instancing_opportunities`, `draws_by_class`, `shader_hotlist`, `pass_gpu`,
+`overdraw`) defaulted to `discover_drops(root)` = **every drop** and aggregated **cumulatively**, so work
+fixed/removed in the newer run still showed — "total draws" = run1+run2 summed; a mesh removed in run2 still
+listed as a live instancing candidate; the draws-by-class donut summed both runs. The cumulative design
+back-fires the moment there is more than one run. **Decision.** A report is rendered **for one CURRENT run**
+(a `DropSet` = `(drop_date, drop_label)`), default = newest. The current run's contents are the **reported
+truth**: the candidate/item set AND every headline KPI are computed from the **current run only**. Prior runs
+are **baselines for delta/trend context** — comparison columns, deltas, the `trend_table` matrix — and are
+**never summed into a "current" figure**. An item present in a baseline but **absent in the current run is
+NOT a live candidate**: it is dropped, or (on `instancing_opportunities` + `shader_hotlist`, where it is cheap
+and high-signal) surfaced in a separated, positively-framed **"resolved since `<baseline>`"** section.
+`trend_table` + A/B remain the **across-run** views (A/B already restricts `drops` to a pair, so the same
+default resolves current = the compare drop). **The model has ONE implementation:** `reports/discovery.py`
+`current_run` / `baseline_run` / `RunContext` (resolved per build via `run_context`, re-exported through
+`base`), threaded into `report_page`/`header` as a single `run=` argument. A new report obtains per-run truth
++ the run-naming header by passing its `RunContext` — it cannot silently re-introduce the cumulative bug by
+forgetting to scope. **Known assumption:** "newest" = `drops[-1]` after the existing `discover_drops` sort
+`(date asc, label asc)`, i.e. label is assumed monotonic-with-time *within a single date* (ISO dates are the
+dominant key and are unique per run in practice); revisit if intra-day runs appear. **Default baseline** =
+the immediately-prior run (`drops[-2]`); None for a single/oldest run. **Consequence.** The change is
+presentation/aggregation only — extraction is untouched, so `test_parquet_parity` stays green with **no
+`digests.json` refresh** (§21.9); the HTML golden **is** refreshed and reviewed (the 2-drop synthetic now
+shows one run's numbers — e.g. the donut centre drops from the cross-run sum to the current run's total).
+Per-drop comparison columns are retained as-is in c16e; collapsing the wide N-run columns to
+current+baseline+delta+sparkline is recorded as **G-20** (resolved by c16f, no-op at 2 runs). This is the
+spine of [c16e](commits/v02/c16e_run_model.md); the run-switching + comparison **UX** layered on top is
+[c16f](commits/v02/c16f_multirun_ux.md) (G-18). Additive to ADR-32 (report contract).

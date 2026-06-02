@@ -163,6 +163,26 @@ and re-adds a thin paper border. Output-changing -> golden HTML + preview **refr
 sub-commits; `test_parquet_parity` stays green with **no** `digests.json` refresh (presentation only,
 §21.9); `test_report_structure` stays green (CSS/token-first, DOM unchanged). 115 -> 128 green.
 
+## 21.1j Per-run truth: the run model (c16e, ADR-6/35) — see [c16e](../commits/v02/c16e_run_model.md)
+c16e makes the dashboard + the five single-state reports report ONE current run (default newest) instead of
+the cumulative union of all runs (G-19). The model has a single implementation — `reports/discovery.py`
+`current_run` / `baseline_run` / `RunContext`, resolved per build via `run_context` and threaded into
+`report_page`/`header` as one `run=` argument — so a new report obtains per-run truth + the run-naming header
+by passing its `RunContext`, and cannot silently re-introduce the cumulative bug. **`test_run_model`**
+(golden-independent) pins the model: the resolver primitives (`current_run` defaults newest, override by
+label/date, `[]`->None; `baseline_run` = immediately-prior, None for single/oldest; `RunContext.ordinal`/
+`is_newest`/`n_runs`); the **dashboard "total draws" equals the newest drop's `frame_totals` sum and is
+strictly less than the cross-run sum** (the flaw, caught numerically); the **invariant** that every LIVE
+instancing candidate (its full mesh-hash via the copy button) is a subset of the current run's drawn meshes
+(so a removed mesh can never linger as live), plus a skip-guarded check that a baseline-only mesh is absent;
+and that each single-state report + the dashboard name their current run in the header while `trend_table`
+(the across-run view) does not. `test_report_structure` adds `test_header_names_current_run` +
+`test_resolved_since_separated_from_live` (resolved-since is a distinct `section.card`, never nested in the
+live list). Output-changing -> the HTML golden (dashboard + 5 reports) is **refreshed + browser-reviewed**
+(light/dark); drill/root/preview goldens are **unchanged** (the new params do not reach
+`template.render_drop`/`render_root`); `test_parquet_parity` stays green with **no** `digests.json` refresh
+(aggregation/presentation only, extraction untouched, §21.9). 132 -> 142 green.
+
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,
 dropped column, dtype slip). Skip `_`-prefixed (`_catalog`, `_global_entities`). Runs on synthetic +

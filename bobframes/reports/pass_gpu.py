@@ -64,6 +64,11 @@ def _drop_dir_for_area(drops: list, drop_key: str, area: str) -> str:
 def build(root: str, *, drops: list | None = None, ab=None) -> str:
     if drops is None:
         drops = base.discover_drops(root)
+    # Run model (ADR-35): GPU headline + treemap + per-area ranking reflect the CURRENT run; the
+    # per-drop GPU comparison rows below keep every run.
+    rc = base.run_context(drops)
+    cur = rc.current
+    ck = cur.key if cur else None
     out_path = base.output_path(root, 'pass_gpu', ab)
     out_dir = os.path.dirname(out_path)
 
@@ -71,28 +76,36 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     data = _aggregate(drops, ok_caps)
     drop_keys = [d.key for d in drops]
 
+    def _cur_gpu(drop_buckets) -> float:
+        return drop_buckets.get(ck, {}).get('gpu', 0.0)
+
     parts = []
 
-    # Hero KPIs: total GPU, area + pass counts.
+    # Hero KPIs: current-run total GPU, area + pass counts (passes/areas with current-run GPU only).
     total_gpu = 0.0
     n_passes = 0
-    for _markers in data.values():
+    cur_areas_set: set = set()
+    for area, _markers in data.items():
         for _buckets in _markers.values():
-            total_gpu += max((b['gpu'] for b in _buckets.values()), default=0.0)
+            g = _cur_gpu(_buckets)
+            if g <= 0:
+                continue
+            total_gpu += g
             n_passes += 1
+            cur_areas_set.add(area)
     kpis = [
         {'label': 'total gpu (s)', 'value': base.fmt_float(total_gpu, 3)},
-        {'label': 'areas',         'value': base.fmt_int(len(data))},
+        {'label': 'areas',         'value': base.fmt_int(len(cur_areas_set))},
         {'label': 'passes',        'value': base.fmt_int(n_passes)},
     ]
 
-    # Summary bar: top pass globally + area count
-    if data:
+    # Summary bar: top pass in the current run + area count
+    if cur_areas_set:
         global_top = None
         global_top_gpu = 0.0
         for area, markers in data.items():
             for marker, drop_buckets in markers.items():
-                mg = max((b['gpu'] for b in drop_buckets.values()), default=0.0)
+                mg = _cur_gpu(drop_buckets)
                 if mg > global_top_gpu:
                     global_top_gpu = mg
                     global_top = (area, base.pass_suffix(marker) or marker)
@@ -101,7 +114,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
             parts.append(base.summary_bar(
                 'top pass',
                 f'{area} / {marker_short}',
-                sub=f'across {len(data)} areas',
+                sub=f'across {len(cur_areas_set)} areas',
                 link_href=f'#{base.h(area)}',
                 link_text='area',
                 tone='neutral',
@@ -116,44 +129,38 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
 
     parts.append(base.legend())
 
-    if not data:
+    if not cur_areas_set:
         parts.append(base.empty_state('no pass_class_breakdown data found'))
     else:
-        for ai, area in enumerate(sorted(data.keys())):
+        for ai, area in enumerate(sorted(cur_areas_set)):
             markers = data[area]
             ranked = sorted(
-                markers.items(),
-                key=lambda kv: max((b['gpu'] for b in kv[1].values()), default=0.0),
+                ((marker, db) for marker, db in markers.items() if _cur_gpu(db) > 0),
+                key=lambda kv: _cur_gpu(kv[1]),
                 reverse=True,
             )[:20]
-            area_total = sum(
-                max((b['gpu'] for b in m.values()), default=0.0)
-                for _, m in ranked
-            ) or 1.0
+            area_total = sum(_cur_gpu(db) for _, db in ranked) or 1.0
 
             area_body = []
             for marker, drop_buckets in ranked:
-                max_gpu = max((b['gpu'] for b in drop_buckets.values()), default=0.0)
-                latest_bucket = drop_buckets.get(drop_keys[-1], {})
+                cur_g = _cur_gpu(drop_buckets)
+                latest_bucket = drop_buckets.get(ck, {})
                 latest_class_gpu = dict(latest_bucket.get('class_gpu', {}))
                 latest_gpu = latest_bucket.get('gpu', 0.0)
                 latest_draws = latest_bucket.get('draws', 0)
                 latest_verts = latest_bucket.get('verts', 0)
 
-                bar_total = latest_gpu if latest_gpu > 0 else max_gpu
+                bar_total = latest_gpu if latest_gpu > 0 else cur_g
                 bar_weights = latest_class_gpu
                 if bar_total <= 0:
                     bar_weights = {'other': 1.0}
                     bar_total = 1.0
 
-                rep_drop = drop_keys[-1] if latest_gpu > 0 else next(
-                    (k for k in drop_keys if drop_buckets.get(k, {}).get('gpu', 0) > 0),
-                    drop_keys[-1] if drop_keys else ''
-                )
+                rep_drop = ck
                 drop_dir = _drop_dir_for_area(drops, rep_drop, area)
                 link = base.rel_path_to_drop_index(out_dir, drop_dir, 'passes') if drop_dir else '#'
 
-                pct_share = (max_gpu / area_total) * 100.0 if area_total > 0 else 0.0
+                pct_share = (cur_g / area_total) * 100.0 if area_total > 0 else 0.0
 
                 area_body.append('<div class="bar-row">')
                 short = base.pass_short(marker)
@@ -195,15 +202,10 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
             sec = []
             chart_items = []
             for marker, drop_buckets in ranked:
-                g = max((b['gpu'] for b in drop_buckets.values()), default=0.0)
+                g = _cur_gpu(drop_buckets)
                 if g <= 0:
                     continue
-                cg = dict(drop_buckets.get(drop_keys[-1], {}).get('class_gpu', {}))
-                if not cg:
-                    for b in drop_buckets.values():
-                        if b.get('class_gpu'):
-                            cg = dict(b['class_gpu'])
-                            break
+                cg = dict(drop_buckets.get(ck, {}).get('class_gpu', {}))
                 dom = max(cg.items(), key=lambda kv: kv[1])[0] if cg else 'other'
                 short = base.pass_short(marker) or marker or '(root)'
                 chart_items.append((short, g, dom))
@@ -232,8 +234,8 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
         drops=len(drops), captures=sum(d.n_captures for d in drops),
         build_ts=base.now_iso(), crumb_depth=base.crumb_depth(ab),
         ab=ab, root=root, report_key='pass_gpu',
-        kpis=kpis,
-        device=base.provenance_strip(*base.newest_drop_provenance(root, drops)))])
+        kpis=kpis, run=rc,
+        device=base.provenance_strip(*base.newest_drop_provenance(root, [cur] if cur else [])))])
 
 
 if __name__ == '__main__':

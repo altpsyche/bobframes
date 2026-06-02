@@ -99,6 +99,105 @@ def resolve_drop_set(root: str, *,
     return None
 
 
+# --- Run model (c16e, ADR-35) -------------------------------------------------
+# A report is rendered FOR ONE current run (a DropSet). The current run's contents
+# are the reported truth; prior runs are baselines for delta/trend, never summed.
+# These resolve against the in-memory `drops` list a report already holds, so the
+# full list stays available for comparison columns (no catalog re-read).
+
+def current_run(drops: list, *, run_label: str | None = None,
+                run_date: str | None = None) -> 'DropSet | None':
+    """The current run: an override (by label/date) else the newest (drops[-1]).
+
+    `drops` come date-asc from discover_drops, so the last is newest. "Newest" thus
+    assumes label monotonicity within a single date (ISO dates are the dominant key,
+    unique per run in practice) - see ADR-35.
+    """
+    if not drops:
+        return None
+    if run_label is None and run_date is None:
+        return drops[-1]
+    for d in drops:
+        if run_label and d.label != run_label:
+            continue
+        if run_date and d.date != run_date:
+            continue
+        return d
+    return None
+
+
+def baseline_run(drops: list, current: 'DropSet | None', *,
+                 baseline_label: str | None = None,
+                 baseline_date: str | None = None) -> 'DropSet | None':
+    """The baseline the current run is compared against (deltas + resolved-since).
+
+    Default = the run immediately prior to `current`; None when current is the oldest
+    or there is a single run. An explicit (label/date) override picks any other run.
+    """
+    if not drops or current is None:
+        return None
+    if baseline_label is not None or baseline_date is not None:
+        for d in drops:
+            if d is current:
+                continue
+            if baseline_label and d.label != baseline_label:
+                continue
+            if baseline_date and d.date != baseline_date:
+                continue
+            return d
+        return None
+    idx = next((i for i, d in enumerate(drops) if d.key == current.key), -1)
+    return drops[idx - 1] if idx > 0 else None
+
+
+@dataclass
+class RunContext:
+    """The single carrier of the run model (ADR-35) threaded into every report.
+
+    Resolved once per build() via `run_context`; carries the current run, its
+    baseline, and the full drop list so comparison columns stay available.
+    """
+    drops: list
+    current: 'DropSet | None'
+    baseline: 'DropSet | None'
+
+    @property
+    def n_runs(self) -> int:
+        return len(self.drops)
+
+    @property
+    def index(self) -> int:
+        """0-based position of current in drops; -1 when there is no current run."""
+        if not self.current:
+            return -1
+        return next((i for i, d in enumerate(self.drops)
+                     if d.key == self.current.key), -1)
+
+    @property
+    def ordinal(self) -> str:
+        """Human run ordinal e.g. '2 of 2'; '' when there is no current run."""
+        return f'{self.index + 1} of {self.n_runs}' if self.current else ''
+
+    @property
+    def is_newest(self) -> bool:
+        return bool(self.current) and self.index == self.n_runs - 1
+
+    @property
+    def run_label(self) -> str:
+        """current.key (e.g. '2026-06-01_r110788'); '' when there is no current run."""
+        return self.current.key if self.current else ''
+
+
+def run_context(drops: list, *, run_label: str | None = None,
+                run_date: str | None = None,
+                baseline_label: str | None = None,
+                baseline_date: str | None = None) -> RunContext:
+    cur = current_run(drops, run_label=run_label, run_date=run_date)
+    bl = baseline_run(drops, cur, baseline_label=baseline_label,
+                      baseline_date=baseline_date)
+    return RunContext(list(drops), cur, bl)
+
+
 def ok_capture_set(root: str) -> set[tuple]:
     """Return {(area, drop_date, drop_label, capture)} where replay_status='ok'."""
     cat_path = _paths.catalog_parquet(root)

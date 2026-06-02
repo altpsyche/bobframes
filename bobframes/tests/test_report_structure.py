@@ -102,6 +102,29 @@ def test_dashboard_kpi_totals_paired_with_averages(rendered):
     assert 'avg draws / frame' in idx and 'per-area GPU + draw load' in idx
 
 
+def test_header_names_current_run(rendered):
+    # c16e (ADR-35): each single-state report + the dashboard names the run it reports on, so the
+    # reader is never unsure which run a "live" candidate / headline belongs to.
+    single_state = ['pass_gpu', 'overdraw', 'draws_by_class', 'shader_hotlist',
+                    'instancing_opportunities']
+    for name in single_state + ['index']:
+        rel = '_reports/index.html' if name == 'index' else f'_reports/{name}.html'
+        html = rendered[rel]
+        assert re.search(r'run <strong>\d+ of \d+</strong>:', html), name
+    # trend_table is the across-run view; it has no single current run -> no run span.
+    assert not re.search(r'run <strong>\d+ of \d+</strong>:',
+                         _report(rendered, 'trend_table'))
+
+
+def test_resolved_since_separated_from_live(rendered):
+    # c16e: where a "resolved since <baseline>" section exists it is a distinct section card,
+    # never mixed into the live candidate list (top_meshes / shaders).
+    for name in ['instancing_opportunities', 'shader_hotlist']:
+        html = _report(rendered, name)
+        if 'id="resolved"' in html:
+            assert '<rdc-sticky-h2><section class="card" id="resolved"' in html, name
+
+
 def test_no_banned_unicode(rendered):
     # whole-page (incl. inside-table data) ASCII guard - stricter than the orchestrator lint,
     # which only inspects text outside <table>/<script>/<style>.
