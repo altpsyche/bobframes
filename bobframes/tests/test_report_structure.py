@@ -25,8 +25,12 @@ _ALL_REPORTS = ['pass_gpu'] + _TABLED
 @pytest.fixture(scope='module')
 def rendered(tmp_path_factory):
     dest = u.render_fresh(str(tmp_path_factory.mktemp('c16c') / 'root'))
-    return {rel: open(os.path.join(dest, rel), encoding='utf-8').read()
-            for rel in u.rendered_html_files(dest)}
+    pages = {rel: open(os.path.join(dest, rel), encoding='utf-8').read()
+             for rel in u.rendered_html_files(dest)}
+    # c16j: also expose the externalized _pagedata/*.js companions (catalog/drill heavy data).
+    pages.update({rel: open(os.path.join(dest, rel), encoding='utf-8').read()
+                  for rel in u.rendered_page_data_files(dest)})
+    return pages
 
 
 def _report(pages, name):
@@ -159,6 +163,14 @@ def _script_json(html, varname):
     return None
 
 
+def _pagedata_json(js_text):
+    """Parse a ``_pagedata/<key>.js`` body (``window.__data_<key>={...};``) into its payload dict (c16j)."""
+    import json
+    body = js_text.split('=', 1)[1].rstrip()        # split only the assignment '='
+    assert body.endswith(';'), 'page-data .js must end with ;'
+    return json.loads(body[:-1])
+
+
 def test_c16i_type_split(rendered):
     # Inter sans is the table.data DEFAULT; mono+tabular is re-asserted ONLY on numeric/.mono BODY
     # cells. Headers stay sans (the mono rule is scoped to tbody, never thead th.numeric).
@@ -199,7 +211,7 @@ def test_c16i_column_groups_catalog_only(rendered):
     assert groups is not None, 'colgroups script not found'
     assert [g['name'] for g in groups] == ['Metadata', 'Workload', 'Resources', 'Samples']
     assert [g['name'] for g in groups if g['open']] == ['Metadata', 'Workload']
-    cat_cols = _script_json(idx, '__data_catalog')['cols']
+    cat_cols = _pagedata_json(rendered['_pagedata/catalog.js'])['cols']  # c16j: data now external
     grouped = [c for g in groups for c in g['cols']]
     assert sorted(grouped) == sorted(cat_cols)             # exhaustive
     assert len(grouped) == len(set(grouped)) == len(cat_cols)  # no overlap
@@ -230,3 +242,71 @@ def test_c16i_deterministic_render(tmp_path_factory):
         ta = u.normalize(open(os.path.join(a, rel), encoding='utf-8').read())
         tb = u.normalize(open(os.path.join(b, rel), encoding='utf-8').read())
         assert ta == tb, rel
+
+
+# --- c16j: heavy VTable data decoupled into _pagedata/*.js (static, classic <script defer src>, ADR-37) ---
+# The byte-golden (test_parity) proves the HTML shell + every .js companion; these asserts pin the
+# STRUCTURE c16j introduced - data OUT of the HTML, referenced by a file://-safe classic defer script,
+# the small globals kept inline, reports untouched, and the companions deterministic + offline.
+
+def _drill_pagedata_rels(pages):
+    return [r for r in pages if '/drill/' in r and '/_pagedata/' in r and r.endswith('.js')]
+
+
+def test_c16j_catalog_data_externalized(rendered):
+    idx = _root(rendered)
+    # the heavy rows are gone from the HTML, referenced via a classic, file://-safe defer <script src>
+    assert 'window.__data_catalog=' not in idx
+    assert '<script defer src="_pagedata/catalog.js"></script>' in idx
+    assert 'fetch(' not in idx and 'type="module"' not in idx     # offline: no fetch, no ES module
+    # the small globals stay INLINE (only the heavy payload moves)
+    assert 'window.__colgroups_catalog=' in idx
+    assert 'window.__labels=' in idx
+    # the companion exists, defines the global, and parses
+    js = rendered['_pagedata/catalog.js']
+    assert js.startswith('window.__data_catalog=')
+    assert _pagedata_json(js)['cols']                              # non-empty cols
+
+
+def test_c16j_drill_data_externalized(rendered):
+    drill = _drill(rendered)
+    # no inline per-table payload survives in the drill HTML
+    assert 'window.__data_' not in drill
+    # one classic defer <script src> per non-empty table, == the number of .js companions written
+    n_refs = drill.count('<script defer src="_pagedata/')
+    assert n_refs >= 1, 'drill should reference at least one _pagedata/*.js'
+    assert len(_drill_pagedata_rels(rendered)) == n_refs
+    # __labels stays inline; offline (no fetch / no module)
+    assert 'window.__labels=' in drill
+    assert 'fetch(' not in drill and 'type="module"' not in drill
+
+
+def test_c16j_pagedata_deterministic_and_offline(rendered):
+    # every companion is PURE DATA: ASCII, no banned unicode, no nondeterminism, no network.
+    rels = [r for r in rendered if r.endswith('.js')]
+    assert rels, 'no _pagedata/*.js found'
+    for rel in rels:
+        js = rendered[rel]
+        assert js.isascii(), rel
+        assert not _BANNED.search(js), rel
+        for bad in ('Math.random', 'Date.now', 'new Date', 'fetch('):
+            assert bad not in js, (rel, bad)
+        assert js.startswith('window.__data_'), rel
+
+
+def test_c16j_reports_have_no_pagedata(rendered):
+    # the discovery family is catalog + drill ONLY - no report/dashboard contributes a companion.
+    for rel in rendered:
+        if rel.endswith('.js'):
+            assert rel == '_pagedata/catalog.js' or '/drill/' in rel, rel
+
+
+def test_c16j_loading_hint_catalog_drill_only(rendered):
+    # CSS-only loading state (rides _PER_DROP_CSS) shows until the VTable injects rows; catalog+drill
+    # only - a leak into the shared chrome CSS would churn the (frozen) reports goldens.
+    for html in (_root(rendered), _drill(rendered)):
+        assert '.table-scroll:empty::before' in html
+        assert "content: 'loading...'" in html
+    for name in _ALL_REPORTS + ['index']:
+        rel = '_reports/index.html' if name == 'index' else f'_reports/{name}.html'
+        assert '.table-scroll:empty::before' not in rendered[rel], name

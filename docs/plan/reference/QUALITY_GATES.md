@@ -206,7 +206,7 @@ browser-reviewed** (light/dark, top-level + per-run); drill/root/preview goldens
 green with **no** `digests.json` refresh (§21.9). 142 -> 148 green. (G-20, collapsing the per-drop columns at
 3+ runs, is deferred - no 3+-run data to verify; see FINDINGS.)
 
-## 21.1l Catalog + drill readability: the html/template.py layer (c16i, ADR-6/27/34/37) — see [c16i](../commits/v02/c16i_catalog_drill_readability.md)
+## 21.1l Catalog + drill readability + heavy-data decoupling: the html/template.py layer (c16i + c16j, ADR-6/27/34/37) — see [c16i](../commits/v02/c16i_catalog_drill_readability.md), [c16j](../commits/v02/c16j_data_decoupling.md)
 c16i brings the c16d treatment to the STATIC catalog (root `index.html`) + per-drop drill (`html/template.py`),
 the layer the reports pass (c16b-f) never touched (G-21 **readability half**; the heavy-data half is c16j). Four
 parts, all server-rendered + deterministic, no contract change: (1) **type split** - `table.data` defaults to the
@@ -231,7 +231,29 @@ gains 6 c16i guards (type split, ROW_H/padding lockstep, heatmap determinism/off
 column-group exact-partition, reports-layer-untouched, deterministic render). Output-changing -> the root
 `index.html` + the drill golden are refreshed + **browser-reviewed** (light/dark, synthetic + real Perf);
 reports/dashboard/per-run goldens byte-unchanged; `test_parquet_parity` green with **no** `digests.json` refresh
-(§21.9). 165 -> 171 green. (The full §21.1l consolidates with c16j's `_data/*.js` decoupling gate when c16j lands.)
+(§21.9). 165 -> 171 green.
+
+**c16j - heavy-data decoupling (the ~21 MB TTI fix; static, ADR-37).** Each VTable's row payload (formerly
+inlined as `<script>window.__data_<key>={...}</script>`) is now written to its own `_pagedata/<key>.js`
+(`window.__data_<key>={...};`, same compact `json.dumps(separators=(',',':'))`) and referenced by a CLASSIC,
+file://-safe `<script defer src="_pagedata/<key>.js">` - so the HTML shell paints first and the data streams
+as its own resource (real Perf heaviest drill: a ~17.6 MB single HTML file -> a 134 KB shell + 17.5 MB across
+28 `.js`). `_pagedata/` is a NEW dir sibling to each page's `index.html` (catalog `<root>/_pagedata/`; drill
+`<root>/_reports/drill/<area>/<drop>/_pagedata/`), deliberately NOT `_data/` (the parquet/data contract) - so
+the `src` is always literally `_pagedata/<key>.js` (no relpath, no collision); this refines the c16j doc's
+loose `_data/<key>.js`. Only the HEAVY `__data_*` moves; the small `__colgroups_catalog`/`__labels` + the
+shared `_JS` VTable code stay INLINE. Offline-safe: classic script (NO ES modules - Chrome blocks `file://`
+modules), NO `fetch`/XHR; byte-deterministic; the bootstrap reads `window.__data_*` only inside its
+`DOMContentLoaded` listener, which fires AFTER all `defer` scripts -> no race. A CSS-only
+`.table-scroll:empty::before{content:'loading...'}` (in `_PER_DROP_CSS`, catalog/drill only) shows until the
+VTable injects rows. The parity harness gains `_render_util.rendered_page_data_files` (walks `_pagedata/*.js`)
++ a second `test_parity` block (file-set equality + raw byte-compare, no normalize) + `make_golden` writes the
+`.js` companions; `test_report_structure` repoints its `__data_catalog` read to the companion + adds 5 c16j
+guards. **Reports/dashboard/per-run/A-B goldens BYTE-UNCHANGED** (they bake rows into HTML, never used
+`__data_*`; only the catalog `index.html` + each drill `index.html` change, plus the added `_pagedata/*.js`);
+`test_parquet_parity` green with NO `digests.json` refresh (§21.9). 171 -> 176 green; browser-verified offline
+(headless Chrome, `file://`, real Perf): the catalog + heaviest drill populate their VTable from
+`_pagedata/*.js` with c16i's type split + heatmap + column groups intact.
 
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,

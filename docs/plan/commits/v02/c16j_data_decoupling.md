@@ -1,5 +1,13 @@
 # c16j — decouple the heavy catalog/drill data (static; the ~21 MB TTI fix)     release: v0.2 · phase: De-hardcoding
 
+> **DONE 2026-06-03.** Heavy VTable rows moved out of the catalog/drill HTML into `_pagedata/<key>.js`
+> (a NEW sibling dir, NOT `_data/` — collision-avoiding refinement of this doc's loose `_data/<key>.js`,
+> user-confirmed) loaded by a classic file://-safe `<script defer src>`. Only the heavy `__data_*` moved;
+> `__colgroups_catalog`/`__labels` + the shared `_JS` stay inline. Reports/dashboard goldens byte-unchanged;
+> `test_parquet_parity` green with no digests refresh. 171→176 green; browser-verified offline (real Perf
+> heaviest drill 17.6 MB→134 KB shell + 17.5 MB across 28 `.js`). Closes G-21/G-22; QUALITY_GATES §21.1l
+> consolidated. See STATE `last_session`.
+
 > **Repurposed by ADR-37 (2026-06-02).** This slot was originally "SPA spine"; the SPA (ADR-36) was rejected
 > on a lifespan review. c16j is now the **static** heavy-data decoupling — the one real perf fix from the
 > design reviews — with NO router, NO SPA, NO whole-output rewrite. Pairs with the revived **c16i**

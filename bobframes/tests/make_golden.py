@@ -26,7 +26,17 @@ def main() -> int:
             with open(out, "w", encoding="utf-8", newline="\n") as f:
                 f.write(html)
             n += 1
-    print(f"wrote {n} golden pages under {u.GOLDEN_DIR}")
+        # c16j: the catalog/drill VTable payloads now live in _pagedata/*.js companions. Copy them
+        # raw (LF, NO normalize - no timestamp); test_parity byte-compares them as a separate family.
+        j = 0
+        for rel in u.rendered_page_data_files(dest):
+            data = open(os.path.join(dest, rel), encoding="utf-8").read()
+            out = os.path.join(u.GOLDEN_DIR, rel)
+            os.makedirs(os.path.dirname(out), exist_ok=True)
+            with open(out, "w", encoding="utf-8", newline="\n") as f:
+                f.write(data)
+            j += 1
+    print(f"wrote {n} golden pages + {j} _pagedata/*.js under {u.GOLDEN_DIR}")
     return 0
 
 

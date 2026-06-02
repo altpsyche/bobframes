@@ -7,20 +7,53 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        c16j_data_decoupling    (status: not-started; AUTHORED 2026-06-02. c16i DONE 2026-06-03 -
-                see last_session. c16e-i DONE. The 3 plan-folder design reviews led first to a SPA decision
-                (ADR-36) which a LIFESPAN REVIEW then REJECTED (ADR-37, user-trusted): a bespoke offline SPA is
-                a perpetual web-framework maintenance tax, weakens golden-as-correctness, loses JS-optional
-                content, and constrains the v0.6 plugin/cross-platform future. SETTLED (ADR-37): reports stay
-                server-rendered + static + self-contained; fix ONLY the heavy data (c16j); invest the durable
-                effort in the data contract (c20 --json / c30 schema+query, already roadmapped). c16j: move the
-                catalog/drill VTable rows OUT of the HTML into <script src>'d _data/*.js (file://-safe, classic
-                + defer, NO fetch, NO ES modules) so the HTML shell paints first + the ~21MB drill TTI dies -
-                STATIC, no router; golden gates the page + _data/*.js, reports untouched. ORDER: c16j -> v0.2
-                close-out (re-ingest validation) -> tag v0.2 (irreversible, authorize first) -> c20. The SPA
-                epic (old c16k-c16n) is VOIDED; ADR-36 superseded by ADR-37. G-20 (3+-run column collapse)
-                still deferred - no 3+-run data. G-23 opened (unify the two table systems; post-v0.2).)
-last_session:   2026-06-03 — c16i DONE (catalog + drill readability; the html/template.py layer; G-21
+current:        v0.2 close-out (re-ingest validation -> tag)    (status: not-started. c16e-j ALL DONE ->
+                v0.2 REPORT WORK COMPLETE. c16j DONE 2026-06-03 - see last_session. There is NO commit doc for
+                the close-out; it is the re-ingest + tag milestone. ORDER: v0.2 close-out (re-ingest the real
+                Perf drop, eyeball all reports) -> tag v0.2 (outward + IRREVERSIBLE, authorize first) -> c20
+                (--json, v0.3). ADR-37 SETTLED the report architecture: server-rendered + static +
+                self-contained; the only real perf problem (the ~21MB drill/catalog) was decoupled STATICALLY in
+                c16j (heavy VTable rows -> _pagedata/*.js via <script defer src>); the durable data investment is
+                the data contract (c20 --json / c30 schema+query, already roadmapped). The SPA epic (old
+                c16k-c16n) is VOIDED; ADR-36 superseded by ADR-37. G-20 (3+-run column collapse) still deferred -
+                no 3+-run data. G-23 (unify the two table systems) deferred to post-v0.2, likely with c20/c30.)
+last_session:   2026-06-03 — c16j DONE (decouple the heavy catalog/drill data; the html/template.py layer;
+                the ~21MB TTI fix; STATIC per ADR-37, NO SPA; no new ADR - rides ADR-6/27/34/37). Moved each
+                VTable's heavy row payload OUT of the HTML into its own _pagedata/<key>.js
+                (window.__data_<key>={...};, same compact json.dumps(separators=(',',':'))) referenced by a
+                CLASSIC file://-safe <script defer src> (NO fetch, NO ES modules - Chrome blocks file:// module
+                loading). NEW paths.PAGEDATA_DIR='_pagedata': a sibling dir of each page's index.html (catalog
+                <root>/_pagedata/; drill <root>/_reports/drill/<area>/<drop>/_pagedata/), deliberately NOT _data/
+                (the parquet/data contract) - so the src is ALWAYS literally _pagedata/<key>.js (no relpath, no
+                collision); a deliberate, user-confirmed refinement of the c16j doc's loose _data/<key>.js. NEW
+                template._write_page_data writes the .js + returns the src; _inline_table_with_data now returns
+                (section, key, payload) and the CALLER (render_drop/render_root) does the file I/O. Only the
+                HEAVY __data_* moves; the small __colgroups_catalog/__labels + the shared _JS VTable code stay
+                INLINE (small vs MB of data; avoids a depth-aware shared-asset path). The data scripts are
+                <script defer src> at end of <body>; the inline _JS just registers the DOMContentLoaded listener
+                (reads __data_* ONLY inside it) -> defer files run after parse + before DCL -> shell paints first,
+                NO onload race. CSS-only .table-scroll:empty::before{content:'loading...'} in _PER_DROP_CSS
+                (catalog/drill only) shows until the VTable injects rows. HARNESS:
+                _render_util.rendered_page_data_files (walks _pagedata/*.js by parent-dir basename); make_golden
+                writes the .js companions raw (LF, no normalize); test_parity gains a 2nd block (file-set
+                equality + byte-compare, no normalize); test_report_structure's `rendered` fixture also loads the
+                .js, the __data_catalog read is repointed to the companion, +5 c16j guards (catalog/drill
+                externalized, .js deterministic+offline+ASCII, reports have no _pagedata, loading-hint
+                catalog/drill-only). PARITY (ADR-6/37): ONLY the catalog index.html + the one drill index.html
+                refreshed + the added _pagedata/*.js (1 catalog + 26 drill = 27); reports/dashboard/per-run/A-B
+                goldens BYTE-UNCHANGED + digests.json untouched (verified by git status scope);
+                test_parquet_parity GREEN, NO digests refresh (presentation only, §21.9). 171 -> 176 green (+5
+                c16j guards). smoke render-only 15 pages lint clean exit 0. BROWSER-VERIFIED OFFLINE (headless
+                Chrome, file://, real Perf at C:\tmp\perf): the catalog + the heaviest FRESHLY-RENDERED drill
+                (Commercial district 2026-06-01_r110788: ~17.6MB single file -> 134KB shell + 17.5MB across 28
+                _pagedata/*.js) populate their VTable from the .js with c16i's type split + heatmap + column
+                groups intact - the TTI win is real. NOTE (not a c16j bug, pre-existing): render-only re-renders
+                ONLY the current-run drop per area, so OLDER-run drills (e.g. Commercial district
+                2026-05-25_r110565) stay STALE 29MB inline-data files until the v0.2 close-out FULL re-ingest
+                regenerates them. QUALITY_GATES §21.1l consolidated (c16i + c16j); G-21 ticked FULLY DONE + G-22
+                resolved (SPA rejected; heavy data decoupled statically). Commits on v0.2-roadmap-c04, UNPUSHED.
+                current -> v0.2 close-out.
+former_last_c16i: 2026-06-03 — c16i DONE (catalog + drill readability; the html/template.py layer; G-21
                 readability half; no new ADR - rides ADR-6/27/32/33/34/37). Brought the c16d treatment to the
                 STATIC catalog (root index) + per-drop drill VTable: (1) TYPE SPLIT - table.data defaults to
                 the Inter sans stack at line-height 1.3, mono+tabular-nums re-asserted ONLY on numeric/.mono
@@ -338,32 +371,25 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    c16i DONE (2026-06-03). DO c16j NEXT (decouple heavy data), THEN the v0.2 close-out. c16e-i
-                DONE. The SPA (ADR-36) was REJECTED on a lifespan review (ADR-37): reports stay server-rendered
-                + STATIC; only the heavy data is decoupled; the durable investment is the data contract
-                (c20/c30). NO SPA, NO router, NO re-homing of the c16b-f reports.
-                c16j (commits/v02/c16j_data_decoupling.md): move the catalog/drill VTable rows OUT of the HTML
-                into _data/<key>.js loaded via a plain (defer) <script src> (file://-safe, NO fetch, classic
-                script - NOT a module) so the HTML shell paints first + the ~21MB drill TTI dies; no router,
-                static page, script-order (or defer) means NO onload race. Golden gates the page + _data/*.js;
-                reports untouched.
-                KEY INVARIANTS (ADR-37): offline (only <script src>/<link>, NO fetch/network, classic scripts -
-                no ES modules, Chrome blocks file:// modules); byte-deterministic (no random/Date); reports +
-                dashboard stay self-contained single files (JS-optional + golden-as-output preserved) - ONLY
-                catalog/drill (already JS-dependent + non-portable) decouple their data; QUALITY_GATES §21.1l
-                when c16i + c16j land. VISUAL + offline double-click verification mandatory (light/dark, real
-                Perf data: TTI better, VTable works).
+next_action:    c16j DONE (2026-06-03; see last_session). c16e-j ALL DONE -> v0.2 REPORT WORK COMPLETE. DO the
+                v0.2 CLOSE-OUT NEXT (no commit doc; it is the re-ingest + tag milestone). ADR-37 SETTLED the
+                report architecture: server-rendered + STATIC + self-contained; the heavy data was decoupled
+                STATICALLY in c16j (catalog/drill VTable rows -> _pagedata/*.js via classic <script defer src>,
+                file://-safe, no SPA, no router); the durable investment is the data contract (c20/c30).
                 THEN before the tag:
                 (1) V0.2 CLOSE-OUT: re-ingest the real Perf drop (now the cumulative flaw is fixed + the
                 R-17 replay salvage is automatic - re-test the 6 manual-flipped run2 captures) and eyeball
                 all reports. Working root C:\tmp\perf (hardlinks; Downloads read-only). Replay is
-                ~150-220s PER capture, sequential.
+                ~150-220s PER capture, sequential. NOTE: the full re-ingest also REGENERATES every drill page,
+                clearing the stale 29MB inline-data OLDER-run drills that render-only leaves untouched (c16j
+                only refreshes current-run drills via render-only; older-run drills externalize on a full
+                ingest/render of that run).
                 (2) Tag v0.2 (outward + IRREVERSIBLE — authorize first).
                 THEN c20 (--json output, v0.3): open commits/v03/c20_json_output.md and do exactly that one
                 commit. NOTE for c27/c35: the c09 classifier is already STATE-CAPABLE (when{} over any draw
                 column), so the state-first generic preset (D-10) is a preset not a rewrite; c35 removes the
                 zeroed passes.draws_by_class_* + slims passes (D-11a). GIT: still on branch v0.2-roadmap-c04
-                (off main; c07 + c08 + c09 + c10 + c16 + c16b + c16c + c16d[a/b/c/d] UNPUSHED). Post-release nit
+                (off main; c07 + c08 + c09 + c10 + c16 + c16b-c16j UNPUSHED). Post-release nit
                 (non-blocking): bump CI actions off Node20 (checkout@v5/setup-python@v6 before 2026-06-16).
 DONE-2026-05-31: c19 — bobframes 0.1.0 PUBLISHED. tag v0.1.0 -> CI publish job green (OIDC trusted
                 publishing, ubuntu). Live on PyPI (wheel + sdist) + GitHub Release with both assets.
@@ -467,6 +493,22 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-03 — c16j DONE (decouple the heavy catalog/drill data; html/template.py layer; the ~21MB TTI fix;
+  STATIC per ADR-37, NO SPA; no new ADR). Each VTable's heavy rows moved OUT of the HTML into its own
+  _pagedata/<key>.js (window.__data_<key>={...};, same compact json.dumps) loaded by a CLASSIC file://-safe
+  <script defer src> (NO fetch, NO ES modules). NEW paths.PAGEDATA_DIR='_pagedata' (sibling dir of each page's
+  index.html, NOT _data/ the parquet/data contract -> src always literally _pagedata/<key>.js, no relpath/
+  collision; user-confirmed refinement of the doc's loose _data/<key>.js). NEW template._write_page_data;
+  _inline_table_with_data returns (section,key,payload) + caller writes; only the HEAVY __data_* moves
+  (__colgroups_catalog/__labels + shared _JS stay INLINE). defer + DOMContentLoaded bootstrap = shell paints
+  first, no onload race. CSS-only .table-scroll:empty::before loading hint (catalog/drill _PER_DROP_CSS only).
+  Harness: rendered_page_data_files + make_golden .js companions + a 2nd test_parity block + test_report_structure
+  repoint & +5 c16j guards. PARITY (ADR-6/37): only catalog + 1 drill index.html refreshed + 27 added
+  _pagedata/*.js; reports/dashboard/per-run/A-B goldens + digests.json BYTE-UNCHANGED; test_parquet_parity GREEN
+  no refresh. 171->176 green; smoke 15 pages lint clean exit 0. BROWSER-VERIFIED OFFLINE (headless Chrome,
+  file://, real Perf): catalog + heaviest fresh drill (Commercial district 2026-06-01_r110788: 17.6MB->134KB
+  shell + 17.5MB/28 .js) populate from the .js with c16i type split/heatmap/column-groups intact. §21.1l
+  consolidated; G-21 FULLY DONE + G-22 resolved. Commits on v0.2-roadmap-c04, UNPUSHED. current -> v0.2 close-out.
 - 2026-06-03 — c16i DONE (catalog + drill readability; G-21 readability half; html/template.py layer; no new
   ADR). Type split (Inter sans default, mono on numeric/.mono body cells), ROW_H=32 single-sourced, uniform-tint
   client-side heatmap on numeric magnitude cells (user rejected the first length-bar as artifact-looking),

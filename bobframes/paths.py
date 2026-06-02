@@ -38,6 +38,7 @@ STAGE_SUFFIX = '.stage'      # per-drop staging tree; SIBLING of the .tmp commit
 DRILL_DIR = 'drill'          # per-drop browser HTML (under _reports/)
 AB_DIR = 'ab'                # A/B report pairs (under _reports/)
 RUN_DIR = 'run'              # per-run report pages (under _reports/run/<run_key>/, c16f)
+PAGEDATA_DIR = '_pagedata'   # externalized heavy VTable data (.js); sibling of each catalog/drill index.html (c16j)
 TMP_SUFFIX = '.tmp'          # atomic-commit staging suffix (dir + file)
 MANIFEST_NAME = '_manifest.json'
 DONE_MARKER = 'done.marker'
