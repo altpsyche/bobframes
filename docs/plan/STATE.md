@@ -7,7 +7,8 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        c20_json_output    (status: not-started; v0.2 implementation DONE - c16c closed G-15)
+current:        v0.2 CLOSE-OUT (full-area ingest + tag) -> then c20    (status: not-started; v0.2
+                IMPLEMENTATION done - c16c + review fixes landed - but release NOT closed yet)
 last_session:   2026-06-02 — c16c DONE (report RESTRUCTURE; G-15 FULLY closed - both halves landed). Routed
                 every report section through chrome.section_card wrapped in <rdc-sticky-h2> (relaxed the
                 component selector h2[id] -> h2 so a card's id-less header h2 still drives the in-view
@@ -33,7 +34,17 @@ last_session:   2026-06-02 — c16c DONE (report RESTRUCTURE; G-15 FULLY closed 
                 mini charts + 6 subtitles + nav, whole-page ASCII guard) + test_design_tokens c16c card-CSS
                 asserts. smoke render-only 9 pages lint clean exit 0. No new ADR (card framing rides ADR-32
                 report contract + ADR-33 chart model; the c16b->c16b+c16c split already recorded). G-15
-                ticked FULLY DONE; QUALITY_GATES §21.1h added. current -> c20.
+                ticked FULLY DONE; QUALITY_GATES §21.1h added. POST-COMMIT REVIEW FIXES (user
+                eyeballed rendered pages, 3 follow-up commits, golden re-refreshed each, 115 green):
+                480bfaa - delta alarm gated to regressions only (was abs()-magnitude -> red border on
+                -100% improvements; -24 false red bars in instancing), sticky thead made static inside
+                section.card/a.dash-card (a pinned header detached and floated over a framed card,
+                stranding the first row above it), inner .table-wrap goes borderless (card is the single
+                frame, no box-in-box), bar-label clip made width-aware. b88f055 - dashboard mini chart
+                transparent+borderless (was a boxed panel above the borderless table). 3801a13 - bar_chart
+                label column now sized to the LONGEST actual label (was fixed W*0.36 -> dead space between
+                text and bar) so the bar starts right after the text on every chart; minis show full
+                labels again. current -> v0.2 CLOSE-OUT (NOT c20 yet; ingest + tag pending).
 former_last_c16b: 2026-06-02 — c16b DONE (report CHARTS; G-15 charts half; ADR-33 implemented). c16b was
                 NARROWED in execution (user-chosen): ships the chart slice + the shader column diet; the
                 heavier restructure split into NEW c16c (section-cards/sticky spread, copy-buttons,
@@ -322,7 +333,14 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
   (literal var(), no $) -> drill/root/preview change only by shared CSS. PARITY (ADR-6/32/33): HTML + preview
   golden REFRESHED, reviewed via per-report marker diff; test_parquet_parity GREEN, NO digests refresh
   (§21.9). 108->115 green (+7 test_report_structure + test_design_tokens c16c asserts); smoke 9 pages lint
-  clean exit 0. No new ADR (rides ADR-32/33). G-15 ticked FULLY DONE; QUALITY_GATES §21.1h added. current -> c20.
+  clean exit 0. No new ADR (rides ADR-32/33). G-15 ticked FULLY DONE; QUALITY_GATES §21.1h added.
+- 2026-06-02 — c16c REVIEW FIXES (user eyeballed rendered pages; 3 commits, golden re-refreshed, 115
+  green): delta alarm gated to regressions only (was abs()-magnitude, painted red borders on -100%
+  improvements; -24 false bars), sticky thead static inside section.card/a.dash-card (pinned header
+  floated over the card, stranding row 1 above it), inner .table-wrap borderless (card is the single
+  frame), bar_chart label column sized to the longest actual label so the bar starts right after the
+  text (was fixed W*0.36 dead space) + dashboard mini chart transparent/borderless. v0.2 NOT closed
+  yet - close-out (full-area ingest + tag) is the gate before c20.
 - 2026-06-02 — c16b DONE (report CHARTS; G-15 charts half; ADR-33 implemented). NARROWED in execution
   (user-chosen): chart slice + shader column diet now; heavier restructure split into NEW c16c (golden
   stays reviewable, ADR-23). NEW reports/charts.py = deterministic dependency-free inline-SVG toolkit
