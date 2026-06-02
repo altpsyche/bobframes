@@ -41,6 +41,11 @@ Operates on the renamed `bobframes/` package. Each guarded by parity.
 | [c16b report charts](commits/v02/c16b_report_viz.md) | inline-SVG chart toolkit + flagship chart per report; shader column-diet (ADR-33, G-15 charts half) |
 | [c16c report restructure](commits/v02/c16c_report_restructure.md) | section-cards + sticky-h2 + copy-buttons + dashboard small-multiples + caption/scope a11y + fill-or-hide (G-15 done) |
 | [c16d report aesthetics](commits/v02/c16d_report_aesthetics.md) | visual-design pass: depth-over-borders + type hierarchy + chart finish + micro-interactions + pacing (G-17) |
+| [c16e run model](commits/v02/c16e_run_model.md) | per-run truth: report ONE current run (default newest), not the cumulative union of all runs (G-19, ADR-35) |
+| [c16f multi-run UX](commits/v02/c16f_multirun_ux.md) | run selector (pre-rendered per-run pages) + baseline banner + "older run" cue + dashboard->report persistence (G-18) |
+| c16g quality sweep | Q-1/Q-2/Q-4/Q-7/Q-8 + D-3/D-9: stable-key dict-loop, cast-failure tally, zip strict, `_to_dict_of_lists` reuse, dead-noop, coupling/display-order docs |
+| c16h reliability sweep | R-11/R-12/R-14/R-15: log cleanup failures, UTF-8 warn, single-process sidecar doc, parquetize skips markerless captures (R-10 deferred) |
+| [c16i catalog + drill readability](commits/v02/c16i_catalog_drill_readability.md) | bring the c16d design pass to `html/template.py` (catalog + drill): type split, roomier rows, heatmap cells, collapsible column groups (G-21); SPA/served-viewer fork deferred (G-22) |
 
 ## v0.3 — CI/automation surface (after v0.2)
 

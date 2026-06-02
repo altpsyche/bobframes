@@ -7,12 +7,15 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        v0.2 close-out    (status: not-started; c16e + c16f BOTH DONE this session. The real Perf
-                2-run ingest's two report design flaws are fixed -> c16e (per-run truth) + c16f (multi-run UX).
-                ORDER: v0.2 close-out (re-ingest validation) -> tag v0.2 (irreversible, authorize first) ->
-                c20. Release NOT closed yet. 6 run2 captures still manual-salvaged - re-test in the close-out
-                re-ingest. NOTE: G-20 (collapse per-drop columns at 3+ runs) deferred - no 3+-run data to
-                verify; the close-out re-ingest is still 2 runs.)
+current:        c16i_catalog_drill_readability    (status: not-started; AUTHORED 2026-06-02 - plan/impl in a
+                NEW chat. c16e/c16f/c16g/c16h all DONE this session. c16i is a NEW v0.2 commit from three
+                plan-folder design reviews (overall_overhaul_proposal / readability_and_presentation_review /
+                report_roadmap): bring the c16d report design pass to the CATALOG + DRILL layer
+                (html/template.py) - it never got it (all-mono table, 22px rows, flat column wall). Buildable
+                subset only; the SPA/fetch/external-font architecture is a deferred product-contract fork
+                (G-22). ORDER: c16i -> v0.2 close-out (re-ingest validation) -> tag v0.2 (irreversible,
+                authorize first) -> c20. Release NOT closed yet. 6 run2 captures still manual-salvaged -
+                re-test in the close-out re-ingest. G-20 (3+-run column collapse) deferred - no 3+-run data.)
 last_session:   2026-06-02 — c16f DONE (multi-run UX: the run selector; G-18 closed; builds on ADR-35).
                 Layered the navigation UX on c16e's run model. Mechanism = PRE-RENDERED per-run pages: the
                 top-level _reports/<report>.html is the newest run (default); each OLDER run gets a
@@ -303,9 +306,16 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    DO the v0.2 CLOSE-OUT - c16e (per-run truth) + c16f (multi-run UX) BOTH DONE this session.
-                The two report design flaws the real Perf 2-run ingest exposed are fixed + golden-refreshed +
-                browser-verified. Remaining before the tag:
+next_action:    DO c16i FIRST (catalog + drill readability), THEN the v0.2 close-out. c16e/c16f/c16g/c16h
+                all DONE this session. c16i (G-21): open commits/v02/c16i_catalog_drill_readability.md and do
+                exactly that one commit - bring the c16d design pass to html/template.py (the catalog + drill
+                browser, which never got it): Inter/mono type split (table.data is all-mono today), roomier
+                rows (coordinate ROW_H=22 in _JS with the CSS), client-side heatmap cells on numeric columns,
+                collapsible column groups on the wide catalog. Server-rendered + deterministic; refresh the
+                root + drill golden (reports goldens UNCHANGED); test_parquet_parity GREEN no digests refresh;
+                QUALITY_GATES §21.1l. The SPA/fetch/external-asset/web-font architecture is OUT of scope - a
+                product-contract fork (G-22) needing a dedicated ADR + signoff, NOT this commit.
+                THEN before the tag:
                 (1) V0.2 CLOSE-OUT: re-ingest the real Perf drop (now the cumulative flaw is fixed + the
                 R-17 replay salvage is automatic - re-test the 6 manual-flipped run2 captures) and eyeball
                 all reports. Working root C:\tmp\perf (hardlinks; Downloads read-only). Replay is
@@ -371,6 +381,7 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c16f multi-run UX](commits/v02/c16f_multirun_ux.md) | **done** — run selector via pre-rendered per-run pages (_reports/run/<key>/, reuse rdc-ab-picker) + fixed prior baseline + "current vs baseline" banner + distinct run chips + "viewing an older run" cue + dashboard->report persistence (G-18); bounded by [report] max_prerendered_runs. 142 -> 148 green; golden +6 per-run pages, no digests refresh; QUALITY_GATES §21.1k. G-20 (3+-run col collapse) deferred (no 3+-run data to verify) |
 | ☑ | c16g quality sweep | **done** — pre-tag, behaviour-neutral: Q-1 (stable_key dict-of-builders, oracle-locked), Q-2 (cast-failure tally + warn), Q-4 (zip strict on derive), Q-7 (`_to_dict_of_lists` callers), Q-8 (dead buffers no-op deleted), D-3 (coupling doc), D-9 (`_TABLE_DISPLAY_ORDER` origin recovered + recorded). 148 -> 160 green; golden + digests frozen; no new ADR |
 | ☑ | c16h reliability sweep | **done** — R-12 (`_best_effort_rmtree` logs held-handle cleanup failures), R-14 (UTF-8 U+FFFD warning in `iter_chunks`), R-11 (single-process sidecar doc), R-15 (`parquetize` skips markerless/incomplete-replay captures so half-written CSVs never merge). R-10 deferred (OOM-gated). 160 -> 165 green; golden + digests frozen; no new ADR |
+| ☐ | [c16i catalog + drill readability](commits/v02/c16i_catalog_drill_readability.md) | **next** — bring the c16d design pass to `html/template.py` (the catalog + drill browser never got it): Inter/mono type split, roomier rows (ROW_H+CSS), client-side heatmap cells, collapsible column groups on the wide catalog (G-21). From 3 plan-folder design reviews. SPA/fetch/external-font architecture OUT of scope (G-22, product-contract fork). Plan/impl in a new chat |
 
 ## v0.3 — CI/automation surface (planned — [ROADMAP](ROADMAP.md))
 
@@ -416,6 +427,20 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-02 — c16i AUTHORED (catalog + drill readability; G-21). Reviewed three plan-folder design
+  proposals (overall_overhaul_proposal / readability_and_presentation_review / report_roadmap) against the
+  code + the frozen contract. Verdict: good design instincts but they (a) conflate two layers and (b)
+  ignore ADR-6/ADR-34. Reframe: the reports layer (reports/chrome.py) already got the c16b-f treatment
+  (type split, depth, heatmap cells, drop-compare, sparklines); the REAL eye-strain is the catalog + drill
+  layer (html/template.py) - all-monospace table.data, ROW_H=22, flat 37-col wall. Wrote
+  commits/v02/c16i_catalog_drill_readability.md = the buildable-within-constraints subset: Inter/mono type
+  split, roomier rows (coordinate ROW_H+CSS), client-side deterministic heatmap cells on numeric columns,
+  collapsible column groups on the wide catalog; server-rendered, offline, byte-deterministic, no data
+  decoupling. The reviews' SPA + fetch('_data/*.json') + external /assets/ + Google-Fonts architecture is
+  EXPLICITLY OUT of scope (G-22): fetch fails on file:// (CORS) -> breaks ADR-6 offline single file;
+  external assets/font break ADR-34 - a product-contract fork needing a dedicated ADR + signoff, not an
+  inferred overhaul (recorded, not silently dropped, ADR-23). Opened G-21 (c16i) + G-22 (deferred fork);
+  current -> c16i; v0.2 close-out + tag now come AFTER c16i. NO code yet.
 - 2026-06-02 — c16h DONE (v0.2 reliability sweep; R-11/R-12/R-14/R-15 closed, R-10 deferred). Pre-tag,
   golden + Parquet digests frozen. R-12: NEW run._best_effort_rmtree replaces the two silent
   `shutil.rmtree(..., ignore_errors=True)` stage-cleanup sites - still best-effort (a held handle must
