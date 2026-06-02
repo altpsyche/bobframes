@@ -7,10 +7,12 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        v0.2 close-out (full-area ingest + tag)    (status: not-started. c16d DONE 2026-06-02 -
-                report VISUAL OVERHAUL shipped as 4 sub-commits a/b/c/d, 128 green, golden refreshed +
-                browser-reviewed. NEXT: real full-area ingest of ALL areas, then tag v0.2 (irreversible -
-                authorize first), then c20. Release NOT closed yet.)
+current:        c16e_run_model    (status: not-started; AUTHORED 2026-06-02 - planning + impl in a NEW
+                chat. The real Perf 2-run ingest exposed two report design flaws -> NEW c16e + c16f
+                authored before the v0.2 tag. c16d DONE; dashboard avg-KPIs done; real-ingest fixes
+                D-12 + R-17 landed + 6 run2 left manual-salvaged (re-test next run). ORDER: c16e (per-run
+                truth) -> c16f (multi-run UX) -> v0.2 close-out (re-ingest validation) -> tag v0.2
+                (irreversible, authorize first) -> c20. Release NOT closed yet.)
 last_session:   2026-06-02 — c16d DONE (report VISUAL OVERHAUL / design-language pass; G-17 closed; ADR-34).
                 Shipped as 4 reviewable sub-commits, each golden-refreshed + BROWSER-reviewed (light/dark/
                 reduced-motion/print via Chrome headless; minified pages are not line-diffable). (a) DEPTH
@@ -240,14 +242,24 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    c16d DONE (report VISUAL OVERHAUL; G-17/ADR-34; 4 sub-commits a/b/c/d; 128 green). NOW do
-                the v0.2 close-out gates:
-                (1) V0.2 CLOSE-OUT (user-requested 2026-06-01): run a real FULL ingest of ALL areas (not
-                just Chor bazar — Commercial/Financial/Police station/Resort/Train station/Under
-                construction mall from the Downloads RDC drop), keep the rendered HTML, eyeball the
-                c16/c16b/c16c reports (section cards + sticky h2, copy buttons on IDs, dashboard mini
-                charts, captions/scope, NO bare "material batching" heading). Junction C:\tmp as the
-                working root; Downloads stays read-only (R-16 commit-lock is FIXED).
+next_action:    DO c16e FIRST (per-run truth), THEN c16f (multi-run UX) - both AUTHORED 2026-06-02 from
+                the real Perf 2-run ingest. Open commits/v02/c16e_run_model.md, do exactly that one
+                commit (planning + impl in a NEW chat), then c16f. c16e (G-19, ADR-35): the dashboard +
+                single-state reports (instancing/draws_by_class/shader_hotlist/pass_gpu/overdraw) default
+                to discover_drops=ALL drops and aggregate CUMULATIVELY, so work fixed/removed in the newer
+                run still shows (e.g. instancing lists a run1-only mesh as a live candidate; "total draws"
+                = run1+run2 summed). Fix: anchor each report to ONE current run (default newest) as the
+                truth; prior runs are baselines for delta only; absent items drop out (or go to a separated
+                "resolved since <baseline>" section). c16f (G-18): run selector + baseline selector +
+                "current vs baseline" banner + distinct run labels + "viewing older run" cue, reusing the
+                A/B picker. Both presentation/aggregation-only -> refresh golden (now VISIBLE on the 2-drop
+                synthetic), test_parquet_parity GREEN no digests refresh (§21.9). Append ADR-35 (run model)
+                + QUALITY_GATES §21.1j/§21.1k.
+                THEN the v0.2 close-out gates:
+                (1) V0.2 CLOSE-OUT: re-ingest the real Perf drop (now the cumulative flaw is fixed + the
+                R-17 replay salvage is automatic - re-test the 6 manual-flipped run2 captures) and eyeball
+                all reports. Working root C:\tmp\perf (hardlinks; Downloads read-only). Replay is
+                ~150-220s PER capture, sequential.
                 (2) Tag v0.2 (outward + IRREVERSIBLE — authorize first).
                 THEN c20 (--json output, v0.3): open commits/v03/c20_json_output.md and do exactly that one
                 commit. NOTE for c27/c35: the c09 classifier is already STATE-CAPABLE (when{} over any draw
@@ -305,6 +317,8 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c16b report charts](commits/v02/c16b_report_viz.md) | **done** — inline-SVG toolkit (charts.py, ADR-33) + flagship chart per report + shader column-diet; 108 green, golden refreshed |
 | ☑ | [c16c report restructure](commits/v02/c16c_report_restructure.md) | **done** — section-cards + sticky-h2 + copy-buttons + dashboard small-multiples + caption/scope a11y + fill-or-hide; 115 green, golden refreshed (G-15 fully closed) |
 | ☑ | [c16d report aesthetics](commits/v02/c16d_report_aesthetics.md) | **done** — visual-design pass in 4 sub-commits (a depth+tokens / b vendored-Inter+type / c chart-finish / d micro+pacing); G-17 closed, ADR-34; 128 green, golden refreshed + browser-reviewed |
+| ☐ | [c16e run model (per-run truth)](commits/v02/c16e_run_model.md) | **next** — kill the cumulative-union flaw (G-19, ADR-35): dashboard + single-state reports report ONE current run (default newest), not the sum of all runs; removed items stop lingering. Real-ingest-driven. Plan/impl in a new chat |
+| ☐ | [c16f multi-run UX](commits/v02/c16f_multirun_ux.md) | **after c16e** — run selector + baseline selector + "current vs baseline" + distinct run labels + "older run" cue (G-18), reusing the A/B picker |
 
 ## v0.3 — CI/automation surface (planned — [ROADMAP](ROADMAP.md))
 
@@ -350,6 +364,16 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-02 — c16e + c16f AUTHORED (from the real Perf 2-run ingest; planning + impl in a NEW chat).
+  c16e_run_model (G-19, ADR-35): the dashboard + single-state reports default to discover_drops=ALL
+  drops and aggregate CUMULATIVELY, so work removed in the newer run still shows (instancing lists a
+  run1-only mesh; "total draws" = run1+run2 summed; draws-by-class donut sums both). Fix = anchor each
+  report to ONE current run (default newest) as truth; baselines for delta only; absent items drop out
+  or move to a separated "resolved since <baseline>" section; trend_table/A-B stay the across-run views.
+  c16f_multirun_ux (G-18): run selector + baseline selector + "current vs baseline" banner + distinct run
+  labels + "viewing older run" cue, reusing the A/B picker. Both presentation/aggregation-only (golden
+  refresh now VISIBLE on the 2-drop synthetic; test_parquet_parity GREEN no digests refresh). Opened
+  FINDINGS G-18/G-19; current -> c16e; v0.2 close-out + tag now come AFTER c16f. NO code yet.
 - 2026-06-02 — REAL INGEST (user "Perf" drop: 2 runs x 7 areas x 1 rdc). Corrected an INVERTED layout
   (user had root/<run>/<area>/rdc; discovery wants root/<area>/<YYYY-MM-DD[_label]>/rdc) -> restaged in
   C:\tmp\perf via hardlinks (Downloads read-only), runs->dated drops (r110565->2026-05-25, r110788->
