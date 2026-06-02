@@ -94,8 +94,10 @@ def delta_cell(curr, prev, *,
     else:
         cls = 'pos' if diff > 0 else 'neg'
 
+    # 'alarm' flags a large REGRESSION only (cls == 'neg'); a big improvement must never wear the
+    # red regression accent (c16c - was magnitude-only, which painted red bars on -100% wins).
     alarm = ''
-    if regression_threshold_pct is not None and prev_f != 0:
+    if cls == 'neg' and regression_threshold_pct is not None and prev_f != 0:
         pct = abs(diff) / abs(prev_f) * 100.0
         if pct > regression_threshold_pct:
             alarm = ' alarm'
