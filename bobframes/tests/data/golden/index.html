@@ -421,7 +421,10 @@ a.dash-card h3 { margin: 0; color: var(--accent); font-size: var(--fs-h2);
 a.dash-card table.report { font-size: var(--fs-small); }
 a.dash-card table.report a { pointer-events: none; }
 a.dash-card .dash-sub { margin: 0; color: var(--text-2); font-size: var(--fs-small); }
+/* dashboard small-multiple: the card is the frame, so the mini chart blends in (no boxed panel,
+   no box-in-box against the borderless summary table below it) - c16c. */
 a.dash-card figure.chart { margin: 0; max-width: none; }
+a.dash-card .chart-svg { background: transparent; border: 0; border-radius: 0; }
 
 a[data-link-kind="primary"] {
   display: inline-flex;
