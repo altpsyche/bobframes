@@ -350,6 +350,20 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-02 — REAL INGEST (user "Perf" drop: 2 runs x 7 areas x 1 rdc). Corrected an INVERTED layout
+  (user had root/<run>/<area>/rdc; discovery wants root/<area>/<YYYY-MM-DD[_label]>/rdc) -> restaged in
+  C:\tmp\perf via hardlinks (Downloads read-only), runs->dated drops (r110565->2026-05-25, r110788->
+  2026-06-01), reconciled the cross-run area-name mismatch (Finanical/Financial District -> Financial
+  district; Commerical->Commercial). Surfaced + fixed 2 REAL bugs the synthetic golden never exercised:
+  (1) D-12 [afcb07e] trend_table single-drop crash ('str' has no .get - a loop var `kpis` clobbered the
+  hero KPI list); (2) R-17 [bd82980] every r110788 replay exited rc=0xC0000005 (qrenderdoc ACCESS
+  VIOLATION on the ctrl/cap.Shutdown NATIVE teardown) AFTER writing complete, consistent output, and was
+  wrongly discarded as replay_failed -> replay_main now writes a completion sentinel
+  (paths.REPLAY_COMPLETE_MARKER) as its last act; run._classify_replay salvages rc!=0+marker as
+  replay_dirty_exit -> capture_status ok + manifest replay_dirty_exit record (ADR-23). Replay is ~150-220s
+  PER capture (sequential). Rendered the real 2-run 7-area report (14 drops, 39145 entities): GPU delta
+  -0.015s, big draw reductions in the June build (Chor bazar 1524->448), Police station/ibo bytes +33.9%
+  flagged. 128->132 green; golden + parquet golden untouched (replay not run for synthetic). UNPUSHED.
 - 2026-06-02 — dashboard KPI averages (user-requested, post-c16d). The hero strip showed only TOTALS
   (total gpu, total draws) which read as alarming to execs out of context. _global_kpis now pairs each
   total with a PER-FRAME average (avg gpu/frame, avg draws/frame), computed from the same frame_totals
