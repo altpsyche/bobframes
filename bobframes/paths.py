@@ -40,6 +40,11 @@ AB_DIR = 'ab'                # A/B report pairs (under _reports/)
 TMP_SUFFIX = '.tmp'          # atomic-commit staging suffix (dir + file)
 MANIFEST_NAME = '_manifest.json'
 DONE_MARKER = 'done.marker'
+# Written by replay_main.py as its FINAL action, after every output table - before RenderDoc's native
+# teardown (ctrl/cap.Shutdown), which can fault (access violation) on some captures. Its presence lets
+# the host SALVAGE a nonzero process exit as a complete replay (see run._classify_replay). The literal
+# is duplicated in replay_main.py (embedded py3.10 cannot import this module, H-6).
+REPLAY_COMPLETE_MARKER = '_replay_complete.marker'
 INDEX_HTML = 'index.html'
 
 
