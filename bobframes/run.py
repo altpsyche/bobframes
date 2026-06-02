@@ -205,6 +205,20 @@ def _do_parse(drop: discovery.Drop, stage_root: str, workers: int, project_root:
 
 # --- Stage 4: replay ---------------------------------------------------------
 
+def _classify_replay(rc: int, complete: bool) -> str:
+    """Map a replay subprocess result to a status.
+
+    rc==0                  -> 'ok'                (clean replay)
+    rc!=0 and complete     -> 'replay_dirty_exit' (replay_main wrote ALL output, then qrenderdoc
+                              faulted on native teardown - ctrl/cap.Shutdown access violation, a
+                              crash Python can't catch. The data is complete -> salvage it.)
+    rc!=0 and not complete -> 'replay_failed'     (genuine failure: no completion marker)
+    """
+    if rc == 0:
+        return 'ok'
+    return 'replay_dirty_exit' if complete else 'replay_failed'
+
+
 def _do_replay(drop: discovery.Drop, stage_root: str, pixel_grid: int = 4,
                replay_timeout: float = 600.0) -> dict[str, str]:
     # The replay child (qrenderdoc embedded py3.10) reads the grid only from the inherited
@@ -226,12 +240,18 @@ def _do_replay(drop: discovery.Drop, stage_root: str, pixel_grid: int = 4,
                 log_path=log_path,
                 timeout_s=replay_timeout,
             )
-            if rc == 0:
-                statuses[capture] = 'ok'
+            complete = os.path.exists(os.path.join(capture_stage, paths.REPLAY_COMPLETE_MARKER))
+            status = _classify_replay(rc, complete)
+            statuses[capture] = status
+            if status == 'ok':
                 _log(f'    {capture}: rc={rc} {elapsed:.1f}s')
+            elif status == 'replay_dirty_exit':
+                # All output written, but qrenderdoc crashed on native teardown (rc!=0). Salvage the
+                # complete data rather than discard it; the dirty exit is recorded in the manifest.
+                _log(f'    {capture}: rc={rc} but replay COMPLETE (qrenderdoc crashed on shutdown); '
+                     f'output salvaged, {elapsed:.1f}s')
             else:
                 # Isolate the failure: skip this capture, keep the rest of the drop alive (R-6).
-                statuses[capture] = 'replay_failed'
                 _log(f'    {capture}: replay FAILED (rc={rc}, {elapsed:.1f}s); skipping, see {log_path}')
     return statuses
 
@@ -273,11 +293,17 @@ def process_drop(drop: discovery.Drop, *, force: bool, workers: int,
                                replay_timeout=replay_timeout)
 
     capture_status: dict[str, str] = {}
+    dirty_exit: list[str] = []
     for s in drop.captures:
         p_ok = parse_status.get(s, 'ok') == 'ok'
         r = replay_status.get(s, 'ok')
         if r == 'replay_failed':
             capture_status[s] = 'replay_failed'
+        elif p_ok and r == 'replay_dirty_exit':
+            # Replay output is complete; qrenderdoc faulted only on teardown. Report it as ok so the
+            # data is used, but RECORD the dirty exit in the manifest (not silent, ADR-23).
+            capture_status[s] = 'ok'
+            dirty_exit.append(s)
         elif p_ok and r == 'ok':
             capture_status[s] = 'ok'
         else:
@@ -318,6 +344,10 @@ def process_drop(drop: discovery.Drop, *, force: bool, workers: int,
         tool_versions=manifest.gather_tool_versions(),
         host_info=manifest.gather_host_info(),
     )
+    if dirty_exit:
+        # Captures whose replay completed but whose qrenderdoc process crashed on teardown (output
+        # salvaged; counted ok). Recorded so the anomaly is visible in provenance, not hidden.
+        m['replay_dirty_exit'] = dirty_exit
     manifest.write_manifest(tmp, m)
 
     # Commit FIRST (atomic rename of the data dir), THEN clean the stage. The stage is a

@@ -70,6 +70,35 @@ def test_replay_failure_skips_and_records_status(monkeypatch, tmp_path):
     assert statuses == {'1': 'ok', '2': 'replay_failed'}
 
 
+def test_classify_replay_salvages_crash_on_teardown():
+    # rc==0 is always ok; a nonzero exit is salvaged ONLY if the completion marker is present
+    # (replay_main wrote all output, then qrenderdoc faulted on native shutdown).
+    assert run._classify_replay(0, complete=True) == 'ok'
+    assert run._classify_replay(0, complete=False) == 'ok'
+    assert run._classify_replay(3221225477, complete=True) == 'replay_dirty_exit'   # 0xC0000005
+    assert run._classify_replay(1, complete=False) == 'replay_failed'
+
+
+def test_replay_dirty_exit_salvaged_when_marker_present(monkeypatch, tmp_path):
+    """Regression (real Perf ingest, 2026-06-02): qrenderdoc replays a capture fully, writes every
+    table + the completion marker, then crashes on native teardown (rc=0xC0000005). The host must
+    salvage that (status replay_dirty_exit), not discard complete data as replay_failed."""
+    def _fake_run(script, payload_args, log_path=None, timeout_s=600.0):
+        capture, stage_root = payload_args[1], payload_args[5]
+        if capture == '1':   # wrote the marker (complete) THEN faulted on exit
+            with open(os.path.join(stage_root, capture, paths.REPLAY_COMPLETE_MARKER),
+                      'w', encoding='utf-8') as f:
+                f.write('draws=10\n')
+            return (3221225477, 1.0)
+        return (3221225477, 1.0)   # capture '2': crash with NO marker -> genuine failure
+
+    monkeypatch.setattr(run.qrd_harness, 'run', _fake_run)
+    drop = Drop(area='A', drop_date='2026-01-01', drop_label='x',
+                drop_dir=str(tmp_path / 'drop'), captures=('1', '2'))
+    statuses = run._do_replay(drop, str(tmp_path / 'stage'), pixel_grid=4)
+    assert statuses == {'1': 'replay_dirty_exit', '2': 'replay_failed'}
+
+
 # --- R-1: manifest write is atomic (no partial file on mid-write crash) -------
 
 def test_write_manifest_atomic_no_partial(monkeypatch, tmp_path):

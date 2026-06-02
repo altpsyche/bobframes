@@ -2255,6 +2255,14 @@ def main() -> None:
                   f' passes={n_p} fbos={n_fbo} indirect={n_ind} pixel_history={n_ph}'
                   f' uniforms_passes={len(uniforms_per_pass_rows)} totals={n_ft}')
 
+            # Completion sentinel: the LAST write, after every output table and before the RenderDoc
+            # teardown below. ctrl/cap.Shutdown() can fault natively (access violation, rc=0xC0000005)
+            # on some captures - a crash Python cannot catch. The host treats a nonzero process exit
+            # as a SALVAGEABLE complete replay iff this marker exists (run._classify_replay). Filename
+            # must match paths.REPLAY_COMPLETE_MARKER (duplicated; embedded py3.10 can't import, H-6).
+            with open(os.path.join(capture_stage, '_replay_complete.marker'), 'w', encoding='utf-8') as f:
+                f.write(f'draws={n_draws_w} events={n_events} frame_totals={n_ft}\n')
+
         finally:
             try: ctrl.Shutdown()
             except Exception: pass
