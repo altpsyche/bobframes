@@ -407,8 +407,8 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     if len(drops) == 1:
         ft = per_drop_ft[0]
         worst_area, worst_gpu = None, 0.0
-        for area, kpis in ft.items():
-            g = float(kpis.get('total_gpu_duration_s', 0) or 0)
+        for area, ft_row in ft.items():     # not `kpis` - that name holds the hero KPI list (used below)
+            g = float(ft_row.get('total_gpu_duration_s', 0) or 0)
             if g > worst_gpu:
                 worst_gpu, worst_area = g, area
         if worst_area is not None:
