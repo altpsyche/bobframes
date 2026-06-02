@@ -30,14 +30,26 @@ from . import paths, schemas, stable_keys
 _LOG = logging.getLogger('bobframes')
 
 
-def _list_stage_dirs(stage_root: str) -> list[str]:
+def _list_stage_dirs(stage_root: str, require_marker: bool = True) -> list[str]:
+    """Capture subdirs of stage_root, natural-sorted.
+
+    R-15: with require_marker (the default), a capture whose replay did NOT complete - no
+    paths.REPLAY_COMPLETE_MARKER - is SKIPPED. A replay that crashed mid-write leaves half-written
+    CSVs; merging or copying their sidecars would fold partial/garbage rows into the committed drop.
+    Both a clean replay and a salvaged dirty-exit (R-17) write the marker, so this keeps exactly the
+    trustworthy captures - the same set the report layer surfaces via ok_capture_set. A skipped
+    half-written capture is reported 'replay_failed' in the manifest, so the omission is not silent.
+    """
     if not os.path.isdir(stage_root):
         return []
     names = []
     for entry in os.listdir(stage_root):
         full = os.path.join(stage_root, entry)
-        if os.path.isdir(full):
-            names.append(entry)
+        if not os.path.isdir(full):
+            continue
+        if require_marker and not os.path.exists(os.path.join(full, paths.REPLAY_COMPLETE_MARKER)):
+            continue
+        names.append(entry)
     names.sort(key=lambda s: (len(s), s))
     return names
 
@@ -245,7 +257,15 @@ def _write_pair(table: pa.Table, out_dir: str, name: str) -> None:
 
 
 def _copy_sidecars(stage_root: str, out_dir: str) -> None:
-    """Copy shader_src/, histogram/ and jsonl sidecars from stage to out."""
+    """Copy shader_src/, histogram/ and jsonl sidecars from stage to out.
+
+    R-11 (single-process assumption, recorded): the per-capture copies below overwrite by filename
+    without a lock. This is SAFE because one drop is processed by one process (process_drop is
+    sequential per capture; concurrency in the pipeline is across DROPS via separate stage roots, not
+    within a drop). Shader-source filenames are content-addressed (stable_key/src_hash), so two
+    captures emitting the same file emit identical bytes - an overwrite is idempotent. If the pipeline
+    ever shares a stage root across processes, switch to tmp-staged copies.
+    """
     captures = _list_stage_dirs(stage_root)
     shader_src_dst = os.path.join(out_dir, 'shader_src')
     histogram_dst = os.path.join(out_dir, 'histogram')

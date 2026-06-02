@@ -25,11 +25,14 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import logging
 import os
 import re
 import sys
 import time
 from collections.abc import Iterator
+
+_LOG = logging.getLogger('bobframes')
 
 # --- Streaming chunk reader --------------------------------------------------
 
@@ -48,8 +51,10 @@ def iter_chunks(xml_path: str) -> Iterator[tuple[int, int, str, str]]:
     cid = cidx = 0
     cname = ''
     buf: list[str] = []
+    n_replaced = 0   # R-14: tally U+FFFD substitutions so bad/truncated UTF-8 is not silent
     with open(xml_path, 'r', encoding='utf-8', errors='replace') as f:
         for line in f:
+            n_replaced += line.count(chr(0xfffd))   # U+FFFD = the decode-error substitution
             if not in_chunk:
                 m = _RE_CHUNK_START.search(line)
                 if m:
@@ -70,6 +75,12 @@ def iter_chunks(xml_path: str) -> Iterator[tuple[int, int, str, str]]:
                     yield cid, cidx, cname, body
                     in_chunk = False
                     buf = []
+    if n_replaced:
+        # R-14: bad/truncated UTF-8 was substituted with U+FFFD rather than raising. Surface it so a
+        # corrupt/partial capture is not silently parsed into incomplete rows (the fuller fix - a
+        # manifest parse_status='partial' - is a follow-up; this at least breaks the silence).
+        _LOG.warning('parse %s: %d byte(s) were not valid UTF-8 and were replaced (U+FFFD); '
+                     'parsed text for the affected chunk(s) may be incomplete', xml_path, n_replaced)
 
 
 # --- Body extractors ---------------------------------------------------------

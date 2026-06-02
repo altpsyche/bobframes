@@ -370,7 +370,7 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c16e run model (per-run truth)](commits/v02/c16e_run_model.md) | **done** — killed the cumulative-union flaw (G-19, ADR-35): dashboard + 5 single-state reports report ONE current run (default newest) via discovery.current_run/baseline_run/RunContext threaded as report_page(run=); removed items drop out or move to a separated "resolved since <baseline>" card; trend_table + A/B unchanged. 132 -> 142 green; golden refreshed (dashboard + 5 reports only); parquet digests untouched; QUALITY_GATES §21.1j |
 | ☑ | [c16f multi-run UX](commits/v02/c16f_multirun_ux.md) | **done** — run selector via pre-rendered per-run pages (_reports/run/<key>/, reuse rdc-ab-picker) + fixed prior baseline + "current vs baseline" banner + distinct run chips + "viewing an older run" cue + dashboard->report persistence (G-18); bounded by [report] max_prerendered_runs. 142 -> 148 green; golden +6 per-run pages, no digests refresh; QUALITY_GATES §21.1k. G-20 (3+-run col collapse) deferred (no 3+-run data to verify) |
 | ☑ | c16g quality sweep | **done** — pre-tag, behaviour-neutral: Q-1 (stable_key dict-of-builders, oracle-locked), Q-2 (cast-failure tally + warn), Q-4 (zip strict on derive), Q-7 (`_to_dict_of_lists` callers), Q-8 (dead buffers no-op deleted), D-3 (coupling doc), D-9 (`_TABLE_DISPLAY_ORDER` origin recovered + recorded). 148 -> 160 green; golden + digests frozen; no new ADR |
-| ☐ | c16h reliability sweep | **next** — R-12 (log stage-cleanup failures), R-14 (warn on UTF-8 decode replacement), R-11 (doc single-process sidecar), R-15 (marker-gate already covers the half-write risk + guard/doc); R-10 deferred (OOM-gated) |
+| ☑ | c16h reliability sweep | **done** — R-12 (`_best_effort_rmtree` logs held-handle cleanup failures), R-14 (UTF-8 U+FFFD warning in `iter_chunks`), R-11 (single-process sidecar doc), R-15 (`parquetize` skips markerless/incomplete-replay captures so half-written CSVs never merge). R-10 deferred (OOM-gated). 160 -> 165 green; golden + digests frozen; no new ADR |
 
 ## v0.3 — CI/automation surface (planned — [ROADMAP](ROADMAP.md))
 
@@ -416,6 +416,24 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-02 — c16h DONE (v0.2 reliability sweep; R-11/R-12/R-14/R-15 closed, R-10 deferred). Pre-tag,
+  golden + Parquet digests frozen. R-12: NEW run._best_effort_rmtree replaces the two silent
+  `shutil.rmtree(..., ignore_errors=True)` stage-cleanup sites - still best-effort (a held handle must
+  not fail the commit, R-16) but LOGS a named warning so a stale stage is not invisible. R-14:
+  parse_init_state.iter_chunks tallies U+FFFD substitutions (chr(0xfffd)) and logs a per-file warning,
+  so bad/truncated UTF-8 is surfaced instead of silently parsed into partial rows (the richer manifest
+  parse_status='partial' is a noted follow-up). R-15: chose a cleaner host-side fix over the finding's
+  per-capture-tmp - parquetize._list_stage_dirs(require_marker=True) SKIPS any capture lacking
+  REPLAY_COMPLETE_MARKER, so a replay that crashed mid-write (no marker) never folds half-written CSVs
+  into the committed drop; ok + salvaged dirty-exit (R-17) both write the marker, so this keeps exactly
+  the trustworthy captures - matching the report layer's ok_capture_set. R-11: documented the
+  single-process-per-drop + content-addressed-filename assumption that makes the lockless sidecar
+  overwrite idempotent. R-10 DEFERRED (intentional): no OOM measured, streaming would change the read
+  path with no need. 160 -> 165 green (+5 test_hardening: markerless skip + raw-list, UTF-8 warn +
+  clean, best-effort-rmtree log + tolerate-missing). test_parquet_parity GREEN, NO digests refresh;
+  smoke 15 pages lint clean exit 0. No new ADR. FINDINGS R-11/R-12/R-14/R-15 ticked, R-10 noted.
+  UNPUSHED. NEXT: v0.2 close-out re-ingest (validates R-15 + the manual-salvaged run2 captures on real
+  data) + tag.
 - 2026-06-02 — c16g DONE (v0.2 quality sweep; Q-1/Q-2/Q-4/Q-7/Q-8 + D-3/D-9 closed). Pre-tag cleanup,
   all behaviour-neutral (golden + Parquet digests frozen). Q-1: collapsed parquetize._apply_stable_key's
   60-line if/elif into a dict-of-builders + a per-row get() accessor (byte-identical; oracle-locked in
