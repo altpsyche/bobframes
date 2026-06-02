@@ -21,6 +21,7 @@ from typing import Iterable
 
 import pyarrow.parquet as papq
 
+from .. import paths as _paths
 from .. import schemas
 from ..reports import base as reports_base
 
@@ -226,6 +227,13 @@ nav.toc a .ct { color: var(--text-3); font-variant-numeric: tabular-nums; }
   border: 1px solid var(--border-1);
   background: var(--surface-0);
   position: relative;
+}
+.table-scroll:empty::before {
+  /* c16j: heavy rows stream from _pagedata/<table>.js via <script defer>, so the shell paints first.
+     This hint shows while the container is empty and auto-clears the instant the VTable injects rows
+     (no longer :empty) - pure CSS, no JS, deterministic. ASCII dots (never the banned ellipsis). */
+  content: 'loading...';
+  display: block; padding: 12px; opacity: 0.6;
 }
 table.data {
   border-collapse: separate; border-spacing: 0;
@@ -844,9 +852,27 @@ def _table_payload(table_name: str, out_dir: str) -> dict | None:
     return {'cols': cols, 'rows': rows, 'labelCols': label_cols}
 
 
+def _write_page_data(pagedata_dir: str, key: str, payload: dict) -> str:
+    """Externalize one VTable payload to ``<pagedata_dir>/<key>.js`` (c16j, ADR-37).
+
+    The heavy ``window.__data_<key>={...}`` formerly inlined in the page is written here as its own
+    classic, file://-safe script file, referenced by a ``<script defer src>``. Same compact
+    ``json.dumps`` as the inline form -> identical bytes, just relocated; LF newline matches the golden.
+    Returns the page-relative ``src`` (always one level down: ``_pagedata/<key>.js``).
+    """
+    os.makedirs(pagedata_dir, exist_ok=True)
+    body = f'window.__data_{key}={json.dumps(payload, separators=(",", ":"))};\n'
+    with open(os.path.join(pagedata_dir, f'{key}.js'), 'w', encoding='utf-8', newline='\n') as f:
+        f.write(body)
+    return f'{_paths.PAGEDATA_DIR}/{key}.js'
+
+
 def _inline_table_with_data(table_name: str, out_dir: str,
-                             sidecar_rel: str = '.') -> tuple[str, str] | None:
-    """Returns (section_html, script_html) or None if table empty.
+                             sidecar_rel: str = '.') -> tuple[str, str, dict] | None:
+    """Returns (section_html, table_name, payload) or None if table empty.
+
+    The heavy row payload is NOT inlined here (c16j); the caller writes it to a ``_pagedata/<table>.js``
+    via ``_write_page_data`` and emits a ``<script defer src>`` ref, so the HTML shell paints first.
 
     sidecar_rel: relative path from rendered HTML to the data dir, used to
     construct CSV/parquet download links. Default '.' for legacy callers
@@ -875,9 +901,7 @@ def _inline_table_with_data(table_name: str, out_dir: str,
     section.append(f'<div class="table-scroll" data-table="{table_name}"></div>')
     section.append('</section>')
 
-    script = (f'<script>window.__data_{table_name}='
-              f'{json.dumps(payload, separators=(",", ":"))};</script>')
-    return '\n'.join(section), script
+    return '\n'.join(section), table_name, payload
 
 
 def _categorize(table_specs: list[tuple[str, int, int]]) -> dict:
@@ -1093,15 +1117,17 @@ def render_drop(drill_dir: str, *, data_dir: str,
     # Compute relative path from drill_dir → data_dir for sidecar/shader_src links.
     data_rel = os.path.relpath(data_dir, drill_dir).replace('\\', '/')
 
+    pagedata_dir = os.path.join(drill_dir, _paths.PAGEDATA_DIR)
     table_sections: dict[str, str] = {}
-    scripts: list[str] = []
+    data_refs: list[str] = []
     for name, _, _ in table_specs:
         result = _inline_table_with_data(name, data_dir, sidecar_rel=data_rel)
         if result is None:
             continue
-        sec, scr = result
+        sec, key, payload = result
         table_sections[name] = sec
-        scripts.append(scr)
+        src = _write_page_data(pagedata_dir, key, payload)
+        data_refs.append(f'<script defer src="{src}"></script>')
 
     for cat in _CATEGORY_ORDER:
         if cat == 'sidecars':
@@ -1115,7 +1141,7 @@ def render_drop(drill_dir: str, *, data_dir: str,
             parts.append(block)
 
     parts.append(f'<script>window.__labels={labels_json};</script>')
-    parts.extend(scripts)
+    parts.extend(data_refs)
     parts.append(f'<script>{_JS}</script>')
     parts.append('</body></html>')
 
@@ -1126,7 +1152,6 @@ def render_drop(drill_dir: str, *, data_dir: str,
 
 
 def render_root(root: str) -> str:
-    from .. import paths as _paths
     cat_pq = _paths.catalog_parquet(root)
     cat_json = _paths.catalog_json(root)
     root_index = _paths.root_index_html(root)
@@ -1265,7 +1290,8 @@ def render_root(root: str) -> str:
     parts.append(f'<div class="table-scroll" data-table="catalog"></div>')
     parts.append('</section>')
 
-    parts.append(f'<script>window.__data_catalog={json.dumps(payload, separators=(",", ":"))};</script>')
+    catalog_src = _write_page_data(os.path.join(root, _paths.PAGEDATA_DIR), 'catalog', payload)
+    parts.append(f'<script defer src="{catalog_src}"></script>')
     parts.append('<script>window.__colgroups_catalog='
                  f'{json.dumps(_catalog_col_groups(cols), separators=(",", ":"))};</script>')
     parts.append(f'<script>window.__labels={{}};</script>')

@@ -112,6 +112,25 @@ def rendered_html_files(root: str) -> list[str]:
     return sorted(out)
 
 
+def rendered_page_data_files(root: str) -> list[str]:
+    """Relative paths of every externalized page-data ``.js`` under <root>, sorted (c16j).
+
+    These are the catalog/drill VTable payloads moved OUT of the HTML into ``_pagedata/<key>.js``
+    (ADR-37). Identified by their parent dir basename == ``_paths.PAGEDATA_DIR``, so reports (which
+    keep inline data + stay self-contained) contribute nothing. Excludes the report cache dir."""
+    out = []
+    for dirpath, _dirs, files in os.walk(root):
+        if os.sep + _paths.CACHE_DIR in dirpath:
+            continue
+        if os.path.basename(dirpath) != _paths.PAGEDATA_DIR:
+            continue
+        for fn in files:
+            if fn.endswith(".js"):
+                rel = os.path.relpath(os.path.join(dirpath, fn), root).replace("\\", "/")
+                out.append(rel)
+    return sorted(out)
+
+
 def rendered_parquet_files(root: str) -> list[str]:
     """Relative paths of every emitted .parquet under <root>/_data, sorted (`\\`->`/`).
     Excludes the report cache dir. Mirror of `rendered_html_files` for the data path (G-14)."""
