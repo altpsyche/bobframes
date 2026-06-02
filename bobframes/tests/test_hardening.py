@@ -211,3 +211,68 @@ def test_stage_dir_is_sibling_not_inside_commit_dir():
     assert not stage.startswith(tmp + os.sep), 'stage must not be inside the .tmp commit dir'
     assert not stage.startswith(final + os.sep), 'stage must not be inside the committed dir'
     assert stage not in (tmp, final)
+
+
+# --- R-15: parquetize merges only captures whose replay COMPLETED (marker present) ----
+
+def test_list_stage_dirs_skips_markerless_captures(tmp_path):
+    """A replay that crashed mid-write leaves a capture dir with half-written CSVs and NO
+    completion marker; parquetize must skip it so partial rows never enter the committed drop.
+    Complete (ok) + salvaged dirty-exit captures both write the marker, so both are kept."""
+    stage = tmp_path / 'stage'
+    for cap in ('1', '2', '3'):
+        (stage / cap).mkdir(parents=True)
+        (stage / cap / 'draws.csv').write_text('a,b\n1,2\n', encoding='utf-8')
+    # captures 1 + 3 completed (marker written last); capture 2 crashed mid-write (no marker)
+    for cap in ('1', '3'):
+        (stage / cap / paths.REPLAY_COMPLETE_MARKER).write_text('draws=1\n', encoding='utf-8')
+
+    kept = parquetize._list_stage_dirs(str(stage))
+    assert kept == ['1', '3'], 'markerless (incomplete) capture must be skipped'
+    # the raw lister is still available for callers that want every dir
+    assert parquetize._list_stage_dirs(str(stage), require_marker=False) == ['1', '2', '3']
+
+
+# --- R-14: bad/truncated UTF-8 in the parse XML is surfaced, not silently replaced ----
+
+def test_iter_chunks_warns_on_utf8_replacement(tmp_path, caplog):
+    from ..parsers import parse_init_state
+    xml = tmp_path / 'init.xml'
+    # a valid chunk plus a stray invalid UTF-8 byte (0xFF) that decodes to U+FFFD
+    payload = (b'<chunk id="1" chunkIndex="0" name="glGenTextures">body</chunk>\n'
+               b'garbage \xff bytes\n')
+    xml.write_bytes(payload)
+    with caplog.at_level('WARNING', logger='bobframes'):
+        chunks = list(parse_init_state.iter_chunks(str(xml)))
+    assert chunks and chunks[0][2] == 'glGenTextures'      # chunks still parsed
+    assert any('not valid UTF-8' in r.message for r in caplog.records), 'replacement not surfaced'
+
+
+def test_iter_chunks_clean_utf8_no_warning(tmp_path, caplog):
+    from ..parsers import parse_init_state
+    xml = tmp_path / 'init.xml'
+    xml.write_text('<chunk id="1" chunkIndex="0" name="glCreateProgram">x</chunk>\n', encoding='utf-8')
+    with caplog.at_level('WARNING', logger='bobframes'):
+        list(parse_init_state.iter_chunks(str(xml)))
+    assert not any('not valid UTF-8' in r.message for r in caplog.records)
+
+
+# --- R-12: stage cleanup logs a held-handle failure instead of swallowing it silently ----
+
+def test_best_effort_rmtree_logs_on_failure(tmp_path, caplog, monkeypatch):
+    import shutil as _sh
+    def _boom(path):
+        raise PermissionError('held by another process')
+    monkeypatch.setattr(run.shutil, 'rmtree', _boom)
+    with caplog.at_level('WARNING', logger='bobframes'):
+        run._best_effort_rmtree(str(tmp_path), what='stage')   # must NOT raise
+    assert any('could not remove' in r.message for r in caplog.records)
+
+
+def test_best_effort_rmtree_removes_and_tolerates_missing(tmp_path):
+    d = tmp_path / 'gone'
+    d.mkdir()
+    (d / 'f.txt').write_text('x', encoding='utf-8')
+    run._best_effort_rmtree(str(d), what='stage')
+    assert not d.exists()
+    run._best_effort_rmtree(str(d), what='stage')   # already gone -> tolerated, no raise

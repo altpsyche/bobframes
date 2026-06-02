@@ -70,6 +70,22 @@ def _log(msg: str) -> None:
     _logger.info(msg)
 
 
+def _best_effort_rmtree(path: str, *, what: str) -> None:
+    """Remove a tree, tolerating a held handle (R-16) WITHOUT swallowing it silently (R-12).
+
+    The old `shutil.rmtree(path, ignore_errors=True)` hid lock/permission failures, so a stale stage
+    could linger into the next run with no trace. This stays best-effort (never raises - a held stage
+    must not fail the commit) but logs a warning naming the leftover so the cause is visible; the next
+    run's pre-clear retries it.
+    """
+    try:
+        shutil.rmtree(path)
+    except FileNotFoundError:
+        pass
+    except OSError as e:
+        _logger.warning('could not remove %s %s (left for the next run to clear): %s', what, path, e)
+
+
 # --- Stage 1: pre-flight -----------------------------------------------------
 
 def _drop_inputs_max_mtime(drop_dir: str, captures: tuple[str, ...]) -> float:
@@ -285,7 +301,7 @@ def process_drop(drop: discovery.Drop, *, force: bool, workers: int,
     # Stage tree is a SIBLING of tmp, not nested inside it: a held _harness.log handle
     # (e.g. inherited by the adb daemon) must never block the atomic commit (R-16).
     stage_root = paths.drop_stage_dir(project_root, drop.area, drop_label_dated)
-    shutil.rmtree(stage_root, ignore_errors=True)  # clear any stale stage from a prior failed run
+    _best_effort_rmtree(stage_root, what='stale stage')  # clear any stage from a prior failed run (R-12)
     os.makedirs(stage_root, exist_ok=True)
 
     _do_export(drop, workers=workers, convert_timeout=convert_timeout)
@@ -370,9 +386,10 @@ def process_drop(drop: discovery.Drop, *, force: bool, workers: int,
     os.replace(marker_tmp, marker)
 
     # Best-effort stage cleanup (post-commit). If a foreign process still holds a handle
-    # (R-16), this tolerantly leaves the sibling dir; the next run clears it (see above).
+    # (R-16), this tolerantly leaves the sibling dir; the next run clears it (see above). R-12: a
+    # failure is now logged (named), not swallowed silently.
     if not config.getenv_legacy('BOBFRAMES_KEEP_STAGE', 'RDC_KEEP_STAGE'):
-        shutil.rmtree(stage_root, ignore_errors=True)
+        _best_effort_rmtree(stage_root, what='stage (post-commit)')
 
     # Render per-drop browser HTML to _reports/drill/<area>/<drop>/index.html.
     # Separate from data commit: HTML is idempotent and can be regenerated.
