@@ -110,6 +110,44 @@ def test_c16c_section_card_css_present():
     assert '$' not in c
 
 
+def test_c16d_shadow_and_motion_tokens_emitted():
+    """c16d adds the [shadow] elevation block + spring/hover-scale motion tokens; they emit :root
+    vars (light/dark-aware shadows) and are wired through token_subst (ADR-27/34)."""
+    css = chrome._DESIGN_TOKENS
+    # exact emitted bytes (drill/root embed this UN-minified, so spacing is parity-significant); each
+    # elevation is a 2-layer shadow (contact ring + ambient drop), all-neutral-black for both themes
+    assert '  --elev-1: 0 0 0 1px oklch(0% 0 0 / 0.05), 0 1px 3px oklch(0% 0 0 / 0.12);' in css
+    assert '  --elev-2: 0 0 0 1px oklch(0% 0 0 / 0.05), 0 4px 14px oklch(0% 0 0 / 0.16);' in css
+    assert '  --elev-3: 0 0 0 1px oklch(0% 0 0 / 0.06), 0 12px 30px oklch(0% 0 0 / 0.22);' in css
+    assert '  --motion-spring: 220ms cubic-bezier(0.2, 0.8, 0.2, 1);' in css
+    assert '  --hover-scale: 1.01;' in css
+    # reduced-motion no-ops the lift: spring -> 0s, hover-scale -> 1 (static jump cannot survive)
+    assert '    --motion-spring: 0s;' in css
+    assert '    --hover-scale: 1;' in css
+    # [shadow] is a :root section -> must be in the substitution map
+    for k in ('elev_1', 'elev_2', 'elev_3'):
+        assert k in _tokens.token_subst(), k
+
+
+def test_c16d_depth_over_borders_css():
+    """c16d: cards/chrome read by surface + elevation shadow, not 1px outlines; the sticky-h2 in-view
+    cue is a ::before marker (the h2 left-accent is gone); print re-adds a paper border + kills shadow."""
+    c = chrome._CHROME_CSS
+    assert 'box-shadow: var(--elev-1)' in c          # section.card / kpi-chip / details / pair-group
+    assert 'box-shadow: var(--elev-2)' in c          # dash-card
+    assert 'box-shadow: var(--elev-3)' in c          # dash-card hover
+    assert 'border: 1px solid var(--border-1);\n  border-radius: 4px;' not in c  # table-wrap outline gone
+    # severity now tints the whole callout box (no border-left rule), keeping the icon accent
+    assert 'color-mix(in oklch, var(--status-alarm) 11%, var(--surface-1))' in c
+    assert 'border-left-color: var(--status-alarm)' not in c
+    base = chrome._COMPONENTS_CSS_BASE
+    assert 'rdc-sticky-h2 h2[aria-current="section"]::before' in base
+    assert "content: ''" in base
+    # print: borderless+shadowless cards would vanish on paper -> thin rule re-added, shadows killed
+    assert 'a.dash-card { border: 1px solid #888; }' in chrome._PRINT_CSS
+    assert 'box-shadow: none;' in chrome._PRINT_CSS
+
+
 # --- loader contract ----------------------------------------------------------
 
 def test_subst_keys_are_identifiers_and_cover_every_placeholder():

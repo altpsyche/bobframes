@@ -18,8 +18,8 @@ except ModuleNotFoundError:  # pragma: no cover - py3.10 (qrenderdoc embed) via 
 _TOKENS_FILE = 'design_tokens.toml'
 
 # Substitution sections merged into one flat {key: value} map for string.Template (color/spacing/
-# type/motion). Order is irrelevant for substitution; keys are globally unique.
-_SUBST_SECTIONS = ('spacing', 'type', 'motion', 'color')
+# type/motion/shadow). Order is irrelevant for substitution; keys are globally unique.
+_SUBST_SECTIONS = ('spacing', 'type', 'motion', 'color', 'shadow')
 
 _CACHE: dict | None = None
 
@@ -30,7 +30,7 @@ def _toml_text() -> str:
 
 
 def load_tokens() -> dict:
-    """Parse the bundled design_tokens.toml (cached). Keys: color/spacing/type/motion/layout."""
+    """Parse design_tokens.toml (cached). Keys: color/spacing/type/motion/shadow/layout/chart."""
     global _CACHE
     if _CACHE is None:
         _CACHE = tomllib.loads(_toml_text())
