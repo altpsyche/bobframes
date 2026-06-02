@@ -304,7 +304,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     top_a = top_a[:3]
     chart_tt = base.figure(base.bar_chart(
         [(a, g) for a, g, _ in top_a], value_fmt=lambda v: f'{v:.3f}', width=280,
-        title='gpu (s) per area', desc='top areas by GPU seconds'))
+        title='gpu (s) per area', desc='top areas by GPU seconds', chart_id='dash-tt'))
     body_tt = _card_table(
         top_a,
         [
@@ -321,7 +321,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     top_m = _top_meshes(root, drops)
     chart_im = base.figure(base.bar_chart(
         [(lbl, rep) for lbl, rep, _ in top_m], value_fmt=lambda v: base.fmt_int(int(v)), width=280,
-        title='repeat per mesh', desc='most-repeated meshes'))
+        title='repeat per mesh', desc='most-repeated meshes', chart_id='dash-im'))
     body_im = _card_table(
         top_m,
         [
@@ -339,7 +339,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     top_p = _top_passes(drops)
     chart_pg = base.figure(base.bar_chart(
         [(pl, g) for _, pl, g in top_p], value_fmt=lambda v: f'{v:.3f}', width=280,
-        title='gpu (s) per pass', desc='heaviest passes by GPU seconds'))
+        title='gpu (s) per pass', desc='heaviest passes by GPU seconds', chart_id='dash-pg'))
     body_pg = _card_table(
         top_p,
         [
@@ -357,7 +357,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     top_s = _top_shaders(root)
     chart_sh = base.figure(base.bar_chart(
         [(lbl, cost) for lbl, _, cost in top_s], value_fmt=lambda v: f'{v:.1f}', width=280,
-        title='cost proxy per shader', desc='costliest shaders'))
+        title='cost proxy per shader', desc='costliest shaders', chart_id='dash-sh'))
     body_sh = _card_table(
         top_s,
         [
@@ -375,7 +375,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     chart_od = base.figure(base.bar_chart(
         [(rt, pct) for _, rt, pct, _ in wo], value_fmt=lambda v: f'{v:.1f}%',
         max_value=100.0, width=280,
-        title='rejection % per rt', desc='worst render targets by sample rejection'))
+        title='rejection % per rt', desc='worst render targets by sample rejection', chart_id='dash-od'))
     body_od = _card_table(
         wo,
         [

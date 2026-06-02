@@ -102,3 +102,46 @@ def test_ascii_only_output():
     assert dirty and not _BANNED.search(dirty)
     for name, svg in _all_charts().items():
         assert not _BANNED.search(svg), f'{name} has banned char'
+
+
+# --- c16d-c: gradient fills + per-datum <title> + dimmed axes -----------------
+
+def test_gradients_present_and_referenced():
+    bar = charts.bar_chart(_BARS, title='t', chart_id='b1')
+    assert '<linearGradient id="g-b1-bar"' in bar and 'fill="url(#g-b1-bar)"' in bar
+    hist = charts.histogram([1, 2, 2, 3, 3, 3], bins=4, title='t', chart_id='h1')
+    assert '<linearGradient id="g-h1-bin"' in hist and 'fill="url(#g-h1-bin)"' in hist
+    sc = charts.scatter(_PTS, bubble=True, title='t', chart_id='s1')
+    assert '<radialGradient id="g-s1-dot"' in sc and 'fill="url(#g-s1-dot)"' in sc
+    # gradient stops keep the CSS var() colour so light-dark() theming survives
+    assert 'stop-color="var(--accent-data)"' in bar
+
+
+def test_gradient_ids_unique_across_charts_on_page():
+    # two charts share one HTML page (dashboard) -> ids must not collide
+    a = charts.bar_chart(_BARS, title='t', chart_id='dash-tt')
+    b = charts.bar_chart(_BARS, title='t', chart_id='dash-im')
+    assert 'id="g-dash-tt-bar"' in a and 'id="g-dash-im-bar"' in b
+    assert 'g-dash-tt-bar' not in b and 'g-dash-im-bar' not in a
+
+
+def test_gradient_id_deterministic_and_sanitized():
+    # no hash()/counter: same chart_id -> identical bytes; ids forced to ascii [a-z0-9-]
+    assert charts.bar_chart(_BARS, title='t', chart_id='x') == charts.bar_chart(_BARS, title='t', chart_id='x')
+    dirty = charts.bar_chart(_BARS, title='t', chart_id='Pass A/B #1')
+    assert 'id="g-pass-a-b--1-bar"' in dirty and not _BANNED.search(dirty)
+
+
+def test_per_datum_titles():
+    bar = charts.bar_chart(_BARS, title='t', chart_id='b')
+    assert bar.count('<title>') == len(_BARS) + 1     # one per bar + the chart-level title
+    assert '<title>opaque: 120</title>' in bar
+    ln = charts.line_chart(_LN, x_labels=['d1', 'd4'], title='ln', chart_id='l')
+    assert ln.count('<title>') >= 2                   # chart-level + at least one per-series
+
+
+def test_axis_dimmed_to_lightest_border():
+    # c16d dims axes from --border-2 (strong) to --border-1 (lightest) so data pops
+    sc = charts.scatter(_PTS, title='t', chart_id='s')
+    assert 'stroke="var(--border-1)"' in sc
+    assert 'stroke="var(--border-2)"' not in sc

@@ -181,11 +181,13 @@ def build(root: str, *, drops: list | None = None, ab=None,
         sbody.append(base.figure(
             base.scatter(scatter_pts, x_label='complexity', y_label='cost', bubble=True,
                          title='complexity vs cost',
-                         desc='each point is a shader; x complexity, y cost proxy, bubble src bytes'),
+                         desc='each point is a shader; x complexity, y cost proxy, bubble src bytes',
+                         chart_id='shader-sc'),
             'shader complexity vs cost (bubble = src bytes)'))
         sbody.append(base.figure(
             base.histogram(all_cplx, bins=12, title='complexity distribution',
-                           desc=f'distribution of complexity across {len(all_cplx)} shaders'),
+                           desc=f'distribution of complexity across {len(all_cplx)} shaders',
+                           chart_id='shader-hist'),
             'complexity distribution (all shaders)'))
 
         # Primary (diet) table: shader / complexity / uses / cost / flags / src (c16b column diet).

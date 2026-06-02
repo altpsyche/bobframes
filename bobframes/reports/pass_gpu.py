@@ -119,7 +119,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     if not data:
         parts.append(base.empty_state('no pass_class_breakdown data found'))
     else:
-        for area in sorted(data.keys()):
+        for ai, area in enumerate(sorted(data.keys())):
             markers = data[area]
             ranked = sorted(
                 markers.items(),
@@ -217,7 +217,8 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
                     base.bar_chart([(lbl, g) for lbl, g, _ in chart_items][:10],
                                    value_fmt=lambda v: f'{v:.3f}',
                                    title='top passes by gpu (s)',
-                                   desc='heaviest passes by GPU seconds'),
+                                   desc='heaviest passes by GPU seconds',
+                                   chart_id=f'pg-bar-{ai}'),
                     f'{area}: top passes by GPU (s)'))
 
             # c16c: frame the per-area section in a sticky-highlighted card.

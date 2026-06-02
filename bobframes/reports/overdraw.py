@@ -232,7 +232,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     if not by_area:
         parts.append(base.empty_state('no pixel_history data across all drops'))
     else:
-        for area in sorted(by_area.keys()):
+        for ai, area in enumerate(sorted(by_area.keys())):
             rows = []
             for label in set(by_area[area]):
                 rep = None
@@ -328,7 +328,8 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
                         thresholds=[(rcfg.overdraw_reject_warn_pct, 'var(--status-warn)', 'warn'),
                                     (rcfg.overdraw_reject_alarm_pct, 'var(--status-alarm)', 'alarm')],
                         title='sample rejection % per rt',
-                        desc='percent of shaded samples rejected per render target'),
+                        desc='percent of shaded samples rejected per render target',
+                        chart_id=f'overdraw-{ai}'),
                     f'{area}: sample rejection % per RT'))
 
             # c16c: frame the per-area section in a sticky-highlighted card.
