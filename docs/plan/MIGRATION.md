@@ -38,6 +38,9 @@ Operates on the renamed `bobframes/` package. Each guarded by parity.
 | [c09 classifier](commits/v02/c09_classifier.md) | engine-agnostic classifier TOML + UE preset; counter aliases (H-1–H-5) |
 | [c10 env rename](commits/v02/c10_env_rename.md) | `RDC_*`→`BOBFRAMES_*` (legacy fallback); `RDC_INSIDE_ARGS` kept |
 | [c16 report quality](commits/v02/c16_report_quality.md) | empty states, missing-col tolerance, cache SHA256, dashboard rename (R-13, Q-9, G-* polish) |
+| [c16b report charts](commits/v02/c16b_report_viz.md) | inline-SVG chart toolkit + flagship chart per report; shader column-diet (ADR-33, G-15 charts half) |
+| [c16c report restructure](commits/v02/c16c_report_restructure.md) | section-cards + sticky-h2 + copy-buttons + dashboard small-multiples + caption/scope a11y + fill-or-hide (G-15 done) |
+| [c16d report aesthetics](commits/v02/c16d_report_aesthetics.md) | visual-design pass: depth-over-borders + type hierarchy + chart finish + micro-interactions + pacing (G-17) |
 
 ## v0.3 — CI/automation surface (after v0.2)
 

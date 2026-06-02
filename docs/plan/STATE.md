@@ -7,8 +7,9 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        v0.2 CLOSE-OUT (full-area ingest + tag) -> then c20    (status: not-started; v0.2
-                IMPLEMENTATION done - c16c + review fixes landed - but release NOT closed yet)
+current:        c16d_report_aesthetics    (status: not-started; AUTHORED 2026-06-02 - planning + impl
+                happen in a new chat. c16c + review fixes landed. v0.2 close-out (full-area ingest) +
+                tag come AFTER c16d, before c20. Release NOT closed yet.)
 last_session:   2026-06-02 — c16c DONE (report RESTRUCTURE; G-15 FULLY closed - both halves landed). Routed
                 every report section through chrome.section_card wrapped in <rdc-sticky-h2> (relaxed the
                 component selector h2[id] -> h2 so a card's id-less header h2 still drives the in-view
@@ -213,8 +214,22 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    V0.2 IMPLEMENTATION COMPLETE (c04-c10 + c16 + c16b + c16c all done; G-15 fully closed).
-                Two gates before v0.3 work starts at c20:
+next_action:    DO c16d FIRST (report AESTHETICS + UX polish; user-requested 2026-06-02). Open
+                commits/v02/c16d_report_aesthetics.md and do exactly that one commit (planning + impl in a
+                NEW chat). Five presentation-only moves over the c16/c16b/c16c structure: (a) depth over
+                borders - drop card/table outlines, differentiate by surface + a soft elevation shadow
+                (NEW light/dark shadow tokens via the ADR-27 skeleton), tables horizontal-rule only; (b)
+                type hierarchy - KPI numbers in the SANS stack (NO web-font load: 'Inter' is only NAMED in
+                the stack, not loaded - keep offline/determinism), dim secondary data to --text-3, drop the
+                in-card h2 left-accent but keep the sticky highlight working via a different in-view cue;
+                (c) chart finish - gradient fills, dimmed axes, per-datum SVG <title> tooltips (static,
+                deterministic, scrubbed); (d) micro-interactions - spring easing + scale(1.01) hover
+                (no-op under reduced-motion), resting affordance on copy-buttons/links, tinted severity
+                callout backgrounds; (e) pacing - bigger card padding + secondary tables collapsed by
+                default. Output-changing -> refresh golden (broad CSS diff; review page-by-page, ADR-23);
+                test_parquet_parity GREEN, NO digests refresh (§21.9). Append ADR-34 (depth-over-borders +
+                no web-font) if it locks a real decision + QUALITY_GATES §21.1i.
+                THEN the original v0.2 close-out gates:
                 (1) V0.2 CLOSE-OUT (user-requested 2026-06-01): run a real FULL ingest of ALL areas (not
                 just Chor bazar — Commercial/Financial/Police station/Resort/Train station/Under
                 construction mall from the Downloads RDC drop), keep the rendered HTML, eyeball the
@@ -277,6 +292,7 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c16 report-quality polish](commits/v02/c16_report_quality.md) | **done** — mechanics (R-13/Q-9/D-4/D-7/D-11b) + polish slice (KPI strips, callouts, heatmaps, provenance strip, labels); 99 green, golden refreshed (ADR-32) |
 | ☑ | [c16b report charts](commits/v02/c16b_report_viz.md) | **done** — inline-SVG toolkit (charts.py, ADR-33) + flagship chart per report + shader column-diet; 108 green, golden refreshed |
 | ☑ | [c16c report restructure](commits/v02/c16c_report_restructure.md) | **done** — section-cards + sticky-h2 + copy-buttons + dashboard small-multiples + caption/scope a11y + fill-or-hide; 115 green, golden refreshed (G-15 fully closed) |
+| ☐ | [c16d report aesthetics](commits/v02/c16d_report_aesthetics.md) | **next** — visual-design pass: depth-over-borders + type hierarchy + chart finish (gradients/tooltips) + micro-interactions + pacing (G-17). Plan/impl in a new chat |
 
 ## v0.3 — CI/automation surface (planned — [ROADMAP](ROADMAP.md))
 
@@ -322,6 +338,16 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-02 — c16d AUTHORED (report AESTHETICS + UX polish; user-requested). Wrote
+  commits/v02/c16d_report_aesthetics.md - a presentation-only visual-design pass over the c16/c16b/c16c
+  structure: depth over borders (surface + soft elevation shadow, tables horizontal-rule only; NEW
+  light/dark shadow tokens via the ADR-27 skeleton), type hierarchy (KPI numbers in the SANS stack -
+  NO web-font load since 'Inter' is only named not loaded; dim secondary to --text-3; drop in-card h2
+  left-accent but keep the sticky highlight), chart finish (gradient fills + dimmed axes + per-datum
+  SVG <title> tooltips), micro-interactions (spring + scale hover no-op under reduced-motion; resting
+  affordances; tinted severity callouts), pacing (bigger padding + collapsed secondary tables). Opened
+  FINDINGS G-17; added the c16d table row; current -> c16d; v0.2 close-out + tag now come AFTER c16d.
+  Planning + impl in a new chat. NO code yet.
 - 2026-06-02 — c16c DONE (report RESTRUCTURE; G-15 FULLY closed). Every report section now routes through
   chrome.section_card wrapped in <rdc-sticky-h2> (relaxed the component selector h2[id]->h2 so the card's
   id-less header h2 drives the highlight; section ids stay anchors). rdc-copy-button on the 3 named IDs
