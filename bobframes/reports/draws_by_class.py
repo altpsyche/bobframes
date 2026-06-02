@@ -106,12 +106,13 @@ def _compute_kpis(counts: dict, areas: list) -> list:
     ]
 
 
-def build(root: str, *, drops: list | None = None, ab=None) -> str:
+def build(root: str, *, drops: list | None = None, ab=None,
+          run_label=None, run_date=None) -> str:
     if drops is None:
         drops = base.discover_drops(root)
     # Run model (ADR-35): the donut + headline KPIs reflect the CURRENT run only; the per-(area,drop)
     # table below keeps every run as the breakdown / comparison view.
-    rc = base.run_context(drops)
+    rc = base.run_context(drops, run_label=run_label, run_date=run_date)
     cur = rc.current
     counts, areas, drop_keys, total_captures = _gather_from_drops(drops)
     cur_counts = {k: cc for k, cc in counts.items() if cur and k[1] == cur.key}
@@ -181,11 +182,11 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
                                          count=len(counts))
                      + '</rdc-sticky-h2>')
 
-    out_path = base.output_path(root, 'draws_by_class', ab)
+    out_path = base.output_path(root, 'draws_by_class', ab, run=rc)
     return base.write_report(out_path, [base.report_page(
         'draws by class', parts,
         drops=len(drops), captures=total_captures, build_ts=base.now_iso(),
-        crumb_depth=base.crumb_depth(ab), ab=ab, root=root, report_key='draws_by_class',
+        crumb_depth=base.crumb_depth(ab, run=rc), ab=ab, root=root, report_key='draws_by_class',
         kpis=_compute_kpis(cur_counts, cur_areas), run=rc,
         device=base.provenance_strip(*base.newest_drop_provenance(root, [cur] if cur else [])))])
 

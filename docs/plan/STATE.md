@@ -7,12 +7,46 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        c16f_multirun_ux    (status: not-started; c16e DONE this session. The real Perf 2-run ingest
-                exposed two report design flaws -> c16e (per-run truth, DONE) + c16f (multi-run UX, NEXT).
-                ORDER: c16f -> v0.2 close-out (re-ingest validation) -> tag v0.2 (irreversible, authorize
-                first) -> c20. Release NOT closed yet. 6 run2 captures still manual-salvaged - re-test in
-                the close-out re-ingest.)
-last_session:   2026-06-02 — c16e DONE (per-run truth; the run model; G-19 closed; ADR-35). The real Perf
+current:        v0.2 close-out    (status: not-started; c16e + c16f BOTH DONE this session. The real Perf
+                2-run ingest's two report design flaws are fixed -> c16e (per-run truth) + c16f (multi-run UX).
+                ORDER: v0.2 close-out (re-ingest validation) -> tag v0.2 (irreversible, authorize first) ->
+                c20. Release NOT closed yet. 6 run2 captures still manual-salvaged - re-test in the close-out
+                re-ingest. NOTE: G-20 (collapse per-drop columns at 3+ runs) deferred - no 3+-run data to
+                verify; the close-out re-ingest is still 2 runs.)
+last_session:   2026-06-02 — c16f DONE (multi-run UX: the run selector; G-18 closed; builds on ADR-35).
+                Layered the navigation UX on c16e's run model. Mechanism = PRE-RENDERED per-run pages: the
+                top-level _reports/<report>.html is the newest run (default); each OLDER run gets a
+                self-contained set under _reports/run/<run_key>/ (mirrors _reports/ab/<pair>/), bounded by NEW
+                config [report] max_prerendered_runs (default 10), orchestrator LOGS anything dropped beyond
+                the cap (no silent truncation, ADR-23; overflow reachable via trend_table, which is NOT
+                pre-rendered per run). NEW chrome: run_picker/run_picker_for (reuse the rdc-ab-picker web
+                component - a static <select> whose value is a relative link, no network/new JS; distinct
+                rdc-run-select id; depth-prefixed so links resolve from both top-level and run/<key>/),
+                run_compare_banner ("current <x> vs baseline <y>", reuse .ab-strip, baseline dimmed via .dim),
+                and an "viewing an older run" callout (non-newest only, links to newest). report_page emits
+                them from the same run= RunContext (+ a run_nav_key so the dashboard, which carries no
+                report_key, drives the picker as 'index'); A/B pages suppress the picker+banner (ab not None);
+                top-level pages keep the A/B picker, per-run pages omit it. Selection PERSISTS dashboard ->
+                per-report (each run/<key>/ is a self-contained sibling set; only trend_table + the A/B index
+                point up via depth-prefix). cli: output_path/crumb_depth take run=, NEW run_subdir,
+                run_report --run-label/--run-date; orchestrator renders the per-run set; all 6 build()s gain
+                run_label/run_date. VERIFIED in a browser (light+dark, top-level: picker + "current vs
+                baseline" banner; per-run older dashboard: "run 1 of 2", its OWN numbers (total draws 7,957
+                not the newest's 4,417), the older-run cue, the picker - the c16d visual language holds with
+                the new chrome). NOTE (not a bug): the synthetic's OLDER drop lacks pass_class_breakdown
+                (make_synthetic SKIPS it; render-only regenerates derived tables for the newest scope only),
+                so the per-run older dashboard's pass-gpu + draws-by-class CARDS show "no data yet" - the
+                TRUTHFUL per-run result (it does NOT borrow the newest run's pass data; that borrowing was the
+                very G-19 flaw). Real ingests carry pass_class_breakdown on every drop. PARITY (ADR-6/35):
+                golden gained 6 per-run pages + the picker/banner on the 6 top-level pages; trend_table/drill/
+                root/preview goldens UNCHANGED; test_parquet_parity GREEN, NO digests refresh (§21.9). 142 ->
+                148 green (+6 test_run_model c16f: per-run set, picker lists+marks+resolves, older-run cue,
+                banner, nav persistence, A/B suppresses picker; +1 test_config max_prerendered_runs). smoke
+                15 pages lint clean exit 0. QUALITY_GATES §21.1k added; G-18 ticked. G-20 (per-drop column
+                collapse at 3+ runs) DEFERRED - no 3+-run data exists to verify + a 3-run golden fixture
+                cannot be added without a forbidden digest refresh; rationale recorded in FINDINGS (ADR-23).
+                Commits on v0.2-roadmap-c04, UNPUSHED. current -> v0.2 close-out.
+former_last_c16e: 2026-06-02 — c16e DONE (per-run truth; the run model; G-19 closed; ADR-35). The real Perf
                 2-run ingest exposed that the dashboard + 5 single-state reports defaulted to
                 discover_drops=ALL drops and aggregated CUMULATIVELY, so work removed in the newer run still
                 showed (total draws = run1+run2 summed; instancing listed a run1-only mesh as live; the
@@ -269,25 +303,9 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    DO c16f (multi-run UX) - c16e (per-run truth) DONE this session. Open
-                commits/v02/c16f_multirun_ux.md and do exactly that one commit. c16f (G-18, builds on
-                ADR-35): pre-rendered per-run pages under _reports/run/<run_key>/<report>.html (mirror the
-                _reports/ab/<pair>/ layout; newest stays the top-level default, SKIP rendering it under
-                run/) + a run picker reusing chrome.ab_picker (depth-prefixed static <select>, NO network)
-                + a fixed immediately-prior baseline + a "current <x> vs baseline <y>" banner (reuse
-                .ab-strip CSS, baseline dimmed via .dim) + distinct run chips (current accented) + a
-                "viewing an older run" callout cue when not newest + selection that PERSISTS dashboard ->
-                per-report (each run dir is a self-contained sibling set). BOUNDED emission: cap older runs
-                at NEW config [report] max_prerendered_runs (default 10), LOG when skipped (no silent cap -
-                ADR-23); overflow reachable via trend_table. Per-run pages render at incremented crumb_depth
-                so crumb/root/drill/ab links resolve. The build() signatures gain run_label/run_date (feed
-                run_context); orchestrator adds the per-run render loop; cli.run_report gains
-                --run-label/--run-date. CLOSES G-18 + G-20 (collapse the wide per-drop numeric cols to
-                current+baseline+delta+sparkline - no-op at 2 runs, visible at 3+). Presentation-only ->
-                refresh golden (+~7 pages: 1 older run x 7), test_parquet_parity GREEN no digests refresh
-                (§21.9). Add QUALITY_GATES §21.1k. User-switchable baseline (the N*(N-1) matrix) is DEFERRED
-                past v0.2 (user-chosen).
-                THEN the v0.2 close-out gates:
+next_action:    DO the v0.2 CLOSE-OUT - c16e (per-run truth) + c16f (multi-run UX) BOTH DONE this session.
+                The two report design flaws the real Perf 2-run ingest exposed are fixed + golden-refreshed +
+                browser-verified. Remaining before the tag:
                 (1) V0.2 CLOSE-OUT: re-ingest the real Perf drop (now the cumulative flaw is fixed + the
                 R-17 replay salvage is automatic - re-test the 6 manual-flipped run2 captures) and eyeball
                 all reports. Working root C:\tmp\perf (hardlinks; Downloads read-only). Replay is
@@ -350,7 +368,7 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c16c report restructure](commits/v02/c16c_report_restructure.md) | **done** — section-cards + sticky-h2 + copy-buttons + dashboard small-multiples + caption/scope a11y + fill-or-hide; 115 green, golden refreshed (G-15 fully closed) |
 | ☑ | [c16d report aesthetics](commits/v02/c16d_report_aesthetics.md) | **done** — visual-design pass in 4 sub-commits (a depth+tokens / b vendored-Inter+type / c chart-finish / d micro+pacing); G-17 closed, ADR-34; 128 green, golden refreshed + browser-reviewed |
 | ☑ | [c16e run model (per-run truth)](commits/v02/c16e_run_model.md) | **done** — killed the cumulative-union flaw (G-19, ADR-35): dashboard + 5 single-state reports report ONE current run (default newest) via discovery.current_run/baseline_run/RunContext threaded as report_page(run=); removed items drop out or move to a separated "resolved since <baseline>" card; trend_table + A/B unchanged. 132 -> 142 green; golden refreshed (dashboard + 5 reports only); parquet digests untouched; QUALITY_GATES §21.1j |
-| ☐ | [c16f multi-run UX](commits/v02/c16f_multirun_ux.md) | **next** — run selector (pre-rendered per-run pages, reuse A/B picker) + fixed prior baseline + "current vs baseline" banner + distinct run chips + "older run" cue + dashboard->report persistence (G-18); collapse 3+-run cols (G-20) |
+| ☑ | [c16f multi-run UX](commits/v02/c16f_multirun_ux.md) | **done** — run selector via pre-rendered per-run pages (_reports/run/<key>/, reuse rdc-ab-picker) + fixed prior baseline + "current vs baseline" banner + distinct run chips + "viewing an older run" cue + dashboard->report persistence (G-18); bounded by [report] max_prerendered_runs. 142 -> 148 green; golden +6 per-run pages, no digests refresh; QUALITY_GATES §21.1k. G-20 (3+-run col collapse) deferred (no 3+-run data to verify) |
 
 ## v0.3 — CI/automation surface (planned — [ROADMAP](ROADMAP.md))
 
@@ -396,6 +414,29 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-02 — c16f DONE (multi-run UX: the run selector; G-18 closed; builds on ADR-35). Layered the
+  navigation UX on c16e's run model via PRE-RENDERED per-run pages: top-level _reports/<report>.html = newest
+  (default); each OLDER run gets a self-contained set under _reports/run/<run_key>/ (mirrors _reports/ab/),
+  bounded by NEW [report] max_prerendered_runs (default 10; orchestrator LOGS drops beyond the cap - no silent
+  truncation, ADR-23; overflow via trend_table, which is NOT pre-rendered per run). NEW chrome run_picker_for
+  (reuse the rdc-ab-picker component: static <select>, value=relative link, no network/JS; distinct
+  rdc-run-select id; depth-prefixed links resolve from both top-level + run/<key>/), run_compare_banner
+  ("current vs baseline", reuse .ab-strip, baseline dimmed), + an "viewing an older run" callout (non-newest
+  only). report_page emits them from the run= RunContext (+ run_nav_key so the dashboard drives the picker as
+  'index'); A/B pages suppress the picker; per-run pages omit the A/B picker. Persists dashboard->report (each
+  run dir is a self-contained sibling set; trend_table + A/B index point up). cli output_path/crumb_depth take
+  run=, NEW run_subdir + --run-label/--run-date; orchestrator renders the per-run set; 6 build()s gain
+  run_label/run_date. Browser-verified light+dark (top-level picker+banner; per-run "run 1 of 2" with its own
+  numbers + older-run cue; c16d language holds). NOTE (not a bug): the synthetic's OLDER drop lacks
+  pass_class_breakdown (make_synthetic skips it; render-only regens derived tables for the newest scope only)
+  -> the per-run older dashboard's pass-gpu + draws-by-class CARDS show "no data yet", the TRUTHFUL per-run
+  result (it does not borrow the newest run's data - that borrowing WAS the G-19 flaw); real ingests carry the
+  table on every drop. PARITY (ADR-6/35): golden +6 per-run pages + picker/banner on 6 top-level pages;
+  trend_table/drill/root/preview UNCHANGED; test_parquet_parity GREEN, NO digests refresh. 142 -> 148 green
+  (+6 test_run_model c16f, +1 test_config). smoke 15 pages lint clean exit 0. QUALITY_GATES §21.1k; G-18
+  ticked. G-20 (per-drop col collapse at 3+ runs) DEFERRED - no 3+-run data to verify, 3-run golden fixture
+  blocked by the no-digests-refresh constraint (rationale in FINDINGS, ADR-23). UNPUSHED. current -> v0.2
+  close-out (still 2-run; tag after).
 - 2026-06-02 — c16e DONE (per-run truth; the run model; G-19 closed; ADR-35). Killed the cumulative-union
   flaw the real Perf 2-run ingest exposed: dashboard + 5 single-state reports defaulted to
   discover_drops=ALL drops and summed/unioned them, so removed work lingered (total draws = run1+run2;

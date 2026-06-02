@@ -198,6 +198,20 @@ def run_context(drops: list, *, run_label: str | None = None,
     return RunContext(list(drops), cur, bl)
 
 
+def prerendered_runs(drops: list, max_older: int) -> list:
+    """The runs that get a pre-rendered page / picker option (c16f): the newest plus the `max_older`
+    most-recent OLDER runs, returned date-asc. Bounds the per-run page explosion as history accrues
+    (the orchestrator logs anything dropped beyond the cap - no silent truncation, ADR-23). Runs
+    beyond the cap stay reachable via `trend_table`. Returns the drops verbatim for < 2 runs.
+    """
+    if len(drops) < 2:
+        return list(drops)
+    older = drops[:-1]
+    if max_older is not None and max_older >= 0:
+        older = older[-max_older:]
+    return list(older) + [drops[-1]]
+
+
 def ok_capture_set(root: str) -> set[tuple]:
     """Return {(area, drop_date, drop_label, capture)} where replay_status='ok'."""
     cat_path = _paths.catalog_parquet(root)

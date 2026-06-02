@@ -93,6 +93,7 @@ def test_report_thresholds_defaults():
                       (r.gpu_regression_pct, 10.0)]:
         assert _bits(got) == _bits(want)
     assert r.instancing_repeat_min == 4
+    assert r.max_prerendered_runs == 10        # c16f — per-run page cap
 
 
 def test_banlist_roundtrip_matches_code():
