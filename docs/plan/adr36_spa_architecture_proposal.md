@@ -119,15 +119,25 @@ report be emailed/archived as one byte-deterministic file.
    collapsible column groups — now as SPA view features (closes G-21).
 6. **Close-out:** re-ingest validation on the real Perf data (app folder + export), then tag v0.2.
 
-## Open decisions (smaller; need a yes/no before authoring the commit docs)
-1. **View fragments pre-rendered server-side (recommended, reuses Python renderers) vs client-rendered
-   from data (a full JS reimplementation of charts/run-model — much larger, not recommended).** I
-   recommend pre-rendered fragments; confirm.
-2. **Routing: hash (`#/...`, zero-config on `file://`, recommended) vs History API (needs a server).**
-   Hash, given the no-server decision; confirm.
-3. **Does the SPA fully replace the current flat files now, or ship alongside them for one release**
-   (SPA + the existing static `_reports/` during a transition)? Replace-now is cleaner; alongside is
-   safer but doubles the golden temporarily.
-4. **Tag timing:** land the whole epic before the v0.2 tag, or tag v0.2 at the close-out (c16e-h done)
-   and ship the SPA as **v0.3** so it isn't rushed? (You asked for v0.2; flagging the cost so it's a
-   deliberate choice.)
+## Decisions taken (resolved 2026-06-02)
+1. **Pre-rendered server-side fragments** (reuse the Python renderers — no JS reimplementation). ✓
+2. **Hash routing** (`#/…`, zero-config on `file://`). ✓
+3. **Replace-now** (flat static files removed; single-file export covers the standalone need). ✓
+4. **Land in v0.2 before the tag** (the tag slips; cost accepted). ✓
+
+## Post-review hardening (2026-06-02 — folded into ADR-36 + the commit docs)
+An adversarial review of this plan surfaced gaps that would break or silently rot the app; these are now
+**hard invariants** of ADR-36 (DECISIONS) and actioned in the commit docs:
+1. **The byte-golden no longer proves correctness** (the output is the *result of running* the router/
+   loader JS, not a static file). c16j adds a **headless-Chrome navigation smoke** to the gate (Chrome
+   already used for screenshots → no new dependency): load over `file://`, visit routes, assert the view
+   mounted. Without it CI is green on a dead app.
+2. **`#/route` must not collide with the pervasive bare `#anchor` jump links** (`#counts`, `#top_meshes`,
+   `#<area>`, sticky-h2, `trend_table.html#gpu`). The router claims only leading-slash hashes; bare
+   `#anchor` = scroll-in-view. Scheme set in c16j; links rewritten in c16l.
+3. **Classic scripts only — no ES modules** (Chrome blocks `file://` module loading; `import()` too).
+4. **Lazy `<script src>` data load is async** — mount the VTable on the data script's `onload`/a
+   registration hook, never "inject then mount" (c16k).
+Plus: sidecar `.glsl`/histogram links stay relative FILE links not routes (c16l); a route change must
+move focus + `aria-live`-announce on every view (sustained a11y cost); the root `index.html` is
+repurposed (catalog → shell) so c16j defines the default route.

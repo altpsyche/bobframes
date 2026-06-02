@@ -614,3 +614,24 @@ announce; `<noscript>` links the single-file export). Routing is **hash-based** 
 Implemented as the phased epic **c16j–c16o** (spine + asset bundle + golden restructure → data decoupling →
 re-home reports/dashboard/run-model → single-file export + `DataSink` → catalog/drill readability in the SPA →
 close-out). Additive to / amends ADR-6/27/32/33/34/35.
+
+**Hard implementation invariants (post-review hardening, 2026-06-02 — these are part of the decision, not
+optional):**
+1. **The byte-golden no longer proves correctness — add a runtime gate.** In the SPA what the user sees is
+   the *result of running the router/loader JS*, so byte-identical files no longer imply a working app
+   (CI could be green on dead navigation). c16j adds a **headless-Chrome navigation smoke** to the gate
+   (Chrome is already used for screenshots → no new dependency): load `index.html` over `file://`, visit a
+   couple of routes, `--dump-dom`/screenshot, assert the view mounted + a known cell rendered.
+2. **`#/route` vs `#anchor` must not collide.** The existing reports use bare fragment anchors pervasively
+   (`#counts`, `#top_meshes`, `#<area>`, sticky-h2 targets, `trend_table.html#gpu`). The router claims ONLY
+   `#/…` (leading slash); a bare `#anchor` means scroll-within-the-current-view. Every in-view jump link is
+   rewritten to this scheme in c16l. Stated rule, established in c16j.
+3. **Classic scripts only — NO ES modules.** Chrome (and others) block `file://` ES-module loading
+   outright. `app.js` is one classic `<script>` (the existing `components_js` IIFE style); no
+   `<script type=module>`, no `import`/`import()`. This is what keeps double-click-open working.
+4. **Lazy `<script src>` data load is async — sequence it.** The router must NOT mount a VTable before its
+   `_data/<key>.js` has loaded; await the script's `onload` (or have the data file call a registration hook
+   that triggers the mount). "inject then mount" is a race. (c16k.)
+Plus: sidecar links (shader-src `.glsl`, histograms) stay **relative file links**, not routes (c16l);
+route changes manage focus + `aria-live` on EVERY view (a sustained a11y cost, not one-time); the root
+`index.html` is repurposed (catalog → shell) so c16j defines the default route.

@@ -319,10 +319,18 @@ next_action:    DO c16j FIRST (SPA spine; ADR-36 phase 1), THEN c16k-c16n, THEN 
                 Verify offline double-click in a real browser; test_parquet_parity untouched (§21.9);
                 QUALITY_GATES §21.1l. Then c16k (data decoupling, kills 21MB) -> c16l (re-home
                 reports/dashboard/run-model as routes; flat _reports/* removed) -> c16m (single-file export via
-                DataSink) -> c16n (catalog/drill readability in the SPA; closes G-21). KEY INVARIANTS for the
-                whole epic: NO network (only <script src>/<link>), byte-deterministic (no random/Date), reuse
-                the Python renderers (pre-rendered fragments, NOT a JS reimplementation), hash routing, preserve
-                a11y/print/reduced-motion + the ADR-35 run model.
+                DataSink) -> c16n (catalog/drill readability in the SPA; closes G-21). KEY INVARIANTS
+                (ADR-36 "Hard implementation invariants"): NO network (only <script src>/<link>); byte-
+                deterministic (no random/Date); reuse the Python renderers (pre-rendered fragments, NOT a JS
+                reimplementation); preserve a11y/print/reduced-motion + the ADR-35 run model. POST-REVIEW
+                HARDENING (must do): (1) the byte-golden no longer proves the app WORKS -> c16j adds a
+                HEADLESS-CHROME NAVIGATION SMOKE (Chrome already used; load file://, visit routes, assert the
+                view mounted); (2) router claims ONLY #/route - bare #anchor (#counts/#top_meshes/#<area>/
+                sticky-h2/trend#gpu) = scroll-in-view (scheme in c16j, links rewritten in c16l); (3) CLASSIC
+                SCRIPTS ONLY, no ES modules (Chrome blocks file:// module loading); (4) lazy <script src> data
+                load is ASYNC - mount on the data-script onload/registration hook, never "inject then mount"
+                (c16k); sidecar .glsl/histogram links stay relative FILE links not routes (c16l); root
+                index.html is now the SHELL so c16j defines the default route.
                 THEN before the tag:
                 (1) V0.2 CLOSE-OUT: re-ingest the real Perf drop (now the cumulative flaw is fixed + the
                 R-17 replay salvage is automatic - re-test the 6 manual-flipped run2 captures) and eyeball
