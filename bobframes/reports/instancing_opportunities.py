@@ -204,7 +204,8 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
         if chart_items:
             mbody.append(base.figure(
                 base.bar_chart(chart_items, title='estimated wasted indices',
-                               desc='(max repeat - 1) x typical indices, per mesh'),
+                               desc='(max repeat - 1) x typical indices, per mesh',
+                               chart_id='inst-wasted'),
                 'estimated wasted indices (top meshes)'))
 
         sec1 = ['<div class="table-wrap"><rdc-sortable-table>',

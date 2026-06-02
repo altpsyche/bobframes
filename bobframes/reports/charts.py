@@ -32,7 +32,7 @@ _DEF = {
     'width': 640, 'height': 220, 'donut': 180,
     'bar_h': 16, 'gap': 6, 'pad': 10,
     'series_color': 'var(--accent-data)',
-    'axis_color': 'var(--border-2)', 'grid_color': 'var(--border-1)',
+    'axis_color': 'var(--border-1)', 'grid_color': 'var(--border-1)',
     'label_color': 'var(--text-2)',
     'threshold_warn': 'var(--status-warn)', 'threshold_alarm': 'var(--status-alarm)',
     'palette': ['var(--accent-data)', 'var(--c-opaque)', 'var(--c-prepass)',
@@ -73,11 +73,37 @@ def _num(v) -> str:
     return f'{f:,.2f}'
 
 
-def _open(w: int, h: int, aria: str, title: str, desc: str) -> str:
-    """SVG opening tag + role/aria + title/desc. Text is escaped + assumed ASCII."""
+def _open(w: int, h: int, aria: str, title: str, desc: str, defs: str = '') -> str:
+    """SVG opening tag + role/aria + title/desc, then optional <defs> (gradients). Text is escaped
+    + assumed ASCII. `defs` defaults to '' so non-gradient charts stay byte-identical."""
     return (f'<svg class="chart-svg" role="img" viewBox="0 0 {int(w)} {int(h)}" '
             f'width="{int(w)}" height="{int(h)}" aria-label="{_h(aria or title)}">'
-            f'<title>{_h(title)}</title><desc>{_h(desc)}</desc>')
+            f'<title>{_h(title)}</title><desc>{_h(desc)}</desc>{defs}')
+
+
+def _gid(chart_id: str | None) -> str:
+    """Sanitize a caller-supplied chart_id to an ASCII [a-z0-9-] gradient-id stem. The caller owns
+    page-uniqueness (loop index / card key); NO hash()/process-counter (those break the byte-golden
+    determinism test). Defaults to 'c'."""
+    s = (chart_id or 'c').lower()
+    return ''.join(ch if (ch.isascii() and (ch.isalnum() or ch == '-')) else '-' for ch in s) or 'c'
+
+
+def _lin_grad(gid: str, color: str) -> str:
+    """A vertical linear gradient (same colour, 1.0 -> 0.55 stop-opacity) for a subtle bar sheen.
+    Same colour both stops so light-dark() theming is preserved; only the alpha varies."""
+    return (f'<defs><linearGradient id="{gid}" x1="0" y1="0" x2="0" y2="1">'
+            f'<stop offset="0" stop-color="{color}" stop-opacity="1"/>'
+            f'<stop offset="1" stop-color="{color}" stop-opacity="0.55"/>'
+            f'</linearGradient></defs>')
+
+
+def _radial_grad(gid: str, color: str) -> str:
+    """A radial gradient (off-centre highlight) so scatter bubbles read as soft dots, not flat discs."""
+    return (f'<defs><radialGradient id="{gid}" cx="0.35" cy="0.35" r="0.75">'
+            f'<stop offset="0" stop-color="{color}" stop-opacity="0.85"/>'
+            f'<stop offset="1" stop-color="{color}" stop-opacity="0.40"/>'
+            f'</radialGradient></defs>')
 
 
 def figure(svg: str, caption: str = '') -> str:
@@ -92,7 +118,8 @@ def figure(svg: str, caption: str = '') -> str:
 
 def bar_chart(items, *, color: str | None = None, value_fmt=None, thresholds=None,
               max_value: float | None = None, width: int | None = None,
-              title: str = '', desc: str = '', aria: str | None = None) -> str:
+              title: str = '', desc: str = '', aria: str | None = None,
+              chart_id: str | None = None) -> str:
     """Horizontal bars. `items` = list of (label, value). Optional `thresholds` = list of
     (value, color, label) vertical rule-lines (e.g. config warn/alarm). Empty -> ''."""
     items = [(str(lbl), float(v or 0)) for lbl, v in (items or [])]
@@ -123,16 +150,19 @@ def bar_chart(items, *, color: str | None = None, value_fmt=None, thresholds=Non
     aria = aria or title or 'bar chart'
     if not desc:
         desc = f'{n} bars; top {top[0]} at {value_fmt(top[1])}'
-    out = [_open(W, H, aria, title, desc)]
+    gid = f'g-{_gid(chart_id)}-bar'
+    out = [_open(W, H, aria, title, desc, _lin_grad(gid, color))]
     for i, (lbl, v) in enumerate(items):
         y = pad + i * (bar_h + gap)
         w = max(0.0, (v / mx) * bar_w)
         out.append(f'<text x="{_c(pad)}" y="{_c(y + bar_h * 0.74)}" '
                    f'fill="{_t("label_color")}">{_h(_clip(lbl, lbl_max))}</text>')
         out.append(f'<rect x="{_c(bar_x)}" y="{_c(y)}" width="{_c(w)}" height="{bar_h}" '
-                   f'fill="{color}" rx="1"/>')
+                   f'fill="url(#{gid})" rx="1"><title>{_h(lbl)}: {_h(value_fmt(v))}</title></rect>')
+        # dim the trailing value where the bar is short (the <title> still carries the exact value)
+        vop = ' fill-opacity="0.55"' if w < 24 else ''
         out.append(f'<text x="{_c(bar_x + w + 4)}" y="{_c(y + bar_h * 0.74)}" '
-                   f'fill="{_t("label_color")}">{_h(value_fmt(v))}</text>')
+                   f'fill="{_t("label_color")}"{vop}>{_h(value_fmt(v))}</text>')
     for tv, tcolor, tlabel in (thresholds or []):
         tx = bar_x + min(1.0, float(tv) / mx) * bar_w
         out.append(f'<line x1="{_c(tx)}" y1="{_c(pad - 2)}" x2="{_c(tx)}" '
@@ -255,7 +285,8 @@ def donut(segments, *, center_label: str = '', width: int | None = None,
 
 def scatter(points, *, x_label: str = '', y_label: str = '', bubble: bool = False,
             width: int | None = None, height: int | None = None,
-            title: str = '', desc: str = '', aria: str | None = None) -> str:
+            title: str = '', desc: str = '', aria: str | None = None,
+            chart_id: str | None = None) -> str:
     """x/y scatter. `points` = list of (x, y, size, label); `size` scales bubble radius when
     `bubble`, else ignored. Empty -> ''."""
     pts = []
@@ -284,8 +315,10 @@ def scatter(points, *, x_label: str = '', y_label: str = '', bubble: bool = Fals
         return 3.0 + 11.0 * math.sqrt(max(0.0, sz) / smax)
 
     aria = aria or title or 'scatter chart'
+    gid = f'g-{_gid(chart_id)}-dot'
     out = [_open(W, H, aria, title,
-                 desc or f'{len(pts)} points; x={x_label or "x"}, y={y_label or "y"}')]
+                 desc or f'{len(pts)} points; x={x_label or "x"}, y={y_label or "y"}',
+                 _radial_grad(gid, _t('series_color')))]
     # axes
     out.append(f'<line x1="{_c(x0)}" y1="{_c(y1)}" x2="{_c(x1)}" y2="{_c(y1)}" '
                f'stroke="{_t("axis_color")}"/>')
@@ -305,7 +338,7 @@ def scatter(points, *, x_label: str = '', y_label: str = '', bubble: bool = Fals
                    f'fill="{_t("label_color")}">{_h(y_label)}</text>')
     for x, y, sz, lbl in pts:
         out.append(f'<circle cx="{_c(px(x))}" cy="{_c(py(y))}" r="{_c(radius(sz))}" '
-                   f'fill="{_t("series_color")}" fill-opacity="0.55" '
+                   f'fill="url(#{gid})" '
                    f'stroke="{_t("series_color")}">'
                    f'<title>{_h(lbl)}</title></circle>')
     out.append('</svg>')
@@ -316,7 +349,8 @@ def scatter(points, *, x_label: str = '', y_label: str = '', bubble: bool = Fals
 
 def histogram(values, *, bins: int = 10, color: str | None = None,
               width: int | None = None, height: int | None = None,
-              title: str = '', desc: str = '', aria: str | None = None) -> str:
+              title: str = '', desc: str = '', aria: str | None = None,
+              chart_id: str | None = None) -> str:
     """Vertical-bar histogram of `values`. Empty -> ''."""
     vals = [float(v) for v in (values or []) if v is not None]
     if not vals:
@@ -339,7 +373,9 @@ def histogram(values, *, bins: int = 10, color: str | None = None,
     y0, y1 = _AXIS_T, H - _AXIS_B
     bw = (x1 - x0) / nb
     aria = aria or title or 'histogram'
-    out = [_open(W, H, aria, title, desc or f'{len(vals)} values across {nb} bins')]
+    gid = f'g-{_gid(chart_id)}-bin'
+    out = [_open(W, H, aria, title, desc or f'{len(vals)} values across {nb} bins',
+                 _lin_grad(gid, color))]
     out.append(f'<line x1="{_c(x0)}" y1="{_c(y1)}" x2="{_c(x1)}" y2="{_c(y1)}" '
                f'stroke="{_t("axis_color")}"/>')
     for i, ct in enumerate(counts):
@@ -348,7 +384,7 @@ def histogram(values, *, bins: int = 10, color: str | None = None,
         bh = (ct / cmax) * (y1 - y0)
         bx = x0 + i * bw
         out.append(f'<rect x="{_c(bx + 1)}" y="{_c(y1 - bh)}" width="{_c(bw - 2)}" '
-                   f'height="{_c(bh)}" fill="{color}"><title>bin {i + 1}: {ct}</title></rect>')
+                   f'height="{_c(bh)}" fill="url(#{gid})" rx="1"><title>bin {i + 1}: {ct}</title></rect>')
     out.append(f'<text x="{_c(x0)}" y="{_c(H - 8)}" fill="{_t("label_color")}">{_h(_num(lo))}</text>')
     out.append(f'<text x="{_c(x1)}" y="{_c(H - 8)}" text-anchor="end" '
                f'fill="{_t("label_color")}">{_h(_num(hi))}</text>')
@@ -447,7 +483,8 @@ def icicle(levels, *, width: int | None = None, height: int | None = None,
 # --------------------------------------------------------------------------- line_chart
 
 def line_chart(series, *, x_labels=None, width: int | None = None, height: int | None = None,
-               title: str = '', desc: str = '', aria: str | None = None) -> str:
+               title: str = '', desc: str = '', aria: str | None = None,
+               chart_id: str | None = None) -> str:
     """Multi-series line. `series` = list of (name, values, color); None values break the line
     (like sparkline_svg). Empty / all-None -> ''."""
     series = [(str(name), list(vals or []), col) for name, vals, col in (series or [])]
@@ -489,11 +526,12 @@ def line_chart(series, *, x_labels=None, width: int | None = None, height: int |
         for s in segments:
             if len(s) == 1:
                 x, y = s[0]
-                out.append(f'<circle cx="{_c(x)}" cy="{_c(y)}" r="2" fill="{col}"/>')
+                out.append(f'<circle cx="{_c(x)}" cy="{_c(y)}" r="2" fill="{col}">'
+                           f'<title>{_h(name)}</title></circle>')
             else:
                 pts = ' '.join(f'{_c(x)},{_c(y)}' for x, y in s)
                 out.append(f'<polyline points="{pts}" stroke="{col}" stroke-width="1.5" '
-                           f'fill="none"/>')
+                           f'fill="none"><title>{_h(name)}</title></polyline>')
         # series label at its last point
         last = next((p for p in reversed([(x0 + i * step, v) for i, v in enumerate(vals)])
                      if p[1] is not None), None)
