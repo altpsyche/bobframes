@@ -30,6 +30,12 @@ _DESIGN_TOKENS_TMPL = """
   --motion-focus: ${motion_focus};
   --motion-vt: ${motion_vt};
   --motion-disclosure: ${motion_disclosure};
+  --motion-spring: ${motion_spring};
+  --hover-scale: ${hover_scale};
+
+  --elev-1: ${elev_1};
+  --elev-2: ${elev_2};
+  --elev-3: ${elev_3};
 
   --bg:            ${bg};
   --surface-0:     ${surface_0};
@@ -80,6 +86,8 @@ _DESIGN_TOKENS_TMPL = """
     --motion-focus: 0s;
     --motion-vt: 0s;
     --motion-disclosure: 0s;
+    --motion-spring: 0s;
+    --hover-scale: 1;
   }
 }
 """
@@ -106,8 +114,7 @@ h1 {
 h2 {
   font-size: var(--fs-h2); font-weight: 600; color: var(--text-1);
   margin: var(--sp-6) 0 var(--sp-3);
-  padding: 0 0 0 var(--sp-3);
-  border-left: 3px solid var(--accent);
+  position: relative;
   line-height: 1.4;
   scroll-margin-top: 64px;
 }
@@ -168,7 +175,8 @@ nav.crumb a + a::before { content: ''; }
 }
 .kpi-chip {
   background: var(--surface-1);
-  border: 1px solid var(--border-1);
+  box-shadow: var(--elev-1);
+  border-radius: 4px;
   padding: var(--sp-3) var(--sp-4);
   display: flex; flex-direction: column; gap: var(--sp-1);
   min-height: ${kpi_min_height};
@@ -195,8 +203,6 @@ nav.crumb a + a::before { content: ''; }
 
 .table-wrap {
   overflow-x: auto;
-  border: 1px solid var(--border-1);
-  border-radius: 4px;
   margin: 0 0 var(--sp-6);
 }
 .table-wrap > table.report { border: 0; margin: 0; }
@@ -272,18 +278,20 @@ figure.chart { margin: 0 0 var(--sp-4); max-width: 720px; }
 figure.chart figcaption { font-size: var(--fs-small); color: var(--text-2);
                           margin: 0 0 var(--sp-2); }
 .chart-svg { display: block; width: 100%; height: auto;
-             background: var(--surface-1); border: 1px solid var(--border-1);
-             border-radius: 2px; }
+             background: var(--surface-1);
+             border-radius: 4px; }
 .chart-svg text { font: var(--fs-small) ui-monospace, monospace; fill: var(--text-2); }
 details.secondary-metrics { margin: var(--sp-2) 0 var(--sp-4); }
 details.secondary-metrics > summary { cursor: pointer; color: var(--text-2);
                                       font-size: var(--fs-small); padding: var(--sp-1) 0; }
 
-/* Section cards (c16c): each report section is ONE framed card, and the card is the SINGLE frame -
-   inner table-wraps go borderless/flush so we never stack box-in-box. The leading h2 keeps its
-   --accent rule (also the target the sticky-h2 highlight recolours). */
+/* Section cards (c16c/c16d): each report section is ONE card raised off the page by surface +
+   elevation shadow (depth over borders, ADR-34). The card is the SINGLE frame - inner table-wraps
+   go borderless/flush so we never stack box-in-box. The leading h2 no longer carries an --accent
+   left-rule; the sticky-h2 in-view highlight is now a ::before marker (see _COMPONENTS_CSS_BASE). */
 section.card {
-  border: 1px solid var(--border-1); border-radius: 4px;
+  background: var(--surface-1);
+  box-shadow: var(--elev-1); border-radius: 4px;
   padding: var(--sp-4); margin: 0 0 var(--sp-6);
 }
 section.card > header {
@@ -325,7 +333,8 @@ table.report > caption {
 .delta.neg, .delta-pill.neg { color: var(--neg); font-weight: 600; }
 .delta.flat, .delta-pill.flat { color: var(--text-3); }
 .delta.new, .delta-pill.new { color: var(--text-3); font-style: italic; }
-.delta.alarm { border-left: 3px solid var(--status-alarm); padding-left: 6px; }
+.delta.alarm { background: color-mix(in oklch, var(--status-alarm) 14%, transparent);
+               border-radius: 2px; }
 .delta-latest { border-left: 2px solid var(--border-2); }
 
 .legend { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4);
@@ -365,7 +374,7 @@ table.report > caption {
 details.matrix, details.category {
   margin: 0 0 var(--sp-4);
   background: var(--surface-1);
-  border: 1px solid var(--border-1);
+  box-shadow: var(--elev-1); border-radius: 4px;
 }
 details.matrix > summary, details.category > summary {
   cursor: pointer; list-style: none; user-select: none;
@@ -399,19 +408,19 @@ details.matrix > .matrix-body, details.category > .cat-body {
 .callout {
   display: flex; align-items: flex-start; gap: var(--sp-2);
   padding: var(--sp-3) var(--sp-4); margin: 0 0 var(--sp-4);
-  background: var(--surface-1); border: 1px solid var(--border-1);
-  border-left: 3px solid var(--text-3); font-size: var(--fs-small);
+  background: var(--surface-1); border-radius: 4px;
+  font-size: var(--fs-small);
 }
 .callout .icon { flex: 0 0 auto; margin-top: 2px; color: var(--text-3); }
 .callout .co-body { display: flex; flex-direction: column; gap: 2px; }
 .callout .co-title { font-weight: 600; color: var(--text-1); }
 .callout .co-detail { color: var(--text-2); }
 .callout a { color: var(--accent-primary); }
-.callout.sev-ok { border-left-color: var(--status-ok); }
+.callout.sev-ok { background: color-mix(in oklch, var(--status-ok) 9%, var(--surface-1)); }
 .callout.sev-ok .icon { color: var(--status-ok); }
-.callout.sev-warn { border-left-color: var(--status-warn); }
+.callout.sev-warn { background: color-mix(in oklch, var(--status-warn) 9%, var(--surface-1)); }
 .callout.sev-warn .icon { color: var(--status-warn); }
-.callout.sev-alarm { border-left-color: var(--status-alarm); }
+.callout.sev-alarm { background: color-mix(in oklch, var(--status-alarm) 11%, var(--surface-1)); }
 .callout.sev-alarm .icon { color: var(--status-alarm); }
 
 .empty-state {
@@ -428,15 +437,14 @@ details.matrix > .matrix-body, details.category > .cat-body {
   gap: var(--sp-6);
   margin: 0 0 var(--sp-6);
 }
-a.dash-card { border: 1px solid var(--border-1);
+a.dash-card { background: var(--surface-1); box-shadow: var(--elev-2); border-radius: 4px;
               padding: var(--sp-4); display: flex; flex-direction: column;
               gap: var(--sp-3); text-decoration: none; color: inherit;
-              transition: border-color 0.1s, background 0.1s; }
-a.dash-card:hover { background: var(--surface-1); border-color: var(--border-2);
+              transition: box-shadow var(--motion-hover), background var(--motion-hover); }
+a.dash-card:hover { background: var(--surface-2); box-shadow: var(--elev-3);
                     text-decoration: none; }
 a.dash-card:visited { color: inherit; }
-a.dash-card h3 { margin: 0; color: var(--accent); font-size: var(--fs-h2);
-                 border-left: 3px solid var(--accent); padding-left: var(--sp-3); }
+a.dash-card h3 { margin: 0; color: var(--accent); font-size: var(--fs-h2); }
 a.dash-card table.report { font-size: var(--fs-small); }
 a.dash-card table.report a { pointer-events: none; }
 a.dash-card .dash-sub { margin: 0; color: var(--text-2); font-size: var(--fs-small); }
@@ -468,8 +476,9 @@ nav.crumb {
   gap: var(--sp-2) var(--sp-6);
   align-items: center;
   background: var(--surface-1);
-  border: 1px solid var(--border-1);
+  box-shadow: var(--elev-2);
   border-top: 2px solid var(--accent-data);
+  border-radius: 4px;
   padding: var(--sp-3) var(--sp-4);
   margin: 0 0 var(--sp-4);
 }
@@ -654,7 +663,7 @@ _PRINT_CSS = """
   .summary-bar {
     position: static;
     background: #fff;
-    border-color: #888;
+    border: 1px solid #888;
     border-top-width: 3px;
     break-inside: avoid;
     break-after: avoid;
@@ -662,6 +671,13 @@ _PRINT_CSS = """
   }
   .summary-bar .sb-headline { color: #000; }
   .summary-bar .sb-link { display: none; }
+
+  /* Depth -> paper (c16d): screen depth is shadow-only and borderless; on white paper that is
+     invisible, so re-add a thin rule and kill shadows for every carded element. */
+  section.card, .callout, .kpi-chip, .pair-group,
+  details.matrix, details.category, a.dash-card { border: 1px solid #888; }
+  section.card, .callout, .kpi-chip, .pair-group, details.matrix, details.category,
+  a.dash-card, .summary-bar, .chart-svg { box-shadow: none; }
 
   h1, h2 { color: #000; }
   h2[id] { position: static; background: transparent; break-after: avoid; }
@@ -675,7 +691,7 @@ _PRINT_CSS = """
   table.report tbody tr { break-inside: avoid; }
 
   .kpi-strip { break-inside: avoid; grid-template-columns: repeat(4, 1fr); }
-  .kpi-chip { background: #fff; border-color: #888; }
+  .kpi-chip { background: #fff; }
   .kpi-chip .kpi-value { color: #000; }
 
   .dash-grid { grid-template-columns: repeat(2, 1fr); }
@@ -753,8 +769,13 @@ rdc-heatmap-cell {
 }
 
 rdc-sticky-h2 { display: contents; }
-rdc-sticky-h2 h2[aria-current="section"] {
-  border-left-color: var(--accent-data);
+/* In-view cue (c16d): the h2 lost its --accent left-rule, so the active section is marked by a
+   leading accent bar that appears only while the section's h2 sits in the viewport mid-band. The JS
+   (RdcStickyH2) toggles aria-current="section"; content:'' is ASCII (lint-safe). */
+rdc-sticky-h2 h2[aria-current="section"]::before {
+  content: ''; position: absolute;
+  left: calc(-1 * var(--sp-3)); top: 0.2em; bottom: 0.2em;
+  width: 3px; border-radius: 2px; background: var(--accent-data);
 }
 
 rdc-row-drill { display: contents; }
@@ -810,7 +831,7 @@ rdc-alarm-banner { display: contents; }
 
 /* Pair list: grouped variant chips per A/B pair */
 .pair-list { display: flex; flex-direction: column; gap: var(--sp-4); margin: 0 0 var(--sp-6); }
-.pair-group { border: 1px solid var(--border-1); padding: var(--sp-3) var(--sp-4); background: var(--surface-1); }
+.pair-group { box-shadow: var(--elev-1); border-radius: 4px; padding: var(--sp-3) var(--sp-4); background: var(--surface-1); }
 .pair-group > h3 {
   margin: 0 0 var(--sp-3); padding: 0;
   font: var(--fs-mono) ui-monospace, monospace;
