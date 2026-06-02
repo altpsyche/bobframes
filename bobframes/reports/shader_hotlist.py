@@ -199,7 +199,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
                '<th class="num" scope="col" title="shader complexity score (weighted instruction proxy)">complexity</th>',
                '<th class="num" scope="col">uses total</th>']
         for i, k in enumerate(drop_keys):
-            head = 'uses' if single else f'uses@{base.h(k)}'
+            head = 'uses' if single else f'uses<span class="dim">@{base.h(k)}</span>'
             sec.append(f'<th class="num" scope="col">{head}</th>')
             if i > 0:
                 latest = ' delta-latest' if i == len(drop_keys) - 1 else ''

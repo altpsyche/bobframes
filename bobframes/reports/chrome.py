@@ -310,7 +310,7 @@ details.secondary-metrics > summary { cursor: pointer; color: var(--text-2);
 section.card {
   background: var(--surface-1);
   box-shadow: var(--elev-1); border-radius: 4px;
-  padding: var(--sp-4); margin: 0 0 var(--sp-6);
+  padding: var(--sp-6); margin: 0 0 var(--sp-6);
 }
 section.card > header {
   display: flex; align-items: baseline; gap: var(--sp-3);
@@ -422,6 +422,9 @@ details.matrix > .matrix-body, details.category > .cat-body {
 
 .note { font-size: var(--fs-small); color: var(--text-2);
         margin-top: var(--sp-2); }
+/* Secondary data (c16d): dim drop-keys / dates / raw counts to the tertiary tone so the actionable
+   columns (cost proxy, wasted indices, reject %) carry the eye. Overrides an accent-coloured th. */
+.dim { color: var(--text-3); font-weight: 400; }
 
 .callout {
   display: flex; align-items: flex-start; gap: var(--sp-2);
@@ -458,9 +461,10 @@ details.matrix > .matrix-body, details.category > .cat-body {
 a.dash-card { background: var(--surface-1); box-shadow: var(--elev-2); border-radius: 4px;
               padding: var(--sp-4); display: flex; flex-direction: column;
               gap: var(--sp-3); text-decoration: none; color: inherit;
-              transition: box-shadow var(--motion-hover), background var(--motion-hover); }
+              transition: box-shadow var(--motion-hover), background var(--motion-hover),
+                          transform var(--motion-spring); }
 a.dash-card:hover { background: var(--surface-2); box-shadow: var(--elev-3);
-                    text-decoration: none; }
+                    transform: scale(var(--hover-scale)); text-decoration: none; }
 a.dash-card:visited { color: inherit; }
 a.dash-card h3 { margin: 0; color: var(--accent); font-size: var(--fs-h2); }
 a.dash-card table.report { font-size: var(--fs-small); }
@@ -763,6 +767,8 @@ rdc-copy-button {
   min-width: 28px; padding: 0 6px; height: 22px;
   color: var(--text-2);
   cursor: pointer;
+  /* resting affordance (c16d): a faint tint so it reads as clickable before hover */
+  background: color-mix(in oklch, var(--accent-primary) 7%, transparent);
   border: 1px solid transparent;
   border-radius: 2px;
   font: var(--fs-small) ui-monospace, monospace;
