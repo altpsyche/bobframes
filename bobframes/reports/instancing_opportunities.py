@@ -64,6 +64,12 @@ def _drop_dir_for(drops: list, drop_date, drop_label, area) -> str:
 def build(root: str, *, drops: list | None = None, ab=None) -> str:
     if drops is None:
         drops = base.discover_drops(root)
+    # Run model (ADR-35): live candidates are meshes drawn in the CURRENT run; prior runs supply the
+    # per-drop comparison columns + the resolved-since section, never inflate the live list.
+    rc = base.run_context(drops)
+    cur = rc.current
+    bl = rc.baseline
+    ck = cur.key if cur else None
     out_path = base.output_path(root, 'instancing_opportunities', ab)
     out_dir = os.path.dirname(out_path)
 
@@ -107,34 +113,30 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
             m['rep_drop'] = (row['drop_date'], row['drop_label'])
 
         inst = row.get('num_instances') or 1
-        if cls in ('opaque', 'prepass') and inst <= 1:
+        # Batching candidates are scoped to the current run too (ADR-35): batching a material that
+        # was removed in the newer run would be the same cumulative-union bug as the live list.
+        if cls in ('opaque', 'prepass') and inst <= 1 and drop_key == ck:
             fs = row.get('fs_shader_id') or 0
             key = (pass_norm, fs, cls)
             batching_groups[key] += 1
             batching_meshes[key].add(mh)
             batching_drops[key].add(drop_key)
 
-    ranked = sorted(
-        per_mesh.items(),
-        key=lambda kv: max(kv[1]['repeat_by_drop'].values()) if kv[1]['repeat_by_drop'] else 0,
-        reverse=True,
-    )[:50]
+    def _cur_repeat(m) -> int:
+        return m['repeat_by_drop'].get(ck, 0)
 
-    top_repeat = (max((max(m['repeat_by_drop'].values()) for _, m in ranked
-                        if m['repeat_by_drop']), default=0)
-                  if ranked else 0)
-    n_unique_meshes = len(per_mesh)
+    live = [(mh, m) for mh, m in per_mesh.items() if _cur_repeat(m) > 0]
+    ranked = sorted(live, key=lambda kv: _cur_repeat(kv[1]), reverse=True)[:50]
+
+    top_repeat = max((_cur_repeat(m) for _, m in ranked), default=0)
+    n_unique_meshes = len(live)
     max_wasted = 0
     for mh, m in ranked:
         n_idx_list = m['num_indices']
         if not n_idx_list:
             continue
         n_typ = sorted(n_idx_list)[len(n_idx_list) // 2]
-        max_r = max(m['repeat_by_drop'].values())
-        max_wasted = max(max_wasted, (max_r - 1) * n_typ)
-    pct_deduped = (1.0 - (n_unique_meshes / sum(sum(m['repeat_by_drop'].values())
-                                                  for _, m in per_mesh.items())
-                          if per_mesh else 0)) * 100.0 if per_mesh else 0.0
+        max_wasted = max(max_wasted, (_cur_repeat(m) - 1) * n_typ)
 
     parts = []
     rcfg = get_config().report
@@ -153,7 +155,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
             n_typ = int(statistics.median(m['num_indices'])) if m['num_indices'] else 0
         except statistics.StatisticsError:
             n_typ = 0
-        max_repeat = max(m['repeat_by_drop'].values()) if m['repeat_by_drop'] else 0
+        max_repeat = _cur_repeat(m)
         dominant_pass = m['pass_paths'].most_common(1)[0][0] if m['pass_paths'] else ''
         dominant_cls = m['draw_classes'].most_common(1)[0][0] if m['draw_classes'] else ''
         suffix = base.pass_suffix(dominant_pass) or '?'
@@ -193,7 +195,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
                 n_typ_c = int(statistics.median(m['num_indices'])) if m['num_indices'] else 0
             except statistics.StatisticsError:
                 n_typ_c = 0
-            max_r = max(m['repeat_by_drop'].values()) if m['repeat_by_drop'] else 0
+            max_r = _cur_repeat(m)
             wasted_c = (max_r - 1) * n_typ_c
             if wasted_c <= 0:
                 continue
@@ -228,7 +230,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
             '</tr></thead><tbody>',
         ])
         for rank_i, (mh, m) in enumerate(ranked, 1):
-            max_repeat = max(m['repeat_by_drop'].values()) if m['repeat_by_drop'] else 0
+            max_repeat = _cur_repeat(m)
             try:
                 n_typ = int(statistics.median(m['num_indices'])) if m['num_indices'] else 0
             except statistics.StatisticsError:
@@ -278,6 +280,41 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
                                      ''.join(mbody), count=len(ranked))
                  + '</rdc-sticky-h2>')
 
+    # Resolved since baseline (ADR-35): meshes drawn in the baseline run but gone in the current run -
+    # a win (removed/fixed), surfaced separately (fill-or-hide) so it never mixes into the live list.
+    if bl is not None:
+        resolved = sorted(
+            ((mh, m) for mh, m in per_mesh.items()
+             if m['repeat_by_drop'].get(bl.key, 0) > 0 and _cur_repeat(m) == 0),
+            key=lambda kv: kv[1]['repeat_by_drop'].get(bl.key, 0), reverse=True)
+        if resolved:
+            rbody = ['<div class="table-wrap"><rdc-sortable-table>',
+                     '<table class="report">',
+                     f'<caption>meshes drawn in {base.h(bl.key)} but gone in {base.h(ck)} - removed or fixed</caption>',
+                     '<thead><tr>', '<th scope="col">mesh</th>',
+                     f'<th class="num" scope="col">repeat@{base.h(bl.key)}</th>',
+                     '<th scope="col">areas</th>', '</tr></thead><tbody>']
+            for mh, m in resolved[:30]:
+                try:
+                    n_typ = int(statistics.median(m['num_indices'])) if m['num_indices'] else 0
+                except statistics.StatisticsError:
+                    n_typ = 0
+                dominant_pass = m['pass_paths'].most_common(1)[0][0] if m['pass_paths'] else ''
+                dominant_cls = m['draw_classes'].most_common(1)[0][0] if m['draw_classes'] else ''
+                suffix = base.pass_suffix(dominant_pass) or '?'
+                hash_tag = str(mh)[-4:] if mh else ''
+                mesh_label = f'{dominant_cls}/{suffix}/{n_typ}v#{hash_tag}'
+                rbody.append('<tr>')
+                rbody.append(f'<td>{base.h(mesh_label)}</td>')
+                rbody.append(f'<td class="num">{base.fmt_int(m["repeat_by_drop"].get(bl.key, 0))}</td>')
+                rbody.append(f'<td>{base.h(", ".join(sorted(m["areas"])))}</td>')
+                rbody.append('</tr>')
+            rbody.append('</tbody></table></rdc-sortable-table></div>')
+            parts.append('<rdc-sticky-h2>'
+                         + base.section_card('resolved', f'resolved since {bl.key}',
+                                             ''.join(rbody), count=len(resolved))
+                         + '</rdc-sticky-h2>')
+
     # c16c fill-or-hide: only emit the batching section when there is real content - no bare heading.
     top_batch = [(k, v) for k, v in batching_groups.items() if v >= rcfg.instancing_repeat_min]
     top_batch.sort(key=lambda kv: kv[1], reverse=True)
@@ -308,8 +345,8 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
         drops=len(drops), captures=sum(d.n_captures for d in drops),
         build_ts=base.now_iso(), crumb_depth=base.crumb_depth(ab),
         ab=ab, root=root, report_key='instancing_opportunities',
-        kpis=kpis,
-        device=base.provenance_strip(*base.newest_drop_provenance(root, drops)))])
+        kpis=kpis, run=rc,
+        device=base.provenance_strip(*base.newest_drop_provenance(root, [cur] if cur else [])))])
 
 
 if __name__ == '__main__':

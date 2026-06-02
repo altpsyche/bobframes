@@ -109,13 +109,19 @@ def _compute_kpis(counts: dict, areas: list) -> list:
 def build(root: str, *, drops: list | None = None, ab=None) -> str:
     if drops is None:
         drops = base.discover_drops(root)
+    # Run model (ADR-35): the donut + headline KPIs reflect the CURRENT run only; the per-(area,drop)
+    # table below keeps every run as the breakdown / comparison view.
+    rc = base.run_context(drops)
+    cur = rc.current
     counts, areas, drop_keys, total_captures = _gather_from_drops(drops)
+    cur_counts = {k: cc for k, cc in counts.items() if cur and k[1] == cur.key}
+    cur_areas = cur.areas if cur else []
 
     parts = []
 
-    # Summary bar: dominant class
+    # Summary bar: dominant class (current run)
     class_totals: Counter = Counter()
-    for cc in counts.values():
+    for cc in cur_counts.values():
         for cls, n in cc.items():
             class_totals[cls] += n
     grand_total = sum(class_totals.values()) or 1
@@ -125,7 +131,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
         dom_pct = 100.0 * dom_n / grand_total
         sub_bits = [f'{cls} {base.fmt_float(100.0 * n / grand_total, 1)}%'
                     for cls, n in top_three[1:]]
-        sub_text = f'across {len(areas)} areas; next: ' + ', '.join(sub_bits) if sub_bits else f'across {len(areas)} areas'
+        sub_text = f'across {len(cur_areas)} areas; next: ' + ', '.join(sub_bits) if sub_bits else f'across {len(cur_areas)} areas'
         parts.append(base.summary_bar(
             'dominant class',
             f'{dom_cls} {base.fmt_float(dom_pct, 1)}%',
@@ -137,14 +143,14 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
         parts.append(base.callout(
             sev,
             f'{dom_cls} is {base.fmt_float(dom_pct, 1)}% of all draws',
-            f'{base.fmt_int(grand_total)} draws across {len(areas)} area(s) - the dominant class is '
+            f'{base.fmt_int(grand_total)} draws across {len(cur_areas)} area(s) - the dominant class is '
             f'where instancing / batching pays off most.',
             href='#counts', link_text='see counts'))
 
     if not counts:
         parts.append(base.empty_state('no draws found in any drop'))
     else:
-        # Section 1: flagship charts - class-share donut + per area/drop pct-stacked bars (c16b).
+        # Section 1: flagship charts - class-share donut (current run) + per area/drop pct-stacked bars.
         # c16c: framed in a sticky-highlighted section card.
         sec_stacked = [base.legend()]
         donut_segs = [(c, class_totals.get(c, 0), base.class_color_var(c))
@@ -152,8 +158,8 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
         sec_stacked.append(base.figure(
             base.donut(donut_segs, center_label=base.fmt_int(grand_total),
                        title='draw class share',
-                       desc='share of all draws by class across every area and drop'),
-            'draw-class share (all areas / drops)'))
+                       desc='share of draws by class in the current run'),
+            'draw-class share (current run)'))
         keys = sorted(counts.keys(), key=lambda k: (k[1], k[0]))
         rows = [(f'{area} / {date}', dict(counts[(area, date)])) for area, date in keys]
         sec_stacked.append(base.figure(
@@ -180,8 +186,8 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
         'draws by class', parts,
         drops=len(drops), captures=total_captures, build_ts=base.now_iso(),
         crumb_depth=base.crumb_depth(ab), ab=ab, root=root, report_key='draws_by_class',
-        kpis=_compute_kpis(counts, areas),
-        device=base.provenance_strip(*base.newest_drop_provenance(root, drops)))])
+        kpis=_compute_kpis(cur_counts, cur_areas), run=rc,
+        device=base.provenance_strip(*base.newest_drop_provenance(root, [cur] if cur else [])))])
 
 
 if __name__ == '__main__':

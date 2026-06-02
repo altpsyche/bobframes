@@ -128,6 +128,11 @@ def _rejection_bar(b: dict) -> str:
 def build(root: str, *, drops: list | None = None, ab=None) -> str:
     if drops is None:
         drops = base.discover_drops(root)
+    # Run model (ADR-35): live render targets = those sampled in the CURRENT run; per-drop sample
+    # columns below keep every run. A representative bucket is the current run's, not the oldest.
+    rc = base.run_context(drops)
+    cur = rc.current
+    ck = cur.key if cur else None
     out_path = base.output_path(root, 'overdraw', ab)
 
     drop_keys = [d.key for d in drops]
@@ -136,23 +141,20 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
         meta = _read_rts(d)
         per_drop_data[d.key] = _agg_pixel_history(d, meta)
 
-    all_keys: set = set()
-    for agg in per_drop_data.values():
-        all_keys.update(agg.keys())
+    live_keys = set(per_drop_data.get(ck, {}).keys())
 
     by_area: dict = defaultdict(list)
-    for area, label in all_keys:
+    for area, label in live_keys:
         by_area[area].append(label)
 
     parts = []
     rcfg = get_config().report
 
-    # Hero KPIs: worst rejection %, #RTs over the warn threshold, total samples.
+    # Hero KPIs: worst rejection %, #RTs over the warn threshold, total samples (current run).
     rejects = []
     total_samples = 0
-    for area_key, label in all_keys:
-        rep = next((per_drop_data.get(k, {}).get((area_key, label))
-                    for k in drop_keys if per_drop_data.get(k, {}).get((area_key, label))), None)
+    for area_key, label in live_keys:
+        rep = per_drop_data.get(ck, {}).get((area_key, label))
         ns = rep.get('n_samples', 0) if rep else 0
         if ns <= 0:
             continue
@@ -168,17 +170,11 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
         {'label': 'samples', 'value': base.fmt_int(total_samples)},
     ]
 
-    # Summary bar: worst shadow RT rejection % (or worst RT rejection if no shadow)
+    # Summary bar: worst shadow RT rejection % (or worst RT rejection if no shadow) - current run
     worst_rt = None
     worst_pct = -1.0
-    for area_key, label in all_keys:
-        # Pick the rep bucket (first seen across drops)
-        rep = None
-        for k in drop_keys:
-            b = per_drop_data.get(k, {}).get((area_key, label))
-            if b is not None:
-                rep = b
-                break
+    for area_key, label in live_keys:
+        rep = per_drop_data.get(ck, {}).get((area_key, label))
         if not rep:
             continue
         ns = rep.get('n_samples', 0)
@@ -230,20 +226,14 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
         parts.append(f'<p class="note">no pixel_history rows in drops: {msg}</p>')
 
     if not by_area:
-        parts.append(base.empty_state('no pixel_history data across all drops'))
+        parts.append(base.empty_state('no pixel_history data in the current run'))
     else:
         for ai, area in enumerate(sorted(by_area.keys())):
             rows = []
             for label in set(by_area[area]):
-                rep = None
-                for k in drop_keys:
-                    b = per_drop_data.get(k, {}).get((area, label))
-                    if b is not None:
-                        rep = b
-                        break
-                max_samples = max((per_drop_data.get(k, {}).get((area, label), {}).get('n_samples', 0)
-                                    for k in drop_keys), default=0)
-                rows.append((label, rep, max_samples))
+                rep = per_drop_data.get(ck, {}).get((area, label))
+                cur_samples = rep.get('n_samples', 0) if rep else 0
+                rows.append((label, rep, cur_samples))
             rows.sort(key=lambda x: x[2], reverse=True)
 
             sec = []
@@ -268,12 +258,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
             sec.append('</tr></thead><tbody>')
 
             for label, rep, _ in rows:
-                latest_bucket = None
-                for k in reversed(drop_keys):
-                    b = per_drop_data.get(k, {}).get((area, label))
-                    if b is not None:
-                        latest_bucket = b
-                        break
+                latest_bucket = per_drop_data.get(ck, {}).get((area, label))
                 if latest_bucket is None:
                     continue
                 n = latest_bucket['n_samples']
@@ -296,14 +281,14 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
                 prev_n = None
                 for i, k in enumerate(drop_keys):
                     bb = per_drop_data.get(k, {}).get((area, label))
-                    cur = bb['n_samples'] if bb else None
-                    sec.append(f'<td class="num">{base.fmt_int(cur) if cur is not None else ""}</td>')
+                    cur_n = bb['n_samples'] if bb else None  # not `cur` - that holds the current run DropSet
+                    sec.append(f'<td class="num">{base.fmt_int(cur_n) if cur_n is not None else ""}</td>')
                     if i > 0:
                         sec.append(base.delta_cell(
-                            cur if cur is not None else 0,
+                            cur_n if cur_n is not None else 0,
                             prev_n,
                             lower_is_better=None, fmt='{:+,.0f}'))
-                    prev_n = cur
+                    prev_n = cur_n
                 sec.append('</tr>')
             sec.append('</tbody></table>')
 
@@ -311,12 +296,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
             body = []
             chart_rows = []
             for label, _rep, _ in rows:
-                lb = None
-                for k in reversed(drop_keys):
-                    b = per_drop_data.get(k, {}).get((area, label))
-                    if b is not None:
-                        lb = b
-                        break
+                lb = per_drop_data.get(ck, {}).get((area, label))
                 if not lb or lb['n_samples'] <= 0:
                     continue
                 reject = 100.0 * (1.0 - lb['n_passed'] / lb['n_samples'])
@@ -343,8 +323,8 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
         drops=len(drops), captures=sum(d.n_captures for d in drops),
         build_ts=base.now_iso(), crumb_depth=base.crumb_depth(ab),
         ab=ab, root=root, report_key='overdraw',
-        kpis=kpis,
-        device=base.provenance_strip(*base.newest_drop_provenance(root, drops)))])
+        kpis=kpis, run=rc,
+        device=base.provenance_strip(*base.newest_drop_provenance(root, [cur] if cur else [])))])
 
 
 if __name__ == '__main__':
