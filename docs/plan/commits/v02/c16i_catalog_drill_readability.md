@@ -1,10 +1,10 @@
 # c16i — catalog + drill readability pass (the html/template.py layer)     release: v0.2 · phase: De-hardcoding
 
-> **SUPERSEDED by ADR-36 (2026-06-02).** The reports are moving to an offline static SPA; the catalog +
-> drill readability goals below (type split, roomier rows, heatmap cells, collapsible column groups, G-21)
-> are now delivered **inside the SPA** at [c16n](c16n_catalog_drill_readability_spa.md), not as a static
-> `html/template.py` pass. This doc is kept for provenance — the feature spec still applies, just in the
-> SPA VTable instead. Do NOT execute this commit; do c16j..c16n instead.
+> **REVIVED + ACTIVE (ADR-37, 2026-06-02).** This commit was briefly superseded by the SPA (ADR-36), which
+> a lifespan review then rejected (ADR-37): the reports stay server-rendered + static, so this static
+> `html/template.py` readability pass is exactly the right shape after all. Pairs with **c16j** (decouple
+> the heavy catalog/drill data into `<script src>`'d `_data/*.js` — the ~21 MB TTI fix); together they are
+> the whole catalog/drill improvement, with NO SPA. The durable data investment lives in c20/c30, not here.
 
 ## Goal
 Bring the **catalog (root `index.html`) and per-drop drill browser** — everything built by
@@ -30,25 +30,21 @@ code, 2026-06-02):
   cell** (`template.py` `_PER_DROP_CSS`), the VTable row height is `ROW_H = 22` with `2px` cell padding,
   and the wide catalog is a flat column wall. Zebra (`tr.alt`) + per-table category `<details>`
   (`details.category`) already exist — build on them.
-- **Out of scope (frozen-contract conflict — see below):** the reviews' SPA / `fetch()`-JSON /
-  external-`/assets/` / Google-Fonts architecture.
+- **The heavy-data fix is a SIBLING commit, not this one:** the ~21 MB inline-data drill/catalog TTI is
+  fixed by **c16j** (decouple the VTable payload into a `<script src>`'d `_data/*.js`), STATIC, per ADR-37.
+  c16i is the readability pass only; c16j is the data decoupling; together = the whole catalog/drill
+  improvement, no SPA.
 
-## Explicitly OUT of scope (a product-contract fork; needs a new ADR + signoff, NOT this commit)
-The reviews' headline architecture **must not** be implemented here — each item breaks a frozen,
-deliberately-chosen constraint:
-- **SPA + async `fetch('_data/*.json')`** — a `file://` page cannot fetch local JSON (browser CORS), so
-  a double-clicked report would render an empty skeleton forever. Breaks **ADR-6** (offline,
-  self-contained single file).
-- **External `/assets/style.css` + `/assets/app.js`** — breaks the single-file contract (a copied/
-  emailed report would be dead). The CSS/font duplication the reviews flag is a *known, accepted*
-  tradeoff (ADR-34: offline + byte-determinism chosen over size).
-- **Google-Fonts / external web font** — directly contradicts **ADR-34** (CDN font forbidden with
-  explicit signoff; the Inter subset is vendored + inlined precisely to stay offline + deterministic).
-
-These target a real problem (the 21MB inline-data drill TTI — drill bakes every table's rows as
-`<script>window.__data_<table>=…`, `template.py`). If a *served viewer* is ever wanted, that is a
-different product than "an offline file you open" and needs its own ADR + signoff. Recorded as a
-finding (below), not silently dropped (ADR-23). c16i does NOT touch the data-coupling.
+## Architecture decided (ADR-37 — read this, it settles the earlier SPA question)
+The reviews' headline SPA (router + `fetch()`-JSON + external `/assets/` + Google-Fonts) was evaluated
+(ADR-36) and **rejected on a lifespan review (ADR-37)**: a bespoke offline SPA is a perpetual
+web-framework maintenance tax, weakens the golden-as-correctness gate, loses JS-optional content, and
+constrains the v0.6 plugin / cross-platform future; `fetch` of local JSON also dies on `file://` (CORS).
+**Settled direction:** reports stay **server-rendered + static + self-contained** (JS-optional + single-file
++ golden-as-output preserved); the ONLY real perf problem (the heavy drill/catalog data) is decoupled
+**statically** in c16j via `<script src>` (those pages were never portable/JS-optional anyway); and the
+durable data investment goes to the **data contract** (c20 `--json` + c30 schema/query), not a presentation
+engine. So c16i below is on the **static `html/template.py`** layer — the right shape, not a stopgap.
 
 ## Depends on
 The reports design system (c16d tokens/Inter/depth, ADR-27/34), `html/template.py` (the catalog + drill
@@ -110,8 +106,7 @@ mono); a determinism guard (same input -> same emitted bytes); ASCII guard alrea
 - The SPA/fetch/external-asset/web-font architecture is NOT adopted; its product-contract fork is recorded.
 
 ## Closes
-**G-21 (catalog + drill readability: the html/template.py layer never got the c16b-f report design pass)**.
-Records **G-22 (decoupled/served-viewer architecture — SPA + async data — is a product-contract fork
-that breaks the offline single-file + byte-deterministic contract; needs a dedicated ADR + signoff)** as
-explicitly deferred, not adopted. No new ADR for c16i itself (rides ADR-6/27/32/33/34). Add
-**QUALITY_GATES §21.1l** when it lands.
+**G-21 (catalog + drill readability: the html/template.py layer never got the c16b-f report design pass)** —
+the readability half; the heavy-data half (G-22's real problem) is the sibling **c16j**. **G-22** is resolved
+by **ADR-37** (SPA rejected; heavy-data decoupling done statically in c16j; durable data contract = c20/c30).
+No new ADR for c16i itself (rides ADR-6/27/32/33/34 + ADR-37). Add **QUALITY_GATES §21.1l** when c16i + c16j land.

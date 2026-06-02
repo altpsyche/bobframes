@@ -1,6 +1,15 @@
 # ADR-36 — Reports become an offline static SPA (app folder), with a single-file export
 
-> **Status: ACCEPTED (user signoff 2026-06-02) — now [DECISIONS.md](DECISIONS.md) ADR-36.** This doc is
+> **SUPERSEDED by ADR-37 (2026-06-02, before any code).** A lifespan review rejected the bespoke offline
+> SPA (a perpetual web-framework maintenance tax; weakens golden-as-correctness; loses JS-optional content;
+> constrains plugins/cross-platform). Replacement: keep reports server-rendered + static + self-contained
+> (JS-optional + single-file + golden-as-output preserved); decouple ONLY the heavy ~21 MB drill/catalog
+> data into a `<script src>`'d `_data/*.js` (those pages were never portable/JS-optional anyway); do the
+> catalog/drill readability pass (revived c16i); invest the durable effort in the data contract (c20
+> `--json` + c30 schema/query, already roadmapped). The proposal below is kept for the trail; the SPA is
+> NOT being built. See DECISIONS ADR-37.
+
+> **(SUPERSEDED) original status: ACCEPTED (user signoff 2026-06-02) — now [DECISIONS.md](DECISIONS.md) ADR-36.** This doc is
 > the full proposal/rationale; the frozen decision lives in DECISIONS. **Decisions taken:** SPA lands
 > **in v0.2 before the tag**; **replace-now** (flat static files removed, single-file export retained);
 > **pre-rendered view fragments** (reuse the Python renderers, no JS reimplementation); **hash routing**
