@@ -1,5 +1,11 @@
 # c16i — catalog + drill readability pass (the html/template.py layer)     release: v0.2 · phase: De-hardcoding
 
+> **SUPERSEDED by ADR-36 (2026-06-02).** The reports are moving to an offline static SPA; the catalog +
+> drill readability goals below (type split, roomier rows, heatmap cells, collapsible column groups, G-21)
+> are now delivered **inside the SPA** at [c16n](c16n_catalog_drill_readability_spa.md), not as a static
+> `html/template.py` pass. This doc is kept for provenance — the feature spec still applies, just in the
+> SPA VTable instead. Do NOT execute this commit; do c16j..c16n instead.
+
 ## Goal
 Bring the **catalog (root `index.html`) and per-drop drill browser** — everything built by
 `bobframes/html/template.py` — up to the readability + design bar the **reports** already reached in

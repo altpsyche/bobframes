@@ -1,9 +1,11 @@
-# ADR-36 (PROPOSED) — Reports become an offline static SPA (app folder), with a single-file export
+# ADR-36 — Reports become an offline static SPA (app folder), with a single-file export
 
-> **Status: PROPOSED — awaiting signoff.** On approval this is appended verbatim to
-> [DECISIONS.md](DECISIONS.md) as **ADR-36** and the commit epic below is authored. It **amends**
-> ADR-6 (single-file → app-folder + export) and ADR-34 (font location), and **supersedes** the c16i
-> static-template approach. Nothing here is implemented yet.
+> **Status: ACCEPTED (user signoff 2026-06-02) — now [DECISIONS.md](DECISIONS.md) ADR-36.** This doc is
+> the full proposal/rationale; the frozen decision lives in DECISIONS. **Decisions taken:** SPA lands
+> **in v0.2 before the tag**; **replace-now** (flat static files removed, single-file export retained);
+> **pre-rendered view fragments** (reuse the Python renderers, no JS reimplementation); **hash routing**
+> (zero-config on `file://`). Amends ADR-6 + ADR-34; supersedes c16i; accepts G-22. Implemented as the
+> phased epic **c16j–c16o** (commit docs authored).
 
 ## Context
 Three design reviews ([overall_overhaul_proposal](overall_overhaul_proposal.md),

@@ -45,7 +45,13 @@ Operates on the renamed `bobframes/` package. Each guarded by parity.
 | [c16f multi-run UX](commits/v02/c16f_multirun_ux.md) | run selector (pre-rendered per-run pages) + baseline banner + "older run" cue + dashboard->report persistence (G-18) |
 | c16g quality sweep | Q-1/Q-2/Q-4/Q-7/Q-8 + D-3/D-9: stable-key dict-loop, cast-failure tally, zip strict, `_to_dict_of_lists` reuse, dead-noop, coupling/display-order docs |
 | c16h reliability sweep | R-11/R-12/R-14/R-15: log cleanup failures, UTF-8 warn, single-process sidecar doc, parquetize skips markerless captures (R-10 deferred) |
-| [c16i catalog + drill readability](commits/v02/c16i_catalog_drill_readability.md) | bring the c16d design pass to `html/template.py` (catalog + drill): type split, roomier rows, heatmap cells, collapsible column groups (G-21); SPA/served-viewer fork deferred (G-22) |
+| ~~c16i catalog + drill readability~~ | **SUPERSEDED by ADR-36** — folded into the SPA at c16n |
+| **ADR-36 SPA epic** ([proposal](adr36_spa_architecture_proposal.md)) | reports become an **offline static SPA** (app folder via `<script src>`, no server) + a single-file export; lands in v0.2 before the tag (G-22 accepted) |
+| [c16j SPA spine](commits/v02/c16j_spa_spine.md) | shell + `_assets/app.{css,js}` + hash router + migrate catalog (1 view); restructure golden to the app-folder file-set |
+| [c16k data decoupling](commits/v02/c16k_data_decoupling.md) | heavy catalog/drill payloads -> lazy-loaded `_data/*.js`; kills the ~21MB drill TTI |
+| [c16l re-home reports](commits/v02/c16l_rehome_reports.md) | dashboard + 6 reports + A/B + run model become hash routes (reuse the Python renderers); flat `_reports/*` removed |
+| [c16m single-file export](commits/v02/c16m_single_file_export.md) | `DataSink` (external vs inline) + `export --single-file` = a byte-deterministic standalone HTML |
+| [c16n catalog/drill readability in SPA](commits/v02/c16n_catalog_drill_readability_spa.md) | type split + roomier rows + heatmap cells + collapsible column groups in the SPA VTable (closes G-21/G-22) |
 
 ## v0.3 — CI/automation surface (after v0.2)
 

@@ -572,3 +572,45 @@ Per-drop comparison columns are retained as-is in c16e; collapsing the wide N-ru
 current+baseline+delta+sparkline is recorded as **G-20** (resolved by c16f, no-op at 2 runs). This is the
 spine of [c16e](commits/v02/c16e_run_model.md); the run-switching + comparison **UX** layered on top is
 [c16f](commits/v02/c16f_multirun_ux.md) (G-18). Additive to ADR-32 (report contract).
+
+### ADR-36 — reports become an offline static SPA (app folder), with a single-file export (v0.2 SPA epic)
+**Context.** Three design reviews (`docs/plan/{overall_overhaul_proposal,readability_and_presentation_review,report_roadmap}.md`)
+surfaced three real problems: the per-drop drill bakes ~21 MB of inline data (slow TTI), every page
+duplicates the design system + the base64 font, and the catalog/drill layer (`html/template.py`) is dense +
+all-monospace (G-21). The reviews' naive fix (SPA + `fetch('_data/*.json')` + external `/assets/` + a CDN
+font) breaks the offline contract: `fetch` of a local file fails on a `file://` page (CORS), so a
+double-clicked report would never load (ADR-6), and a CDN font breaks ADR-34. **The unlock:** browsers load
+`<script src>`/`<link href>` from `file://` (these are NOT subject to the `fetch`/XHR same-origin block), so
+data + assets can be decoupled **with no server** and the output still opens by double-click — at the cost of
+the output being a folder rather than one file. **Decision (user signoff 2026-06-02; full proposal +
+rationale in `docs/plan/adr36_spa_architecture_proposal.md`).** `bobframes render` emits an **offline static
+SPA app folder**: a tiny shell `index.html` + `_assets/app.css` (the WHOLE design system + the base64-inlined
+Inter subset, ONCE) + `_assets/app.js` (a **hash router** + the existing web components/VTable) + `_views/*.html`
+(one **pre-rendered** HTML fragment per route, rendered server-side by the SAME Python renderers —
+`reports/chrome.py` / `charts.py` / the report modules / `html/template.py` — **not** reimplemented in JS) +
+`_data/*.js` (the heavy catalog/drill payloads, each `window.__bf_data['<key>']={...}`, **lazy-loaded via an
+injected `<script src>` on navigation**, never `fetch`). The **whole output** moves into the app — catalog,
+drill, dashboard, and all 6 reports become routes (`#/run/<key>/<report>` replaces the c16f per-run files); the
+c16b–f presentation (charts ADR-33, run model ADR-35, A/B, c16d aesthetics) is **re-homed as views, reusing
+the renderers**. A **single-file static export** is retained (`export --single-file`): today's self-contained
+HTML, the same renderer with data + assets **inlined** instead of `<script src>`'d, via a `DataSink`
+abstraction (external vs inline) — so one report can still be emailed/archived as a byte-deterministic file.
+**This AMENDS ADR-6** (offline byte-deterministic *single HTML file* → offline byte-deterministic *app folder,
+double-click-openable via `<script src>`, no server*, **plus** the single-file export) and **AMENDS ADR-34**
+(the vendored Inter subset stays inlined but **relocates** to `_assets/app.css`, loaded once — a CDN/network
+font remains forbidden; net size improves). It **supersedes c16i** (the static `html/template.py` readability
+pass): the catalog/drill readability goals (type split, roomier rows, heatmap cells, collapsible column
+groups, G-21) are delivered **inside the SPA's catalog/drill views**. G-22 (the served/decoupled architecture)
+is hereby **ACCEPTED** in this `<script src>`-based, server-less, offline-preserving form. **Consequence.**
+This is the **largest change in the project** — it re-homes just-finished work, adds a router/loader,
+restructures the golden gate (now over the app-folder file-set + each file's bytes + the single-file export),
+and is bigger than the rest of v0.2 combined; the user chose to land it **in v0.2 before the tag** (the tag
+slips accordingly) and to **replace** the flat static files now (the single-file export covers the
+standalone-file need). The hard guarantees HOLD: **no network** (all loads are `<script src>`/`<link>` of
+local relative files; opens by double-click), **byte-deterministic** (every emitted file is static — no
+`random`/`Date`/timestamps — gated by the restructured golden), `test_parquet_parity` untouched (presentation
+only, §21.9), ASCII lint + c16c a11y + c16d/print/reduced-motion preserved (route changes manage focus +
+announce; `<noscript>` links the single-file export). Routing is **hash-based** (zero-config on `file://`).
+Implemented as the phased epic **c16j–c16o** (spine + asset bundle + golden restructure → data decoupling →
+re-home reports/dashboard/run-model → single-file export + `DataSink` → catalog/drill readability in the SPA →
+close-out). Additive to / amends ADR-6/27/32/33/34/35.
