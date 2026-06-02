@@ -2,12 +2,30 @@
 
 from __future__ import annotations
 
+import base64 as _base64
 import html as _html
 import string as _string
+from importlib.resources import files as _files
 
 from . import formatters as _f
 from . import _tokens
 from ..derives import classifier as _classifier
+
+
+# Vendored Inter subset (c16d, ADR-34): a Latin + tabular-figures subset of the Inter variable font
+# (wght 400-600), baked into the wheel and inlined as a base64 @font-face data URI. Reports stay a
+# single self-contained HTML file that renders identically on every OS with NO network (a CDN fetch
+# would break offline + byte-determinism). The woff2 bytes are committed; base64 over fixed bytes is
+# byte-stable on any machine. ASCII-only output (base64 alphabet) keeps the page lint clean. See
+# reports/assets/README.md for provenance + the subset command, and Inter-OFL.txt for the licence.
+_FONT_WOFF2_B64 = _base64.b64encode(
+    _files('bobframes.reports').joinpath('assets', 'inter-subset.woff2').read_bytes()
+).decode('ascii')
+_FONT_FACE_CSS = (
+    "\n@font-face{font-family:'Inter';"
+    "src:url(data:font/woff2;base64," + _FONT_WOFF2_B64 + ") format('woff2');"
+    "font-weight:400 600;font-style:normal;font-display:swap}\n"
+)
 
 
 # Design-token VALUES live in reports/design_tokens.toml (c08, H-15); this skeleton owns only the
@@ -188,7 +206,7 @@ nav.crumb a + a::before { content: ''; }
   letter-spacing: 0.04em;
 }
 .kpi-chip .kpi-value {
-  font: 600 var(--fs-display)/1.05 ui-monospace, monospace;
+  font: 600 var(--fs-display)/1.05 'Inter', 'Segoe UI', system-ui, sans-serif;
   color: var(--text-1);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
@@ -489,7 +507,7 @@ nav.crumb {
   letter-spacing: 0.04em;
 }
 .summary-bar .sb-headline {
-  font: 600 var(--fs-h1)/1.15 ui-monospace, monospace;
+  font: 600 var(--fs-h1)/1.15 'Inter', 'Segoe UI', system-ui, sans-serif;
   color: var(--text-1);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
@@ -1095,7 +1113,9 @@ _COMPONENTS_JS_ALL = """
 
 
 _TOKENS_CSS = _DESIGN_TOKENS
-_PRIMITIVES_CSS = _CHROME_CSS + _LINK_KIND_CSS + _STICKY_CSS + _CONTAINER_CSS + _PRINT_CSS
+# The @font-face leads the primitives so it ships on BOTH CSS paths: chrome page_open's _compose_css
+# AND template.py's chrome_css() (drill/root). design_tokens_css() stays pure :root (test contract).
+_PRIMITIVES_CSS = _FONT_FACE_CSS + _CHROME_CSS + _LINK_KIND_CSS + _STICKY_CSS + _CONTAINER_CSS + _PRINT_CSS
 _COMPONENTS_CSS = _COMPONENTS_CSS_BASE
 _COMPONENTS_JS = _COMPONENTS_JS_ALL
 
