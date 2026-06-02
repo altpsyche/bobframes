@@ -7,15 +7,17 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        c16i_catalog_drill_readability    (status: not-started; AUTHORED 2026-06-02 - plan/impl in a
-                NEW chat. c16e/c16f/c16g/c16h all DONE this session. c16i is a NEW v0.2 commit from three
-                plan-folder design reviews (overall_overhaul_proposal / readability_and_presentation_review /
-                report_roadmap): bring the c16d report design pass to the CATALOG + DRILL layer
-                (html/template.py) - it never got it (all-mono table, 22px rows, flat column wall). Buildable
-                subset only; the SPA/fetch/external-font architecture is a deferred product-contract fork
-                (G-22). ORDER: c16i -> v0.2 close-out (re-ingest validation) -> tag v0.2 (irreversible,
-                authorize first) -> c20. Release NOT closed yet. 6 run2 captures still manual-salvaged -
-                re-test in the close-out re-ingest. G-20 (3+-run column collapse) deferred - no 3+-run data.)
+current:        c16j_spa_spine    (status: not-started; AUTHORED 2026-06-02 - plan/impl in a NEW chat. c16e-h
+                DONE. The 3 plan-folder design reviews led to a DECISION (user signoff): the reports become an
+                offline static SPA - ADR-36. c16i (static catalog/drill pass) is SUPERSEDED by ADR-36 (its
+                readability goals move into the SPA at c16n). The SPA is a PHASED EPIC c16j-c16n landing IN
+                v0.2 BEFORE the tag (user-chosen; the tag slips): c16j spine+asset-bundle+golden-restructure
+                -> c16k data decoupling (kills 21MB TTI) -> c16l re-home reports/dashboard/run-model as routes
+                -> c16m single-file export (DataSink) -> c16n catalog/drill readability in the SPA (G-21).
+                Offline preserved via <script src> not fetch (works on file://); byte-deterministic; output is
+                an app FOLDER + a single-file export; replace-now. ORDER: c16j-c16n -> v0.2 close-out (re-ingest
+                validation of the app folder + export) -> tag v0.2 (irreversible, authorize first) -> c20.
+                G-20 (3+-run column collapse) still deferred - no 3+-run data.)
 last_session:   2026-06-02 — c16f DONE (multi-run UX: the run selector; G-18 closed; builds on ADR-35).
                 Layered the navigation UX on c16e's run model. Mechanism = PRE-RENDERED per-run pages: the
                 top-level _reports/<report>.html is the newest run (default); each OLDER run gets a
@@ -306,15 +308,21 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    DO c16i FIRST (catalog + drill readability), THEN the v0.2 close-out. c16e/c16f/c16g/c16h
-                all DONE this session. c16i (G-21): open commits/v02/c16i_catalog_drill_readability.md and do
-                exactly that one commit - bring the c16d design pass to html/template.py (the catalog + drill
-                browser, which never got it): Inter/mono type split (table.data is all-mono today), roomier
-                rows (coordinate ROW_H=22 in _JS with the CSS), client-side heatmap cells on numeric columns,
-                collapsible column groups on the wide catalog. Server-rendered + deterministic; refresh the
-                root + drill golden (reports goldens UNCHANGED); test_parquet_parity GREEN no digests refresh;
-                QUALITY_GATES §21.1l. The SPA/fetch/external-asset/web-font architecture is OUT of scope - a
-                product-contract fork (G-22) needing a dedicated ADR + signoff, NOT this commit.
+next_action:    DO c16j FIRST (SPA spine; ADR-36 phase 1), THEN c16k-c16n, THEN the v0.2 close-out. c16e-h
+                DONE; the SPA was DECIDED (ADR-36, user signoff) - reports become an offline static SPA app
+                folder, landing in v0.2 before the tag. c16i is SUPERSEDED (its readability goals -> c16n).
+                c16j (commits/v02/c16j_spa_spine.md): emit the shell index.html + _assets/app.css (whole design
+                system + inlined Inter, ONCE) + _assets/app.js (web components + a minimal hash router) +
+                migrate ONE view (catalog) as _views/catalog.html + _data/catalog.js, loaded via <script src>
+                (NOT fetch - works on file://, opens by double-click). RESTRUCTURE the golden to gate the
+                app-folder file-set + bytes (rendered_html_files -> rendered_app_files over html/js/css).
+                Verify offline double-click in a real browser; test_parquet_parity untouched (§21.9);
+                QUALITY_GATES §21.1l. Then c16k (data decoupling, kills 21MB) -> c16l (re-home
+                reports/dashboard/run-model as routes; flat _reports/* removed) -> c16m (single-file export via
+                DataSink) -> c16n (catalog/drill readability in the SPA; closes G-21). KEY INVARIANTS for the
+                whole epic: NO network (only <script src>/<link>), byte-deterministic (no random/Date), reuse
+                the Python renderers (pre-rendered fragments, NOT a JS reimplementation), hash routing, preserve
+                a11y/print/reduced-motion + the ADR-35 run model.
                 THEN before the tag:
                 (1) V0.2 CLOSE-OUT: re-ingest the real Perf drop (now the cumulative flaw is fixed + the
                 R-17 replay salvage is automatic - re-test the 6 manual-flipped run2 captures) and eyeball
@@ -381,7 +389,12 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c16f multi-run UX](commits/v02/c16f_multirun_ux.md) | **done** — run selector via pre-rendered per-run pages (_reports/run/<key>/, reuse rdc-ab-picker) + fixed prior baseline + "current vs baseline" banner + distinct run chips + "viewing an older run" cue + dashboard->report persistence (G-18); bounded by [report] max_prerendered_runs. 142 -> 148 green; golden +6 per-run pages, no digests refresh; QUALITY_GATES §21.1k. G-20 (3+-run col collapse) deferred (no 3+-run data to verify) |
 | ☑ | c16g quality sweep | **done** — pre-tag, behaviour-neutral: Q-1 (stable_key dict-of-builders, oracle-locked), Q-2 (cast-failure tally + warn), Q-4 (zip strict on derive), Q-7 (`_to_dict_of_lists` callers), Q-8 (dead buffers no-op deleted), D-3 (coupling doc), D-9 (`_TABLE_DISPLAY_ORDER` origin recovered + recorded). 148 -> 160 green; golden + digests frozen; no new ADR |
 | ☑ | c16h reliability sweep | **done** — R-12 (`_best_effort_rmtree` logs held-handle cleanup failures), R-14 (UTF-8 U+FFFD warning in `iter_chunks`), R-11 (single-process sidecar doc), R-15 (`parquetize` skips markerless/incomplete-replay captures so half-written CSVs never merge). R-10 deferred (OOM-gated). 160 -> 165 green; golden + digests frozen; no new ADR |
-| ☐ | [c16i catalog + drill readability](commits/v02/c16i_catalog_drill_readability.md) | **next** — bring the c16d design pass to `html/template.py` (the catalog + drill browser never got it): Inter/mono type split, roomier rows (ROW_H+CSS), client-side heatmap cells, collapsible column groups on the wide catalog (G-21). From 3 plan-folder design reviews. SPA/fetch/external-font architecture OUT of scope (G-22, product-contract fork). Plan/impl in a new chat |
+| ✗ | [c16i catalog + drill readability](commits/v02/c16i_catalog_drill_readability.md) | **SUPERSEDED by ADR-36** — its readability goals (type split, roomier rows, heatmap cells, collapsible column groups, G-21) move into the SPA at c16n. Kept for provenance |
+| ☐ | [c16j SPA spine](commits/v02/c16j_spa_spine.md) | **next** — ADR-36 phase 1: shell + `_assets/app.{css,js}` + hash router + migrate catalog (1 view) via `<script src>` (offline, no server); restructure golden to the app-folder file-set. QUALITY_GATES §21.1l |
+| ☐ | [c16k data decoupling](commits/v02/c16k_data_decoupling.md) | ADR-36 phase 2: heavy catalog/drill payloads -> `_data/*.js` lazy-loaded on navigation; kills the ~21MB drill TTI |
+| ☐ | [c16l re-home reports](commits/v02/c16l_rehome_reports.md) | ADR-36 phase 3: dashboard + 6 reports + A/B + run model become hash routes (reuse the Python renderers); flat `_reports/*` removed |
+| ☐ | [c16m single-file export](commits/v02/c16m_single_file_export.md) | ADR-36 phase 4: `DataSink` (external vs inline) + `export --single-file` = a byte-deterministic standalone HTML; preserves the one-file workflow |
+| ☐ | [c16n catalog/drill readability in SPA](commits/v02/c16n_catalog_drill_readability_spa.md) | ADR-36 phase 5: type split + roomier rows + heatmap cells + collapsible column groups in the SPA VTable (closes G-21/G-22) |
 
 ## v0.3 — CI/automation surface (planned — [ROADMAP](ROADMAP.md))
 
@@ -427,6 +440,19 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-02 — ADR-36 DECIDED + SPA epic AUTHORED (user signoff). The 3 design reviews -> a real product
+  decision: the reports become an OFFLINE STATIC SPA. The offline unlock: browsers load <script src>/<link>
+  from file:// (unlike fetch), so data + assets decouple with NO server and the output still opens by
+  double-click - output becomes an app FOLDER (shell index.html + _assets/app.{css,js} + _views/*.html
+  fragments + _data/*.js lazy-loaded). Whole output moves in (catalog + drill + dashboard + 6 reports as
+  routes), reusing the Python renderers (pre-rendered fragments, NOT a JS reimplementation); a single-file
+  export is retained (DataSink: inline vs external). Decisions: SPA lands IN v0.2 before the tag
+  (user-chosen despite the cost - it is the largest change in the project + re-homes c16b-f); replace-now;
+  hash routing. Amends ADR-6 (single file -> app folder + export) + ADR-34 (font relocated to _assets/app.css,
+  once); supersedes c16i; ACCEPTS G-22. Authored ADR-36 (DECISIONS) + proposal doc + 5 commit docs
+  (c16j spine -> c16k data decoupling -> c16l re-home reports -> c16m single-file export -> c16n catalog/drill
+  readability/G-21). Offline + byte-determinism + parquet parity (§21.9) + a11y/print preserved; golden gate
+  restructures to the app-folder file-set. current -> c16j; c16i SUPERSEDED. NO code yet. UNPUSHED.
 - 2026-06-02 — c16i AUTHORED (catalog + drill readability; G-21). Reviewed three plan-folder design
   proposals (overall_overhaul_proposal / readability_and_presentation_review / report_roadmap) against the
   code + the frozen contract. Verdict: good design instincts but they (a) conflate two layers and (b)
