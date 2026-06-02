@@ -133,8 +133,11 @@ def _per_area_draws(drops: list) -> tuple[dict, Counter]:
 
 
 def _top_areas_gpu(drops: list, n: int = 3) -> list:
-    """Return [(area, gpu_s, draws)] top by gpu."""
-    agg: dict = defaultdict(lambda: {'gpu': 0.0, 'draws': 0})
+    """Return [(area, gpu_s, draws, avg_draws_frame)] top by gpu. `draws` is the per-area total over
+    that area's captured frames; `avg_draws_frame` = draws / frames is the per-area average draw load
+    (capture-count-independent) - this is the meaningful "draws per area" number (one per area, so it
+    belongs in this card, not the single-value headline KPI strip)."""
+    agg: dict = defaultdict(lambda: {'gpu': 0.0, 'draws': 0, 'frames': 0})
     for d in drops:
         for r in d.rows:
             p = os.path.join(r.drop_dir, 'frame_totals.parquet')
@@ -149,7 +152,9 @@ def _top_areas_gpu(drops: list, n: int = 3) -> list:
             for g, dr in zip(gpu_vals, draw_vals):
                 agg[r.area]['gpu'] += float(g or 0)
                 agg[r.area]['draws'] += int(dr or 0)
-    rows = [(a, v['gpu'], v['draws']) for a, v in agg.items()]
+            agg[r.area]['frames'] += t.num_rows
+    rows = [(a, v['gpu'], v['draws'], (v['draws'] / v['frames'] if v['frames'] else 0.0))
+            for a, v in agg.items()]
     rows.sort(key=lambda x: x[1], reverse=True)
     return rows[:n]
 
@@ -199,9 +204,10 @@ def _global_kpis(drops: list) -> list:
     """Cheap-to-compute global numbers from frame_totals across drops.
 
     Totals are paired with PER-FRAME and PER-AREA averages: a raw "total draws" reads as alarming on
-    its own, but the mean per captured frame (and per area) is the number that actually informs a
-    budget decision. n_frames is the count of frame rows that fed the totals, so each average is the
-    true arithmetic mean of the summed values (self-consistent with the total).
+    its own, but the mean PER CAPTURED FRAME is the number that informs a budget decision. n_frames is
+    the count of frame rows that fed the totals, so each average is the true arithmetic mean of the
+    summed values (self-consistent with the total). Per-AREA averages are NOT a single headline number
+    (one value per area) - they live in the per-area trend card (_top_areas_gpu), not here.
     """
     total_gpu = 0.0
     total_draws = 0
@@ -224,17 +230,14 @@ def _global_kpis(drops: list) -> list:
             for v in t.column('n_draws').to_pylist():
                 if v is not None:
                     total_draws += int(v)
-    n_areas = len(areas)
     avg_gpu_frame = (total_gpu / n_frames) if n_frames else 0.0
     avg_draws_frame = (total_draws / n_frames) if n_frames else 0.0
-    avg_draws_area = (total_draws / n_areas) if n_areas else 0.0
     return [
         {'label': 'total gpu (s)',      'value': base.fmt_float(total_gpu, 3)},
         {'label': 'avg gpu / frame (s)', 'value': base.fmt_float(avg_gpu_frame, 4)},
         {'label': 'total draws',        'value': base.fmt_int(total_draws)},
         {'label': 'avg draws / frame',  'value': base.fmt_int(round(avg_draws_frame))},
-        {'label': 'avg draws / area',   'value': base.fmt_int(round(avg_draws_area))},
-        {'label': 'areas',              'value': base.fmt_int(n_areas)},
+        {'label': 'areas',              'value': base.fmt_int(len(areas))},
     ]
 
 
@@ -296,7 +299,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     n_areas = len(top_a)
     total_draws = sum(t[2] for t in top_a)
     if top_a:
-        worst_area, worst_gpu, worst_draws = top_a[0]
+        worst_area, worst_gpu, worst_draws = top_a[0][:3]
         parts.append(base.summary_bar(
             'worst gpu area',
             worst_area,
@@ -316,7 +319,7 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     # Card: trend table - GPU time per area (mini bars matching the trend flagship).
     top_a = top_a[:3]
     chart_tt = base.figure(base.bar_chart(
-        [(a, g) for a, g, _ in top_a], value_fmt=lambda v: f'{v:.3f}', width=280,
+        [(a, g) for a, g, *_ in top_a], value_fmt=lambda v: f'{v:.3f}', width=280,
         title='gpu (s) per area', desc='top areas by GPU seconds', chart_id='dash-tt'))
     body_tt = _card_table(
         top_a,
@@ -324,8 +327,9 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
             ('area', lambda r: base.h(r[0]), False),
             ('gpu (s)', lambda r: base.fmt_float(r[1], 3), True),
             ('draws', lambda r: base.fmt_int(r[2]), True),
+            ('avg draws / frame', lambda r: base.fmt_int(round(r[3])), True),
         ],
-        caption='top areas by GPU time')
+        caption='per-area GPU + draw load (avg draws per captured frame)')
     sub_tt = ('GPU time per area across drops.'
               + (f' worst: {top_a[0][0]} {base.fmt_float(top_a[0][1], 3)}s' if top_a else ''))
     cards.append(_card('trend_table.html', 'trend table', sub_tt, chart_tt, body_tt))

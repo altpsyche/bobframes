@@ -352,11 +352,15 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 ## Session log (append newest on top; one line each)
 - 2026-06-02 — dashboard KPI averages (user-requested, post-c16d). The hero strip showed only TOTALS
   (total gpu, total draws) which read as alarming to execs out of context. _global_kpis now pairs each
-  total with a PER-FRAME and PER-AREA average (avg gpu/frame, avg draws/frame, avg draws/area), computed
-  from the same frame_totals rows that fed the totals (n_frames = frame-row count -> the average is the
-  true mean, self-consistent). Strip is now 6 chips (total -> avg adjacency). Presentation-only (reads
-  existing frame_totals): golden dashboard page refreshed, test_parquet_parity GREEN no digests refresh;
-  128 -> 129 green (+test_report_structure: KPI label order + avg < total). smoke clean. UNPUSHED.
+  total with a PER-FRAME average (avg gpu/frame, avg draws/frame), computed from the same frame_totals
+  rows that fed the totals (n_frames = frame-row count -> the average is the true mean, self-consistent).
+  Strip = 5 chips (total -> avg adjacency). PER-AREA avg is NOT a headline (one value per area, and
+  total/n_areas degenerates to the total when areas=1 - user caught this): _top_areas_gpu now also
+  returns avg_draws_frame per area and the dashboard trend-table CARD gained an "avg draws / frame"
+  column (one row per area; real 6-area data shows each area's load). Presentation-only (reads existing
+  frame_totals): only the dashboard golden moves; test_parquet_parity GREEN no digests refresh;
+  129 green (test_report_structure pins the 5-chip label order + the per-area card column). smoke clean.
+  UNPUSHED (commits 4f07ed4 + the per-area-card fix).
 - 2026-06-02 — c16d DONE (report VISUAL OVERHAUL / design-language pass; G-17 closed; ADR-34). Shipped as 4
   reviewable sub-commits, each golden-refreshed + BROWSER-reviewed (light/dark/reduced-motion/print via
   Chrome headless): (a) 9079013 depth over borders - surface + soft elevation shadows (NEW [shadow] block

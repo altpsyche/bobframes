@@ -90,13 +90,16 @@ def test_dashboard_kpi_totals_paired_with_averages(rendered):
     idx = rendered['_reports/index.html']
     labels = re.findall(r'class="kpi-label">([^<]*)<', idx)
     values = re.findall(r'class="kpi-value">([^<]*)<', idx)
+    # per-area average is NOT a single headline number (one per area) -> it lives in the trend card
     assert labels == ['total gpu (s)', 'avg gpu / frame (s)', 'total draws',
-                      'avg draws / frame', 'avg draws / area', 'areas']
+                      'avg draws / frame', 'areas']
     kv = dict(zip(labels, values))
     to_num = lambda s: float(s.replace(',', ''))
     # the average must be a fraction of the total (n_frames > 1 in the synthetic: 2 drops x 5 frames)
     assert to_num(kv['avg draws / frame']) < to_num(kv['total draws'])
     assert to_num(kv['avg gpu / frame (s)']) < to_num(kv['total gpu (s)'])
+    # per-area avg draws lives in the trend-table card, not the headline strip
+    assert 'avg draws / frame' in idx and 'per-area GPU + draw load' in idx
 
 
 def test_no_banned_unicode(rendered):
