@@ -18,6 +18,17 @@ model become hash routes rendered as `_views/*.html` fragments by the **existing
 - The dashboard cards + cross-report nav + trend links become route links (drop the `crumb_depth`/
   `reports_up`/per-run-dir path machinery — routing replaces it).
 - Charts (inline SVG, ADR-33) ride inside fragments unchanged (deterministic).
+- **Apply the `#/route` vs `#anchor` scheme (ADR-36 invariant #2):** every cross-VIEW jump becomes a
+  `#/…` route; every in-VIEW jump (the summary-bar/callout/sticky-h2 targets — `#counts`, `#top_meshes`,
+  `#<area>`, `trend_table.html#gpu`, the run picker/A-B/"older run" links) becomes either a route or a
+  bare `#anchor` scroll — never a bare hash that the router would hijack. Audit every `href="#..."` and
+  every `link_href=` as its view migrates.
+- **Sidecar links stay relative FILE links (ADR-36 invariant #5), not routes:** shader-source `.glsl`,
+  histograms, and other per-drop sidecars are real files (`rel_path_to_drop_file`). Keep them as relative
+  `<a href>` to the local file (opens on `file://`), with paths recomputed from the app root — do not
+  sweep them into the hash-routing rewrite.
+- **a11y (sustained cost):** a route change must move focus to the new view's heading + announce via
+  `aria-live` (static pages got this for free; the SPA does not). Verify with a screen reader / the nav smoke.
 
 ## Constraints (do not regress)
 - Preserve the **run model** (ADR-35) exactly — per-run truth, current vs baseline, resolved-since,

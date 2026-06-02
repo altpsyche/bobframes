@@ -13,8 +13,11 @@ when its route is opened. The shell + light views stay tiny; opening a drill loa
   (`window.__bf_data['drill_<area>_<drop>']={...}`) — the same per-table JSON the drill VTable consumes
   today (`html/template.py` `window.__data_<table>`), relocated out of the page. The drill `_views/`
   fragment is the VTable shell only (no rows baked).
-- Router: on `#/drill/<area>/<drop>`, inject the view fragment + its `_data` script once, then mount the
-  VTable over `window.__bf_data[...]`. Cache loaded `_data` keys so re-navigation is instant.
+- Router: on `#/drill/<area>/<drop>`, inject the view fragment + its `_data` script. **The `<script src>`
+  load is ASYNC — sequence it (ADR-36 invariant #4):** mount the VTable only on the data script's `onload`
+  (or have `_data/<key>.js` call a registration hook, e.g. `window.__bf_register(key, data)`, that the
+  router awaits), NEVER "inject then mount" (a race that reads `window.__bf_data` before it exists). Cache
+  loaded `_data` keys so re-navigation is instant + skips re-injecting. Show a skeleton until loaded.
 - Same treatment confirmed for the catalog (from c16j) and any other VTable view.
 - This addresses the **D-8 lineage** indirectly: the heavy payload is isolated to its own file, so its
   size no longer blocks the shell/other views. (Trimming WHAT is baked is still a separate question; not
