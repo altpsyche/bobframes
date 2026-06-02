@@ -206,6 +206,33 @@ browser-reviewed** (light/dark, top-level + per-run); drill/root/preview goldens
 green with **no** `digests.json` refresh (§21.9). 142 -> 148 green. (G-20, collapsing the per-drop columns at
 3+ runs, is deferred - no 3+-run data to verify; see FINDINGS.)
 
+## 21.1l Catalog + drill readability: the html/template.py layer (c16i, ADR-6/27/34/37) — see [c16i](../commits/v02/c16i_catalog_drill_readability.md)
+c16i brings the c16d treatment to the STATIC catalog (root `index.html`) + per-drop drill (`html/template.py`),
+the layer the reports pass (c16b-f) never touched (G-21 **readability half**; the heavy-data half is c16j). Four
+parts, all server-rendered + deterministic, no contract change: (1) **type split** - `table.data` defaults to the
+Inter sans stack at line-height 1.3; mono + `tabular-nums` is re-asserted ONLY on numeric/`.mono` BODY cells
+(headers stay sans; **longhands**, not the `font` shorthand, to preserve line-height), with a name-keyed `monoCols`
+set keeping ID/hash/path columns mono. (2) **roomier rows** - `ROW_H` is single-sourced from a Python `_ROW_H=32`
+(sentinel-substituted into the JS; the JS constant is the SOLE virtual-scroll driver, the CSS sets NO row height -
+a `tr{height}` rule would fight the dynamically-sized spacers); 6px padding; 14px x 1.3 + 12px + 1px = 31.2 <= 32
+so a row never overflows ROW_H and the scroll stays aligned. (3) **client-side heatmap** - numeric MAGNITUDE
+columns (excludes ID/`event_id`/`labelCols` + single-value) shade the whole cell by relative value via
+`background-IMAGE` only (a UNIFORM `color-mix(in oklch, var(--accent-data) 0-30%, transparent)`, no gradient edge),
+so the class-driven `background-color` zebra/hover still shows through; deterministic (no `random`/`Date`),
+aria-labelled, number always on top. (4) **collapsible column groups** (catalog only) - a deterministic
+group->column map from `schemas.table_category` (Metadata/Workload/Resources/Samples; Metadata+Workload open)
+emitted as `window.__colgroups_catalog`; the VTable builds real `<button aria-pressed>` toggles + a `hiddenCols`
+set, with the sort-arrow loop keyed on `th.dataset.ci` so it stays correct when columns are hidden. Plus:
+`.table-scroll` sizes to content capped at 60vh (small tables stop reserving an empty 60vh box; folds in the
+never-applied `.short` variant), and a drill **visual hierarchy** - `details.category` becomes a left-anchored
+bold-accent group LABEL + nesting rail (not a box), each `section.table-section` becomes a card; these override the
+shared chrome in `_PER_DROP_CSS` so the reports/dashboard goldens stay byte-unchanged. **`test_report_structure`**
+gains 6 c16i guards (type split, ROW_H/padding lockstep, heatmap determinism/offline + no `background=` shorthand,
+column-group exact-partition, reports-layer-untouched, deterministic render). Output-changing -> the root
+`index.html` + the drill golden are refreshed + **browser-reviewed** (light/dark, synthetic + real Perf);
+reports/dashboard/per-run goldens byte-unchanged; `test_parquet_parity` green with **no** `digests.json` refresh
+(§21.9). 165 -> 171 green. (The full §21.1l consolidates with c16j's `_data/*.js` decoupling gate when c16j lands.)
+
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,
 dropped column, dtype slip). Skip `_`-prefixed (`_catalog`, `_global_entities`). Runs on synthetic +

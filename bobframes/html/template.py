@@ -56,6 +56,47 @@ _CATEGORY_ORDER = ['aggregates', 'entities', 'actions', 'samples', 'sidecars']
 _DEFAULT_OPEN = {'aggregates'}
 
 
+# Collapsible column groups for the wide root catalog (c16i, G-21). The catalog is a flat ~37-col
+# wall of identity columns + one `row_count_<table>` per registered table. Groups are derived
+# deterministically from schemas.table_category (reuses H-11) so they auto-extend when a table is
+# added - no hand-maintained column list to drift. Metadata = the non-row_count identity/build
+# columns; each row_count_<table> buckets by its table's schema category. Default-open: Metadata +
+# Workload (Resources + Samples collapse to break the wall). Drill tables are NOT grouped (they
+# already collapse per-table via <details class="category">).
+_CATALOG_GROUP_ORDER = ('Metadata', 'Workload', 'Resources', 'Samples')
+_CATALOG_GROUP_OPEN = ('Metadata', 'Workload')
+_CATEGORY_TO_CATALOG_GROUP = {
+    'actions': 'Workload',
+    'aggregates': 'Workload',
+    'entities': 'Resources',
+    'samples': 'Samples',
+}
+
+
+def _catalog_col_groups(cols: list[str]) -> list[dict]:
+    """Deterministic group -> column map for the catalog VTable, in display order.
+
+    `Metadata` holds every non-`row_count_` column; each `row_count_<table>` column is bucketed by
+    `schemas.table_category(table)` (unknown tables fall back to Workload). Empty groups are
+    dropped. Returned shape: ``[{'name', 'open', 'cols': [...]}, ...]`` - emitted as inline JSON
+    and consumed by the VTable to build the toggle bar (catalog only).
+    """
+    buckets: dict[str, list[str]] = {name: [] for name in _CATALOG_GROUP_ORDER}
+    for c in cols:
+        if c.startswith('row_count_'):
+            table = c[len('row_count_'):]
+            try:
+                cat = schemas.table_category(table)
+            except KeyError:
+                cat = 'actions'
+            group = _CATEGORY_TO_CATALOG_GROUP.get(cat, 'Workload')
+        else:
+            group = 'Metadata'
+        buckets[group].append(c)
+    return [{'name': name, 'open': name in _CATALOG_GROUP_OPEN, 'cols': buckets[name]}
+            for name in _CATALOG_GROUP_ORDER if buckets[name]]
+
+
 # Map of (table_name, column_name) -> resource kind key in _resource_labels.json
 _LABEL_COLS: dict[str, dict[str, str]] = {
     'draws': {
@@ -163,16 +204,32 @@ nav.toc a .ct { color: var(--text-3); font-variant-numeric: tabular-nums; }
 .controls .ct { color: var(--text-2); font-variant-numeric: tabular-nums; }
 .controls .dl { font-size: var(--fs-small); color: var(--accent); }
 
+/* Collapsible column groups (c16i, catalog only). Real <button> toggles; no transition so the
+   show/hide is instant and reduced-motion-safe. Buttons are built client-side into .col-groups. */
+.col-groups { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin: 0 0 var(--sp-2); }
+.col-groups .col-group-toggle {
+  font: var(--fs-small) 'Inter', 'Segoe UI', system-ui, sans-serif;
+  padding: 4px 10px; cursor: pointer; color: var(--text-2);
+  background: var(--surface-1); border: 1px solid var(--border-2); border-radius: 2px;
+}
+.col-groups .col-group-toggle[aria-pressed="true"] {
+  color: var(--accent); border-color: var(--accent); background: var(--surface-2);
+}
+.col-groups .col-group-toggle:hover { background: var(--row-hover); }
+
 .table-scroll {
-  height: 60vh; overflow: auto;
+  /* c16i: size to content, capped at 60vh. A 1-row table is now ~1 row tall instead of a big empty
+     box; tables past the cap scroll (the virtual-scroll spacers reserve the full height regardless,
+     so clientHeight settles at 60vh and the windowing is unchanged). Was a fixed height: 60vh with
+     a never-applied .table-scroll.short variant - this folds that intent into the default. */
+  height: auto; max-height: 60vh; overflow: auto;
   border: 1px solid var(--border-1);
   background: var(--surface-0);
   position: relative;
 }
-.table-scroll.short { height: auto; max-height: 60vh; }
 table.data {
   border-collapse: separate; border-spacing: 0;
-  font: var(--fs-mono) ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font: var(--fs-body)/1.3 'Inter', 'Segoe UI', system-ui, sans-serif;
   width: max-content; min-width: 100%; table-layout: auto;
 }
 table.data thead th {
@@ -180,7 +237,7 @@ table.data thead th {
   background: var(--th-bg);
   text-align: left; cursor: pointer; user-select: none;
   color: var(--accent); font-weight: 600;
-  padding: 4px 8px;
+  padding: 6px 8px;
   border-bottom: 1px solid var(--border-2);
   white-space: nowrap;
 }
@@ -189,8 +246,14 @@ table.data thead th .sort-arrow { display: inline-block; width: 10px; color: var
 table.data thead th.numeric, table.data tbody td.numeric {
   text-align: right; font-variant-numeric: tabular-nums;
 }
+/* Type split (c16i): mono+tabular only for numeric BODY cells; headers stay Inter sans.
+   Longhands (not the `font` shorthand) so the inherited line-height 1.3 is preserved. */
+table.data tbody td.numeric, table.data tbody td.mono {
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: var(--fs-mono);
+}
 table.data tbody td {
-  padding: 2px 8px;
+  padding: 6px 8px;
   border-bottom: 1px solid var(--border-1);
   vertical-align: top; white-space: nowrap;
   max-width: 380px; overflow: hidden; text-overflow: ellipsis;
@@ -214,27 +277,61 @@ ul.sidecar-list { list-style: none; padding: 0; margin: var(--sp-2) 0;
                   columns: 5; column-gap: var(--sp-6); column-rule: 1px solid var(--border-1); }
 ul.sidecar-list li { padding: 1px 0; break-inside: avoid; }
 
-/* Per-drop table sections: inline (no full card chrome) */
-section.table-section {
-  margin: 0 0 var(--sp-4);
+/* c16i: per-drop drill visual hierarchy.
+   category (a dominant group LABEL + nesting rail, no box)  >  table-section (the CARD)  >  column
+   headers  >  cells. These OVERRIDE the shared chrome `details.category` card so the category reads
+   as a labelled group and each table is the card; scoped to _PER_DROP_CSS, so the reports/dashboard
+   goldens (which never load this block) stay byte-unchanged. */
+
+/* Category = the top level: a left-anchored bold-accent label with a rail bracketing its tables. */
+details.category {
+  background: transparent; box-shadow: none; border: 0; border-radius: 0;
+  margin: 0 0 var(--sp-8);                 /* generous gap BEFORE the next category */
 }
+details.category > summary {
+  justify-content: flex-start;             /* override chrome space-between: stop centring the name */
+  gap: var(--sp-2);
+  padding: var(--sp-2) 0;
+  font-size: var(--fs-h2);                 /* parent dominates: h2 > the table-section h3 */
+  border-bottom: 0;
+}
+details.category[open] > summary { border-bottom: 0; }
+details.category > summary .cat-meta { margin-left: auto; }  /* push the count to the far right */
+details.category > .cat-body {
+  background: transparent;
+  padding: var(--sp-3) 0 0 var(--sp-4);    /* indent the tables under the category label */
+  margin-left: var(--sp-2);
+  border-left: 2px solid var(--border-1);  /* nesting rail: visually brackets the group */
+}
+
+/* Table section = the card. The card is the single frame, so its header sheds the left-accent bar. */
+section.table-section {
+  background: var(--surface-1);
+  border: 1px solid var(--border-1);
+  border-radius: 4px;
+  box-shadow: var(--elev-1);
+  padding: var(--sp-4);
+  margin: 0 0 var(--sp-4);                 /* gap between sibling cards (< the category gap) */
+}
+section.table-section:last-child { margin-bottom: 0; }
 section.table-section > header.table-header {
   display: flex; align-items: baseline; justify-content: space-between;
   gap: var(--sp-3); margin: 0 0 var(--sp-2);
-  padding: 0 0 0 var(--sp-3);
-  border-left: 3px solid var(--border-2);
+  padding: 0; border-left: 0;              /* the card frames it now */
 }
 section.table-section > header.table-header h2 {
   margin: 0; padding: 0; border: 0;
-  font-size: var(--fs-h3); color: var(--text-1);
+  font-size: var(--fs-h3); color: var(--text-1);   /* one tier below the category */
 }
 section.table-section .table-meta {
   font: var(--fs-small) ui-monospace, monospace;
   color: var(--text-3);
 }
 
-details.category > .cat-body {
-  background: var(--surface-0);
+@media print {
+  /* shadows vanish on paper; re-assert a thin frame + drop elevation (c16d print discipline). */
+  section.table-section { box-shadow: none; border: 1px solid #888; }
+  details.category > .cat-body { border-left-color: #888; }
 }
 """
 
@@ -247,10 +344,16 @@ def _compose_css() -> str:
 
 _CSS = _compose_css()
 
+# Virtual-scroll row height (px). Single source of truth (c16i): the same number drives the JS
+# `const ROW_H` (via the __ROW_H__ sentinel below) and the CSS cell padding is tuned to fit within
+# it. ROW_H alone governs the virtual-scroll offset math (spacer heights + start/end window), so
+# the CSS must NOT also set a row height — see the c16i plan, fix #3.
+_ROW_H = 32
+
 # Virtual-scroll JS. One VTable per table.
-_JS = r"""
+_JS_TMPL = r"""
 (function(){
-  const ROW_H = 22;
+  const ROW_H = __ROW_H__;
   const BUFFER = 8;
 
   // For ID kinds: where to jump when an ID cell is clicked
@@ -301,12 +404,13 @@ _JS = r"""
   }
 
   class VTable {
-    constructor(host, payload, labels){
+    constructor(host, payload, labels, groups){
       this.host = host;
       this.cols = payload.cols;
       this.rows = payload.rows;
       this.labelCols = payload.labelCols || {};
       this.labels = labels;
+      this.groups = groups || null;  // catalog-only column groups (c16i); null elsewhere
       this.view = this.rows.slice();
       this.sortCol = -1;
       this.sortDir = 1;
@@ -324,6 +428,56 @@ _JS = r"""
         if (count > 0 && num / count > 0.7) this.numericCols.add(ci);
       }
 
+      // Type split (c16i): non-numeric ID/hash/path columns render mono (left-aligned) so hashes
+      // stay legible while text columns go Inter sans. Decided by column NAME (deterministic, not
+      // value-sniffed); numeric columns already get mono via .numeric, so exclude them here.
+      this.monoCols = new Set();
+      const MONO_RE = /(_id|_hash|_hex)$|^stable_key$|.*_path$|^capture$/;
+      for (let ci = 0; ci < this.cols.length; ci++){
+        if (!this.numericCols.has(ci) && MONO_RE.test(this.cols[ci])) this.monoCols.add(ci);
+      }
+
+      // Heatmap data-bars (c16i): per-column min/max for the numeric MAGNITUDE columns, so a cell
+      // can show a relative-value bar behind the number. Exclude ID/reference columns (their
+      // magnitude is meaningless) and any column already flagged as a cross-link label. Scanned
+      // over ALL rows (the immutable source, not the sorted view) so the scale is deterministic and
+      // stable across sort/filter. Columns with hi<=lo (constant) get no entry -> no bar.
+      const ID_RE = /_id$|^event_id$/;
+      this.colStats = {};
+      for (let ci = 0; ci < this.cols.length; ci++){
+        if (!this.numericCols.has(ci)) continue;
+        if (ID_RE.test(this.cols[ci]) || this.labelCols[this.cols[ci]]) continue;
+        let lo = Infinity, hi = -Infinity, seen = 0;
+        for (let ri = 0; ri < this.rows.length; ri++){
+          const v = this.rows[ri][ci];
+          if (v == null || v === '') continue;
+          const n = +v;
+          if (n !== n) continue;  // NaN guard
+          if (n < lo) lo = n;
+          if (n > hi) hi = n;
+          seen++;
+        }
+        if (seen > 0 && hi > lo) this.colStats[ci] = {lo: lo, hi: hi};
+      }
+
+      // Collapsible column groups (c16i, catalog only): map column name -> index, then seed the
+      // hidden set from any group whose `open` flag is false. Toggling visibility never touches the
+      // ROW_H math (rows keep full height regardless of visible columns), so virtual-scroll stays
+      // aligned. numericCols/monoCols/colStats stay keyed by the ORIGINAL ci, unaffected by hiding.
+      this.hiddenCols = new Set();
+      this.colByName = {};
+      for (let i = 0; i < this.cols.length; i++) this.colByName[this.cols[i]] = i;
+      if (this.groups){
+        this.groups.forEach(g => {
+          if (!g.open){
+            g.cols.forEach(c => {
+              const ci = this.colByName[c];
+              if (ci != null) this.hiddenCols.add(ci);
+            });
+          }
+        });
+      }
+
       // detect slot_kind column for draw_bindings (resource_id auto-label)
       this.slotKindCol = this.cols.indexOf('slot_kind');
       this.descriptorKindCol = this.cols.indexOf('descriptor_kind');
@@ -331,22 +485,59 @@ _JS = r"""
       this.build();
     }
 
-    build(){
-      const table = document.createElement('table');
-      table.className = 'data';
-      const thead = table.createTHead();
-      const tr = thead.insertRow();
+    // (Re)build the header row, honouring hidden columns. Each th carries data-ci = its ORIGINAL
+    // column index so sort()/arrow logic stays correct when columns are hidden (c16i, fix #7).
+    buildHead(){
+      const tr = this.headRow;
+      while (tr.firstChild) tr.removeChild(tr.firstChild);
       for (let i = 0; i < this.cols.length; i++){
+        if (this.hiddenCols.has(i)) continue;
         const th = document.createElement('th');
-        const txt = document.createTextNode(this.cols[i]);
-        th.appendChild(txt);
+        th.dataset.ci = i;
+        th.appendChild(document.createTextNode(this.cols[i]));
         if (this.numericCols.has(i)) th.classList.add('numeric');
         const arrow = document.createElement('span');
         arrow.className = 'sort-arrow';
+        if (i === this.sortCol) arrow.textContent = this.sortDir > 0 ? ' ▲' : ' ▼';
         th.appendChild(arrow);
         th.addEventListener('click', () => this.sort(i));
         tr.appendChild(th);
       }
+    }
+
+    // Build the column-group toggle bar (catalog only). Each group is a real <button> with
+    // aria-pressed; toggling hides/shows that group's columns and re-renders. Keyboard-native,
+    // no animation -> reduced-motion safe.
+    buildGroupBar(){
+      if (!this.groups) return;
+      const section = this.host.closest('section');
+      const bar = section ? section.querySelector('.col-groups') : null;
+      if (!bar) return;
+      this.groups.forEach(g => {
+        const cis = g.cols.map(c => this.colByName[c]).filter(x => x != null);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'col-group-toggle';
+        btn.dataset.group = g.name;
+        btn.textContent = g.name;
+        btn.setAttribute('aria-pressed', g.open ? 'true' : 'false');
+        btn.addEventListener('click', () => {
+          const next = btn.getAttribute('aria-pressed') !== 'true';
+          btn.setAttribute('aria-pressed', next ? 'true' : 'false');
+          cis.forEach(ci => { if (next) this.hiddenCols.delete(ci); else this.hiddenCols.add(ci); });
+          this.buildHead();
+          this.render();
+        });
+        bar.appendChild(btn);
+      });
+    }
+
+    build(){
+      const table = document.createElement('table');
+      table.className = 'data';
+      const thead = table.createTHead();
+      this.headRow = thead.insertRow();
+      this.buildHead();
       const tbody = document.createElement('tbody');
       const sTop = document.createElement('tr');
       const sBot = document.createElement('tr');
@@ -365,6 +556,8 @@ _JS = r"""
       this.sBot = sBot;
       this.tdTop = tdTop;
       this.tdBot = tdBot;
+
+      this.buildGroupBar();
 
       this.host.addEventListener('scroll', () => this.render());
       window.addEventListener('resize', () => this.render());
@@ -401,10 +594,12 @@ _JS = r"""
         }
         return String(aa).localeCompare(String(bb)) * dir;
       });
+      // Match on the th's ORIGINAL column index (data-ci), not its position: with hidden columns
+      // the header list is shorter, so positional matching would put the arrow on the wrong th.
       const headers = this.host.querySelectorAll('thead th');
-      for (let i = 0; i < headers.length; i++){
-        const a = headers[i].querySelector('.sort-arrow');
-        if (a) a.textContent = (i === ci) ? (dir > 0 ? ' ▲' : ' ▼') : '';
+      for (let k = 0; k < headers.length; k++){
+        const a = headers[k].querySelector('.sort-arrow');
+        if (a) a.textContent = (+headers[k].dataset.ci === ci) ? (dir > 0 ? ' ▲' : ' ▼') : '';
       }
       this.host.scrollTop = 0;
       this.render();
@@ -465,6 +660,7 @@ _JS = r"""
     cellNode(value, ri, ci){
       const td = document.createElement('td');
       if (this.numericCols.has(ci)) td.classList.add('numeric');
+      else if (this.monoCols.has(ci)) td.classList.add('mono');
 
       const colName = this.cols[ci];
       const lc = this.labelCols[colName];
@@ -490,6 +686,24 @@ _JS = r"""
         td.appendChild(a);
       } else {
         td.textContent = formatted;
+      }
+
+      // Heatmap (c16i): for magnitude columns shade the WHOLE cell by relative value -> the bigger
+      // the number, the stronger the tint (column min = no tint). A UNIFORM shade (not a partial
+      // fill) so there is no gradient edge to misread as an artifact. Applied as a solid-colour
+      // background-IMAGE so the class-driven background-COLOR (zebra tr.alt / row-hover) still shows
+      // through underneath. The number stays the cell text, on top. Deterministic (no random/Date).
+      const stat = this.colStats[ci];
+      if (stat != null && value != null && value !== ''){
+        const n = +value;
+        if (n === n){
+          let tt = (n - stat.lo) / (stat.hi - stat.lo);
+          tt = tt < 0 ? 0 : (tt > 1 ? 1 : tt);
+          const pct = Math.round(tt * 100);
+          const c = 'color-mix(in oklch, var(--accent-data) ' + Math.round(tt * 30) + '%, transparent)';
+          td.style.backgroundImage = 'linear-gradient(' + c + ', ' + c + ')';
+          td.setAttribute('aria-label', formatted + ' (' + pct + '% of column max)');
+        }
       }
 
       // label enrichment (appears after the value/link)
@@ -528,6 +742,10 @@ _JS = r"""
       while (this.sTop.nextSibling !== this.sBot){
         this.tbody.removeChild(this.sTop.nextSibling);
       }
+      // spacers span only the VISIBLE columns (changes when a group is toggled)
+      const visible = this.cols.length - this.hiddenCols.size;
+      this.tdTop.colSpan = visible;
+      this.tdBot.colSpan = visible;
       // height on <tr> directly; <td> alone doesn't make a row tall in all browsers
       this.sTop.style.height = (start * ROW_H) + 'px';
       this.sBot.style.height = ((len - end) * ROW_H) + 'px';
@@ -541,6 +759,7 @@ _JS = r"""
         if (i % 2 === 1) tr.className = 'alt';
         const row = this.view[i];
         for (let ci = 0; ci < this.cols.length; ci++){
+          if (this.hiddenCols.has(ci)) continue;
           tr.appendChild(this.cellNode(row[ci], i, ci));
         }
         frag.appendChild(tr);
@@ -577,7 +796,9 @@ _JS = r"""
       const labelsForTable = Object.assign({}, labels);
       // Per-section: capture from data is row-level; use the section's data-capture if set
       labelsForTable.capture = host.dataset.capture || (payload.rows[0] ? payload.rows[0][3] : '');
-      const vt = new VTable(host, payload, labelsForTable);
+      // Column groups are catalog-only (window.__colgroups_catalog); undefined elsewhere -> no bar.
+      const groups = window['__colgroups_' + name];
+      const vt = new VTable(host, payload, labelsForTable, groups);
       host._vt = vt;
 
       const section = host.closest('section');
@@ -597,6 +818,9 @@ _JS = r"""
   });
 })();
 """
+
+# Bind the single-source row height into the JS (sentinel -> literal). Done once at import.
+_JS = _JS_TMPL.replace('__ROW_H__', str(_ROW_H))
 
 
 def _h(s) -> str:
@@ -1035,10 +1259,15 @@ def render_root(root: str) -> str:
     parts.append(f'<a class="dl" href="{_paths.DATA_DIR}/_catalog.csv" data-link-kind="inline">CSV</a>')
     parts.append(f'<a class="dl" href="{_paths.DATA_DIR}/_catalog.parquet" data-link-kind="inline">parquet</a>')
     parts.append('</div>')
+    # Empty container for the column-group toggle bar; the buttons are built client-side from
+    # window.__colgroups_catalog (c16i). Catalog only - drill pages emit neither.
+    parts.append('<div class="col-groups" role="group" aria-label="column groups"></div>')
     parts.append(f'<div class="table-scroll" data-table="catalog"></div>')
     parts.append('</section>')
 
     parts.append(f'<script>window.__data_catalog={json.dumps(payload, separators=(",", ":"))};</script>')
+    parts.append('<script>window.__colgroups_catalog='
+                 f'{json.dumps(_catalog_col_groups(cols), separators=(",", ":"))};</script>')
     parts.append(f'<script>window.__labels={{}};</script>')
     parts.append(f'<script>{_JS}</script>')
     parts.append('</body></html>')

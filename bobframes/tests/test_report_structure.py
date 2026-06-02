@@ -130,3 +130,103 @@ def test_no_banned_unicode(rendered):
     # which only inspects text outside <table>/<script>/<style>.
     for rel, html in rendered.items():
         assert not _BANNED.search(html), rel
+
+
+# --- c16i: catalog + drill readability (the html/template.py layer) ---
+# The VTable <table>/cells are built CLIENT-SIDE, so the golden carries only <style> + _JS + the
+# inline data/colgroups scripts + the empty col-groups div. These guards are substring/structural
+# checks on that emitted source (pytest has no browser).
+
+def _root(pages):
+    return pages['index.html']
+
+
+def _drill(pages):
+    keys = [k for k in pages if '/drill/' in k and k.endswith('index.html')]
+    assert keys, 'no drill page rendered'
+    return pages[keys[0]]
+
+
+def _script_json(html, varname):
+    """Extract the JSON assigned to ``window.<varname>=...;</script>``. Each <script> is emitted on
+    its own line, so a line scan beats brace-counting and avoids regex-vs-nested-braces fragility."""
+    import json
+    marker = f'window.{varname}='
+    for line in html.splitlines():
+        if marker in line and ';</script>' in line:
+            payload = line.split(marker, 1)[1]
+            return json.loads(payload[:payload.rindex(';</script>')])
+    return None
+
+
+def test_c16i_type_split(rendered):
+    # Inter sans is the table.data DEFAULT; mono+tabular is re-asserted ONLY on numeric/.mono BODY
+    # cells. Headers stay sans (the mono rule is scoped to tbody, never thead th.numeric).
+    for html in (_root(rendered), _drill(rendered)):
+        assert "font: var(--fs-body)/1.3 'Inter'" in html
+        assert 'tbody td.numeric, table.data tbody td.mono' in html
+        assert "ui-monospace, 'Cascadia Code', Consolas, monospace" in html
+        assert 'thead th.numeric, table.data tbody td.mono' not in html  # headers NOT forced mono
+
+
+def test_c16i_row_height_lockstep(rendered):
+    # ROW_H (JS) is the sole virtual-scroll driver; the CSS cell padding is its coupled pair. Pin
+    # both literals so neither drifts silently and overflows the row (which desyncs the scroll).
+    for html in (_root(rendered), _drill(rendered)):
+        assert 'const ROW_H = 32;' in html
+        assert 'padding: 6px 8px;' in html
+
+
+def test_c16i_heatmap_deterministic_and_offline(rendered):
+    for html in (_root(rendered), _drill(rendered)):
+        assert 'td.style.backgroundImage' in html         # bar via background-IMAGE...
+        assert 'td.style.background =' not in html         # ...NOT the shorthand (would kill zebra/hover)
+        assert 'var(--accent-data)' in html                # reuse the existing heatmap token
+        assert '% of column max)' in html                  # aria-label -> colour is not the only signal
+        for bad in ('Math.random', 'Date.now', 'new Date', 'fetch('):
+            assert bad not in html, bad                    # offline + byte-deterministic
+
+
+def test_c16i_column_groups_catalog_only(rendered):
+    idx, drill = _root(rendered), _drill(rendered)
+    # served chrome: exactly one toggle-bar container on the catalog, none on the drill
+    assert idx.count('<div class="col-groups" role="group" aria-label="column groups">') == 1
+    assert 'class="col-groups"' not in drill
+    assert 'window.__colgroups_catalog=' not in drill
+    # group -> column map: 4 category-derived groups, Metadata+Workload open, an EXACT partition of
+    # the catalog columns (no orphaned or double-counted column).
+    groups = _script_json(idx, '__colgroups_catalog')
+    assert groups is not None, 'colgroups script not found'
+    assert [g['name'] for g in groups] == ['Metadata', 'Workload', 'Resources', 'Samples']
+    assert [g['name'] for g in groups if g['open']] == ['Metadata', 'Workload']
+    cat_cols = _script_json(idx, '__data_catalog')['cols']
+    grouped = [c for g in groups for c in g['cols']]
+    assert sorted(grouped) == sorted(cat_cols)             # exhaustive
+    assert len(grouped) == len(set(grouped)) == len(cat_cols)  # no overlap
+    # toggle UI is built client-side, so assert the _JS SOURCE: real <button> + aria-pressed state.
+    assert "btn.type = 'button'" in idx
+    assert "'col-group-toggle'" in idx
+    assert "setAttribute('aria-pressed'" in idx
+
+
+def test_c16i_reports_layer_untouched(rendered):
+    # c16i is the template.py layer ONLY. The reports/dashboard pages must carry none of the
+    # catalog/drill VTable chrome - a leak here would mean shared CSS/JS bled into reports.
+    for name in _ALL_REPORTS + ['index']:
+        rel = '_reports/index.html' if name == 'index' else f'_reports/{name}.html'
+        html = rendered[rel]
+        assert 'class="col-groups"' not in html, name
+        assert 'window.__colgroups_catalog=' not in html, name
+
+
+def test_c16i_deterministic_render(tmp_path_factory):
+    # same input -> identical catalog + drill output (no random/Date crept into the new JS). Compare
+    # after u.normalize() since the catalog header carries the build timestamp (masked in the golden).
+    a = u.render_fresh(str(tmp_path_factory.mktemp('c16i_a') / 'root'))
+    b = u.render_fresh(str(tmp_path_factory.mktemp('c16i_b') / 'root'))
+    rels = ['index.html'] + [k for k in u.rendered_html_files(a)
+                             if '/drill/' in k and k.endswith('index.html')]
+    for rel in rels:
+        ta = u.normalize(open(os.path.join(a, rel), encoding='utf-8').read())
+        tb = u.normalize(open(os.path.join(b, rel), encoding='utf-8').read())
+        assert ta == tb, rel

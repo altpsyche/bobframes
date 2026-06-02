@@ -7,20 +7,48 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        c16i_catalog_drill_readability    (status: not-started; AUTHORED 2026-06-02 - plan/impl in a
-                NEW chat. c16e-h DONE. The 3 plan-folder design reviews led first to a SPA decision (ADR-36)
-                which a LIFESPAN REVIEW then REJECTED (ADR-37, user-trusted): a bespoke offline SPA is a
-                perpetual web-framework maintenance tax, weakens golden-as-correctness, loses JS-optional
+current:        c16j_data_decoupling    (status: not-started; AUTHORED 2026-06-02. c16i DONE 2026-06-03 -
+                see last_session. c16e-i DONE. The 3 plan-folder design reviews led first to a SPA decision
+                (ADR-36) which a LIFESPAN REVIEW then REJECTED (ADR-37, user-trusted): a bespoke offline SPA is
+                a perpetual web-framework maintenance tax, weakens golden-as-correctness, loses JS-optional
                 content, and constrains the v0.6 plugin/cross-platform future. SETTLED (ADR-37): reports stay
-                server-rendered + static + self-contained (JS-optional + single-file + golden-as-output kept);
-                fix ONLY the heavy data; invest the durable effort in the data contract (c20 --json / c30
-                schema+query, already roadmapped). So the catalog/drill improvement = TWO small static commits,
-                NO SPA: c16i (readability: type split, roomier rows, heatmap cells, collapsible column groups)
-                + c16j (decouple the ~21MB drill/catalog VTable data into <script src>'d _data/*.js - the TTI
-                fix). ORDER: c16i -> c16j -> v0.2 close-out (re-ingest validation) -> tag v0.2 (irreversible,
-                authorize first) -> c20. The SPA epic (old c16k-c16n) is VOIDED; ADR-36 superseded by ADR-37.
-                G-20 (3+-run column collapse) still deferred - no 3+-run data.)
-last_session:   2026-06-02 — c16f DONE (multi-run UX: the run selector; G-18 closed; builds on ADR-35).
+                server-rendered + static + self-contained; fix ONLY the heavy data (c16j); invest the durable
+                effort in the data contract (c20 --json / c30 schema+query, already roadmapped). c16j: move the
+                catalog/drill VTable rows OUT of the HTML into <script src>'d _data/*.js (file://-safe, classic
+                + defer, NO fetch, NO ES modules) so the HTML shell paints first + the ~21MB drill TTI dies -
+                STATIC, no router; golden gates the page + _data/*.js, reports untouched. ORDER: c16j -> v0.2
+                close-out (re-ingest validation) -> tag v0.2 (irreversible, authorize first) -> c20. The SPA
+                epic (old c16k-c16n) is VOIDED; ADR-36 superseded by ADR-37. G-20 (3+-run column collapse)
+                still deferred - no 3+-run data. G-23 opened (unify the two table systems; post-v0.2).)
+last_session:   2026-06-03 — c16i DONE (catalog + drill readability; the html/template.py layer; G-21
+                readability half; no new ADR - rides ADR-6/27/32/33/34/37). Brought the c16d treatment to the
+                STATIC catalog (root index) + per-drop drill VTable: (1) TYPE SPLIT - table.data defaults to
+                the Inter sans stack at line-height 1.3, mono+tabular-nums re-asserted ONLY on numeric/.mono
+                BODY cells via LONGHANDS (headers stay sans; a name-keyed monoCols set keeps id/hash/path cols
+                mono). (2) ROOMIER ROWS - ROW_H single-sourced from Python _ROW_H=32 (sentinel-substituted
+                into _JS; JS is the SOLE virtual-scroll driver, CSS sets NO row height or it fights the dynamic
+                spacers), 6px padding (14px x 1.3 + 12 + 1 = 31.2 <= 32 -> no overflow -> no scroll drift).
+                (3) HEATMAP - numeric MAGNITUDE cells (excl. id/event_id/labelCols + single-value) shade the
+                WHOLE cell by relative value via background-IMAGE only (uniform color-mix(--accent-data
+                0-30%); user rejected the first length+gradient bar as "looks like an artifact"), so the class
+                background-color zebra/hover shows through; deterministic, aria-labelled. (4) COLUMN GROUPS
+                (catalog only) - deterministic group->col map from schemas.table_category (Metadata/Workload/
+                Resources/Samples, Metadata+Workload open) as window.__colgroups_catalog; VTable builds real
+                <button aria-pressed> toggles + hiddenCols, sort-arrow loop keyed on th.dataset.ci so it stays
+                correct with hidden cols. POST-FEEDBACK fixes: .table-scroll sizes to content capped at 60vh
+                (small tables stop reserving an empty 60vh box; folded in the never-applied .short variant);
+                drill VISUAL HIERARCHY - details.category became a left-anchored bold-accent group LABEL +
+                nesting rail (the count was centering because the +/- marker was a 3rd space-between flex item)
+                and each section.table-section became a CARD; all hierarchy/card CSS lives in _PER_DROP_CSS so
+                the reports/dashboard goldens stay byte-unchanged. test_report_structure +6 c16i guards. PARITY
+                (ADR-6): root index.html + the one drill golden refreshed + BROWSER-reviewed (light/dark,
+                synthetic AND real Perf at C:\tmp\perf, 14 drops/16 captures, headless screenshots + injected
+                color-scheme); reports/dashboard/per-run goldens BYTE-UNCHANGED; test_parquet_parity GREEN with
+                NO digests refresh (presentation only, §21.9). 165 -> 171 green. QUALITY_GATES §21.1l added;
+                G-21 readability half ticked (heavy-data half = c16j); G-23 OPENED (two table systems - reports
+                table.report/rdc-sortable-table vs the drill VTable - unify post-v0.2, likely with c20/c30).
+                Commits on v0.2-roadmap-c04, UNPUSHED. current -> c16j.
+former_last_c16f: 2026-06-02 — c16f DONE (multi-run UX: the run selector; G-18 closed; builds on ADR-35).
                 Layered the navigation UX on c16e's run model. Mechanism = PRE-RENDERED per-run pages: the
                 top-level _reports/<report>.html is the newest run (default); each OLDER run gets a
                 self-contained set under _reports/run/<run_key>/ (mirrors _reports/ab/<pair>/), bounded by NEW
@@ -310,15 +338,10 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    DO c16i FIRST (catalog/drill readability), THEN c16j (decouple heavy data), THEN the v0.2
-                close-out. c16e-h DONE. The SPA (ADR-36) was REJECTED on a lifespan review (ADR-37): reports
-                stay server-rendered + STATIC; only the heavy data is decoupled; the durable investment is the
-                data contract (c20/c30). NO SPA, NO router, NO re-homing of the c16b-f reports.
-                c16i (commits/v02/c16i_catalog_drill_readability.md): the STATIC html/template.py readability
-                pass - Inter/mono type split (table.data is all-mono today), roomier VTable rows (coordinate
-                ROW_H=22 in _JS with the CSS), client-side heatmap cells on numeric columns, collapsible column
-                groups on the wide catalog. Server-rendered + deterministic; refresh the root + drill golden
-                (reports goldens UNCHANGED); test_parquet_parity GREEN no digests refresh.
+next_action:    c16i DONE (2026-06-03). DO c16j NEXT (decouple heavy data), THEN the v0.2 close-out. c16e-i
+                DONE. The SPA (ADR-36) was REJECTED on a lifespan review (ADR-37): reports stay server-rendered
+                + STATIC; only the heavy data is decoupled; the durable investment is the data contract
+                (c20/c30). NO SPA, NO router, NO re-homing of the c16b-f reports.
                 c16j (commits/v02/c16j_data_decoupling.md): move the catalog/drill VTable rows OUT of the HTML
                 into _data/<key>.js loaded via a plain (defer) <script src> (file://-safe, NO fetch, classic
                 script - NOT a module) so the HTML shell paints first + the ~21MB drill TTI dies; no router,
@@ -396,8 +419,8 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c16f multi-run UX](commits/v02/c16f_multirun_ux.md) | **done** — run selector via pre-rendered per-run pages (_reports/run/<key>/, reuse rdc-ab-picker) + fixed prior baseline + "current vs baseline" banner + distinct run chips + "viewing an older run" cue + dashboard->report persistence (G-18); bounded by [report] max_prerendered_runs. 142 -> 148 green; golden +6 per-run pages, no digests refresh; QUALITY_GATES §21.1k. G-20 (3+-run col collapse) deferred (no 3+-run data to verify) |
 | ☑ | c16g quality sweep | **done** — pre-tag, behaviour-neutral: Q-1 (stable_key dict-of-builders, oracle-locked), Q-2 (cast-failure tally + warn), Q-4 (zip strict on derive), Q-7 (`_to_dict_of_lists` callers), Q-8 (dead buffers no-op deleted), D-3 (coupling doc), D-9 (`_TABLE_DISPLAY_ORDER` origin recovered + recorded). 148 -> 160 green; golden + digests frozen; no new ADR |
 | ☑ | c16h reliability sweep | **done** — R-12 (`_best_effort_rmtree` logs held-handle cleanup failures), R-14 (UTF-8 U+FFFD warning in `iter_chunks`), R-11 (single-process sidecar doc), R-15 (`parquetize` skips markerless/incomplete-replay captures so half-written CSVs never merge). R-10 deferred (OOM-gated). 160 -> 165 green; golden + digests frozen; no new ADR |
-| ☐ | [c16i catalog + drill readability](commits/v02/c16i_catalog_drill_readability.md) | **next** (revived, ADR-37) — STATIC `html/template.py` pass: Inter/mono type split, roomier VTable rows (ROW_H+CSS), client-side heatmap cells, collapsible column groups on the wide catalog (G-21). NO SPA |
-| ☐ | [c16j decouple heavy data](commits/v02/c16j_data_decoupling.md) | after c16i (ADR-37) — move the catalog/drill VTable rows out of the HTML into `<script src>`'d `_data/*.js` (file://-safe, classic + defer) so the shell paints first; kills the ~21MB drill TTI. STATIC, no router |
+| ☑ | [c16i catalog + drill readability](commits/v02/c16i_catalog_drill_readability.md) | **done** (revived, ADR-37) — STATIC `html/template.py` pass: Inter/mono type split, roomier VTable rows (ROW_H=32 single-source), client-side uniform-tint heatmap on numeric magnitude cells, collapsible column groups on the wide catalog, `.table-scroll` sizes to content, drill visual hierarchy (category=group-label+rail / table-section=card). 165→171 green; root+drill golden refreshed, reports byte-unchanged, no digests refresh; QUALITY_GATES §21.1l. G-21 readability half (heavy-data half = c16j); G-23 opened (two table systems) |
+| ☐ | [c16j decouple heavy data](commits/v02/c16j_data_decoupling.md) | **next** (ADR-37) — move the catalog/drill VTable rows out of the HTML into `<script src>`'d `_data/*.js` (file://-safe, classic + defer) so the shell paints first; kills the ~21MB drill TTI. STATIC, no router |
 | ✗ | ~~c16k–c16n SPA epic~~ | **VOIDED** — the SPA (ADR-36) was rejected on a lifespan review (ADR-37); reports stay static, only heavy data is decoupled (c16j), durable data contract = c20/c30. Docs removed; trail in ADR-36/37 + the proposal doc |
 
 ## v0.3 — CI/automation surface (planned — [ROADMAP](ROADMAP.md))
@@ -444,6 +467,14 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-03 — c16i DONE (catalog + drill readability; G-21 readability half; html/template.py layer; no new
+  ADR). Type split (Inter sans default, mono on numeric/.mono body cells), ROW_H=32 single-sourced, uniform-tint
+  client-side heatmap on numeric magnitude cells (user rejected the first length-bar as artifact-looking),
+  catalog column groups (schema-category-derived, Metadata+Workload open), .table-scroll sizes to content, and
+  a drill visual-hierarchy pass (category=group-label+rail, table-section=card) - all in _PER_DROP_CSS so
+  reports goldens stay byte-unchanged. 165->171 green; root+drill golden refreshed + browser-reviewed
+  (light/dark, synthetic + real Perf); no digests refresh; QUALITY_GATES §21.1l; G-23 opened (unify the two
+  table systems). Commits on v0.2-roadmap-c04, UNPUSHED. current -> c16j.
 - 2026-06-02 — ADR-37: SPA REJECTED on a lifespan review; reverted to static + data-decoupling (user-trusted
   "what's truly better for the tool's lifespan?"). Stepped back from the ADR-36 SPA (decided hours earlier,
   NO code) and judged it a local maximum: a bespoke offline SPA is a perpetual web-framework maintenance tax,
