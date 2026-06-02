@@ -141,6 +141,28 @@ named reports carry copy buttons with full-length payloads; tabled reports balan
 `scope="col"` and have a `<caption>`; instancing hides `id="batching"`; the dashboard has 6 mini charts +
 6 subtitles + the nav; a whole-page ASCII guard). `test_design_tokens` pins the new card/caption CSS.
 
+## 21.1i Report visual language: depth, type, chart finish, motion (c16d, ADR-6/27/34) — see [c16d](../commits/v02/c16d_report_aesthetics.md)
+c16d is the design-language pass over the c16/c16b/c16c info-design, shipped as **four reviewable
+sub-commits** (a depth+tokens / b type+Inter / c chart-finish / d micro+pacing), each refreshing the golden
+with one review hypothesis (the minified report pages are NOT line-diffable, so each refresh is checked by
+structural-marker counts **plus a real browser render** in light/dark/reduced-motion/print). **Depth over
+borders:** cards/chrome read by `var(--surface-1)` + a soft `var(--elev-1/2/3)` shadow (a new `[shadow]`
+token block through the ADR-27 skeleton, asserted byte-exact in `test_design_tokens`), tables are
+horizontal-rule only, severity is a `color-mix` box tint, and the sticky-h2 in-view cue is a `::before`
+marker (the h2 left-accent is gone — verified by forcing `aria-current`). **Type:** a **vendored Inter
+subset** (29 KB woff2, base64-inlined `@font-face`, ADR-34) gives KPI/summary display numbers + headings a
+real geometric sans with `tabular-nums`; data tables stay monospace. `test_fonts` pins that the woff2 ships
+(wheel: 162/162 unique entries, ADR-10 holds), is inlined offline (no `http(s)://` in the CSS), ASCII, on
+both CSS paths, and base64-deterministic. **Chart finish:** gradient fills (deterministic, caller-threaded
+`chart_id` gradient ids — NO `hash()`/counter), dimmed axes (`[chart].axis_color` -> `--border-1`), and
+per-datum `<title>` tooltips; `test_charts` adds gradient-present/unique-per-page/deterministic +
+per-datum-title + axis-dim guards while the existing element-count/theming/determinism asserts stay green.
+**Motion:** hover `scale(var(--hover-scale))` + spring **no-ops under `prefers-reduced-motion`** by
+construction (reduced-motion `:root` sets `--hover-scale: 1` + `--motion-spring: 0s`); print kills shadows
+and re-adds a thin paper border. Output-changing -> golden HTML + preview **refreshed** across all four
+sub-commits; `test_parquet_parity` stays green with **no** `digests.json` refresh (presentation only,
+§21.9); `test_report_structure` stays green (CSS/token-first, DOM unchanged). 115 -> 128 green.
+
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,
 dropped column, dtype slip). Skip `_`-prefixed (`_catalog`, `_global_entities`). Runs on synthetic +

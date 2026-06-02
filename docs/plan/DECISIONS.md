@@ -514,3 +514,31 @@ ADR-11 trap we are paying down, not extending). Each chart is `role="img"` with 
 its detail **table directly below as the exact, accessible data fallback** (chart = at-a-glance, table =
 source of truth). **Consequence.** Charts ride the normal golden byte-parity gate like the rest of the HTML;
 they print (vector) and are reduced-motion-safe (static). This is the spine of [c16b](commits/v02/c16b_report_viz.md).
+
+### ADR-34 — report visual language: depth over borders, tinted severity, and a VENDORED Inter subset (c16d)
+**Context.** c16/c16b/c16c made the report info-design complete (G-15) but the design *language* read as
+debug output: `1px solid var(--border-1)` wireframe outlines around every element, flat chart fills,
+stark callout boxes, and a font stack that *named* `'Inter'` but never loaded it (so KPI numbers fell back
+to whatever sans the viewer's OS had). c16d is the design-language pass (G-17). Two pieces are
+frozen-decision-worthy. **Decision 1 (depth over borders).** Cards and chrome are differentiated by
+**surface + a soft elevation shadow** (`--elev-1/2/3`, a new `[shadow]` token block emitted through the
+ADR-27 value-only skeleton), not outlines; report tables become horizontal-rule only; severity is a faint
+translucent **box tint** (`color-mix(in oklch, var(--status-*) ..%, var(--surface-1))`) instead of a stark
+border + left rule; the sticky-h2 in-view cue moves from recolouring an h2 left-border to a `::before`
+accent marker (the h2 left-accent is gone). Micro-interactions (hover `scale(var(--hover-scale))` + spring)
+**no-op under `prefers-reduced-motion`** by construction (the reduced-motion `:root` sets `--hover-scale: 1`
+and `--motion-spring: 0s`); print re-adds a thin paper border + kills shadows (a borderless+shadowless card
+is invisible on white). **Decision 2 (vendored font — overrides the c16d-doc's original "do NOT load a web
+font", user signoff 2026-06-02).** The dependency posture is re-opened: a **subset of the Inter variable
+font** (Latin + tabular figures, `wght` 400-600, ~29 KB) is **vendored into the wheel**
+(`reports/assets/inter-subset.woff2` + OFL licence) and **base64-inlined as an `@font-face` data URI** at
+import. KPI/summary display numbers + headings render in Inter on every OS; data tables stay monospace
+(dual stack). A *CDN / network* web-font remains forbidden — it would break the offline + byte-deterministic
+report contract. The committed woff2 makes the inlined base64 byte-stable on any machine; `fonttools` is a
+**dev-time only** subsetting tool (its output is committed, never run at build/runtime). **Consequence
+(accepted contract change).** The wheel grows ~29 KB and each self-contained report HTML grows ~40 KB
+(the inlined font); reports stay a single file that renders identically **offline** and remain
+**byte-deterministic** (the golden HTML carries the static blob). Everything still rides the ADR-6 golden
+parity gate; `test_parquet_parity` is untouched (presentation only, §21.9). This is the spine of
+[c16d](commits/v02/c16d_report_aesthetics.md); additive to ADR-27 (tokens) / ADR-32 (report contract) /
+ADR-33 (charts).

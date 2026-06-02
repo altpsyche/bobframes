@@ -1,5 +1,12 @@
 # c16d — report aesthetics + UX polish (depth, type hierarchy, chart finish, micro-interactions)     release: v0.2 · phase: De-hardcoding
 
+> **STATUS: DONE 2026-06-02** (G-17 closed; ADR-34; QUALITY_GATES §21.1i). Shipped as four reviewable
+> sub-commits on `v0.2-roadmap-c04` (UNPUSHED): **a** `9079013` depth + elevation tokens · **b** `d67c5c2`
+> vendored Inter subset + dual sans/mono type · **c** `783840e` chart finish (gradients/dim-axes/titles) ·
+> **d** `20b82c7` micro-interactions + pacing + secondary-data dimming. 115 -> 128 green; golden refreshed +
+> browser-reviewed (light/dark/reduced-motion/print); `test_parquet_parity` untouched (§21.9). STATE is the
+> source of truth.
+
 ## Goal
 Take the reports from correct-but-utilitarian ("data dump") to a curated analytical experience.
 [c16](c16_report_quality.md) / [c16b](c16b_report_viz.md) / [c16c](c16c_report_restructure.md) made

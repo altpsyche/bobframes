@@ -7,10 +7,36 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        c16d_report_aesthetics    (status: not-started; AUTHORED 2026-06-02 - planning + impl
-                happen in a new chat. c16c + review fixes landed. v0.2 close-out (full-area ingest) +
-                tag come AFTER c16d, before c20. Release NOT closed yet.)
-last_session:   2026-06-02 — c16c DONE (report RESTRUCTURE; G-15 FULLY closed - both halves landed). Routed
+current:        v0.2 close-out (full-area ingest + tag)    (status: not-started. c16d DONE 2026-06-02 -
+                report VISUAL OVERHAUL shipped as 4 sub-commits a/b/c/d, 128 green, golden refreshed +
+                browser-reviewed. NEXT: real full-area ingest of ALL areas, then tag v0.2 (irreversible -
+                authorize first), then c20. Release NOT closed yet.)
+last_session:   2026-06-02 — c16d DONE (report VISUAL OVERHAUL / design-language pass; G-17 closed; ADR-34).
+                Shipped as 4 reviewable sub-commits, each golden-refreshed + BROWSER-reviewed (light/dark/
+                reduced-motion/print via Chrome headless; minified pages are not line-diffable). (a) DEPTH
+                over borders [9079013]: cards/chrome read by surface + soft elevation shadow (NEW [shadow]
+                block --elev-1/2/3 via the ADR-27 skeleton; two-layer ring+drop, tuned for light since dark
+                rides surface-lightening), report tables horizontal-rule only, severity = color-mix box tint
+                (not a left rule), sticky-h2 in-view cue moved to a ::before accent marker (h2 left-accent
+                gone; JS unchanged - verified by forcing aria-current), reduced-motion safety via
+                --hover-scale:1 + --motion-spring:0s, print re-adds a 1px #888 paper border + box-shadow:none.
+                (b) TYPE [d67c5c2]: VENDORED Inter subset (reports/assets/inter-subset.woff2, 29KB, Latin +
+                tnum, wght 400-600) baked into the wheel + base64-inlined @font-face at import (offline +
+                byte-deterministic; NO CDN - ADR-34 overrides the c16d-doc "no web font" with user signoff);
+                KPI/summary display numbers + headings now Inter sans + tabular-nums, data tables stay mono.
+                (c) CHART FINISH [783840e]: gradient fills on bar/histogram/scatter (deterministic
+                caller-threaded chart_id ids - NO hash/counter), dimmed axes (axis_color -> --border-1),
+                per-datum <title> tooltips on bar + per-series on line. (d) MICRO + PACING [20b82c7]:
+                dash-card hover scale(var(--hover-scale)) + spring lift, copy-button resting tint,
+                section.card padding sp-4 -> sp-6, .dim utility on shader drop-key suffixes. PARITY
+                (ADR-6/27/34): golden HTML + preview REFRESHED all 4 commits, structural-marker + browser
+                reviewed; test_parquet_parity GREEN with NO digests refresh (presentation only, §21.9).
+                115 -> 128 green (+test_fonts x5, +test_charts gradients/titles/axis x5, +test_design_tokens
+                shadow/motion/depth/micro x3). smoke render-only 9 pages lint clean exit 0. Wheel verified:
+                ships inter-subset.woff2 + Inter-OFL.txt + README, 162/162 unique entries (ADR-10 holds).
+                ADR-34 appended; G-17 ticked; QUALITY_GATES §21.1i added; c16d doc move #2 updated. Commits
+                on v0.2-roadmap-c04, UNPUSHED. current -> v0.2 close-out (full-area ingest + tag).
+former_last_c16c: 2026-06-02 — c16c DONE (report RESTRUCTURE; G-15 FULLY closed - both halves landed). Routed
                 every report section through chrome.section_card wrapped in <rdc-sticky-h2> (relaxed the
                 component selector h2[id] -> h2 so a card's id-less header h2 still drives the in-view
                 highlight; section ids stay the anchors, so #area/#gpu/#class_counts resolve unchanged).
@@ -214,22 +240,8 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    DO c16d FIRST (report AESTHETICS + UX polish; user-requested 2026-06-02). Open
-                commits/v02/c16d_report_aesthetics.md and do exactly that one commit (planning + impl in a
-                NEW chat). Five presentation-only moves over the c16/c16b/c16c structure: (a) depth over
-                borders - drop card/table outlines, differentiate by surface + a soft elevation shadow
-                (NEW light/dark shadow tokens via the ADR-27 skeleton), tables horizontal-rule only; (b)
-                type hierarchy - KPI numbers in the SANS stack (NO web-font load: 'Inter' is only NAMED in
-                the stack, not loaded - keep offline/determinism), dim secondary data to --text-3, drop the
-                in-card h2 left-accent but keep the sticky highlight working via a different in-view cue;
-                (c) chart finish - gradient fills, dimmed axes, per-datum SVG <title> tooltips (static,
-                deterministic, scrubbed); (d) micro-interactions - spring easing + scale(1.01) hover
-                (no-op under reduced-motion), resting affordance on copy-buttons/links, tinted severity
-                callout backgrounds; (e) pacing - bigger card padding + secondary tables collapsed by
-                default. Output-changing -> refresh golden (broad CSS diff; review page-by-page, ADR-23);
-                test_parquet_parity GREEN, NO digests refresh (§21.9). Append ADR-34 (depth-over-borders +
-                no web-font) if it locks a real decision + QUALITY_GATES §21.1i.
-                THEN the original v0.2 close-out gates:
+next_action:    c16d DONE (report VISUAL OVERHAUL; G-17/ADR-34; 4 sub-commits a/b/c/d; 128 green). NOW do
+                the v0.2 close-out gates:
                 (1) V0.2 CLOSE-OUT (user-requested 2026-06-01): run a real FULL ingest of ALL areas (not
                 just Chor bazar — Commercial/Financial/Police station/Resort/Train station/Under
                 construction mall from the Downloads RDC drop), keep the rendered HTML, eyeball the
@@ -241,7 +253,7 @@ next_action:    DO c16d FIRST (report AESTHETICS + UX polish; user-requested 202
                 commit. NOTE for c27/c35: the c09 classifier is already STATE-CAPABLE (when{} over any draw
                 column), so the state-first generic preset (D-10) is a preset not a rewrite; c35 removes the
                 zeroed passes.draws_by_class_* + slims passes (D-11a). GIT: still on branch v0.2-roadmap-c04
-                (off main; c07 + c08 + c09 + c10 + c16 + c16b + c16c UNPUSHED). Post-release nit
+                (off main; c07 + c08 + c09 + c10 + c16 + c16b + c16c + c16d[a/b/c/d] UNPUSHED). Post-release nit
                 (non-blocking): bump CI actions off Node20 (checkout@v5/setup-python@v6 before 2026-06-16).
 DONE-2026-05-31: c19 — bobframes 0.1.0 PUBLISHED. tag v0.1.0 -> CI publish job green (OIDC trusted
                 publishing, ubuntu). Live on PyPI (wheel + sdist) + GitHub Release with both assets.
@@ -292,7 +304,7 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c16 report-quality polish](commits/v02/c16_report_quality.md) | **done** — mechanics (R-13/Q-9/D-4/D-7/D-11b) + polish slice (KPI strips, callouts, heatmaps, provenance strip, labels); 99 green, golden refreshed (ADR-32) |
 | ☑ | [c16b report charts](commits/v02/c16b_report_viz.md) | **done** — inline-SVG toolkit (charts.py, ADR-33) + flagship chart per report + shader column-diet; 108 green, golden refreshed |
 | ☑ | [c16c report restructure](commits/v02/c16c_report_restructure.md) | **done** — section-cards + sticky-h2 + copy-buttons + dashboard small-multiples + caption/scope a11y + fill-or-hide; 115 green, golden refreshed (G-15 fully closed) |
-| ☐ | [c16d report aesthetics](commits/v02/c16d_report_aesthetics.md) | **next** — visual-design pass: depth-over-borders + type hierarchy + chart finish (gradients/tooltips) + micro-interactions + pacing (G-17). Plan/impl in a new chat |
+| ☑ | [c16d report aesthetics](commits/v02/c16d_report_aesthetics.md) | **done** — visual-design pass in 4 sub-commits (a depth+tokens / b vendored-Inter+type / c chart-finish / d micro+pacing); G-17 closed, ADR-34; 128 green, golden refreshed + browser-reviewed |
 
 ## v0.3 — CI/automation surface (planned — [ROADMAP](ROADMAP.md))
 
@@ -338,6 +350,22 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-02 — c16d DONE (report VISUAL OVERHAUL / design-language pass; G-17 closed; ADR-34). Shipped as 4
+  reviewable sub-commits, each golden-refreshed + BROWSER-reviewed (light/dark/reduced-motion/print via
+  Chrome headless): (a) 9079013 depth over borders - surface + soft elevation shadows (NEW [shadow] block
+  --elev-1/2/3 via the ADR-27 skeleton, two-layer ring+drop tuned for light; dark rides surface-lightening),
+  tables horizontal-rule only, severity color-mix box tint, sticky-h2 in-view cue moved to a ::before marker
+  (h2 left-accent gone, JS unchanged), reduced-motion safety (--hover-scale:1 + --motion-spring:0s), print
+  re-adds a 1px #888 border + box-shadow:none. (b) d67c5c2 type - VENDORED Inter subset (29KB woff2, Latin +
+  tnum, wght 400-600) baked into the wheel + base64-inlined @font-face (offline + byte-deterministic, NO CDN;
+  ADR-34 overrides the doc's "no web font" with user signoff); KPI/summary numbers + headings -> Inter sans
+  tabular-nums, data tables stay mono. (c) 783840e chart finish - gradient fills (deterministic
+  caller-threaded chart_id ids, no hash/counter), dimmed axes (axis_color -> --border-1), per-datum <title>
+  tooltips. (d) 20b82c7 micro + pacing - dash-card hover scale+spring lift, copy-button resting tint,
+  section.card padding sp-6, .dim drop-key suffixes. PARITY: golden HTML + preview REFRESHED all 4 commits;
+  test_parquet_parity GREEN, NO digests refresh (§21.9). 115 -> 128 green; smoke 9 pages lint clean. Wheel
+  verified ships inter-subset.woff2 + OFL, 162/162 unique (ADR-10 holds). ADR-34 appended; G-17 ticked;
+  QUALITY_GATES §21.1i; c16d doc move #2 updated. UNPUSHED on v0.2-roadmap-c04. current -> v0.2 close-out.
 - 2026-06-02 — c16d AUTHORED (report AESTHETICS + UX polish; user-requested). Wrote
   commits/v02/c16d_report_aesthetics.md - a presentation-only visual-design pass over the c16/c16b/c16c
   structure: depth over borders (surface + soft elevation shadow, tables horizontal-rule only; NEW
