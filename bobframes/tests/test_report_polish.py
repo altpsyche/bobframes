@@ -83,3 +83,20 @@ def test_sparse_drop_renders_empty_state(tmp_path):
                 '_reports/draws_by_class.html'):
         html = open(os.path.join(dest, rel), encoding='utf-8').read()
         assert 'empty-state' in html, f'{rel} should show a friendly empty-state on a sparse drop'
+
+
+def test_trend_table_single_drop_renders(tmp_path):
+    """Regression (found by the real Perf ingest, 2026-06-02): trend_table with a SINGLE drop must
+    not crash. The single-drop summary-bar branch reused the name `kpis` as a loop variable, which
+    clobbered the hero KPI list -> a per-area dict reached kpi_strip -> iterating it yields string
+    keys -> 'str' object has no attribute 'get'. The synthetic golden has 2 drops, so this path was
+    never exercised before a real first-ingest (one drop per area)."""
+    from bobframes.reports import trend_table, base as rbase
+    dest = u.render_fresh(str(tmp_path / 'root'))          # builds catalog + 2-drop reports
+    drops = rbase.discover_drops(dest)
+    assert len(drops) >= 1
+    out = trend_table.build(dest, drops=drops[:1])          # force the single-drop path
+    html = open(out, encoding='utf-8').read()
+    # hero KPI strip is intact (dict labels), not the clobbered per-area frame-totals dict-keys
+    assert 'latest gpu (s)' in html and 'class="kpi-value"' in html
+    assert 'total_gpu_duration_s' not in html
