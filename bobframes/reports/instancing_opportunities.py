@@ -251,8 +251,9 @@ def build(root: str, *, drops: list | None = None, ab=None,
             rp = base.rank_pill(rank_i) if rank_i <= 3 else ''
             copy_mh = (f'<rdc-copy-button data-value="{base.safe_chrome_text(mh)}" '
                        f'data-label="copy mesh hash"></rdc-copy-button>') if mh else ''
+            # c16m: clip the mesh label on the <a> (default tier); rank pill + copy button ride outside.
             sec1.append(
-                f'<td>{rp}<a href="{base.h(link)}" data-link-kind="drill">{base.h(mesh_label)}</a>{copy_mh}</td>'
+                f'<td>{rp}<a href="{base.h(link)}"{base.clip_attrs(mesh_label)} data-link-kind="drill">{base.h(mesh_label)}</a>{copy_mh}</td>'
             )
             prev = None
             series = []
@@ -269,8 +270,8 @@ def build(root: str, *, drops: list | None = None, ab=None,
                 sec1.append(f'<td class="num">{base.sparkline_svg(series)}</td>')
 
             areas_str = ', '.join(sorted(m['areas']))
-            sec1.append(f'<td>{base.h(areas_str)}</td>')
-            sec1.append(f'<td>{base.h(base.pass_short(dominant_pass))}</td>')
+            sec1.append(f'<td>{base.clip_span(areas_str)}</td>')
+            sec1.append(f'<td>{base.clip_span(base.pass_short(dominant_pass), tier="narrow")}</td>')
             sec1.append(f'<td class="num">{base.fmt_int(n_typ)}</td>')
             sec1.append(f'<td class="num">{base.heatmap_cell(wasted, 0, max_wasted, text=base.fmt_int(wasted))}</td>')
             sec1.append('</tr>')

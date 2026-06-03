@@ -235,7 +235,7 @@ def _kpi_matrix(kpi: str, label: str, fmt: str, lower_is_better, threshold,
 
     for area in areas:
         parts.append('<tr>')
-        parts.append(f'<td>{base.h(area)}</td>')
+        parts.append(f'<td>{base.clip_span(area)}</td>')
         series: list = []
         prev = None
         for i, d in enumerate(drops):
@@ -284,7 +284,7 @@ def _single_drop_matrix(per_drop_ft: list, areas: list, drops: list) -> str:
         col_max[kpi] = max(vals) if vals else 0.0
     for area in areas:
         parts.append('<tr>')
-        parts.append(f'<td>{base.h(area)}</td>')
+        parts.append(f'<td>{base.clip_span(area)}</td>')
         for kpi, _, _, _, _ in KPIS:
             v = data.get(area, {}).get(kpi)
             cmax = col_max[kpi]
@@ -319,7 +319,7 @@ def _class_count_matrix(per_drop_area_class: list, areas: list,
     parts.append('</tr></thead><tbody>')
     for area in areas:
         parts.append('<tr>')
-        parts.append(f'<td>{base.h(area)}</td>')
+        parts.append(f'<td>{base.clip_span(area)}</td>')
         for i in range(len(drops)):
             cc = per_drop_area_class[i].get(area, {})
             for cls in base.DRAW_CLASSES:

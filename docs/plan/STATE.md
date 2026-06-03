@@ -7,17 +7,81 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        c16m_cell_truncation_hover    (status: not-started. c16l DONE 2026-06-03 - ONE table system
-                achieved: the `rdc-table` engine folded ALWAYS-ON into the shared report bundle, EVERY remaining
-                report/per-run/trend/dashboard-mini/preview surface migrated to `static` mode, and the old
-                `rdc-sortable-table` web component + the dead `table.report` CSS DELETED (grep-clean: no
-                rdc-sortable-table / RdcSortableTable / class="report" anywhere). G-23 FULLY RESOLVED. ADR-38.
-                c16e-l DONE. NEXT c16m: add controllable truncation + `title=` hover-reveal on rdc-table (both
-                modes) so the c16l no-clip stopgap (static report cells render full-width to protect copy-
-                buttons/sparklines) becomes a real policy. ORDER: c16m -> v0.2 close-out (re-ingest + eyeball)
-                -> tag v0.2 (IRREVERSIBLE, authorize first) -> c20. G-20 (3+-run column collapse) still deferred
-                - no 3+-run data. ADR-37 still governs (reports stay static); the SPA epic is VOIDED.)
-last_session:   2026-06-03 — c16l DONE (roll `rdc-table` out + delete the old systems; ADR-38, G-23 ROLLOUT
+current:        v0.2 close-out    (status: c16m DONE 2026-06-03 - the c16k-c16m table-unification EPIC is
+                COMPLETE. c16m added controllable cell truncation + `title=` hover-reveal to the ONE `rdc-table`
+                engine (ADR-38): one mechanism both modes - the clip lives on an INNER element (in-cell `<a>` or
+                `<span class="clip">`), never the `<td>`, so copy-buttons / sparklines / `.lbl` labels ride
+                OUTSIDE the clip + stay visible; removed the c16l no-clip stopgap + the td-level 380px clip
+                (kept nowrap). THREE tiers (--clip-cap 320 / -narrow 200 / -wide 560 px); full value always in
+                the DOM (Ctrl-F) + a length-gated server/JS `title=`; copy/link payloads keep the FULL value
+                (c16c). Static builders emit `.clip…`/`title=` on long cells; `VTable.cellNode` wraps every
+                non-numeric windowed cell + re-applies on recycle. Global Expand-cells `<button aria-pressed>`
+                toggle flips `data-expand` (default truncated; release = single-line both modes so virtual
+                ROW_H stays valid, static ALSO wraps); print = static full-wrap within the page (nothing hidden).
+                181 -> 188 green, parquet parity NO digests refresh (§21.9), smoke lint clean, browser-verified
+                offline (crafted long path clip+expand+print; real heaviest drill recycles with marker_path
+                clipped). QUALITY_GATES §21.1o; ALL HTML goldens refreshed (engine inline on every page),
+                `_pagedata`/digests/golden_parquet BYTE-UNCHANGED. NEXT = v0.2 CLOSE-OUT: re-ingest the real Perf
+                drop + eyeball all reports, THEN tag v0.2 (IRREVERSIBLE, authorize first) -> c20. G-20 (3+-run
+                column collapse) still deferred - no 3+-run data. ADR-37 governs (reports static); SPA VOIDED.)
+last_session:   2026-06-03 — c16m DONE (controllable cell truncation + `title=` hover-reveal on the ONE
+                `rdc-table` engine; ADR-38, FINAL of the c16k-c16m table-unification epic; rides ADR-37/6/24/c16c).
+                ONE truncation mechanism, both modes: the clip lives on an INNER element - an in-cell
+                `<a class="clip…">` or a `<span class="clip…">` (chrome.clip_attrs/clip_span helpers, re-exported
+                via base) - NEVER the `<td>`, so a trailing rdc-copy-button / sparkline / rdc-heatmap-cell / `.lbl`
+                label rides OUTSIDE the clip + stays visible/clickable (the reason c16l opted the td out). REMOVED
+                the c16l no-clip stopgap (`rdc-table[data-mode=static]…td{max-width:none}`) + the td-level 380px
+                clip from the global `table.data tbody td` rule (KEPT `white-space:nowrap`). THREE width tiers as
+                CSS custom props on table.data: --clip-cap 320 (.clip) / --clip-cap-narrow 200 (.clip-narrow) /
+                --clip-cap-wide 560 (.clip-wide). Full value ALWAYS in the DOM (Ctrl-F / selection-copy) + a
+                length-gated `title=` reveals on hover (server-set static / JS-set virtual; thresholds narrow 24 /
+                default 40 / wide 64 - short cells skip title to avoid SR double-read; synthetic+real src paths are
+                short so the golden carries NO src title= - correct-for-data, NOT a gamed threshold, ADR-23). Copy
+                `data-value=` + link `href=` keep the FULL value (c16c). Static builders emit `.clip…`/`title=` on
+                the named long cells (shader_hotlist src=wide on the <a> so file-icon+copy ride outside;
+                instancing mesh-label=default on the <a>, areas=default span, dominant-pass=narrow span; overdraw
+                RT-label=default, format=narrow; trend area=default x3). VTable.cellNode wraps every NON-numeric
+                windowed cell in a `.clip` (wide for _path/_hash/_hex/stable_key via new wideCols set, else
+                default) + re-applies on every recycled render; numeric cells never clipped; the `.lbl`/heatmap
+                stay on the td (outside clip); link nav-title NOT clobbered. GLOBAL expand/wrap toggle: the engine
+                builds a real `<button class="rdc-expand-toggle" aria-pressed>Expand cells</button>` in JS (both
+                modes, only when a `.clip` cell exists - no dead button) into a `.rdc-controls` bar before the
+                host; click flips `data-expand`. Default = TRUNCATED; release is mode-aware: full-width SINGLE
+                LINE both modes (so the VTable's fixed ROW_H stays valid - windowing would desync on multi-line),
+                static ALSO wraps (`white-space:normal; overflow-wrap:anywhere`). PRINT (static only): table
+                constrained to the page (`width:100%`, overriding width:max-content which else overflows+clips the
+                paper edge) + `.clip…` flow `display:inline; white-space:normal; overflow-wrap:anywhere` so long
+                unbroken paths WRAP within the page - nothing hidden on paper (no title tooltips in print);
+                virtual is windowed/never print-complete so print stays static-scoped. ASCII (CSS ellipsis
+                keyword). HARNESS: test_report_structure +4 c16m guards (long report cells carry the inner .clip…;
+                src clip-span text == copy data-value == full path; toggle is a real <button aria-pressed> flipping
+                data-expand; helper title= length-gated); test_design_tokens +2 (clip contract in _RDC_TABLE_CSS;
+                dashboard-mini fit). TRUNCATION MODEL (review-fix): the 380px td-clip is the DEFAULT (kept for the
+                un-enhanced bare dashboard/preview minis - no rdc-table host, no inner .clip); rdc-table cells opt
+                OUT (`rdc-table table.data tbody td{max-width:none}`) + clip via the inner .clip. The dashboard mini
+                tables also pin `table-layout:fixed; width:100%` (numeric cols compact, text cols flex) so a long
+                label can't push the mini past its card + cut the rightmost column at the narrow 3-up grid width - a
+                PRE-EXISTING overflow (minis' width:max-content overran the card regardless of c16m), fixed +
+                guarded. MINI HOVER (review-fix): the minis are bare (not engine-hosted - sortable header in the
+                card-link <a> would fight nav), so the BUILDER (dashboard._card_table) sets a server-side title= on
+                their text cells + headers -> clipped mini values reveal in full on hover (cell text inline -> td ellipsis +
+                Ctrl-F still work); the pass_gpu mini's marker column was builder-truncated (trunc_left, which
+                DISCARDED the value so hover could never reveal it) -> now emits the FULL marker (CSS clips, title
+                reveals), consistent with every other mini text column. PARITY (ADR-6/37/38): ALL HTML goldens refreshed (the engine CSS/JS is
+                inline on every page - the c16l scope) + the static reports' new .clip…/title= markup;
+                `_pagedata/*.js` + digests.json + golden_parquet BYTE-UNCHANGED (virtual clip is JS-applied at
+                render; presentation-only); test_parquet_parity GREEN, NO digests refresh (§21.9). 181 -> 188
+                green. smoke render-only 15 pages lint clean exit 0. BROWSER-VERIFIED OFFLINE (headless Chrome,
+                file://): a crafted 162-char src path clips with ellipsis (copy button visible OUTSIDE the clip),
+                the Expand-cells toggle reveals the full value (button injected aria-pressed=false, no data-expand
+                by default), print full-wraps the path across lines within the page; the real heaviest drill
+                (Commercial district 2026-06-01_r110788, 123,052 rows / 28 tables) recycles windowed rows with
+                marker_path/marker_path_norm CLIPPED (…ellipsis) + 3026 .clip spans + 150 .lbl labels preserved +
+                28 toggles injected, NO JS errors, ROW_H intact. QUALITY_GATES §21.1o added (the rdc-table
+                truncation contract); ADR-38 epic COMPLETE (no new ADR - mechanism within ADR-38 scope, the
+                deliberate single-line-virtual + correct-for-data title gating recorded in §21.1o per ADR-23).
+                Commits on v0.2-roadmap-c04, UNPUSHED. current -> v0.2 close-out.
+former_last_c16l: 2026-06-03 — c16l DONE (roll `rdc-table` out + delete the old systems; ADR-38, G-23 ROLLOUT
                 half -> G-23 FULLY RESOLVED; single commit per user choice; rides ADR-37/6/24). Folded the
                 engine CSS/JS into the ALWAYS-ON report bundle (chrome._compose_css/_compose_js gain
                 _RDC_TABLE_CSS/_RDC_TABLE_JS); DELETED the c16k opt-in (the `rdc_table=` param on
@@ -472,17 +536,15 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    c16l DONE (2026-06-03) - ONE table system: engine folded always-on, all remaining report/
-                per-run/trend/dashboard-mini/preview surfaces on `static` rdc-table, rdc-sortable-table +
-                table.report DELETED (grep-clean), aria-sort restored, overdraw got column groups, 181 green,
-                browser-verified offline, QUALITY_GATES §21.1n added, G-23 FULLY RESOLVED. DO c16m NEXT
-                (commits/v02/c16m_cell_truncation_hover.md): add controllable cell truncation + `title=`
-                hover-reveal to the ONE rdc-table engine (both modes). c16l shipped a no-clip STOPGAP in static
-                mode (`rdc-table[data-mode=static] table.data td { max-width:none }`) so report copy-buttons/
-                sparklines/links stay visible+clickable - c16m replaces that with a real, controllable
-                truncation policy (e.g. a width cap + ellipsis + full-value `title=` hover, applied where it
-                helps without clipping interactive widgets). EXPECT a golden refresh on whatever surfaces gain
-                truncation; test_parquet_parity untouched (§21.9). THEN before the tag:
+next_action:    c16m DONE (2026-06-03) - the c16k-c16m table-unification EPIC is COMPLETE (ADR-38). Controllable
+                cell truncation + `title=` hover-reveal landed on the ONE rdc-table engine (both modes): inner
+                `.clip…` element (never the td) so widgets/labels stay visible; THREE tiers (320/200/560px); full
+                value in the DOM (Ctrl-F) + length-gated title; copy/link payloads full (c16c); Expand-cells
+                toggle (default truncated, single-line release in virtual to protect ROW_H, static also wraps);
+                print full-wraps within the page. 181 -> 188 green, parquet parity NO digests refresh (§21.9),
+                smoke lint clean, browser-verified offline (crafted long path + real heaviest drill). QUALITY_GATES
+                §21.1o; ALL HTML goldens refreshed, _pagedata/digests/golden_parquet byte-unchanged. THE V0.2 CODE
+                IS DONE - now the close-out before the tag:
                 (1) V0.2 CLOSE-OUT: re-ingest the real Perf drop (now the cumulative flaw is fixed + the
                 R-17 replay salvage is automatic - re-test the 6 manual-flipped run2 captures) and eyeball
                 all reports. Working root C:\tmp\perf (hardlinks; Downloads read-only). Replay is
@@ -555,8 +617,8 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c16j decouple heavy data](commits/v02/c16j_data_decoupling.md) | **done** (ADR-37) — moved the catalog/drill VTable rows out of the HTML into `<script defer src>`'d `_pagedata/*.js` (a sibling dir, NOT `_data/`; file://-safe classic script) so the shell paints first; real Perf heaviest drill 17.6MB→134KB shell + 17.5MB streamed. 176 green, reports byte-unchanged, browser-verified offline; G-21/G-22 closed, §21.1l consolidated |
 | ✗ | ~~c16k–c16n SPA epic~~ | **VOIDED** — the SPA (ADR-36) was rejected on a lifespan review (ADR-37); reports stay static. The `c16k`/`c16l`/`c16m` SLOTS are REUSED below for the table-unification epic (ADR-38); the SPA `c16n` is dropped. Trail in ADR-36/37 + the proposal doc |
 | ☑ | [c16k unified rdc-table component](commits/v02/c16k_unified_table_component.md) | **done** (ADR-38) — ONE bespoke `rdc-table` engine BUILT in chrome.py (shared cmpVals/tintImage; `VTable` virtual + new `StaticTable`; DCL-bootstrapped, no customElements). Catalog/drill migrated to `virtual` (old `_JS` subsumed, zero dead code); shader_hotlist main table migrated to `static` (server-baked rows, opt-in via `report_page(rdc_table=True)`) as the ADR-37 proof. 176→180 green; refreshed only catalog+drill+both shader_hotlist; `_pagedata`/other goldens/digests byte-unchanged; browser-verified offline both modes |
-| ☐ | [c16l unified table rollout](commits/v02/c16l_unified_table_rollout.md) | **next** (ADR-38) — migrate ALL remaining report/A-B/per-run/trend/dashboard-mini surfaces onto `rdc-table` (static mode, via the `report_page(rdc_table=True)` opt-in) + fold the engine into the always-on shared bundle + DELETE the old rdc-sortable-table web component; one table system (G-23 fully resolved) |
-| ☐ | [c16m cell truncation + hover](commits/v02/c16m_cell_truncation_hover.md) | planned (ADR-38) — controllable per-column truncation (ellipsis) + full-value `title=` hover-reveal on `rdc-table`, both modes; global expand/wrap toggle; copy/links keep the full value |
+| ☑ | [c16l unified table rollout](commits/v02/c16l_unified_table_rollout.md) | **done** (ADR-38) — rolled `static` rdc-table onto every report/A-B/per-run/trend/dashboard-mini surface, folded the engine into the always-on shared bundle, DELETED the old rdc-sortable-table + table.report (grep-clean), restored aria-sort, overdraw got column groups; one table system (G-23 fully resolved); 181 green, golden refreshed, no digests refresh; QUALITY_GATES §21.1n |
+| ☑ | [c16m cell truncation + hover](commits/v02/c16m_cell_truncation_hover.md) | **done** (ADR-38) — controllable per-column truncation on the ONE engine: inner `.clip…` element (never the td, so widgets/labels stay visible), 3 tiers (320/200/560px), full value in the DOM (Ctrl-F) + length-gated `title=`, copy/link payloads full (c16c), Expand-cells `<button aria-pressed>` toggle (default truncated; single-line release in virtual to keep ROW_H, static also wraps), print full-wrap. EPIC COMPLETE; 181→188 green, all HTML goldens refreshed, `_pagedata`/digests/parquet byte-unchanged; QUALITY_GATES §21.1o |
 
 ## v0.3 — CI/automation surface (planned — [ROADMAP](ROADMAP.md))
 
@@ -602,6 +664,26 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-03 — c16m DONE (controllable cell truncation + `title=` hover-reveal on the ONE `rdc-table` engine;
+  ADR-38, FINAL of the c16k-c16m table-unification epic). One mechanism both modes: clip on an INNER element
+  (in-cell `<a class="clip…">` / `<span class="clip…">` via new chrome.clip_attrs/clip_span), never the td, so
+  copy-buttons / sparklines / `.lbl` ride OUTSIDE + stay visible. Removed the c16l no-clip stopgap + the
+  td-level 380px clip (kept nowrap). THREE tiers (--clip-cap 320 / -narrow 200 / -wide 560 px); full value in
+  the DOM (Ctrl-F) + a length-gated server/JS `title=` (short cells skip it - synthetic+real src paths short,
+  so golden has no src title=, correct-for-data not gamed, ADR-23); copy/link payloads keep the FULL value
+  (c16c). Static builders emit `.clip…`/title on long cells (shader src=wide on the <a>; instancing
+  mesh/areas/pass; overdraw RT-label/format; trend area); VTable.cellNode wraps every non-numeric windowed cell
+  (wideCols for path/hash/stable_key) + re-applies on recycle; numeric never clipped; link nav-title kept.
+  Expand-cells `<button aria-pressed>` toggle flips data-expand (default truncated; release single-line both
+  modes to keep VTable ROW_H, static also wraps); print = static full-wrap within the page (table width:100%,
+  display:inline + overflow-wrap:anywhere - nothing hidden on paper). test_report_structure +4 + test_design_tokens
+  +1. PARITY: all HTML goldens refreshed (engine inline on every page) + static .clip…/title markup;
+  _pagedata/digests.json/golden_parquet BYTE-UNCHANGED; test_parquet_parity GREEN NO refresh (§21.9). 181 -> 188
+  green. smoke 15 pages lint clean. BROWSER-VERIFIED OFFLINE (headless Chrome, file://): crafted 162-char path
+  clips+ellipsis (copy outside clip) / Expand reveals / print wraps within page; real heaviest drill (Commercial
+  district 2026-06-01_r110788, 123,052 rows/28 tables) recycles with marker_path clipped, 3026 .clip spans, 150
+  .lbl preserved, 28 toggles, no JS errors, ROW_H intact. QUALITY_GATES §21.1o; ADR-38 epic COMPLETE (no new ADR).
+  UNPUSHED on v0.2-roadmap-c04. current -> v0.2 close-out.
 - 2026-06-03 — c16l DONE (roll `rdc-table` out + delete the old systems; ADR-38; single commit). ONE table
   system: engine folded ALWAYS-ON into chrome._compose_css/_compose_js; the c16k opt-in (rdc_table= param +
   rdc_table_assets()) DELETED (rdc_table_css/js kept for template.py); every remaining report (overdraw,

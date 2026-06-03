@@ -408,3 +408,80 @@ def test_c16l_engine_in_shared_report_bundle():
     import inspect
     assert 'rdc_table' not in inspect.signature(chrome.report_page).parameters
     assert 'rdc_table' not in inspect.signature(chrome.page_open).parameters
+
+
+# --- c16m: controllable cell truncation + hover-reveal on the one rdc-table engine (ADR-38). ---
+
+def test_c16m_clip_on_long_report_cells(rendered):
+    # Known-long report cells truncate via an INNER .clip element (never the <td>), so the trailing
+    # copy-button / file icon / rank pill ride OUTSIDE the clip and stay visible. The src-path column
+    # gets the WIDE tier; areas / labels get the default tier. The clip is display-only CSS, so the
+    # real DOM text stays the FULL value (Ctrl-F / selection-copy).
+    sh = _report(rendered, 'shader_hotlist')
+    assert '<span class="clip clip-wide">' in sh           # src path, wide tier, on an inner span
+    inst = _report(rendered, 'instancing_opportunities')
+    assert 'class="clip"' in inst                          # mesh label (on the <a>) + areas (span)
+    assert 'class="clip clip-narrow"' in inst              # dominant pass, narrow tier
+    over = _report(rendered, 'overdraw')
+    assert 'class="clip"' in over and 'class="clip clip-narrow"' in over   # RT label + format
+    assert 'class="clip"' in _report(rendered, 'trend_table')              # area column
+
+
+def test_c16m_copy_and_link_payloads_keep_full_value(rendered):
+    # The clipped DISPLAY never becomes the copyable/linked value (c16c contract). For the src-path
+    # cell the inner clip span's text == the copy-button's data-value == the full path.
+    sh = _report(rendered, 'shader_hotlist')
+    # the first src cell: <a ...><span class="clip clip-wide">PATH</span>...icon...</a><rdc-copy-button data-value="PATH" ...>
+    m = re.search(r'<span class="clip clip-wide">([^<]+)</span>.*?'
+                  r'<rdc-copy-button data-value="([^"]+)" data-label="copy src path"', sh, re.S)
+    assert m, 'src-path clip span + copy button not found'
+    assert m.group(1) == m.group(2), 'clipped display must equal the full copied value'
+
+
+def test_c16m_clip_helper_title_gating():
+    # The full value is recoverable on hover via a server-set title= - but only on LONG cells (a
+    # deterministic char-threshold proxy; short cells skip title= to avoid screen-reader double-read).
+    # Tested directly on the helper (synthetic fixture paths are short, so the golden carries no
+    # src-path title= - correct-for-data; we do NOT alter the threshold or the fixture to force one).
+    from bobframes.reports import chrome
+    long_path = '/Engine/Private/' + 'Deep/' * 20 + 'Material.usf'   # > wide threshold (64)
+    wide = chrome.clip_span(long_path, tier='wide')
+    assert 'class="clip clip-wide"' in wide and f'title="{long_path}"' in wide
+    assert long_path in wide                                  # full value stays in the DOM text
+    assert 'title=' not in chrome.clip_span('short', tier='')         # short -> no title noise
+    assert 'title=' in chrome.clip_attrs('x' * 50)                    # long default-tier -> title
+    assert 'title=' not in chrome.clip_attrs('x' * 50, tier='wide')   # 50 < wide threshold -> none
+
+
+def test_c16m_dashboard_mini_hover_title(rendered):
+    # Dashboard minis are bare (not engine-hosted), so they carry no inner .clip/JS title. The builder
+    # sets a server-side title= on their text cells so a clipped value still reveals in full on hover
+    # (and Ctrl-F matches the real inline text). Numeric cells (right-aligned, short) get no title.
+    idx = rendered['_reports/index.html']
+    assert '<td title="' in idx, 'dashboard mini text cells must carry a hover title='
+    # headers clip too under table-layout:fixed (e.g. "avg draws / frame"), so they carry title= as well
+    assert '<th class="num" scope="col" title="avg draws / frame">' in idx
+    # the marker column is no longer builder-truncated (trunc_left) - the full value reaches the DOM,
+    # the CSS clip handles the display, the title= reveals it. A trailing-ellipsis builder-trunc would
+    # have put a literal "..." into the cell text; the unified path keeps the full value instead.
+    assert '<td class="num" title=' not in idx, 'numeric mini cells should not carry a redundant title'
+
+
+def test_c16m_expand_toggle_and_css_contract():
+    # The global expand/wrap toggle is a real <button aria-pressed> built by the engine (both modes),
+    # flipping data-expand on the host; the CSS releases the clip (single line both modes; static also
+    # wraps). The c16l no-clip stopgap (static td max-width:none) is REPLACED by the controllable clip.
+    from bobframes.reports import chrome
+    css, js = chrome._RDC_TABLE_CSS, chrome._RDC_TABLE_JS
+    # toggle: a real button with aria-pressed that flips data-expand
+    assert "'rdc-expand-toggle'" in js or 'rdc-expand-toggle' in js
+    assert 'aria-pressed' in js and 'dataset.expand' in js and 'Expand cells' in js
+    # CSS contract: tiered caps, the inner .clip element, the data-expand release, print full-wrap
+    assert '--clip-cap' in css and '--clip-cap-wide' in css and '--clip-cap-narrow' in css
+    assert 'table.data .clip {' in css
+    assert 'rdc-table[data-expand="true"] table.data .clip' in css
+    # the DEFAULT td-clip (380px) protects the un-enhanced bare dashboard/preview minis; rdc-table cells
+    # OPT OUT and truncate via the inner .clip element (so trailing copy-buttons/labels stay visible).
+    assert 'max-width: 380px' in css
+    assert 'rdc-table table.data tbody td { max-width: none' in css
+    assert css.isascii()   # ellipsis via the CSS keyword, no literal U+2026

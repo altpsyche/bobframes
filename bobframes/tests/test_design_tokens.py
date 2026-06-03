@@ -112,6 +112,30 @@ def test_c16c_section_card_css_present():
     assert '$' not in c
 
 
+def test_dashboard_mini_tables_fit_card():
+    """Dashboard mini tables are teasers in a fixed-width card; pin table-layout:fixed + width:100% so a
+    long label column can't push the table past the card and cut the rightmost column at the narrow grid
+    width (regression guard). Numeric columns take a compact fixed width; text columns flex + clip."""
+    c = chrome._CHROME_CSS
+    assert 'a.dash-card table.data { table-layout: fixed; width: 100%; }' in c
+    assert 'a.dash-card table.data th.num, a.dash-card table.data td.num { width: 5.5em; }' in c
+
+
+def test_c16m_clip_contract_in_rdc_table_css():
+    """c16m (ADR-38): controllable cell truncation lives in the one rdc-table engine CSS - tiered
+    caps, the inner .clip element, the data-expand release. The DEFAULT td-clip (380px) is KEPT for the
+    un-enhanced bare dashboard/preview minis; rdc-table cells opt OUT (truncate via the inner .clip).
+    Literal var() (no $-template), ASCII (ellipsis via the CSS keyword)."""
+    css = chrome._RDC_TABLE_CSS
+    assert '--clip-cap:' in css and '--clip-cap-narrow:' in css and '--clip-cap-wide:' in css
+    assert 'table.data .clip {' in css
+    assert 'table.data .clip-narrow {' in css and 'table.data .clip-wide {' in css
+    assert 'rdc-table[data-expand="true"] table.data .clip' in css
+    assert 'max-width: 380px' in css                              # default td-clip for bare minis
+    assert 'rdc-table table.data tbody td { max-width: none' in css   # rdc-table opts out (inner clip)
+    assert '$' not in css and css.isascii()
+
+
 def test_c16d_shadow_and_motion_tokens_emitted():
     """c16d adds the [shadow] elevation block + spring/hover-scale motion tokens; they emit :root
     vars (light/dark-aware shadows) and are wired through token_subst (ADR-27/34)."""

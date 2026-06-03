@@ -333,6 +333,65 @@ render-only 15 pages lint clean exit 0. Browser-verified offline (headless Chrom
 all rows JS-off, enhance in place (sort + `aria-sort` + auto-heatmap + real column-group toggle buttons, no JS
 errors, no clipped widgets); dashboard minis stay un-enhanced; catalog/drill virtual unchanged.
 
+## 21.1o Cell truncation + hover-reveal: the unified `rdc-table` truncation contract (c16m, ADR-38) — see [c16m](../commits/v02/c16m_cell_truncation_hover.md)
+c16m adds **controllable per-column truncation** to the one `rdc-table` engine, replacing the c16l no-clip
+stopgap (`rdc-table[data-mode="static"] table.data tbody td { max-width:none … }`) with a real policy.
+**One mechanism, both modes:** the clip lives on an **inner element** — an in-cell `<a class="clip…">` or a
+`<span class="clip…">` — **never the `<td>`**, so a trailing `rdc-copy-button` / sparkline / `rdc-heatmap-cell`
+/ `.lbl` label rides OUTSIDE the clip and stays visible + clickable (the reason c16l opted the td out). The
+td-level 380px clip is removed from the global `table.data tbody td` rule (the `white-space:nowrap` stays);
+truncation is `display:inline-block; overflow:hidden; text-overflow:ellipsis` on the `.clip` element. **Three
+width tiers** as CSS custom props on `table.data`: `--clip-cap` 320px (`.clip`, default), `--clip-cap-narrow`
+200px (`.clip-narrow` — flag/format/pass cols), `--clip-cap-wide` 560px (`.clip-wide` — src paths, hashes,
+stable_keys). **The full value is always recoverable:** the real DOM text inside `.clip` is the untruncated
+value (Ctrl-F / selection-copy), and a server-set (static) / JS-set (virtual) `title=` reveals it on hover —
+**length-gated** (a deterministic char-threshold proxy for "will clip": narrow 24 / default 40 / wide 64),
+so short cells skip `title=` (no screen-reader double-read; synthetic + real-Perf src paths are short, so the
+golden carries no src `title=` — correct-for-data, NOT a gamed threshold, ADR-23). **Copy/link payloads keep
+the FULL value** — `rdc-copy-button data-value=` and link `href=` are never the clipped display (c16c
+contract). **Application differs by mode, mirroring `mono`/`numeric`:** static report builders emit the
+`.clip…` class + `title=` on the named long cells (shader src — wide, on the `<a>` so the file icon + copy
+ride outside; instancing mesh-label/areas — default, dominant-pass — narrow; overdraw RT-label — default,
+format — narrow; trend area — default); the `VTable.cellNode` wraps every **non-numeric** windowed cell in a
+`.clip` element (wide for `_path`/`_hash`/`_hex`/`stable_key`, else default) and re-applies it on every
+recycled render — numeric cells are never clipped (keep right-aligned tabular-nums). **Global expand/wrap
+toggle:** the engine builds a real `<button class="rdc-expand-toggle" aria-pressed>Expand cells</button>`
+(JS, both modes, only when the table has a `.clip` cell — no dead button) into a JS `.rdc-controls` bar
+before the host; click flips `data-expand` on the host. Default = **truncated**. Release is mode-aware: full
+width **single line** in both modes (`data-expand="true"` → `.clip{max-width:none}` — single line keeps the
+VTable's fixed `ROW_H` valid so windowing never desyncs), and static **additionally wraps** to multi-line
+(`white-space:normal; overflow-wrap:anywhere`) since static rows auto-size. **Print (static only):** the
+table is constrained to the page (`width:100%`, overriding `width:max-content` which would overflow + clip
+the paper edge) and every `.clip…` flows `display:inline; white-space:normal; overflow-wrap:anywhere` so long
+unbroken paths **wrap within the page — nothing hidden on paper** (no `title=` tooltips in print); virtual
+pages are windowed and never print-complete (ADR-37), so the print rule stays static-scoped. ASCII (ellipsis
+via the CSS keyword, no literal U+2026); offline + byte-deterministic. `test_report_structure` gains the c16m
+guards (long report cells carry the inner `.clip…` element; the src clip span's text == the copy `data-value`
+== the full path; the toggle is a real `<button aria-pressed>` flipping `data-expand`; the helper's `title=`
+is length-gated) + `test_design_tokens` asserts the clip contract lives in `_RDC_TABLE_CSS` and the c16l
+stopgap is gone. **Output-changing → refreshed** every HTML golden (the engine CSS/JS is inline on every page,
+the c16l scope) + the static reports' new `.clip…`/`title=` markup; `_pagedata/*.js`, `digests.json`, and
+`golden_parquet` are **byte-unchanged** (virtual clip is JS-applied at render; presentation-only),
+`test_parquet_parity` green with NO digests refresh (§21.9). 181 -> 188 green. `bobframes smoke` render-only
+15 pages lint clean exit 0. Browser-verified offline (headless Chrome, `file://`): a crafted long src path
+clips with ellipsis (copy button visible outside the clip), the **Expand cells** toggle reveals the full
+value, print full-wraps within the page; the real heaviest drill (Commercial district 2026-06-01_r110788,
+123,052 rows / 28 tables) recycles windowed rows with `marker_path`/`marker_path_norm` clipped + `.lbl`
+labels preserved + the toggle injected, no JS errors, `ROW_H` intact. **Truncation model:** the 380px
+td-clip is the DEFAULT (kept for the un-enhanced bare dashboard/preview minis, which have no rdc-table host
++ no inner `.clip`); `rdc-table` cells opt OUT (`rdc-table table.data tbody td { max-width:none }`) and clip
+via the inner `.clip`. The **dashboard mini tables** additionally pin `table-layout:fixed; width:100%`
+(numeric columns compact, text columns flex) so a long label can't push the mini past its card and cut the
+rightmost column at the narrow 3-up grid width — a **pre-existing** overflow (the minis' `width:max-content`
+overran the card regardless of c16m), fixed here + guarded by `test_design_tokens`. The minis are bare
+(not engine-hosted - a sortable/interactive header inside the card-link `<a>` would fight navigation, c16l),
+so they carry no inner `.clip`/JS `title`; the **builder sets a server-side `title=` on the minis' text
+cells + headers** so a clipped value still reveals in full on hover (cell text stays inline → the td ellipsis renders +
+Ctrl-F matches). The `pass_gpu` mini's `marker` column was builder-truncated (`trunc_left`, which DISCARDED
+the value so hover could never reveal it) - now it emits the FULL marker (CSS clips the display, `title=`
+reveals), consistent with every other mini text column. Guarded by `test_report_structure`. 186 -> 188 green.
+**Completes the c16k–c16m table-unification epic (ADR-38).**
+
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,
 dropped column, dtype slip). Skip `_`-prefixed (`_catalog`, `_global_entities`). Runs on synthetic +

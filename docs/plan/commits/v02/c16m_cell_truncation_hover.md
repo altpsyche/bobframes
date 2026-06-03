@@ -1,5 +1,11 @@
 # c16m — controllable cell truncation + hover-reveal on `rdc-table`     release: v0.2 · phase: De-hardcoding
 
+> **Status: DONE (2026-06-03).** 181 -> 188 green; all HTML goldens refreshed (`_pagedata`/`digests.json`/
+> `golden_parquet` byte-unchanged, `test_parquet_parity` green NO refresh, §21.9); `bobframes smoke` lint clean;
+> browser-verified offline (crafted long src path clip+ellipsis+expand+print full-wrap; real heaviest drill
+> recycles with `marker_path` clipped + labels preserved + toggle injected, no JS errors). QUALITY_GATES §21.1o.
+> Completes the c16k–c16m table-unification epic (ADR-38). See STATE.md `last_session` for the full record.
+
 > **ADR-38.** Third of three. Lands on the ONE `rdc-table` component (built in c16k, rolled out in c16l), so
 > truncation behaves identically across every report + the catalog/drill in one place.
 

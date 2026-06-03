@@ -287,8 +287,9 @@ def build(root: str, *, drops: list | None = None, ab=None,
                 dims = f'{latest_bucket["width"]}x{latest_bucket["height"]}' if latest_bucket['width'] else ''
 
                 sec.append('<tr>')
-                sec.append(f'<td>{base.h(label)}{base.h(swap)}</td>')
-                sec.append(f'<td>{base.h(latest_bucket.get("format") or "")}</td>')
+                # c16m: clip the RT label (default tier); the swap marker rides outside the clip.
+                sec.append(f'<td>{base.clip_span(label)}{base.h(swap)}</td>')
+                sec.append(f'<td>{base.clip_span(latest_bucket.get("format") or "", tier="narrow")}</td>')
                 sec.append(f'<td class="num">{base.h(dims)}</td>')
                 sec.append(f'<td class="num">{base.fmt_int(n)}</td>')
                 sec.append(f'<td class="num">{base.fmt_pct(pct(latest_bucket["n_passed"]))}</td>')
