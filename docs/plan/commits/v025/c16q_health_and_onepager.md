@@ -117,3 +117,26 @@ callout, kpi_strip, section_card, provenance_strip), `discovery.RunContext` (ADR
 
 ## Closes
 G-24 (no exec one-pager). Next: c16r (the `head_assets` seam).
+
+## Status - DONE (2026-06-04)
+Built on `plan/v0.2.5`; shipped the Scope above. As-built deltas recorded (ADR-23):
+- **Golden delta = 5 files, not 4.** The `_NAV` "build health" chip lands on BOTH dashboard instances
+  (top-level `_reports/index.html` AND the per-run `_reports/run/<k>/index.html` - the same
+  `dashboard.build`), so the reviewed delta is {`summary.html`, `run/<k>/summary.html`, root
+  `index.html`, both dashboards}. QUALITY_GATES §21.1q updated to the 5-file count.
+- **Per-area shader/mesh fork** (user-confirmed): area-keyed `dashboard._top_shaders_by_area` /
+  `_top_meshes_by_area` + a `_top_areas_gpu` 5th element (avg gpu/frame) + a `_run_totals` factor-out
+  of `_global_kpis` - all byte-neutral for `dashboard.build`. No `aggregates.py` (G-26 deferred).
+- **Verdict semantics** (user-confirmed): `State` ordered `OK<UNKNOWN<AT_RISK<ALARM` (a real ALARM is
+  never masked by a missing-data area; UNKNOWN still beats OK = no false-green); `area_verdict` is
+  ABSOLUTE-FIRST (a missing gpu-regression - None on every 1-run build - does NOT block OK; it shows
+  as `Direction=UNKNOWN`; missing absolute data still -> UNKNOWN); `trend.direction` nets the 4
+  headline metrics (draws/gpu/overdraw/shader).
+- 191 -> 229 green (test_health 22 + test_summary 13); browser print = ONE page; lint clean.
+- **CSS shipped brute-forced - recorded as debt (G-30, ADR-42).** The one-pager styling is a
+  page-scoped inline `<style>` (keyed on `body[data-page-kind="summary"]`) + bespoke markup helpers
+  (`_kpi`, `_trendline`, status badge, Movement layout) that re-implement card/kpi patterns instead of
+  reusing components. A typo'd `var(--sp-5)` (no such token - the scale is 1/2/3/4/6/8/12) silently
+  zeroed the chip padding before review caught it: the untyped-inline-CSS failure mode. Acceptable for
+  ONE page, does NOT scale. The proper fix is the **component system (c16x, ADR-42)**, now in v0.2.5
+  scope; until it lands, `summary.py` owns its scoped `<style>`.
