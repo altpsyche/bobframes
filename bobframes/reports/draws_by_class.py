@@ -51,7 +51,7 @@ def _gather_from_drops(drops: list) -> tuple[dict, list, list, int]:
 def _build_table(counts: dict, drop_keys: list) -> str:
     classes = base.DRAW_CLASSES
     rows = []
-    rows.append('<table class="report">')
+    rows.append('<table class="data">')
     rows.append('<caption>raw draw counts per class, per area and drop</caption>')
     rows.append('<thead><tr>')
     rows.append('<th scope="col">area</th><th scope="col">drop</th>'
@@ -172,11 +172,14 @@ def build(root: str, *, drops: list | None = None, ab=None,
                                          ''.join(sec_stacked))
                      + '</rdc-sticky-h2>')
 
-        # Section 2: raw counts table
+        # Section 2: raw counts table. c16l: static rdc-table; default-sort moves to the host. No column
+        # groups - it is a compact fixed-column matrix (area/drop rows), not a per-drop wall, so any
+        # collapse would hide core data; sort + auto-heatmap are the useful enhancements here.
         counts_body = ('<div class="table-wrap">'
-                       '<rdc-sortable-table data-default-sort="opaque" data-default-dir="desc">'
+                       '<rdc-table data-mode="static" data-table="draws_by_class" '
+                       'data-default-sort="opaque" data-default-dir="desc">'
                        + _build_table(counts, drop_keys)
-                       + '</rdc-sortable-table></div>')
+                       + '</rdc-table></div>')
         parts.append('<rdc-sticky-h2>'
                      + base.section_card('counts', 'raw counts per class', counts_body,
                                          count=len(counts))

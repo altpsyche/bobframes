@@ -211,8 +211,8 @@ def build(root: str, *, drops: list | None = None, ab=None,
                                chart_id='inst-wasted'),
                 'estimated wasted indices (top meshes)'))
 
-        sec1 = ['<div class="table-wrap"><rdc-sortable-table>',
-                '<table class="report">',
+        sec1 = ['<div class="table-wrap"><rdc-table data-mode="static" data-table="instancing_main">',
+                '<table class="data">',
                 '<caption>meshes drawn repeatedly - instancing / batching candidates</caption>',
                 '<thead><tr>', '<th scope="col">mesh</th>']
         for i, k in enumerate(drop_keys):
@@ -274,7 +274,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
             sec1.append(f'<td class="num">{base.fmt_int(n_typ)}</td>')
             sec1.append(f'<td class="num">{base.heatmap_cell(wasted, 0, max_wasted, text=base.fmt_int(wasted))}</td>')
             sec1.append('</tr>')
-        sec1.append('</tbody></table></rdc-sortable-table></div>')
+        sec1.append('</tbody></table></rdc-table></div>')
         mbody.append(''.join(sec1))
     parts.append('<rdc-sticky-h2>'
                  + base.section_card('top_meshes', 'top meshes by repeat',
@@ -289,8 +289,8 @@ def build(root: str, *, drops: list | None = None, ab=None,
              if m['repeat_by_drop'].get(bl.key, 0) > 0 and _cur_repeat(m) == 0),
             key=lambda kv: kv[1]['repeat_by_drop'].get(bl.key, 0), reverse=True)
         if resolved:
-            rbody = ['<div class="table-wrap"><rdc-sortable-table>',
-                     '<table class="report">',
+            rbody = ['<div class="table-wrap"><rdc-table data-mode="static" data-table="instancing_resolved">',
+                     '<table class="data">',
                      f'<caption>meshes drawn in {base.h(bl.key)} but gone in {base.h(ck)} - removed or fixed</caption>',
                      '<thead><tr>', '<th scope="col">mesh</th>',
                      f'<th class="num" scope="col">repeat@{base.h(bl.key)}</th>',
@@ -310,7 +310,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
                 rbody.append(f'<td class="num">{base.fmt_int(m["repeat_by_drop"].get(bl.key, 0))}</td>')
                 rbody.append(f'<td>{base.h(", ".join(sorted(m["areas"])))}</td>')
                 rbody.append('</tr>')
-            rbody.append('</tbody></table></rdc-sortable-table></div>')
+            rbody.append('</tbody></table></rdc-table></div>')
             parts.append('<rdc-sticky-h2>'
                          + base.section_card('resolved', f'resolved since {bl.key}',
                                              ''.join(rbody), count=len(resolved))
@@ -320,8 +320,8 @@ def build(root: str, *, drops: list | None = None, ab=None,
     top_batch = [(k, v) for k, v in batching_groups.items() if v >= rcfg.instancing_repeat_min]
     top_batch.sort(key=lambda kv: kv[1], reverse=True)
     if top_batch:
-        sec2 = ['<div class="table-wrap"><rdc-sortable-table>',
-                '<table class="report">',
+        sec2 = ['<div class="table-wrap"><rdc-table data-mode="static" data-table="instancing_batching">',
+                '<table class="data">',
                 '<caption>passes where many distinct meshes share one material - batch candidates</caption>',
                 '<thead><tr>', '<th scope="col">pass</th>', '<th scope="col">class</th>',
                 '<th class="num" scope="col">repeat</th>',
@@ -335,7 +335,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
             sec2.append(f'<td class="num">{base.fmt_int(len(batching_meshes[(pass_norm, fs, cls)]))}</td>')
             sec2.append(f'<td>{base.h(", ".join(sorted(batching_drops[(pass_norm, fs, cls)])))}</td>')
             sec2.append('</tr>')
-        sec2.append('</tbody></table></rdc-sortable-table></div>')
+        sec2.append('</tbody></table></rdc-table></div>')
         parts.append('<rdc-sticky-h2>'
                      + base.section_card('batching', 'potential material batching',
                                          ''.join(sec2), count=len(top_batch))

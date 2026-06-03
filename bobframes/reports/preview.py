@@ -92,7 +92,9 @@ def _sparkline_block() -> str:
 
 
 def _table_block() -> str:
-    head = ('<div class="table-wrap"><table class="report"><thead><tr>'
+    # c16l (ADR-38): table.report is retired; the gallery demos the unified `table.data` (bare, like a
+    # dashboard mini - no <rdc-table> wrapper needed for a static 3-row sample).
+    head = ('<div class="table-wrap"><table class="data"><thead><tr>'
             '<th>name</th><th class="num">draws</th><th class="num">gpu ms</th>'
             '</tr></thead><tbody>')
     rows = []

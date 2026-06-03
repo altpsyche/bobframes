@@ -218,8 +218,8 @@ def _kpi_matrix(kpi: str, label: str, fmt: str, lower_is_better, threshold,
     parts = []
     if lead:
         parts.append(lead)
-    parts.append('<div class="table-wrap"><rdc-sortable-table>')
-    parts.append('<table class="report">')
+    parts.append(f'<div class="table-wrap"><rdc-table data-mode="static" data-table="trend_{kpi}">')
+    parts.append('<table class="data">')
     parts.append(f'<caption>{base.h(label)} per area across drops</caption>')
     parts.append('<thead><tr>')
     parts.append('<th scope="col">area</th>')
@@ -259,7 +259,7 @@ def _kpi_matrix(kpi: str, label: str, fmt: str, lower_is_better, threshold,
         if n_drops >= 3:
             parts.append(f'<td class="num">{base.sparkline_svg(series)}</td>')
         parts.append('</tr>')
-    parts.append('</tbody></table></rdc-sortable-table></div>')
+    parts.append('</tbody></table></rdc-table></div>')
     return ('<rdc-sticky-h2>'
             + base.section_card(kpi, label, '\n'.join(parts))
             + '</rdc-sticky-h2>')
@@ -268,8 +268,8 @@ def _kpi_matrix(kpi: str, label: str, fmt: str, lower_is_better, threshold,
 def _single_drop_matrix(per_drop_ft: list, areas: list, drops: list) -> str:
     """Render single wide matrix (rows=area, cols=KPI) when n_drops==1."""
     parts = []
-    parts.append('<div class="table-wrap"><rdc-sortable-table>')
-    parts.append('<table class="report">')
+    parts.append('<div class="table-wrap"><rdc-table data-mode="static" data-table="trend_matrix">')
+    parts.append('<table class="data">')
     parts.append('<caption>per-area KPI matrix for the single drop</caption>')
     parts.append('<thead><tr>')
     parts.append('<th scope="col">area</th>')
@@ -297,7 +297,7 @@ def _single_drop_matrix(per_drop_ft: list, areas: list, drops: list) -> str:
             else:
                 parts.append(f'<td class="num">{val_str}</td>')
         parts.append('</tr>')
-    parts.append('</tbody></table></rdc-sortable-table></div>')
+    parts.append('</tbody></table></rdc-table></div>')
     return ('<rdc-sticky-h2>'
             + base.section_card('matrix', 'per-area kpi matrix', '\n'.join(parts))
             + '</rdc-sticky-h2>')
@@ -306,8 +306,8 @@ def _single_drop_matrix(per_drop_ft: list, areas: list, drops: list) -> str:
 def _class_count_matrix(per_drop_area_class: list, areas: list,
                         drops: list) -> str:
     parts = []
-    parts.append('<div class="table-wrap"><rdc-sortable-table>')
-    parts.append('<table class="report">')
+    parts.append('<div class="table-wrap"><rdc-table data-mode="static" data-table="trend_class_counts">')
+    parts.append('<table class="data">')
     parts.append('<caption>draw counts by class per area</caption>')
     parts.append('<thead><tr>')
     parts.append('<th scope="col">area</th>')
@@ -325,7 +325,7 @@ def _class_count_matrix(per_drop_area_class: list, areas: list,
             for cls in base.DRAW_CLASSES:
                 parts.append(f'<td class="num">{base.fmt_int(cc.get(cls, 0))}</td>')
         parts.append('</tr>')
-    parts.append('</tbody></table></rdc-sortable-table></div>')
+    parts.append('</tbody></table></rdc-table></div>')
     return ('<rdc-sticky-h2>'
             + base.section_card('class_counts', 'draws by class', '\n'.join(parts))
             + '</rdc-sticky-h2>')

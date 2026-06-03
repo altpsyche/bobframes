@@ -257,9 +257,13 @@ def _global_kpis(drops: list) -> list:
 
 
 def _card_table(rows: list, columns: list, *, caption: str = '') -> str:
+    # c16l (ADR-38): a dashboard mini is a 3-row preview INSIDE the card-link <a>. It uses the unified
+    # `table.data` styling for visual consistency but is deliberately NOT wrapped in <rdc-table>: a
+    # sortable header inside a nav-card would both sort and navigate, and cursor:pointer would mis-signal.
+    # So it stays a plain server-baked table (no sort/heatmap enhancement) - the right call for a preview.
     if not rows:
         return base.empty_state('no data yet')
-    parts = ['<table class="report">']
+    parts = ['<table class="data">']
     if caption:
         parts.append(f'<caption>{base.h(caption)}</caption>')
     parts.append('<thead><tr>')

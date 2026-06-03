@@ -302,8 +302,8 @@ def build(root: str, *, drops: list | None = None, ab=None,
 
         # Secondary metrics (collapsed): per-shader instruction-mix detail (c16b column diet).
         det = ['<details class="secondary-metrics"><summary>secondary metrics</summary>',
-               '<div class="table-wrap"><rdc-sortable-table>',
-               '<table class="report">',
+               '<div class="table-wrap"><rdc-table data-mode="static" data-table="shader_secondary">',
+               '<table class="data">',
                '<caption>per-shader instruction-mix detail</caption>',
                '<thead><tr>',
                '<th scope="col">shader</th>',
@@ -325,7 +325,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
             det.append(f'<td class="num">{base.fmt_int(p["tex_samples"])}</td>')
             det.append(f'<td class="num">{base.fmt_int(p["src_len"])}</td>')
             det.append('</tr>')
-        det.append('</tbody></table></rdc-sortable-table></div></details>')
+        det.append('</tbody></table></rdc-table></div></details>')
         sbody.append(''.join(det))
 
     parts.append('<rdc-sticky-h2>'
@@ -342,8 +342,8 @@ def build(root: str, *, drops: list | None = None, ab=None,
             key=lambda kv: (kv[1]['uses_by_drop'].get(bl.key, 0), kv[1]['complexity']),
             reverse=True)
         if resolved:
-            rbody = ['<div class="table-wrap"><rdc-sortable-table>',
-                     '<table class="report">',
+            rbody = ['<div class="table-wrap"><rdc-table data-mode="static" data-table="shader_resolved">',
+                     '<table class="data">',
                      f'<caption>{stage} shaders present in {base.h(bl.key)} but gone in {base.h(ck)} - removed or retired</caption>',
                      '<thead><tr>', '<th scope="col">shader</th>',
                      '<th class="num" scope="col">complexity</th>',
@@ -356,7 +356,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
                 rbody.append(f'<td class="num">{base.fmt_float(p["complexity"], 2)}</td>')
                 rbody.append(f'<td class="num">{base.fmt_int(p["uses_by_drop"].get(bl.key, 0))}</td>')
                 rbody.append('</tr>')
-            rbody.append('</tbody></table></rdc-sortable-table></div>')
+            rbody.append('</tbody></table></rdc-table></div>')
             parts.append('<rdc-sticky-h2>'
                          + base.section_card('resolved', f'resolved since {bl.key}',
                                              ''.join(rbody), count=len(resolved))
@@ -367,7 +367,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
         drops=len(drops), captures=sum(d.n_captures for d in drops),
         build_ts=base.now_iso(), crumb_depth=base.crumb_depth(ab, run=rc),
         ab=ab, root=root, report_key='shader_hotlist',
-        kpis=kpis, run=rc, rdc_table=True,
+        kpis=kpis, run=rc,
         device=base.provenance_strip(*base.newest_drop_provenance(root, [cur] if cur else [])))])
 
 
