@@ -7,29 +7,61 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        c16n_clip_coverage_print    (status: not-started. c16m DONE 2026-06-03 - the c16k-c16m
-                table-unification EPIC core is COMPLETE; AUTHORED 3 close-out commits (user-requested): c16n
-                (truncation-coverage tail: draws_by_class clip + dashboard-mini print full-wrap), c16o (table
-                a11y parity: VTable aria-sort + keyboard sort headers both modes + search-input aria-label),
-                c16p (v0.2 close-out: FULL re-ingest + version 0.2.0 + CHANGELOG + push/CI/merge/tag). ORDER:
-                c16n -> c16o -> c16p -> c20. c16m added controllable cell truncation + `title=` hover-reveal to
-                the ONE `rdc-table`
-                engine (ADR-38): one mechanism both modes - the clip lives on an INNER element (in-cell `<a>` or
-                `<span class="clip">`), never the `<td>`, so copy-buttons / sparklines / `.lbl` labels ride
-                OUTSIDE the clip + stay visible; removed the c16l no-clip stopgap + the td-level 380px clip
-                (kept nowrap). THREE tiers (--clip-cap 320 / -narrow 200 / -wide 560 px); full value always in
-                the DOM (Ctrl-F) + a length-gated server/JS `title=`; copy/link payloads keep the FULL value
-                (c16c). Static builders emit `.clip…`/`title=` on long cells; `VTable.cellNode` wraps every
-                non-numeric windowed cell + re-applies on recycle. Global Expand-cells `<button aria-pressed>`
-                toggle flips `data-expand` (default truncated; release = single-line both modes so virtual
-                ROW_H stays valid, static ALSO wraps); print = static full-wrap within the page (nothing hidden).
-                181 -> 188 green, parquet parity NO digests refresh (§21.9), smoke lint clean, browser-verified
-                offline (crafted long path clip+expand+print; real heaviest drill recycles with marker_path
-                clipped). QUALITY_GATES §21.1o; ALL HTML goldens refreshed (engine inline on every page),
-                `_pagedata`/digests/golden_parquet BYTE-UNCHANGED. NEXT = v0.2 CLOSE-OUT: re-ingest the real Perf
-                drop + eyeball all reports, THEN tag v0.2 (IRREVERSIBLE, authorize first) -> c20. G-20 (3+-run
-                column collapse) still deferred - no 3+-run data. ADR-37 governs (reports static); SPA VOIDED.)
-last_session:   2026-06-03 — c16m DONE (controllable cell truncation + `title=` hover-reveal on the ONE
+current:        c16o_table_a11y_parity    (status: not-started. c16n DONE 2026-06-03 - the c16k-c16n
+                table-unification + truncation EPIC is COMPLETE. Authored close-out ORDER: c16n DONE ->
+                c16o (table a11y parity: the VTable catalog/drill sort still has NO aria-sort - a
+                pre-existing gap noted at c16l - so c16o adds aria-sort + keyboard-operable sort headers
+                to BOTH rdc-table modes + a search-input aria-label) -> c16p (v0.2 close-out: FULL
+                re-ingest + version 0.2.0 + CHANGELOG + push/CI/merge/tag) -> c20. c16n closed the last
+                truncation-coverage gaps (ADR-38 tail): (1) draws_by_class area/drop cells now clip via the
+                inner `.clip` (default tier, base.clip_span) - all 5 tabled reports + catalog/drill virtual
+                consistent; (2) a `@media print` rule in `_RDC_TABLE_CSS` releases the bare dashboard/preview
+                minis (`a.dash-card table.data` + the direct-child `.table-wrap > table.data` preview mini) to
+                full-wrap on paper - the mini analogue of the static rdc-table print rule, which is
+                data-mode=static-scoped + never reached the bare minis (table-layout:fixed KEPT - the 2-up
+                print grid bounds each card); (3) mini `title=` kept UNCONDITIONAL (responsive widths, no
+                deterministic server clip point - ADR-23 documented scoping in §21.1o, no heuristic, no new
+                ADR). 188 -> 190 green; ALL 15 HTML goldens + preview refreshed (engine CSS inline on every
+                page; draws_by_class also gains the `<span class="clip">` area/drop markup);
+                `_pagedata`/digests/golden_parquet BYTE-UNCHANGED, parquet parity NO digests refresh (§21.9);
+                smoke render-only 15 pages lint clean exit 0; browser-verified offline (draws_by_class clip
+                spans + Expand-cells toggle injects, no JS errors; dashboard print-to-PDF shows every mini cell
+                + header FULL, nothing clipped). QUALITY_GATES §21.1o extended. G-20 (3+-run column collapse)
+                still deferred - no 3+-run data. ADR-37 governs (reports static); SPA VOIDED.)
+last_session:   2026-06-03 — c16n DONE (truncation-coverage tail + dashboard print; ADR-38 tail; rides
+                ADR-37/6/24/c16c/ADR-23). Two coverage gaps closed so EVERY tabled surface is consistent.
+                (1) draws_by_class - the only tabled report c16m's scope skipped - now wraps its raw
+                per-(area,drop) table's area + drop text cells in base.clip_span (default tier), so all 5
+                tabled reports + the catalog/drill virtual tables clip + hover-reveal alike. (2) The bare
+                dashboard/preview minis printed CLIPPED on paper: they have NO rdc-table host, so the c16m
+                static print full-wrap (rdc-table[data-mode=static]-scoped) never reached them, and they rely
+                on the global 380px td-clip + (dashboard) table-layout:fixed overflow:hidden, with no title=
+                hover in print. A NEW @media print rule in _RDC_TABLE_CSS (co-located with the 380px clip it
+                releases) frees BOTH bare-mini contexts to max-width:none; overflow:visible; white-space:normal;
+                overflow-wrap:anywhere over cells AND headers: `a.dash-card table.data` (dashboard) +
+                `.table-wrap > table.data` (the preview mini - a DIRECT child of .table-wrap; report tables
+                interpose <rdc-table>, so the child combinator excludes them - they already have the static
+                rule). table-layout:fixed is KEPT (the 2-up print grid bounds each card; auto could overflow).
+                (3) Mini title= kept UNCONDITIONAL - mini column widths are responsive (table-layout:fixed + the
+                3-up auto-fit grid), so the server has NO deterministic pixel clip point; a char-gate would drop
+                title= on a genuinely-clipped short cell in a narrow card -> per ADR-23 the unconditional title=
+                is kept + the rationale recorded in §21.1o (no fragile heuristic, no new ADR - rides ADR-38 +
+                ADR-23). HARNESS: test_report_structure +test_c16n_draws_by_class_area_drop_clip (a clean
+                False->True flip - the page carried no server-baked class="clip" before c16n; the engine JS
+                applies clip via .className, never the literal); test_design_tokens
+                +test_c16n_dashboard_mini_print_fullwrap (both bare-mini print selectors present in
+                _RDC_TABLE_CSS, ASCII). PARITY (ADR-6/37/38): ALL 15 HTML goldens + the preview REFRESHED (the
+                new print bytes ride the always-on engine CSS inline on every page; draws_by_class additionally
+                gains the <span class="clip"> area/drop markup); `_pagedata/*.js` + digests.json + golden_parquet
+                BYTE-UNCHANGED (git status scope); test_parquet_parity GREEN, NO digests refresh (§21.9). 188 ->
+                190 green. smoke render-only 15 pages lint clean exit 0. BROWSER-VERIFIED OFFLINE (headless
+                Chrome, file://): draws_by_class area/drop carry the .clip spans (4) + the Expand-cells toggle
+                now injects (a .clip cell exists) with NO JS errors; the dashboard print-to-PDF shows every mini
+                cell + header in FULL (headers wrap - "avg draws / frame", "complexity", "cost proxy" - nothing
+                clipped). QUALITY_GATES §21.1o extended for the c16n coverage. No new ADR (mechanism within
+                ADR-38; the title-keep within ADR-23, recorded in §21.1o). Commits on v0.2-roadmap-c04,
+                UNPUSHED. current -> c16o.
+former_last_c16m: 2026-06-03 — c16m DONE (controllable cell truncation + `title=` hover-reveal on the ONE
                 `rdc-table` engine; ADR-38, FINAL of the c16k-c16m table-unification epic; rides ADR-37/6/24/c16c).
                 ONE truncation mechanism, both modes: the clip lives on an INNER element - an in-cell
                 `<a class="clip…">` or a `<span class="clip…">` (chrome.clip_attrs/clip_span helpers, re-exported
@@ -681,6 +713,17 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-03 — c16n DONE (truncation-coverage tail + dashboard print; ADR-38 tail). draws_by_class area/drop
+  cells now clip via the inner `.clip` (base.clip_span, default tier) - all 5 tabled reports consistent; a
+  `@media print` rule in `_RDC_TABLE_CSS` releases the bare dashboard/preview minis (`a.dash-card table.data` +
+  the direct-child `.table-wrap > table.data` preview mini) to full-wrap on paper (the mini analogue of the
+  static rdc-table print rule); mini `title=` kept UNCONDITIONAL (responsive widths, no server clip point -
+  ADR-23, recorded in §21.1o, no new ADR). 188 -> 190 green (+test_c16n in test_report_structure +
+  test_design_tokens); ALL 15 HTML goldens + preview refreshed (engine CSS inline everywhere; draws_by_class
+  also gains `<span class="clip">`); `_pagedata`/digests/golden_parquet BYTE-UNCHANGED, parquet parity NO
+  refresh (§21.9); smoke render-only lint clean; browser-verified offline (draws_by_class clip + Expand toggle
+  injects, no JS errors; dashboard print-to-PDF mini cells + headers FULL). QUALITY_GATES §21.1o extended.
+  v0.2-roadmap-c04, UNPUSHED. current -> c16o.
 - 2026-06-03 — AUTHORED the v0.2 close-out commits (c16n/c16o/c16p), pulled forward at the user's request after a
   pre-tag "do you foresee anything else?" review. The review surfaced: (a) minor presentation/a11y consistency
   gaps left by the c16k-c16m epic, and (b) release mechanics not yet done (48 commits ahead of origin/main +

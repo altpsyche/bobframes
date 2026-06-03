@@ -392,6 +392,36 @@ the value so hover could never reveal it) - now it emits the FULL marker (CSS cl
 reveals), consistent with every other mini text column. Guarded by `test_report_structure`. 186 -> 188 green.
 **Completes the c16k–c16m table-unification epic (ADR-38).**
 
+**c16n — truncation-coverage tail + dashboard print (ADR-38 tail) — see [c16n](../commits/v02/c16n_clip_coverage_print.md).**
+c16n closes the last two consistency gaps so EVERY tabled surface behaves identically. (1) **`draws_by_class`**
+was the only tabled report c16m's scope skipped: its raw per-(area,drop) table's `area` + `drop` text cells now
+wrap in the default-tier `base.clip_span` (`draws_by_class.py` `_build_table`), so all **5 tabled reports** +
+the catalog/drill virtual tables clip + hover-reveal consistently - no tabled surface left un-clipped. (2) **The
+bare dashboard/preview minis printed CLIPPED on paper:** they have NO `rdc-table` host (so the c16m static
+print full-wrap, which is `rdc-table[data-mode="static"]`-scoped, never reached them) and rely on the global
+380px td-clip + (dashboard) `table-layout:fixed; overflow:hidden`, with no `title=` hover in print. A new
+`@media print` rule in `_RDC_TABLE_CSS` (co-located with the 380px clip it releases) releases both bare-mini
+contexts to `max-width:none; overflow:visible; white-space:normal; overflow-wrap:anywhere` over cells AND
+headers: `a.dash-card table.data` (the dashboard minis) + `.table-wrap > table.data` (the preview-gallery mini -
+a DIRECT child of `.table-wrap`; report tables interpose `<rdc-table>`, so the child combinator excludes them
+and matches the preview mini only). `table-layout:fixed` is deliberately KEPT (the 2-up print `.dash-grid`
+bounds each card; `table-layout:auto` could overflow it) - the wrap rules alone leave nothing hidden. (3) **Mini
+`title=` kept UNCONDITIONAL (ADR-23 documented scoping):** `_card_table` sets `title=` on every mini text cell +
+header; mini column widths are responsive (`table-layout:fixed` + the 3-up `auto-fit/minmax` grid), so the
+server has **no deterministic pixel clip point** - a char-length gate would drop `title=` on a genuinely-clipped
+short cell in a narrow card. Per ADR-23 the unconditional `title=` is kept and the rationale recorded here rather
+than shipping a fragile heuristic; no new ADR (rides ADR-38 + ADR-23). `test_report_structure` gains
+`test_c16n_draws_by_class_area_drop_clip` (a clean False->True flip - the page carried no server-baked
+`class="clip"` before c16n; the engine JS applies clip via `.className`, never the literal); `test_design_tokens`
+gains `test_c16n_dashboard_mini_print_fullwrap` (both bare-mini print selectors present in `_RDC_TABLE_CSS`,
+ASCII). **Output-changing -> refreshed** every HTML golden (the new print bytes ride the always-on engine CSS
+inline on every page; `draws_by_class` additionally gains the `<span class="clip">` markup); `_pagedata/*.js`,
+`digests.json`, `golden_parquet` **byte-unchanged**, `test_parquet_parity` green with NO digests refresh (§21.9).
+188 -> 190 green. `bobframes smoke` render-only lint clean exit 0. Browser-verified offline (headless Chrome,
+`file://`): `draws_by_class` area/drop clip with ellipsis + reveal full value on hover (and the Expand-cells
+toggle now appears, since a `.clip` cell exists); the dashboard print-preview shows full mini cell + header
+values - nothing clipped.
+
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,
 dropped column, dtype slip). Skip `_`-prefixed (`_catalog`, `_global_entities`). Runs on synthetic +

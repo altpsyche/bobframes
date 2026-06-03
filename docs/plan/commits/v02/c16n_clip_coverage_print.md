@@ -1,5 +1,19 @@
 # c16n — truncation coverage tail + dashboard print     release: v0.2 · phase: De-hardcoding
 
+> **Status: DONE (2026-06-03).** 188 -> 190 green (+`test_c16n_draws_by_class_area_drop_clip`,
+> +`test_c16n_dashboard_mini_print_fullwrap`). `draws_by_class` area/drop now clip via the inner `.clip`
+> (default tier) - all 5 tabled reports consistent; a `@media print` rule in `_RDC_TABLE_CSS` releases the
+> bare dashboard/preview minis (`a.dash-card table.data` + the direct-child `.table-wrap > table.data`
+> preview mini) to full-wrap on paper - the mini analogue of the static rdc-table print rule. Mini `title=`
+> kept UNCONDITIONAL (responsive widths, no deterministic server clip point - ADR-23 documented scoping, no
+> heuristic shipped; no new ADR). All HTML goldens refreshed (engine CSS inline on every page;
+> `draws_by_class` also gains the `<span class="clip">` markup); `_pagedata`/`digests.json`/`golden_parquet`
+> BYTE-UNCHANGED, `test_parquet_parity` green NO refresh (§21.9). `bobframes smoke` render-only 15 pages lint
+> clean exit 0. Browser-verified offline (headless Chrome, `file://`): `draws_by_class` area/drop carry the
+> `.clip` spans + the Expand-cells toggle now injects (a `.clip` cell exists), no JS errors; the dashboard
+> print-to-PDF shows every mini cell + header in FULL (headers wrap, nothing clipped). QUALITY_GATES §21.1o
+> extended. Commits on `v0.2-roadmap-c04`, UNPUSHED. current -> c16o.
+
 > **ADR-38 (tail).** c16m landed the controllable-truncation contract on the ONE `rdc-table` engine and the
 > 4 named report builders + the bare dashboard minis. c16n closes the last coverage gaps so EVERY tabled
 > surface behaves identically: the one report table c16m's scope skipped, and printing the dashboard.

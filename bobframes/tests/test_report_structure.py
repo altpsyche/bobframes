@@ -485,3 +485,14 @@ def test_c16m_expand_toggle_and_css_contract():
     assert 'max-width: 380px' in css
     assert 'rdc-table table.data tbody td { max-width: none' in css
     assert css.isascii()   # ellipsis via the CSS keyword, no literal U+2026
+
+
+# --- c16n: truncation-coverage tail - draws_by_class clip + bare-mini print full-wrap (ADR-38 tail). ---
+
+def test_c16n_draws_by_class_area_drop_clip(rendered):
+    # draws_by_class was the only tabled report c16m's scope skipped; its raw per-(area,drop) table's
+    # area + drop text cells now truncate via the inner .clip (default tier), so all 5 tabled reports
+    # clip + hover-reveal consistently. A clean flip: the page had NO server-baked clip cell before
+    # c16n (the engine JS applies clip via .className, never the literal class="clip").
+    dbc = _report(rendered, 'draws_by_class')
+    assert 'class="clip"' in dbc
