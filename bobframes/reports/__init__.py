@@ -27,6 +27,7 @@ def all_reports() -> tuple:
         pass_gpu,
         shader_hotlist,
         overdraw,
+        summary,
     )
     base = (
         draws_by_class,
@@ -35,6 +36,7 @@ def all_reports() -> tuple:
         pass_gpu,
         shader_hotlist,
         overdraw,
+        summary,            # c16q — appended last; orchestrator renders it top-level + per older run
     )
     extras = tuple(m for m in _EXTRA_REPORTS if m not in base)
     return base + extras

@@ -27,6 +27,7 @@ _REPORTS = {
     'pass-gpu': 'pass_gpu',
     'shader': 'shader_hotlist',
     'overdraw': 'overdraw',
+    'summary': 'summary',           # c16q — the exec build-health one-pager (ADR-39)
     'dashboard': 'dashboard',
 }
 

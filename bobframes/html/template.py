@@ -704,15 +704,21 @@ def render_root(root: str) -> str:
     if os.path.isdir(reports_dir):
         dashboard = os.path.join(reports_dir, _paths.INDEX_HTML)
         if os.path.exists(dashboard):
+            # c16q: promote the exec build-health one-pager (when present) ahead of the dashboard, and
+            # EXCLUDE it from the auto-listed report grid below (mirrors the INDEX_HTML exclusion) so
+            # the landing surfaces lead, not an alphabetised file row.
+            chips = []
+            if os.path.exists(os.path.join(reports_dir, 'summary.html')):
+                chips.append(f'<a href="{_paths.REPORTS_DIR}/summary.html" '
+                             'data-link-kind="primary">build health summary</a>')
+            chips.append(f'<a href="{_paths.REPORTS_DIR}/{_paths.INDEX_HTML}" '
+                         'data-link-kind="primary">cumulative reports dashboard</a>')
             parts.append('<section><h2 id="dashboard">dashboard</h2>'
-                         '<div class="chip-cluster">'
-                         f'<a href="{_paths.REPORTS_DIR}/{_paths.INDEX_HTML}" data-link-kind="primary">'
-                         'cumulative reports dashboard</a>'
-                         '</div></section>')
+                         '<div class="chip-cluster">' + ''.join(chips) + '</div></section>')
 
         report_files = sorted(
             f for f in os.listdir(reports_dir)
-            if f.endswith('.html') and f != _paths.INDEX_HTML
+            if f.endswith('.html') and f not in (_paths.INDEX_HTML, 'summary.html')
         )
         if report_files:
             parts.append('<section><h2 id="reports">reports</h2>'

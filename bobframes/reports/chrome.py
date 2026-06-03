@@ -2302,6 +2302,9 @@ def header(title: str, *, drops: int = 0, captures: int = 0,
 
     current_page: if 'dashboard', drops the dashboard self-link from crumb.
                   if 'root', drops the root-catalog self-link.
+                  'summary' (c16q) is a leaf page - it matches neither, so it KEEPS both crumbs
+                  (root catalog + dashboard), which is correct; no behavioral branch is added (one
+                  would churn every other report/dashboard/catalog golden).
 
     run: a RunContext (c16e, ADR-35). When it carries a current run, a "run <ordinal>: <key>" fact
          span is added so the reported run is visible (data-derived key via safe_chrome_text).

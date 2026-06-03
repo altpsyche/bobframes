@@ -119,6 +119,46 @@ def _top_shaders(root: str, current, n: int = 3) -> list:
     return out
 
 
+def _top_shaders_by_area(root: str, current, n: int = 999) -> list:
+    """Return [(area, label, complexity, cost_proxy)] for the CURRENT run, keyed per (area,
+    stable_key), ranked by COMPLEXITY desc.
+
+    The area-resolved sibling of `_top_shaders` (which collapses across areas + ranks by cost).
+    Reuses the same sha256-validated shader_summary cache + run filter (+ the `area` column); used by
+    the c16q health verdict (summary.py) to derive each area's worst shader complexity and to name
+    the worst shader's area. The verdict keys on COMPLEXITY (per-shader max), not cost. NOT called by
+    `build()`."""
+    if current is None:
+        return []
+    t = base.load_cached(root, 'shader_summary',
+        columns=['area', 'drop_date', 'drop_label', 'stable_key', 'shader_type',
+                 'complexity_score', 'used_by_draw_count'])  # sha256-validated; None -> warn + [] (R-13)
+    if t is None:
+        return []
+    cols = base._to_dict_of_lists(t)
+    cost: dict = defaultdict(float)
+    cplx: dict = {}
+    stype: dict = {}
+    for i in range(t.num_rows):
+        if (cols['drop_date'][i], cols['drop_label'][i]) != (current.date, current.label):
+            continue
+        if cols['shader_type'][i] != 'fragment':
+            continue
+        sk = cols['stable_key'][i] or ''
+        if not sk:
+            continue
+        key = (cols['area'][i], sk)
+        c_val = float(cols['complexity_score'][i] or 0)
+        uses = int(cols['used_by_draw_count'][i] or 0)
+        cost[key] += c_val * uses
+        cplx[key] = max(cplx.get(key, 0.0), c_val)
+        stype[key] = cols['shader_type'][i]
+    rows = [(area, f'{stype[(area, sk)][:4]}-cplx-{int(cval)}', cval, cost[(area, sk)])
+            for (area, sk), cval in cplx.items()]
+    rows.sort(key=lambda x: x[2], reverse=True)
+    return rows[:n]
+
+
 def _per_area_draws(drops: list) -> tuple[dict, Counter]:
     """Return ({area: {n_draws, dominant_class}}, class_totals) where class_totals sums all areas."""
     per: dict = defaultdict(lambda: {'n_draws': 0, 'by_class': Counter()})
@@ -148,10 +188,14 @@ def _per_area_draws(drops: list) -> tuple[dict, Counter]:
 
 
 def _top_areas_gpu(drops: list, n: int = 3) -> list:
-    """Return [(area, gpu_s, draws, avg_draws_frame)] top by gpu. `draws` is the per-area total over
-    that area's captured frames; `avg_draws_frame` = draws / frames is the per-area average draw load
-    (capture-count-independent) - this is the meaningful "draws per area" number (one per area, so it
-    belongs in this card, not the single-value headline KPI strip)."""
+    """Return [(area, gpu_s, draws, avg_draws_frame, avg_gpu_frame)] top by gpu. `draws` is the
+    per-area total over that area's captured frames; `avg_draws_frame` = draws / frames is the
+    per-area average draw load (capture-count-independent) - the meaningful "draws per area" number
+    (one per area, so it belongs in this card, not the single-value headline KPI strip).
+
+    The 5th element `avg_gpu_frame` (gpu_s / frames, also capture-count-independent) was added for the
+    c16q health one-pager (summary.py, which derives each area's per-frame gpu + gpu-regression from
+    it). `dashboard.build()` indexes only [0..3], so the dashboard output is unchanged by it."""
     agg: dict = defaultdict(lambda: {'gpu': 0.0, 'draws': 0, 'frames': 0})
     for d in drops:
         for r in d.rows:
@@ -168,10 +212,60 @@ def _top_areas_gpu(drops: list, n: int = 3) -> list:
                 agg[r.area]['gpu'] += float(g or 0)
                 agg[r.area]['draws'] += int(dr or 0)
             agg[r.area]['frames'] += t.num_rows
-    rows = [(a, v['gpu'], v['draws'], (v['draws'] / v['frames'] if v['frames'] else 0.0))
+    rows = [(a, v['gpu'], v['draws'],
+             (v['draws'] / v['frames'] if v['frames'] else 0.0),
+             (v['gpu'] / v['frames'] if v['frames'] else 0.0))
             for a, v in agg.items()]
     rows.sort(key=lambda x: x[1], reverse=True)
     return rows[:n]
+
+
+def _top_meshes_by_area(root: str, current, n: int = 999) -> list:
+    """Return [(area, label, repeat, indices_med)] for the CURRENT run, keyed per (area, mesh_hash),
+    ordered by repeat desc.
+
+    The area-resolved sibling of `_top_meshes` (which collapses across areas). Reuses the same
+    sha256-validated draws_summary cache + run filter (+ the `area` column); used by the c16q health
+    verdict (summary.py) to derive each area's worst mesh repeat-count. NOT called by `build()`.
+    (c16v per-frame-normalizes the repeat count; here it is summed across the run's frames, mirroring
+    instancing_opportunities so the verdict cannot disagree.)"""
+    if current is None:
+        return []
+    t = base.load_cached(root, 'draws_summary', columns=[
+        'area', 'drop_date', 'drop_label', 'mesh_hash', 'num_indices', 'program_id',
+        'draw_class', 'parent_pass_path_norm'])  # sha256-validated; None -> warn + [] (R-13)
+    if t is None:
+        return []
+    cols = base._to_dict_of_lists(t)
+    counts: Counter = Counter()
+    indices: dict = defaultdict(list)
+    cls_by: dict = {}
+    pass_by: dict = {}
+    for i in range(t.num_rows):
+        if (cols['drop_date'][i], cols['drop_label'][i]) != (current.date, current.label):
+            continue
+        mh = cols['mesh_hash'][i]
+        prog = cols['program_id'][i] or 0
+        n_idx = cols['num_indices'][i] or 0
+        if not mh or n_idx <= 0 or prog == 0:
+            continue
+        key = (cols['area'][i], mh)
+        counts[key] += 1
+        indices[key].append(n_idx)
+        cls_by.setdefault(key, cols['draw_class'][i] or 'other')
+        pass_by.setdefault(key, cols['parent_pass_path_norm'][i] or '')
+    out = []
+    for (area, mh), c in counts.most_common(n):
+        try:
+            med = int(statistics.median(indices[(area, mh)])) if indices[(area, mh)] else 0
+        except statistics.StatisticsError:
+            med = 0
+        cls = cls_by.get((area, mh), 'other')
+        suffix = base.pass_suffix(pass_by.get((area, mh), '')) or '?'
+        hash_tag = str(mh)[-4:] if mh else ''
+        label = f'{cls}/{suffix}/{med}v#{hash_tag}'
+        out.append((area, label, c, med))
+    return out
 
 
 def _worst_overdraw(drops: list, n: int = 3) -> list:
@@ -215,21 +309,18 @@ def _worst_overdraw(drops: list, n: int = 3) -> list:
     return rows[:n]
 
 
-def _global_kpis(drops: list) -> list:
-    """Cheap-to-compute global numbers from frame_totals across drops.
+def _run_totals(drops: list) -> tuple:
+    """Pooled (total_gpu_s, total_draws, n_frames) over frame_totals across `drops`.
 
-    Totals are paired with PER-FRAME and PER-AREA averages: a raw "total draws" reads as alarming on
-    its own, but the mean PER CAPTURED FRAME is the number that informs a budget decision. n_frames is
-    the count of frame rows that fed the totals, so each average is the true arithmetic mean of the
-    summed values (self-consistent with the total). Per-AREA averages are NOT a single headline number
-    (one value per area) - they live in the per-area trend card (_top_areas_gpu), not here.
+    The raw basis for `_global_kpis`' per-frame averages, factored out so the c16q health one-pager
+    (summary.py) derives the SAME headline averages + the per-run sparkline series from one source (it
+    reads raw floats, not the formatted KPI strings). `n_frames` is the count of frame rows that fed
+    the totals, so `total / n_frames` is the true arithmetic mean.
     """
     total_gpu = 0.0
     total_draws = 0
     n_frames = 0
-    areas: set = set()
     for d in drops:
-        areas.update(d.areas)
         for r in d.rows:
             p = os.path.join(r.drop_dir, 'frame_totals.parquet')
             if not os.path.exists(p):
@@ -245,6 +336,22 @@ def _global_kpis(drops: list) -> list:
             for v in t.column('n_draws').to_pylist():
                 if v is not None:
                     total_draws += int(v)
+    return total_gpu, total_draws, n_frames
+
+
+def _global_kpis(drops: list) -> list:
+    """Cheap-to-compute global numbers from frame_totals across drops.
+
+    Totals are paired with PER-FRAME and PER-AREA averages: a raw "total draws" reads as alarming on
+    its own, but the mean PER CAPTURED FRAME is the number that informs a budget decision. n_frames is
+    the count of frame rows that fed the totals, so each average is the true arithmetic mean of the
+    summed values (self-consistent with the total). Per-AREA averages are NOT a single headline number
+    (one value per area) - they live in the per-area trend card (_top_areas_gpu), not here.
+    """
+    total_gpu, total_draws, n_frames = _run_totals(drops)
+    areas: set = set()
+    for d in drops:
+        areas.update(d.areas)
     avg_gpu_frame = (total_gpu / n_frames) if n_frames else 0.0
     avg_draws_frame = (total_draws / n_frames) if n_frames else 0.0
     return [
@@ -333,6 +440,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
         ('shader_hotlist.html', 'shader hotlist'),
         ('overdraw.html', 'overdraw'),
         ('draws_by_class.html', 'draws by class'),
+        ('summary.html', 'build health'),   # c16q: the exec one-pager (co-rendered per run, so bare)
     ]
 
     # Summary bar: worst area by GPU rank + current-run counts

@@ -6,27 +6,79 @@
 > defer to this.
 
 ```
-active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        c16p_v02_closeout    (status: not-started. c16o DONE 2026-06-03 - the G-23 a11y tail is
-                CLOSED, so the WHOLE c16k-c16o table epic (unification + truncation + a11y parity) is COMPLETE.
-                c16o brought the one rdc-table engine to a11y parity across BOTH modes: a shared
-                `wireSortHeader` helper made the sort headers keyboard-operable (tabindex + Enter/Space) in
-                StaticTable AND VTable; VTable now announces `aria-sort` none->asc/desc (the c16l-noted virtual
-                gap); the virtual filter `<input>` gained an `aria-label`. Sort RESULT + row content UNCHANGED.
-                190 -> 191 green; ALL 15 HTML goldens + preview refreshed (engine JS inline on every page);
-                `_pagedata`/digests/golden_parquet BYTE-UNCHANGED, parquet parity NO digests refresh (§21.9);
-                smoke lint clean; browser-verified offline (headless Chrome over CDP, real Perf: tabindex +
-                aria-sort + focusable + Enter-sorts in BOTH modes, search aria-label, expand-toggle, dark mode).
-                QUALITY_GATES §21.1p; G-23 a11y tail closed in FINDINGS; no new ADR (rides ADR-38). NOW DO c16p
-                (commits/v02/c16p_v02_closeout.md): the v0.2 CLOSE-OUT + RELEASE - FULL re-ingest of real Perf
-                (NOT render-only: regenerates EVERY drill, clears the stale older-run inline-data drills) +
-                version 0.1.0->0.2.0 + CHANGELOG [Unreleased]->[0.2.0] (summarize c04-c16o) + PUSH -> CI green
-                on the full matrix (FIRST CI for c04-c16o) + MERGE -> main + TAG v0.2.0 (outward + IRREVERSIBLE -
-                AUTHORIZE FIRST) -> OIDC publish -> PyPI + GH Release -> post-install verify. THEN v0.2.5 (c16q-c16w:
-                report packaging + exec one-pager; DESIGNED 2026-06-03 - commits/v025/ + v025_packaging_and_onepager_proposal.md
-                + ADR-39/40/41; slots before c20), THEN c20. G-20 (3+-run column collapse) still deferred - no
-                3+-run data. ADR-37 governs (reports static); SPA VOIDED.)
-last_session:   2026-06-03 — c16o DONE (table a11y parity, both rdc-table modes; ADR-38 a11y tail; closes the
+active_release: v0.2.5    (v0.1 COMPLETE - bobframes 0.1.0 live on PyPI 2026-05-31; v0.2.0 bump committed
+                867dcc5 on plan/v0.2.5)
+current:        c16r_head_assets_seam    (status: not-started. c16q DONE 2026-06-04 - the FIRST v0.2.5
+                commit (report packaging + exec one-pager spine; ADR-39). Shipped (1) `bobframes/health.py`,
+                a PRESENTATION-INDEPENDENT verdict/trend contract (peer of jsonout/export, NOT under reports/)
+                that c20 `--json` + c21 `report --gate` will CONSUME: State(OK<UNKNOWN<AT_RISK<ALARM - user
+                decision: ALARM outranks UNKNOWN so a real fire is never masked by a missing-data area, while
+                UNKNOWN still beats OK so no false-green), Direction, frozen dataclasses (Trigger/AreaMetrics/
+                HealthMetrics/Verdict/Change/Trend), `area_verdict` (first-match from ReportCfg ONLY, no new
+                threshold; ABSOLUTE-FIRST - user decision: OK needs overdraw+shader+mesh present+passing, a
+                missing gpu_regression [trajectory, None on every 1-run build] does NOT block OK, shows as
+                Direction=UNKNOWN), `verdict` (state=max(area_verdicts)), `trend` (Direction nets the 4
+                headline metrics draws/gpu/overdraw/shader, improvements/regressions ledger). (2)
+                `reports/summary.py` - a print-first one-pager: verdict summary_bar + "N of M areas needs
+                attention - <worst>" scope + Direction tag + 4 AVERAGED KPIs (avg draws/frame, avg gpu/frame,
+                worst overdraw, worst shader; each a colored vs-prior %-pill + micro sparkline + grey total),
+                baseline-gated Movement card (Improvements/Regressions + resolved/new), worst-first By-area
+                table (all areas, per-area deltas + status), provenance footer. REUSES dashboard helpers (no
+                aggregates.py - G-26 deferred): NEW `_top_shaders_by_area`/`_top_meshes_by_area` (area-keyed
+                siblings), `_top_areas_gpu` 5th elem avg_gpu/frame, `_run_totals` factor-out of `_global_kpis`
+                - all byte-neutral for dashboard.build. (3) Discoverability: `summary` in cli._REPORTS +
+                all_reports() (orchestrator renders it top-level + per older run free), one `_NAV` "build
+                health" chip, promoted root-index link (summary excluded from the auto grid), chrome.header
+                comment. SYNTHETIC: 1 area, overdraw 75% -> ALARM ("Action needed") yet draws/gpu/shader all
+                dropped -> Direction improving (the dual-use read); the oldest per-run summary is the
+                no-baseline case (ALARM absolute + Direction unknown + Movement hidden). GOLDEN delta = 5 files
+                (recorded ADR-23, the c16q-doc said 4): new `_reports/summary.html` + new
+                `_reports/run/<k>/summary.html` + root `index.html` (promoted link + grid exclude) + the `_NAV`
+                chip on BOTH dashboards (top-level `_reports/index.html` AND per-run `run/<k>/index.html` -
+                same builder); everything else (6 reports + per-run copies, drill, catalog, A/B, _pagedata,
+                preview, parquet) BYTE-UNCHANGED; test_parquet_parity green, NO digest refresh (§21.9,
+                presentation only). 229 green (+35: test_health.py 22 + test_summary.py 13). lint exit 0;
+                `bobframes report summary` verb works; headless-Chrome print = ONE page (chrome hidden,
+                sparklines vector). QUALITY_GATES §21.1q corrected to the 5-file delta; G-24 ticked ☑ (G-25/26/
+                27/29 + H-40 remain deferred per their rows); rides ADR-39/37/23/35. NOW DO c16r
+                (commits/v025/c16r_head_assets_seam.md): the `head_assets(sink)` one-source-of-truth seam in
+                chrome + template - a ZERO-output refactor (all goldens byte-UNCHANGED, §21.1r). G-20 still
+                deferred (no 3+-run data). ADR-37 governs; SPA VOIDED.
+                NOTE: STATE was BEHIND - it still listed c16p_v02_closeout as current/not-started while
+                867dcc5 already committed the 0.2.0 bump + CHANGELOG on plan/v0.2.5. c16q was built on that.
+                Reconcile c16p's release bookkeeping (tag v0.2.0 / OIDC PyPI publish / GH Release / the FULL
+                real-Perf re-ingest) separately - it is NOT verified from this session.)
+last_session:   2026-06-04 — c16q DONE (health verdict module + exec one-pager; ADR-39; FIRST v0.2.5 commit;
+                rides ADR-37/23/35). NEW `bobframes/health.py` (presentation-INDEPENDENT verdict/trend the c20
+                `--json` + c21 `report --gate` will consume): `State` ordered OK<UNKNOWN<AT_RISK<ALARM (user
+                decision - a real ALARM is never masked by a missing-data UNKNOWN area, yet UNKNOWN still beats
+                OK so missing data is never a false green), `Direction`, frozen dataclasses, `area_verdict`
+                (first-match from ReportCfg ONLY, ABSOLUTE-FIRST: OK needs overdraw+shader+mesh present+passing,
+                a missing gpu_regression [trajectory, None on every 1-run build] does NOT block OK - it surfaces
+                as Direction=UNKNOWN; missing ABSOLUTE data still -> UNKNOWN), `verdict` (state=max), `trend`
+                (Direction nets the 4 headline metrics, improvements/regressions ledger). NEW
+                `reports/summary.py` (print-first one-pager): verdict summary_bar + "N of M areas needs
+                attention - <worst>" scope + Direction tag + 4 AVERAGED KPIs (each colored vs-prior %-pill +
+                micro sparkline + grey total via a custom kpi-chip - chrome.kpi_chip escapes its delta) +
+                baseline-gated Movement card (id=movement) + worst-first By-area table (id=by_area) +
+                provenance. ASSEMBLY reuses dashboard helpers (no aggregates.py, G-26 deferred): NEW
+                `_top_shaders_by_area`/`_top_meshes_by_area` + `_top_areas_gpu` 5th elem (avg_gpu/frame) +
+                `_run_totals` factor-out of `_global_kpis` - all byte-neutral for dashboard.build (verified: the
+                only dashboard golden change is the chip). Registered: cli._REPORTS, all_reports() (append last
+                -> orchestrator renders top-level + per older run for free), one `_NAV` "build health" chip,
+                template.render_root promoted link + grid-exclusion, chrome.header comment. GOLDEN delta = 5
+                files (recorded ADR-23; the c16q doc enumerated 4): new `_reports/summary.html` + new
+                `_reports/run/2026-05-27_r110565/summary.html` + root `index.html` + the `_NAV` chip on BOTH
+                dashboards (top-level + per-run `run/<k>/index.html`, same builder); ALL other goldens +
+                `_pagedata/*.js` + parquet BYTE-UNCHANGED; test_parquet_parity green, NO digest refresh (§21.9,
+                presentation only). 191 -> 229 green (+22 test_health.py, +13 test_summary.py incl the
+                dashboard-reconciliation guard for G-26). lint exit 0; `bobframes report summary <synthetic>`
+                writes summary.html; headless-Chrome print-to-PDF = ONE page (chrome hidden, inline-SVG
+                sparklines print as vectors). QUALITY_GATES §21.1q corrected to the 5-file delta; G-24 ticked ☑
+                (G-25 per-area-rollup-half / G-26 aggregates.py / G-27 dashboard-hero / G-29 multi-capture +
+                H-40 remain deferred per their rows). No new ADR (rides ADR-39, frozen). Commits on plan/v0.2.5.
+                current -> c16r (the head_assets seam, a zero-output refactor).
+former_last_c16o: 2026-06-03 — c16o DONE (table a11y parity, both rdc-table modes; ADR-38 a11y tail; closes the
                 G-23 a11y tail; rides ADR-37/6/24/c16l). A feature added once to the ONE engine now behaves the
                 same in BOTH modes. (1) VTable aria-sort (virtual parity): `VTable.buildHead` seeds `aria-sort`
                 from sortCol/sortDir (so a group-toggle rebuild keeps it correct) + `VTable.sort` flips it
@@ -744,6 +796,10 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-04 — c16q DONE (health verdict module + exec one-pager; ADR-39; first v0.2.5 commit). NEW health.py
+  (State OK<UNKNOWN<AT_RISK<ALARM, absolute-first verdict, trend) + reports/summary.py one-pager + dashboard
+  area-keyed helpers + discoverability nav. 5-file golden delta (recorded ADR-23 vs the doc's 4); parquet
+  parity green NO refresh; 229 green; G-24 ☑; §21.1q corrected.
 - 2026-06-03 — v0.2.5 DESIGNED (planning session; report packaging + exec one-pager; NO code, NO golden refresh).
   Output: proposal (v025_packaging_and_onepager_proposal.md), ADR-39/40/41, commit spine c16q-c16w (commits/v025/),
   QUALITY_GATES 21.1q/r/s, FINDINGS G-24..G-27, HARDCODE H-40, MIGRATION/ROADMAP/INDEX slotting. Process: 3 Explore +

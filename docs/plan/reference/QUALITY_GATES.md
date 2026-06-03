@@ -469,10 +469,16 @@ exists and carries the verdict `summary-bar` + the "N of M areas" scope line + a
 whose values reconcile against the dashboard's current-run totals divided by the run frame count, and the
 small total line matches the dashboard totals (the coupling contract that lets `aggregates.py` stay
 deferred); `lint.lint_file(summary.html)` returns zero hits (the plain-language copy + the
-direction/movement labels are banlist-clean). **Golden delta
-is exactly** {new `_reports/summary.html`, new `_reports/run/<k>/summary.html`, intentional `index.html` +
-`dashboard.html` nav}; everything else byte-unchanged; `test_parquet_parity` green with NO digest refresh
-(§21.9, presentation only). Refresh `python -m bobframes.tests.make_golden`; review the 4-file delta.
+direction/movement labels are banlist-clean). **Golden delta is exactly 5 files** {new
+`_reports/summary.html`, new `_reports/run/<k>/summary.html`, intentional root `index.html` (the promoted
+"build health summary" chip + summary excluded from the auto-listed grid), and the one `_NAV` "build health"
+chip on BOTH dashboard instances -- top-level `_reports/index.html` AND per-run `_reports/run/<k>/index.html`
+(the SAME `dashboard.build` emits both, so the chip lands on both; the as-built count is 5, not 4 - recorded
+per ADR-23)}; everything else (the 6 reports + their per-run copies, drill, catalog, A/B, `_pagedata/*.js`,
+preview, parquet) byte-unchanged; `test_parquet_parity` green with NO digest refresh (§21.9, presentation
+only). The `dashboard._top_areas_gpu` 5th element + `_top_{shaders,meshes}_by_area` + the `_run_totals`
+factor-out of `_global_kpis` are byte-neutral for `dashboard.build` (verified: the only dashboard golden
+change is the chip). Refresh `python -m bobframes.tests.make_golden`; review the 5-file delta.
 
 ## 21.1r The `head_assets(sink)` seam parity (c16r) -- see [c16r](../commits/v025/c16r_head_assets_seam.md)
 A pure zero-output refactor: the head asset emission is routed through one `head_assets(sink, depth)` helper
