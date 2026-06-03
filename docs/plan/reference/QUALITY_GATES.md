@@ -255,6 +255,50 @@ guards. **Reports/dashboard/per-run/A-B goldens BYTE-UNCHANGED** (they bake rows
 (headless Chrome, `file://`, real Perf): the catalog + heaviest drill populate their VTable from
 `_pagedata/*.js` with c16i's type split + heatmap + column groups intact.
 
+## 21.1m The unified `rdc-table` component: two data-delivery modes (c16k, ADR-38) — see [c16k](../commits/v02/c16k_unified_table_component.md)
+c16k replaces the two divergent table ENGINES (the catalog/drill VTable + the reports' `rdc-sortable-table`)
+with ONE bespoke `rdc-table` (no third-party grid — ADR-6/37). It is a single IIFE in `reports/chrome.py`
+(`_RDC_TABLE_CSS` + `_RDC_TABLE_JS`, exposed as `rdc_table_css()`/`rdc_table_js()`/`rdc_table_assets()`,
+re-exported via `base.py`): shared `cmpVals` (natural-numeric per ADR-24, comma-stripping so it is correct for
+both raw JSON numbers and comma-formatted display text) + shared `tintImage` (the c16i uniform-tint
+`color-mix(in oklch, var(--accent-data) 0-30%, transparent)` heatmap), a `VTable` class (the **virtual** mode:
+windowed, rows from `window.__data_<key>`/`_pagedata/*.js`) and a `StaticTable` class (the **static** mode:
+parses the server-baked `<table class="data">`, sorts by reordering the live `<tr>` nodes, tints existing
+`<td>`s, toggles column visibility via `display`). It is bootstrapped from ONE `DOMContentLoaded` pass
+(`querySelectorAll('rdc-table[data-mode]')`, branch on `data-mode`), NOT a `customElements`/`connectedCallback`
+— so it dodges the parse-time empty-children + `defer`-script race and matches the old VTable timing.
+**The contract (both modes):** offline (classic `<script>`, NO `fetch`/XHR/ES-modules), byte-deterministic
+(NO `random`/`Date` in the rendered output; the runtime `Math.random` live-region id is the *separate*
+`rdc-sortable-table`, never serialized), ASCII, `file://`-safe, ZERO new dependency, one CSS class
+(`table.data`).
+- **`static`** (a report, e.g. shader_hotlist; the ADR-37 guarantee): rows are **server-baked into the HTML**
+  → **golden-visible**, render with **JS disabled**, **print all rows**, and **Ctrl-F finds an off-screen row**
+  (the static engine NEVER windows — every `<tr>` stays in the DOM; sort/heatmap/column-groups are pure
+  in-place enhancement). The `<td>` row **content** stays byte-stable (only the wrapper/markup/classes move);
+  report `class="num"` cells are aliased to the `table.data` numeric/mono treatment by CSS (no cell reclassing,
+  so the shared delta/heatmap/sparkline helpers are untouched). Column groups are declared per report as
+  `window.__colgroups_<key>` keyed by **column index** (report header text can repeat, e.g. multi-drop
+  `delta`). The engine ships **opt-in** via `report_page(rdc_table=True)` → `page_open` appends
+  `rdc_table_assets()` to `<head>`; default-False leaves the shared `_compose_css/_compose_js` bundle
+  byte-identical, so every report/dashboard/A-B/per-run page NOT migrated this commit stays **byte-unchanged**.
+- **`virtual`** (catalog + drill): rows stream from `_pagedata/*.js` (the c16j contract, **byte-identical**)
+  and the DOM is windowed (`ROW_H=32`). The old `template._JS`/`_JS_TMPL`/`_ROW_H` were DELETED (subsumed into
+  `rdc-table`, zero dead code); the host `div.table-scroll` → `<rdc-table data-mode="virtual" class="table-scroll">`.
+`test_report_structure` gains 4 c16k guards (rdc-table virtual on catalog/drill with both engine classes
+present + offline; the static proof's server-baked rows un-windowed + index-keyed colgroups + the empty
+toggle-bar; static coexists with the still-present `rdc-sortable-table`; the other reports carry NO
+`<rdc-table>`), and `test_c16i_reports_layer_untouched` is relaxed to allow shader_hotlist's own
+`__colgroups_shader_hotlist`. **Output-changing → refreshed EXACTLY** the catalog `index.html`, the one drill
+`index.html`, and both `shader_hotlist.html` variants (top-level + per-run); `_pagedata/*.js`, the other 5
+reports + dashboard + per-run/A-B goldens, and `digests.json` are **byte-unchanged**; `test_parquet_parity`
+green with NO digests refresh (presentation only, §21.9). 176 -> 180 green. Browser-verified offline (headless
+Chrome, `file://`, real Perf): virtual catalog/drill still build/scroll/sort/search with heatmap + column
+groups; static shader_hotlist shows all rows server-baked (JS-off/print/Ctrl-F safe) with client sort +
+column-groups + heatmap (the static auto-heatmap + natural-numeric sort + group-collapse paths proven on a
+crafted varying-data table — real Perf's `uses`/`cost` are all 0, so the auto-tint correctly no-ops while
+`complexity` shades via `rdc-heatmap-cell`). **G-23 is NOT closed here** — the BUILD half only; the rollout +
+deletion of `rdc-sortable-table` is c16l, truncation is c16m.
+
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,
 dropped column, dtype slip). Skip `_`-prefixed (`_catalog`, `_global_entities`). Runs on synthetic +

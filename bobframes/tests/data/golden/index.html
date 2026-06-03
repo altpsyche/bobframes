@@ -790,32 +790,10 @@ rdc-alarm-banner { display: contents; }
 }
 .catalog-grid a[data-link-kind="primary"] { justify-content: flex-start; }
 
-:root { --label: #4a6a3a; --th-bg: var(--surface-2); --th-bg-active: var(--row-hover); }
-@media (prefers-color-scheme: dark) {
-  :root { --label: #a3d39c; }
-}
-
-body { max-width: 1800px; }
-
-nav.toc a { display: flex; justify-content: space-between; padding: 2px 0; gap: 1rem; }
-nav.toc a .ct { color: var(--text-3); font-variant-numeric: tabular-nums; }
-
-.controls {
-  display: flex; gap: var(--sp-3); align-items: center;
-  font-size: var(--fs-small); flex-wrap: wrap;
-  margin: var(--sp-2) 0 var(--sp-2);
-}
-.controls input[type=search] {
-  font: inherit; padding: 4px 8px;
-  border: 1px solid var(--border-2); background: var(--surface-0); color: var(--text-1);
-  border-radius: 2px; min-width: 22rem;
-}
-.controls input[type=search]:focus { outline: 1px solid var(--accent); }
-.controls .ct { color: var(--text-2); font-variant-numeric: tabular-nums; }
-.controls .dl { font-size: var(--fs-small); color: var(--accent); }
-
-/* Collapsible column groups (c16i, catalog only). Real <button> toggles; no transition so the
-   show/hide is instant and reduced-motion-safe. Buttons are built client-side into .col-groups. */
+:root { --th-bg: var(--surface-2); --th-bg-active: var(--row-hover); --label: #4a6a3a; }
+@media (prefers-color-scheme: dark) { :root { --label: #a3d39c; } }
+rdc-table { display: block; }
+/* Collapsible column groups (c16i). Real <button> toggles; no transition -> reduced-motion safe. */
 .col-groups { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin: 0 0 var(--sp-2); }
 .col-groups .col-group-toggle {
   font: var(--fs-small) 'Inter', 'Segoe UI', system-ui, sans-serif;
@@ -826,24 +804,6 @@ nav.toc a .ct { color: var(--text-3); font-variant-numeric: tabular-nums; }
   color: var(--accent); border-color: var(--accent); background: var(--surface-2);
 }
 .col-groups .col-group-toggle:hover { background: var(--row-hover); }
-
-.table-scroll {
-  /* c16i: size to content, capped at 60vh. A 1-row table is now ~1 row tall instead of a big empty
-     box; tables past the cap scroll (the virtual-scroll spacers reserve the full height regardless,
-     so clientHeight settles at 60vh and the windowing is unchanged). Was a fixed height: 60vh with
-     a never-applied .table-scroll.short variant - this folds that intent into the default. */
-  height: auto; max-height: 60vh; overflow: auto;
-  border: 1px solid var(--border-1);
-  background: var(--surface-0);
-  position: relative;
-}
-.table-scroll:empty::before {
-  /* c16j: heavy rows stream from _pagedata/<table>.js via <script defer>, so the shell paints first.
-     This hint shows while the container is empty and auto-clears the instant the VTable injects rows
-     (no longer :empty) - pure CSS, no JS, deterministic. ASCII dots (never the banned ellipsis). */
-  content: 'loading...';
-  display: block; padding: 12px; opacity: 0.6;
-}
 table.data {
   border-collapse: separate; border-spacing: 0;
   font: var(--fs-body)/1.3 'Inter', 'Segoe UI', system-ui, sans-serif;
@@ -863,7 +823,7 @@ table.data thead th .sort-arrow { display: inline-block; width: 10px; color: var
 table.data thead th.numeric, table.data tbody td.numeric {
   text-align: right; font-variant-numeric: tabular-nums;
 }
-/* Type split (c16i): mono+tabular only for numeric BODY cells; headers stay Inter sans.
+/* Type split (c16i): mono+tabular only for numeric/mono BODY cells; headers stay Inter sans.
    Longhands (not the `font` shorthand) so the inherited line-height 1.3 is preserved. */
 table.data tbody td.numeric, table.data tbody td.mono {
   font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
@@ -888,7 +848,60 @@ table.data tbody td a {
 }
 table.data tbody td a:hover { color: var(--accent); border-bottom-style: solid; }
 .spacer td { padding: 0; border: 0; background: var(--surface-0); }
+/* Report markup bakes class="num" on numeric cells (the rdc-sortable-table convention) while the
+   VTable adds class="numeric"; alias .num to the table.data numeric treatment so a STATIC report
+   styles correctly JS-off WITHOUT re-classing every cell (and without touching the shared delta/
+   heatmap/sparkline cell helpers). Scoped to table.data, so table.report (secondary/other reports)
+   is unaffected; inert on catalog/drill (they never use .num). Kept as its own rule so the c16i
+   type-split guard's exact `.numeric, ...td.mono` substrings stay intact. */
+table.data thead th.num, table.data tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.data tbody td.num { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-size: var(--fs-mono); }
+/* Static mode has no .alt class (rows are server-baked) so zebra rides nth-child, which follows the
+   visible row position after an in-place sort reorder. Scoped to static so virtual (windowed, where
+   nth-child is unreliable) keeps using .alt above. */
+rdc-table[data-mode="static"] table.data tbody tr:nth-child(even) td { background: var(--surface-1); }
+/* Sticky-in-card guard: table.data thead is position:sticky;top:0, which inside a report section.card
+   (no scroll container) would detach and float over the card (the c16c bug). Pin it static there;
+   catalog tables live in their own <section> / drill in section.table-section, so this matches only
+   the report context. */
+section.card table.data thead th, a.dash-card table.data thead th { position: static; }
 
+body { max-width: 1800px; }
+
+nav.toc a { display: flex; justify-content: space-between; padding: 2px 0; gap: 1rem; }
+nav.toc a .ct { color: var(--text-3); font-variant-numeric: tabular-nums; }
+
+.controls {
+  display: flex; gap: var(--sp-3); align-items: center;
+  font-size: var(--fs-small); flex-wrap: wrap;
+  margin: var(--sp-2) 0 var(--sp-2);
+}
+.controls input[type=search] {
+  font: inherit; padding: 4px 8px;
+  border: 1px solid var(--border-2); background: var(--surface-0); color: var(--text-1);
+  border-radius: 2px; min-width: 22rem;
+}
+.controls input[type=search]:focus { outline: 1px solid var(--accent); }
+.controls .ct { color: var(--text-2); font-variant-numeric: tabular-nums; }
+.controls .dl { font-size: var(--fs-small); color: var(--accent); }
+
+.table-scroll {
+  /* c16i: size to content, capped at 60vh. A 1-row table is now ~1 row tall instead of a big empty
+     box; tables past the cap scroll (the virtual-scroll spacers reserve the full height regardless,
+     so clientHeight settles at 60vh and the windowing is unchanged). Was a fixed height: 60vh with
+     a never-applied .table-scroll.short variant - this folds that intent into the default. */
+  height: auto; max-height: 60vh; overflow: auto;
+  border: 1px solid var(--border-1);
+  background: var(--surface-0);
+  position: relative;
+}
+.table-scroll:empty::before {
+  /* c16j: heavy rows stream from _pagedata/<table>.js via <script defer>, so the shell paints first.
+     This hint shows while the container is empty and auto-clears the instant the VTable injects rows
+     (no longer :empty) - pure CSS, no JS, deterministic. ASCII dots (never the banned ellipsis). */
+  content: 'loading...';
+  display: block; padding: 12px; opacity: 0.6;
+}
 .sidecar-list a { font-family: ui-monospace, monospace; font-size: var(--fs-small); }
 ul.sidecar-list { list-style: none; padding: 0; margin: var(--sp-2) 0;
                   columns: 5; column-gap: var(--sp-6); column-rule: 1px solid var(--border-1); }
@@ -973,7 +986,7 @@ section.table-section .table-meta {
 <a class="dl" href="_data/_catalog.parquet" data-link-kind="inline">parquet</a>
 </div>
 <div class="col-groups" role="group" aria-label="column groups"></div>
-<div class="table-scroll" data-table="catalog"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="catalog"></rdc-table>
 </section>
 <script defer src="_pagedata/catalog.js"></script>
 <script>window.__colgroups_catalog=[{"name":"Metadata","open":true,"cols":["area","drop_date","drop_label","capture","schema_version","build_timestamp","replay_status","analysis_out_path"]},{"name":"Workload","open":true,"cols":["row_count_draws","row_count_events","row_count_state_change_events","row_count_counters_per_event","row_count_descriptor_access","row_count_passes","row_count_frame_totals","row_count_clears","row_count_dispatches","row_count_rt_event_timeline","row_count_vertex_inputs","row_count_resource_creation","row_count_draw_bindings","row_count_program_transitions","row_count_indirect_args","row_count_pass_class_breakdown","row_count_texture_usage"]},{"name":"Resources","open":false,"cols":["row_count_shaders","row_count_textures","row_count_render_targets","row_count_buffers","row_count_programs","row_count_samplers","row_count_fbos"]},{"name":"Samples","open":false,"cols":["row_count_pixel_history","row_count_vbo_samples","row_count_ibo_samples","row_count_post_vs_samples","row_count_texture_samples"]}];</script>
@@ -983,7 +996,7 @@ section.table-section .table-meta {
   const ROW_H = 32;
   const BUFFER = 8;
 
-  // For ID kinds: where to jump when an ID cell is clicked
+  // For ID kinds: where to jump when an ID cell is clicked (virtual mode).
   const LINK_TARGET = {
     shader: { table: 'shaders', col: 'shader_id' },
     program: { table: 'programs', col: 'program_id' },
@@ -1004,6 +1017,31 @@ section.table-section .table-meta {
       return (Math.round(v * 1e6) / 1e6).toString();
     }
     return String(v);
+  }
+
+  // SHARED comparator (ADR-24 natural-numeric). The comma-strip makes the numeric branch correct for
+  // BOTH raw JSON numbers (virtual) and comma-formatted display text (static); the {numeric:true}
+  // localeCompare natural-sorts mixed alphanumerics ("Mali-G78" < "Mali-G710"). Nulls sort last.
+  function cmpVals(aa, bb, isNum, dir){
+    if (aa == null && bb == null) return 0;
+    if (aa == null) return 1;
+    if (bb == null) return -1;
+    if (isNum){
+      const na = Number(String(aa).replace(/,/g, '')), nb = Number(String(bb).replace(/,/g, ''));
+      const aok = na === na, bok = nb === nb;
+      if (!aok && !bok) return 0;
+      if (!aok) return 1;
+      if (!bok) return -1;
+      return (na - nb) * dir;
+    }
+    return String(aa).localeCompare(String(bb), undefined, {numeric: true}) * dir;
+  }
+
+  // SHARED heatmap tint: a UNIFORM color-mix shade as a background-IMAGE (so the class-driven
+  // background-COLOR zebra/hover still shows through). tt is a pre-clamped magnitude in [0,1].
+  function tintImage(tt){
+    const c = 'color-mix(in oklch, var(--accent-data) ' + Math.round(tt * 30) + '%, transparent)';
+    return 'linear-gradient(' + c + ', ' + c + ')';
   }
 
   function lookupLabel(labels, kind, id){
@@ -1030,6 +1068,7 @@ section.table-section .table-meta {
     return '';
   }
 
+  // ---- VTable: virtual mode (windowed; rows come from the externalized _pagedata payload) ----
   class VTable {
     constructor(host, payload, labels, groups){
       this.host = host;
@@ -1055,20 +1094,15 @@ section.table-section .table-meta {
         if (count > 0 && num / count > 0.7) this.numericCols.add(ci);
       }
 
-      // Type split (c16i): non-numeric ID/hash/path columns render mono (left-aligned) so hashes
-      // stay legible while text columns go Inter sans. Decided by column NAME (deterministic, not
-      // value-sniffed); numeric columns already get mono via .numeric, so exclude them here.
+      // Type split (c16i): non-numeric ID/hash/path columns render mono. Decided by column NAME.
       this.monoCols = new Set();
       const MONO_RE = /(_id|_hash|_hex)$|^stable_key$|.*_path$|^capture$/;
       for (let ci = 0; ci < this.cols.length; ci++){
         if (!this.numericCols.has(ci) && MONO_RE.test(this.cols[ci])) this.monoCols.add(ci);
       }
 
-      // Heatmap data-bars (c16i): per-column min/max for the numeric MAGNITUDE columns, so a cell
-      // can show a relative-value bar behind the number. Exclude ID/reference columns (their
-      // magnitude is meaningless) and any column already flagged as a cross-link label. Scanned
-      // over ALL rows (the immutable source, not the sorted view) so the scale is deterministic and
-      // stable across sort/filter. Columns with hi<=lo (constant) get no entry -> no bar.
+      // Heatmap (c16i): per-column min/max for numeric MAGNITUDE columns. Exclude ID/reference cols
+      // and cross-link label cols. Scanned over ALL rows so the scale is stable across sort/filter.
       const ID_RE = /_id$|^event_id$/;
       this.colStats = {};
       for (let ci = 0; ci < this.cols.length; ci++){
@@ -1087,10 +1121,7 @@ section.table-section .table-meta {
         if (seen > 0 && hi > lo) this.colStats[ci] = {lo: lo, hi: hi};
       }
 
-      // Collapsible column groups (c16i, catalog only): map column name -> index, then seed the
-      // hidden set from any group whose `open` flag is false. Toggling visibility never touches the
-      // ROW_H math (rows keep full height regardless of visible columns), so virtual-scroll stays
-      // aligned. numericCols/monoCols/colStats stay keyed by the ORIGINAL ci, unaffected by hiding.
+      // Collapsible column groups (c16i, catalog only).
       this.hiddenCols = new Set();
       this.colByName = {};
       for (let i = 0; i < this.cols.length; i++) this.colByName[this.cols[i]] = i;
@@ -1098,22 +1129,19 @@ section.table-section .table-meta {
         this.groups.forEach(g => {
           if (!g.open){
             g.cols.forEach(c => {
-              const ci = this.colByName[c];
+              const ci = (typeof c === 'number') ? c : this.colByName[c];
               if (ci != null) this.hiddenCols.add(ci);
             });
           }
         });
       }
 
-      // detect slot_kind column for draw_bindings (resource_id auto-label)
       this.slotKindCol = this.cols.indexOf('slot_kind');
       this.descriptorKindCol = this.cols.indexOf('descriptor_kind');
 
       this.build();
     }
 
-    // (Re)build the header row, honouring hidden columns. Each th carries data-ci = its ORIGINAL
-    // column index so sort()/arrow logic stays correct when columns are hidden (c16i, fix #7).
     buildHead(){
       const tr = this.headRow;
       while (tr.firstChild) tr.removeChild(tr.firstChild);
@@ -1132,16 +1160,13 @@ section.table-section .table-meta {
       }
     }
 
-    // Build the column-group toggle bar (catalog only). Each group is a real <button> with
-    // aria-pressed; toggling hides/shows that group's columns and re-renders. Keyboard-native,
-    // no animation -> reduced-motion safe.
     buildGroupBar(){
       if (!this.groups) return;
       const section = this.host.closest('section');
       const bar = section ? section.querySelector('.col-groups') : null;
       if (!bar) return;
       this.groups.forEach(g => {
-        const cis = g.cols.map(c => this.colByName[c]).filter(x => x != null);
+        const cis = g.cols.map(c => (typeof c === 'number') ? c : this.colByName[c]).filter(x => x != null);
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'col-group-toggle';
@@ -1188,7 +1213,6 @@ section.table-section .table-meta {
 
       this.host.addEventListener('scroll', () => this.render());
       window.addEventListener('resize', () => this.render());
-      // Re-render when a containing <details class="category"> opens.
       const detailsEl = this.host.closest('details');
       if (detailsEl){
         detailsEl.addEventListener('toggle', () => {
@@ -1199,9 +1223,7 @@ section.table-section .table-meta {
         });
       }
       this.render();
-      // Re-render after layout settles (initial clientHeight can be 0)
       requestAnimationFrame(() => this.render());
-      // And once more after fonts/sizes stabilize
       setTimeout(() => this.render(), 50);
     }
 
@@ -1210,19 +1232,7 @@ section.table-section .table-meta {
       else { this.sortCol = ci; this.sortDir = 1; }
       const dir = this.sortDir;
       const isNum = this.numericCols.has(ci);
-      this.view.sort((a, b) => {
-        const aa = a[ci], bb = b[ci];
-        if (aa == null && bb == null) return 0;
-        if (aa == null) return 1;
-        if (bb == null) return -1;
-        if (isNum){
-          const na = +aa, nb = +bb;
-          return (na - nb) * dir;
-        }
-        return String(aa).localeCompare(String(bb)) * dir;
-      });
-      // Match on the th's ORIGINAL column index (data-ci), not its position: with hidden columns
-      // the header list is shorter, so positional matching would put the arrow on the wrong th.
+      this.view.sort((a, b) => cmpVals(a[ci], b[ci], isNum, dir));
       const headers = this.host.querySelectorAll('thead th');
       for (let k = 0; k < headers.length; k++){
         const a = headers[k].querySelector('.sort-arrow');
@@ -1247,7 +1257,6 @@ section.table-section .table-meta {
             const v = r[i];
             if (v == null) continue;
             if (String(v).toLowerCase().indexOf(q) >= 0) return true;
-            // also match against the resolved label, if any
             const lc = labelCols[cols[i]];
             if (!lc || v === 0 || v === '0' || v === '') continue;
             let kind = lc;
@@ -1267,18 +1276,10 @@ section.table-section .table-meta {
           return false;
         });
       }
-      // resort if a sort was active
       if (this.sortCol >= 0){
         const ci = this.sortCol, dir = this.sortDir;
         const isNum = this.numericCols.has(ci);
-        this.view.sort((a, b) => {
-          const aa = a[ci], bb = b[ci];
-          if (aa == null && bb == null) return 0;
-          if (aa == null) return 1;
-          if (bb == null) return -1;
-          if (isNum) return (+aa - +bb) * dir;
-          return String(aa).localeCompare(String(bb)) * dir;
-        });
+        this.view.sort((a, b) => cmpVals(a[ci], b[ci], isNum, dir));
       }
       this.host.scrollTop = 0;
       this.render();
@@ -1298,7 +1299,6 @@ section.table-section .table-meta {
         kind = autoKindForDescriptor(this.view[ri][this.descriptorKindCol]);
       }
 
-      // primary cell value: cross-link if we have a target for this kind
       const formatted = fmt(value);
       const link = LINK_TARGET[kind];
       if (link && value != null && value !== '' && value !== 0 && value !== '0' && kind !== 'texture_list'){
@@ -1315,11 +1315,6 @@ section.table-section .table-meta {
         td.textContent = formatted;
       }
 
-      // Heatmap (c16i): for magnitude columns shade the WHOLE cell by relative value -> the bigger
-      // the number, the stronger the tint (column min = no tint). A UNIFORM shade (not a partial
-      // fill) so there is no gradient edge to misread as an artifact. Applied as a solid-colour
-      // background-IMAGE so the class-driven background-COLOR (zebra tr.alt / row-hover) still shows
-      // through underneath. The number stays the cell text, on top. Deterministic (no random/Date).
       const stat = this.colStats[ci];
       if (stat != null && value != null && value !== ''){
         const n = +value;
@@ -1327,13 +1322,11 @@ section.table-section .table-meta {
           let tt = (n - stat.lo) / (stat.hi - stat.lo);
           tt = tt < 0 ? 0 : (tt > 1 ? 1 : tt);
           const pct = Math.round(tt * 100);
-          const c = 'color-mix(in oklch, var(--accent-data) ' + Math.round(tt * 30) + '%, transparent)';
-          td.style.backgroundImage = 'linear-gradient(' + c + ', ' + c + ')';
+          td.style.backgroundImage = tintImage(tt);
           td.setAttribute('aria-label', formatted + ' (' + pct + '% of column max)');
         }
       }
 
-      // label enrichment (appears after the value/link)
       if (lc && value != null && value !== '' && value !== 0 && value !== '0'){
         if (kind === 'texture_list'){
           const ids = String(value).split(';').filter(x => x);
@@ -1365,15 +1358,12 @@ section.table-section .table-meta {
       const start = Math.max(0, Math.floor(scrollTop / ROW_H) - BUFFER);
       const end = Math.min(len, Math.ceil((scrollTop + height) / ROW_H) + BUFFER);
 
-      // clear data rows between spacers
       while (this.sTop.nextSibling !== this.sBot){
         this.tbody.removeChild(this.sTop.nextSibling);
       }
-      // spacers span only the VISIBLE columns (changes when a group is toggled)
       const visible = this.cols.length - this.hiddenCols.size;
       this.tdTop.colSpan = visible;
       this.tdBot.colSpan = visible;
-      // height on <tr> directly; <td> alone doesn't make a row tall in all browsers
       this.sTop.style.height = (start * ROW_H) + 'px';
       this.sBot.style.height = ((len - end) * ROW_H) + 'px';
       this.tdTop.style.height = (start * ROW_H) + 'px';
@@ -1395,14 +1385,168 @@ section.table-section .table-meta {
     }
   }
 
+  // ---- StaticTable: static mode (in-place; rows are server-baked) ----
+  // Enhances an existing server-baked table.data WITHOUT removing rows from the DOM, so JS-off / print /
+  // Ctrl-F keep every row (ADR-37). Sort reorders the live <tr> nodes (nested components ride along);
+  // heatmap tints existing numeric <td>s; column-groups toggle display. Numeric cols are read from
+  // the header class (no value-sniff); column groups come from window.__colgroups_<data-table> and
+  // may key by column INDEX (reports, where header text can repeat) or NAME (the catalog path).
+  class StaticTable {
+    constructor(host){
+      this.host = host;
+      const table = host.querySelector('table');
+      if (!table) return;
+      this.table = table;
+      const thead = table.tHead;
+      this.ths = (thead && thead.rows[0]) ? Array.prototype.slice.call(thead.rows[0].cells) : [];
+      this.cols = this.ths.map(th => th.textContent.trim());
+      this.colByName = {};
+      for (let i = 0; i < this.cols.length; i++) this.colByName[this.cols[i]] = i;
+      this.tbody = table.tBodies[0];
+      if (!this.tbody) return;
+      this.trNodes = Array.prototype.slice.call(this.tbody.rows);
+      this.sortCol = -1; this.sortDir = 1;
+      this.hiddenCols = new Set();
+
+      // numeric columns from header class (.numeric, or legacy .num from report markup)
+      this.numericCols = new Set();
+      this.ths.forEach((th, ci) => {
+        if (th.classList.contains('numeric') || th.classList.contains('num')) this.numericCols.add(ci);
+      });
+
+      // colStats for the auto-heatmap (comma-stripped values). Skip a column whose cells already
+      // carry an <rdc-heatmap-cell> (already shaded) so we never double-tint.
+      this.colStats = {};
+      for (let ci = 0; ci < this.cols.length; ci++){
+        if (!this.numericCols.has(ci)) continue;
+        const first = this.trNodes.length ? this.trNodes[0].cells[ci] : null;
+        if (first && first.querySelector('rdc-heatmap-cell')) continue;
+        let lo = Infinity, hi = -Infinity, seen = 0;
+        for (let ri = 0; ri < this.trNodes.length; ri++){
+          const cell = this.trNodes[ri].cells[ci];
+          if (!cell) continue;
+          const t = cell.textContent.trim();
+          if (t === '') continue;
+          const n = Number(t.replace(/,/g, ''));
+          if (n !== n) continue;
+          if (n < lo) lo = n;
+          if (n > hi) hi = n;
+          seen++;
+        }
+        if (seen > 0 && hi > lo) this.colStats[ci] = {lo: lo, hi: hi};
+      }
+
+      this._wireHeaders();
+      this._applyHeatmap();
+      this._buildGroups();
+
+      // default sort (data-default-sort = header text; data-default-dir = asc|desc, default desc)
+      const def = host.dataset.defaultSort;
+      if (def){
+        let idx = -1;
+        for (let i = 0; i < this.cols.length; i++){
+          if (this.cols[i].toLowerCase() === def.toLowerCase()){ idx = i; break; }
+        }
+        if (idx >= 0){
+          this.sortCol = idx;
+          this.sortDir = (host.dataset.defaultDir === 'asc') ? 1 : -1;
+          this._paintSort(idx);
+        }
+      }
+    }
+
+    _wireHeaders(){
+      this.ths.forEach((th, ci) => {
+        th.style.cursor = 'pointer';
+        let arrow = th.querySelector('.sort-arrow');
+        if (!arrow){ arrow = document.createElement('span'); arrow.className = 'sort-arrow'; th.appendChild(arrow); }
+        th.addEventListener('click', () => this.sort(ci));
+      });
+    }
+
+    sort(ci){
+      if (this.sortCol === ci) this.sortDir = -this.sortDir;
+      else { this.sortCol = ci; this.sortDir = 1; }
+      this._paintSort(ci);
+    }
+
+    _paintSort(ci){
+      const dir = this.sortDir, isNum = this.numericCols.has(ci);
+      const getv = (tr) => { const c = tr.cells[ci]; const t = c ? c.textContent.trim() : ''; return t === '' ? null : t; };
+      this.trNodes.sort((ra, rb) => cmpVals(getv(ra), getv(rb), isNum, dir));
+      const frag = document.createDocumentFragment();
+      this.trNodes.forEach(tr => frag.appendChild(tr));
+      this.tbody.appendChild(frag);
+      this.ths.forEach((th, k) => {
+        const a = th.querySelector('.sort-arrow');
+        if (a) a.textContent = (k === ci) ? (dir > 0 ? ' ▲' : ' ▼') : '';
+      });
+    }
+
+    _applyHeatmap(){
+      for (const k in this.colStats){
+        const ci = +k, stat = this.colStats[ci];
+        this.trNodes.forEach(tr => {
+          const td = tr.cells[ci];
+          if (!td) return;
+          const t = td.textContent.trim();
+          if (t === '') return;
+          const n = Number(t.replace(/,/g, ''));
+          if (n !== n) return;
+          let tt = (n - stat.lo) / (stat.hi - stat.lo);
+          tt = tt < 0 ? 0 : (tt > 1 ? 1 : tt);
+          td.style.backgroundImage = tintImage(tt);
+          td.setAttribute('aria-label', t + ' (' + Math.round(tt * 100) + '% of column max)');
+        });
+      }
+    }
+
+    _buildGroups(){
+      const groups = window['__colgroups_' + (this.host.dataset.table || '')];
+      if (!groups) return;
+      const section = this.host.closest('section');
+      const bar = section ? section.querySelector('.col-groups') : null;
+      if (!bar) return;
+      const idx = (c) => (typeof c === 'number') ? c : this.colByName[c];
+      groups.forEach(g => {
+        if (!g.open) g.cols.forEach(c => { const ci = idx(c); if (ci != null) this.hiddenCols.add(ci); });
+      });
+      this._applyVisibility();
+      groups.forEach(g => {
+        const cis = g.cols.map(idx).filter(x => x != null);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'col-group-toggle';
+        btn.dataset.group = g.name;
+        btn.textContent = g.name;
+        btn.setAttribute('aria-pressed', g.open ? 'true' : 'false');
+        btn.addEventListener('click', () => {
+          const next = btn.getAttribute('aria-pressed') !== 'true';
+          btn.setAttribute('aria-pressed', next ? 'true' : 'false');
+          cis.forEach(ci => { if (next) this.hiddenCols.delete(ci); else this.hiddenCols.add(ci); });
+          this._applyVisibility();
+        });
+        bar.appendChild(btn);
+      });
+    }
+
+    _applyVisibility(){
+      this.ths.forEach((th, ci) => { th.style.display = this.hiddenCols.has(ci) ? 'none' : ''; });
+      this.trNodes.forEach(tr => {
+        for (let ci = 0; ci < tr.cells.length; ci++){
+          tr.cells[ci].style.display = this.hiddenCols.has(ci) ? 'none' : '';
+        }
+      });
+    }
+  }
+
   function jumpToTable(tableName, idValue){
-    const host = document.querySelector('div.table-scroll[data-table="' + tableName + '"]');
+    const host = document.querySelector('rdc-table[data-table="' + tableName + '"]');
     if (!host || !host._vt) return;
     const section = host.closest('section');
     const input = section ? section.querySelector('input[type=search]') : null;
     if (input){
       input.value = idValue;
-      // trigger filter immediately (no debounce on programmatic set)
       host._vt.filter(idValue);
       const counter = section.querySelector('.ct.visible-count');
       if (counter){
@@ -1410,37 +1554,44 @@ section.table-section .table-meta {
         counter.textContent = v.toLocaleString() + ' / ' + t.toLocaleString() + ' visible';
       }
     }
-    section.scrollIntoView({behavior: 'smooth', block: 'start'});
+    if (section) section.scrollIntoView({behavior: 'smooth', block: 'start'});
   }
   window.__jumpToTable = jumpToTable;
 
   window.addEventListener('DOMContentLoaded', () => {
     const labels = window.__labels || {};
-    document.querySelectorAll('div.table-scroll[data-table]').forEach(host => {
+    document.querySelectorAll('rdc-table[data-mode]').forEach(host => {
+      if (host.dataset.mode === 'static'){
+        host._vt = new StaticTable(host);
+        return;
+      }
+      // virtual
       const name = host.dataset.table;
       const payload = window['__data_' + name];
       if (!payload){ return; }
       const labelsForTable = Object.assign({}, labels);
-      // Per-section: capture from data is row-level; use the section's data-capture if set
       labelsForTable.capture = host.dataset.capture || (payload.rows[0] ? payload.rows[0][3] : '');
-      // Column groups are catalog-only (window.__colgroups_catalog); undefined elsewhere -> no bar.
       const groups = window['__colgroups_' + name];
       const vt = new VTable(host, payload, labelsForTable, groups);
       host._vt = vt;
 
       const section = host.closest('section');
-      const input = section.querySelector('input[type=search]');
-      const counter = section.querySelector('.ct.visible-count');
-      function updateCounter(){
-        const v = vt.view.length, t = vt.rows.length;
-        counter.textContent = v.toLocaleString() + ' / ' + t.toLocaleString() + ' visible';
+      const input = section ? section.querySelector('input[type=search]') : null;
+      const counter = section ? section.querySelector('.ct.visible-count') : null;
+      if (counter){
+        function updateCounter(){
+          const v = vt.view.length, t = vt.rows.length;
+          counter.textContent = v.toLocaleString() + ' / ' + t.toLocaleString() + ' visible';
+        }
+        updateCounter();
+        if (input){
+          let timer = null;
+          input.addEventListener('input', () => {
+            clearTimeout(timer);
+            timer = setTimeout(() => { vt.filter(input.value); updateCounter(); }, 80);
+          });
+        }
       }
-      updateCounter();
-      let timer = null;
-      input.addEventListener('input', () => {
-        clearTimeout(timer);
-        timer = setTimeout(() => { vt.filter(input.value); updateCounter(); }, 80);
-      });
     });
   });
 })();

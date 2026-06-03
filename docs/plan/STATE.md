@@ -7,20 +7,72 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        c16k_unified_table_component    (status: not-started; AUTHORED 2026-06-03. c16e-j DONE. NEW
-                table-unification epic c16k/c16l/c16m pulled into the v0.2 close (user-requested) - resolves
-                G-23 (two table systems) via NEW ADR-38: unify on ONE bespoke `rdc-table` component (merge the
-                drill VTable engine + the reports' rdc-sortable-table), progressive-enhancement with two
-                data-delivery modes: `static` (reports - rows SERVER-BAKED, JS enhances; ADR-37's golden/
-                JS-optional/print/Ctrl-F PRESERVED, NOT reversed) + `virtual` (catalog/drill - windowed from
-                _pagedata/*.js, today's VTable). NO third-party grid (ADR-6/37 anti-framework). c16k builds the
-                component + both modes + migrates catalog/drill + ONE proof report; c16l rolls out to all
-                remaining reports/A-B/per-run/trend/dashboard-minis + DELETES the old rdc-sortable-table +
-                VTable scaffolding; c16m adds controllable truncation + `title=` hover-reveal on the one
-                component. ORDER: c16k -> c16l -> c16m -> v0.2 close-out (re-ingest + eyeball) -> tag v0.2
-                (IRREVERSIBLE, authorize first) -> c20. G-20 (3+-run column collapse) still deferred - no
-                3+-run data. ADR-37 still governs (reports stay static); the SPA epic is VOIDED.)
-last_session:   2026-06-03 — c16j DONE (decouple the heavy catalog/drill data; the html/template.py layer;
+current:        c16l_unified_table_rollout    (status: not-started. c16k DONE 2026-06-03 - the ONE bespoke
+                `rdc-table` engine is BUILT and BOTH modes proven: catalog/drill migrated to `virtual`
+                (windowed, _pagedata/*.js) and shader_hotlist's main table migrated to `static` (rows
+                SERVER-BAKED, JS enhances) as the ADR-37-preserving proof. ADR-38. c16e-k DONE. NEXT c16l:
+                roll rdc-table out to ALL remaining reports/A-B/per-run/trend/dashboard-minis (static mode) +
+                DELETE the old rdc-sortable-table web component (the drill VTable was already SUBSUMED into
+                rdc-table in c16k, leaving zero dead code) -> one table system, grep-clean, G-23 FULLY
+                resolved. THEN c16m adds controllable truncation + `title=` hover-reveal on rdc-table. ORDER:
+                c16l -> c16m -> v0.2 close-out (re-ingest + eyeball) -> tag v0.2 (IRREVERSIBLE, authorize
+                first) -> c20. G-20 (3+-run column collapse) still deferred - no 3+-run data. ADR-37 still
+                governs (reports stay static); the SPA epic is VOIDED.)
+last_session:   2026-06-03 — c16k DONE (build the unified `rdc-table` component; ADR-38, G-23 BUILD half;
+                rides ADR-37/6/24). Replaced the two divergent table systems' ENGINES with ONE bespoke
+                `rdc-table` (NO third-party grid). It lives in reports/chrome.py (_RDC_TABLE_CSS +
+                _RDC_TABLE_JS + rdc_table_css/js/assets(), re-exported via base.py) and is a SINGLE IIFE:
+                shared cmpVals (natural-numeric ADR-24, comma-strip so it's correct for raw JSON numbers
+                AND comma-formatted display text) + shared tintImage (the uniform-tint color-mix heatmap),
+                a `VTable` class (the SUBSUMED virtual engine: windowed, data from window.__data_<key>) and
+                a NEW `StaticTable` class (in-place: parses the server-baked <table class=data>, sorts by
+                reordering live <tr> nodes, tints existing <td>s, toggles column visibility via display).
+                Bootstrapped from ONE DOMContentLoaded pass (querySelectorAll('rdc-table[data-mode]'), branch
+                on data-mode) - NOT a customElements/connectedCallback (dodges the parse-time empty-children +
+                defer-script race; matches the old VTable timing). The host element <rdc-table data-mode=
+                "static|virtual"> picks delivery (an explicit attribute, ADR-38). VIRTUAL (catalog/drill,
+                html/template.py): the old _JS/_JS_TMPL/_ROW_H were DELETED (referenced only here -> zero
+                dead code) and the engine emitted via reports_base.rdc_table_js(); the host div.table-scroll
+                -> <rdc-table class=table-scroll data-mode=virtual data-table=...>; jumpToTable selector
+                follows; the c16j _pagedata/*.js payload + the inline __colgroups_catalog/__labels are
+                UNCHANGED (byte-identical, the k1 correctness check). The table.data/col-groups/type-split
+                CSS + the --th-bg/--th-bg-active/--label :root vars MOVED from template._PER_DROP_CSS into
+                chrome._RDC_TABLE_CSS (so ONE class serves both contexts); template._compose_css() now =
+                design_tokens + chrome_css + rdc_table_css + the _PER_DROP_CSS remainder (drill-only
+                hierarchy/toc/controls/table-scroll+loading-hint). STATIC (the proof = shader_hotlist main
+                table): wrapper rdc-sortable-table -> <rdc-table data-mode=static data-default-sort="cost
+                proxy" data-table=shader_hotlist>; table.report -> table.data; column-groups spec
+                window.__colgroups_shader_hotlist keyed by COLUMN INDEX (multi-drop repeats the "delta"
+                header, so name-keying would collide) - identity+cost open, the per-drop history wall
+                collapsed (empty -> dropped on single-drop); src cell gets class=mono. Cells KEEP class="num"
+                (not reclassed to numeric) - a NEW `table.data ... .num` CSS ALIAS in _RDC_TABLE_CSS gives
+                them the numeric/mono treatment WITHOUT touching the shared delta/heatmap/sparkline cell
+                helpers (cleaner than reclassing; <td> text byte-stable). The engine is emitted OPT-IN via
+                report_page(rdc_table=True) -> page_open appends rdc_table_assets() to <head>; default-False
+                keeps the shared _compose_css/js() bundle UNTOUCHED so the 4 non-migrated reports + dashboard
+                + per-run/A-B goldens stay BYTE-IDENTICAL. rdc-sortable-table is KEPT ALIVE (still wraps the
+                shader_hotlist secondary + resolved tables and the 4 other reports) - c16l deletes it. A
+                sticky-in-card guard (section.card table.data thead th{position:static}) prevents the c16c
+                floating-header bug on the report; a static-only nth-child zebra replaces the virtual .alt.
+                HARNESS: test_report_structure +4 c16k guards (rdc-table virtual on catalog/drill; static
+                proof server-baked rows un-windowed + index-keyed colgroups + col-groups bar; static coexists
+                with rdc-sortable-table; other reports carry NO rdc-table) + test_c16i_reports_layer_untouched
+                updated to exclude shader_hotlist's legit col-groups. PARITY (ADR-6/37): refreshed EXACTLY
+                catalog index.html + the one drill index.html + BOTH shader_hotlist.html variants (top-level +
+                the per-run one, same build()); _pagedata/*.js BYTE-IDENTICAL (payload shape unchanged); the
+                other 5 reports + dashboard + per-run + digests.json BYTE-UNCHANGED (git status scope);
+                test_parquet_parity GREEN, NO digests refresh (presentation only, §21.9). 176 -> 180 green.
+                smoke render-only 15 pages lint clean exit 0. BROWSER-VERIFIED OFFLINE (headless Chrome,
+                file://): real Perf catalog (1 built table.data, heatmap+col-groups) + heaviest drill
+                (Commercial district 2026-06-01_r110788: 28 built tables, windowed rows, 2026 heatmap cells)
+                still scroll/sort/search in VIRTUAL; shader_hotlist STATIC has 50 server-baked rows UN-WINDOWED
+                (JS-off/print/Ctrl-F safe), 3 col-group toggles (multi-drop incl history), sort arrows,
+                rdc-heatmap-cell shading. The static auto-heatmap + natural-numeric sort + group-collapse code
+                paths PROVEN on a crafted varying-data table (real Perf's uses/cost are all 0 -> no variance ->
+                no auto-tint, which is correct-for-data; complexity is shaded via rdc-heatmap-cell). ADD
+                QUALITY_GATES §21.1m. G-23 NOT ticked yet (resolves at c16l). Commits on v0.2-roadmap-c04,
+                UNPUSHED. current -> c16l.
+former_last_c16j: 2026-06-03 — c16j DONE (decouple the heavy catalog/drill data; the html/template.py layer;
                 the ~21MB TTI fix; STATIC per ADR-37, NO SPA; no new ADR - rides ADR-6/27/34/37). Moved each
                 VTable's heavy row payload OUT of the HTML into its own _pagedata/<key>.js
                 (window.__data_<key>={...};, same compact json.dumps(separators=(',',':'))) referenced by a
@@ -374,18 +426,18 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    c16j DONE (2026-06-03). NEW table-unification epic AUTHORED (ADR-38 + c16k/c16l/c16m;
-                user pulled G-23 into the v0.2 close). DO c16k NEXT (commits/v02/c16k_unified_table_component.md):
-                build the ONE bespoke `rdc-table` component (merge the drill VTable engine + the reports'
-                rdc-sortable-table), progressive-enhancement with `static` (reports, rows SERVER-BAKED, JS
-                enhances - ADR-37 golden/JS-optional/print/Ctrl-F PRESERVED) + `virtual` (catalog/drill,
-                windowed from _pagedata/*.js) modes; migrate catalog/drill + ONE proof report; NO third-party
-                grid (ADR-38). THEN c16l (roll out to all remaining report/A-B/per-run/trend/mini surfaces +
-                DELETE the old rdc-sortable-table + VTable scaffolding) -> c16m (controllable truncation +
-                `title=` hover-reveal on rdc-table). Add QUALITY_GATES §21.1m when the epic lands. Golden
-                refresh + per-page review each stage (split sub-commits if it balloons, precedent c16d/c16i);
-                reports keep server-baked rows (verify JS-off); test_parquet_parity untouched (§21.9).
-                THEN before the tag:
+next_action:    c16k DONE (2026-06-03) - `rdc-table` engine built, both modes proven (catalog/drill virtual +
+                shader_hotlist static proof), 180 green, QUALITY_GATES §21.1m added. DO c16l NEXT
+                (commits/v02/c16l_unified_table_rollout.md): roll rdc-table out to ALL remaining report/A-B/
+                per-run/trend/dashboard-mini surfaces in `static` mode (reuse the c16k `report_page(rdc_table=
+                True)` opt-in + the per-report index-keyed __colgroups_<key> pattern), THEN fold the engine
+                CSS/JS into the always-on shared bundle (_compose_css/_compose_js) and DELETE the now-unused
+                rdc-sortable-table web component + its CSS (the drill VTable was ALREADY subsumed into
+                rdc-table in c16k). One table system, grep-clean -> tick G-23 FULLY DONE. EXPECT a big golden
+                refresh (every report/dashboard/per-run/A-B page changes when the shared bundle gains rdc-table
+                + loses rdc-sortable-table) - per-page review, split sub-commits if it balloons (precedent
+                c16d/c16i). test_parquet_parity untouched (§21.9). THEN c16m (controllable truncation + `title=`
+                hover-reveal on rdc-table, both modes). THEN before the tag:
                 (1) V0.2 CLOSE-OUT: re-ingest the real Perf drop (now the cumulative flaw is fixed + the
                 R-17 replay salvage is automatic - re-test the 6 manual-flipped run2 captures) and eyeball
                 all reports. Working root C:\tmp\perf (hardlinks; Downloads read-only). Replay is
@@ -457,8 +509,8 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c16i catalog + drill readability](commits/v02/c16i_catalog_drill_readability.md) | **done** (revived, ADR-37) — STATIC `html/template.py` pass: Inter/mono type split, roomier VTable rows (ROW_H=32 single-source), client-side uniform-tint heatmap on numeric magnitude cells, collapsible column groups on the wide catalog, `.table-scroll` sizes to content, drill visual hierarchy (category=group-label+rail / table-section=card). 165→171 green; root+drill golden refreshed, reports byte-unchanged, no digests refresh; QUALITY_GATES §21.1l. G-21 readability half (heavy-data half = c16j); G-23 opened (two table systems) |
 | ☑ | [c16j decouple heavy data](commits/v02/c16j_data_decoupling.md) | **done** (ADR-37) — moved the catalog/drill VTable rows out of the HTML into `<script defer src>`'d `_pagedata/*.js` (a sibling dir, NOT `_data/`; file://-safe classic script) so the shell paints first; real Perf heaviest drill 17.6MB→134KB shell + 17.5MB streamed. 176 green, reports byte-unchanged, browser-verified offline; G-21/G-22 closed, §21.1l consolidated |
 | ✗ | ~~c16k–c16n SPA epic~~ | **VOIDED** — the SPA (ADR-36) was rejected on a lifespan review (ADR-37); reports stay static. The `c16k`/`c16l`/`c16m` SLOTS are REUSED below for the table-unification epic (ADR-38); the SPA `c16n` is dropped. Trail in ADR-36/37 + the proposal doc |
-| ☐ | [c16k unified rdc-table component](commits/v02/c16k_unified_table_component.md) | **next** (ADR-38) — build the ONE bespoke `rdc-table` (merge the drill VTable engine + the reports' rdc-sortable-table), progressive-enhancement: `static` (reports, rows SERVER-BAKED, JS enhances — ADR-37 golden/JS-optional/print/Ctrl-F PRESERVED) + `virtual` (catalog/drill, _pagedata/*.js) modes; migrate catalog/drill + 1 proof report. NO third-party grid |
-| ☐ | [c16l unified table rollout](commits/v02/c16l_unified_table_rollout.md) | planned (ADR-38) — migrate ALL remaining report/A-B/per-run/trend/dashboard-mini surfaces onto `rdc-table` (static mode) + DELETE the old rdc-sortable-table + VTable scaffolding; one table system (G-23 fully resolved) |
+| ☑ | [c16k unified rdc-table component](commits/v02/c16k_unified_table_component.md) | **done** (ADR-38) — ONE bespoke `rdc-table` engine BUILT in chrome.py (shared cmpVals/tintImage; `VTable` virtual + new `StaticTable`; DCL-bootstrapped, no customElements). Catalog/drill migrated to `virtual` (old `_JS` subsumed, zero dead code); shader_hotlist main table migrated to `static` (server-baked rows, opt-in via `report_page(rdc_table=True)`) as the ADR-37 proof. 176→180 green; refreshed only catalog+drill+both shader_hotlist; `_pagedata`/other goldens/digests byte-unchanged; browser-verified offline both modes |
+| ☐ | [c16l unified table rollout](commits/v02/c16l_unified_table_rollout.md) | **next** (ADR-38) — migrate ALL remaining report/A-B/per-run/trend/dashboard-mini surfaces onto `rdc-table` (static mode, via the `report_page(rdc_table=True)` opt-in) + fold the engine into the always-on shared bundle + DELETE the old rdc-sortable-table web component; one table system (G-23 fully resolved) |
 | ☐ | [c16m cell truncation + hover](commits/v02/c16m_cell_truncation_hover.md) | planned (ADR-38) — controllable per-column truncation (ellipsis) + full-value `title=` hover-reveal on `rdc-table`, both modes; global expand/wrap toggle; copy/links keep the full value |
 
 ## v0.3 — CI/automation surface (planned — [ROADMAP](ROADMAP.md))

@@ -790,32 +790,10 @@ rdc-alarm-banner { display: contents; }
 }
 .catalog-grid a[data-link-kind="primary"] { justify-content: flex-start; }
 
-:root { --label: #4a6a3a; --th-bg: var(--surface-2); --th-bg-active: var(--row-hover); }
-@media (prefers-color-scheme: dark) {
-  :root { --label: #a3d39c; }
-}
-
-body { max-width: 1800px; }
-
-nav.toc a { display: flex; justify-content: space-between; padding: 2px 0; gap: 1rem; }
-nav.toc a .ct { color: var(--text-3); font-variant-numeric: tabular-nums; }
-
-.controls {
-  display: flex; gap: var(--sp-3); align-items: center;
-  font-size: var(--fs-small); flex-wrap: wrap;
-  margin: var(--sp-2) 0 var(--sp-2);
-}
-.controls input[type=search] {
-  font: inherit; padding: 4px 8px;
-  border: 1px solid var(--border-2); background: var(--surface-0); color: var(--text-1);
-  border-radius: 2px; min-width: 22rem;
-}
-.controls input[type=search]:focus { outline: 1px solid var(--accent); }
-.controls .ct { color: var(--text-2); font-variant-numeric: tabular-nums; }
-.controls .dl { font-size: var(--fs-small); color: var(--accent); }
-
-/* Collapsible column groups (c16i, catalog only). Real <button> toggles; no transition so the
-   show/hide is instant and reduced-motion-safe. Buttons are built client-side into .col-groups. */
+:root { --th-bg: var(--surface-2); --th-bg-active: var(--row-hover); --label: #4a6a3a; }
+@media (prefers-color-scheme: dark) { :root { --label: #a3d39c; } }
+rdc-table { display: block; }
+/* Collapsible column groups (c16i). Real <button> toggles; no transition -> reduced-motion safe. */
 .col-groups { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin: 0 0 var(--sp-2); }
 .col-groups .col-group-toggle {
   font: var(--fs-small) 'Inter', 'Segoe UI', system-ui, sans-serif;
@@ -826,24 +804,6 @@ nav.toc a .ct { color: var(--text-3); font-variant-numeric: tabular-nums; }
   color: var(--accent); border-color: var(--accent); background: var(--surface-2);
 }
 .col-groups .col-group-toggle:hover { background: var(--row-hover); }
-
-.table-scroll {
-  /* c16i: size to content, capped at 60vh. A 1-row table is now ~1 row tall instead of a big empty
-     box; tables past the cap scroll (the virtual-scroll spacers reserve the full height regardless,
-     so clientHeight settles at 60vh and the windowing is unchanged). Was a fixed height: 60vh with
-     a never-applied .table-scroll.short variant - this folds that intent into the default. */
-  height: auto; max-height: 60vh; overflow: auto;
-  border: 1px solid var(--border-1);
-  background: var(--surface-0);
-  position: relative;
-}
-.table-scroll:empty::before {
-  /* c16j: heavy rows stream from _pagedata/<table>.js via <script defer>, so the shell paints first.
-     This hint shows while the container is empty and auto-clears the instant the VTable injects rows
-     (no longer :empty) - pure CSS, no JS, deterministic. ASCII dots (never the banned ellipsis). */
-  content: 'loading...';
-  display: block; padding: 12px; opacity: 0.6;
-}
 table.data {
   border-collapse: separate; border-spacing: 0;
   font: var(--fs-body)/1.3 'Inter', 'Segoe UI', system-ui, sans-serif;
@@ -863,7 +823,7 @@ table.data thead th .sort-arrow { display: inline-block; width: 10px; color: var
 table.data thead th.numeric, table.data tbody td.numeric {
   text-align: right; font-variant-numeric: tabular-nums;
 }
-/* Type split (c16i): mono+tabular only for numeric BODY cells; headers stay Inter sans.
+/* Type split (c16i): mono+tabular only for numeric/mono BODY cells; headers stay Inter sans.
    Longhands (not the `font` shorthand) so the inherited line-height 1.3 is preserved. */
 table.data tbody td.numeric, table.data tbody td.mono {
   font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
@@ -888,7 +848,60 @@ table.data tbody td a {
 }
 table.data tbody td a:hover { color: var(--accent); border-bottom-style: solid; }
 .spacer td { padding: 0; border: 0; background: var(--surface-0); }
+/* Report markup bakes class="num" on numeric cells (the rdc-sortable-table convention) while the
+   VTable adds class="numeric"; alias .num to the table.data numeric treatment so a STATIC report
+   styles correctly JS-off WITHOUT re-classing every cell (and without touching the shared delta/
+   heatmap/sparkline cell helpers). Scoped to table.data, so table.report (secondary/other reports)
+   is unaffected; inert on catalog/drill (they never use .num). Kept as its own rule so the c16i
+   type-split guard's exact `.numeric, ...td.mono` substrings stay intact. */
+table.data thead th.num, table.data tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.data tbody td.num { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-size: var(--fs-mono); }
+/* Static mode has no .alt class (rows are server-baked) so zebra rides nth-child, which follows the
+   visible row position after an in-place sort reorder. Scoped to static so virtual (windowed, where
+   nth-child is unreliable) keeps using .alt above. */
+rdc-table[data-mode="static"] table.data tbody tr:nth-child(even) td { background: var(--surface-1); }
+/* Sticky-in-card guard: table.data thead is position:sticky;top:0, which inside a report section.card
+   (no scroll container) would detach and float over the card (the c16c bug). Pin it static there;
+   catalog tables live in their own <section> / drill in section.table-section, so this matches only
+   the report context. */
+section.card table.data thead th, a.dash-card table.data thead th { position: static; }
 
+body { max-width: 1800px; }
+
+nav.toc a { display: flex; justify-content: space-between; padding: 2px 0; gap: 1rem; }
+nav.toc a .ct { color: var(--text-3); font-variant-numeric: tabular-nums; }
+
+.controls {
+  display: flex; gap: var(--sp-3); align-items: center;
+  font-size: var(--fs-small); flex-wrap: wrap;
+  margin: var(--sp-2) 0 var(--sp-2);
+}
+.controls input[type=search] {
+  font: inherit; padding: 4px 8px;
+  border: 1px solid var(--border-2); background: var(--surface-0); color: var(--text-1);
+  border-radius: 2px; min-width: 22rem;
+}
+.controls input[type=search]:focus { outline: 1px solid var(--accent); }
+.controls .ct { color: var(--text-2); font-variant-numeric: tabular-nums; }
+.controls .dl { font-size: var(--fs-small); color: var(--accent); }
+
+.table-scroll {
+  /* c16i: size to content, capped at 60vh. A 1-row table is now ~1 row tall instead of a big empty
+     box; tables past the cap scroll (the virtual-scroll spacers reserve the full height regardless,
+     so clientHeight settles at 60vh and the windowing is unchanged). Was a fixed height: 60vh with
+     a never-applied .table-scroll.short variant - this folds that intent into the default. */
+  height: auto; max-height: 60vh; overflow: auto;
+  border: 1px solid var(--border-1);
+  background: var(--surface-0);
+  position: relative;
+}
+.table-scroll:empty::before {
+  /* c16j: heavy rows stream from _pagedata/<table>.js via <script defer>, so the shell paints first.
+     This hint shows while the container is empty and auto-clears the instant the VTable injects rows
+     (no longer :empty) - pure CSS, no JS, deterministic. ASCII dots (never the banned ellipsis). */
+  content: 'loading...';
+  display: block; padding: 12px; opacity: 0.6;
+}
 .sidecar-list a { font-family: ui-monospace, monospace; font-size: var(--fs-small); }
 ul.sidecar-list { list-style: none; padding: 0; margin: var(--sp-2) 0;
                   columns: 5; column-gap: var(--sp-6); column-rule: 1px solid var(--border-1); }
@@ -985,7 +998,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/passes.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/passes.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="passes"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="passes"></rdc-table>
 </section>
 <section class="table-section" id="frame_totals">
 <header class="table-header">
@@ -998,7 +1011,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/frame_totals.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/frame_totals.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="frame_totals"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="frame_totals"></rdc-table>
 </section>
 </div></details>
 <details class="category" id="cat-entities">
@@ -1018,7 +1031,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/shaders.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/shaders.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="shaders"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="shaders"></rdc-table>
 </section>
 <section class="table-section" id="textures">
 <header class="table-header">
@@ -1031,7 +1044,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/textures.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/textures.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="textures"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="textures"></rdc-table>
 </section>
 <section class="table-section" id="render_targets">
 <header class="table-header">
@@ -1044,7 +1057,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/render_targets.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/render_targets.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="render_targets"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="render_targets"></rdc-table>
 </section>
 <section class="table-section" id="programs">
 <header class="table-header">
@@ -1057,7 +1070,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/programs.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/programs.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="programs"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="programs"></rdc-table>
 </section>
 <section class="table-section" id="samplers">
 <header class="table-header">
@@ -1070,7 +1083,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/samplers.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/samplers.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="samplers"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="samplers"></rdc-table>
 </section>
 <section class="table-section" id="buffers">
 <header class="table-header">
@@ -1083,7 +1096,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/buffers.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/buffers.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="buffers"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="buffers"></rdc-table>
 </section>
 <section class="table-section" id="fbos">
 <header class="table-header">
@@ -1096,7 +1109,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/fbos.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/fbos.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="fbos"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="fbos"></rdc-table>
 </section>
 </div></details>
 <details class="category" id="cat-actions">
@@ -1116,7 +1129,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/draws.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/draws.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="draws"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="draws"></rdc-table>
 </section>
 <section class="table-section" id="draw_bindings">
 <header class="table-header">
@@ -1129,7 +1142,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/draw_bindings.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/draw_bindings.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="draw_bindings"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="draw_bindings"></rdc-table>
 </section>
 <section class="table-section" id="events">
 <header class="table-header">
@@ -1142,7 +1155,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/events.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/events.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="events"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="events"></rdc-table>
 </section>
 <section class="table-section" id="clears">
 <header class="table-header">
@@ -1155,7 +1168,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/clears.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/clears.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="clears"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="clears"></rdc-table>
 </section>
 <section class="table-section" id="dispatches">
 <header class="table-header">
@@ -1168,7 +1181,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/dispatches.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/dispatches.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="dispatches"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="dispatches"></rdc-table>
 </section>
 <section class="table-section" id="state_change_events">
 <header class="table-header">
@@ -1181,7 +1194,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/state_change_events.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/state_change_events.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="state_change_events"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="state_change_events"></rdc-table>
 </section>
 <section class="table-section" id="vertex_inputs">
 <header class="table-header">
@@ -1194,7 +1207,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/vertex_inputs.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/vertex_inputs.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="vertex_inputs"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="vertex_inputs"></rdc-table>
 </section>
 <section class="table-section" id="descriptor_access">
 <header class="table-header">
@@ -1207,7 +1220,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/descriptor_access.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/descriptor_access.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="descriptor_access"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="descriptor_access"></rdc-table>
 </section>
 <section class="table-section" id="rt_event_timeline">
 <header class="table-header">
@@ -1220,7 +1233,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/rt_event_timeline.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/rt_event_timeline.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="rt_event_timeline"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="rt_event_timeline"></rdc-table>
 </section>
 <section class="table-section" id="program_transitions">
 <header class="table-header">
@@ -1233,7 +1246,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/program_transitions.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/program_transitions.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="program_transitions"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="program_transitions"></rdc-table>
 </section>
 <section class="table-section" id="resource_creation">
 <header class="table-header">
@@ -1246,7 +1259,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/resource_creation.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/resource_creation.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="resource_creation"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="resource_creation"></rdc-table>
 </section>
 <section class="table-section" id="counters_per_event">
 <header class="table-header">
@@ -1259,7 +1272,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/counters_per_event.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/counters_per_event.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="counters_per_event"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="counters_per_event"></rdc-table>
 </section>
 </div></details>
 <details class="category" id="cat-samples">
@@ -1279,7 +1292,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/vbo_samples.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/vbo_samples.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="vbo_samples"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="vbo_samples"></rdc-table>
 </section>
 <section class="table-section" id="ibo_samples">
 <header class="table-header">
@@ -1292,7 +1305,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/ibo_samples.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/ibo_samples.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="ibo_samples"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="ibo_samples"></rdc-table>
 </section>
 <section class="table-section" id="post_vs_samples">
 <header class="table-header">
@@ -1305,7 +1318,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/post_vs_samples.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/post_vs_samples.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="post_vs_samples"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="post_vs_samples"></rdc-table>
 </section>
 <section class="table-section" id="texture_samples">
 <header class="table-header">
@@ -1318,7 +1331,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/texture_samples.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/texture_samples.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="texture_samples"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="texture_samples"></rdc-table>
 </section>
 <section class="table-section" id="pixel_history">
 <header class="table-header">
@@ -1331,7 +1344,7 @@ section.table-section .table-meta {
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/pixel_history.csv">CSV</a>
 <a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/pixel_history.parquet">parquet</a>
 </div>
-<div class="table-scroll" data-table="pixel_history"></div>
+<rdc-table class="table-scroll" data-mode="virtual" data-table="pixel_history"></rdc-table>
 </section>
 </div></details>
 <script>window.__labels={"by_capture":{"1":{"texture":{"119":"label_0","134":"label_1","141":"label_2","386":"label_3","398":"label_4","599":"label_5","2162":"label_6","2170":"label_7","2184":"label_8","2186":"label_9","3458":"label_10","9318":"label_11","9444":"label_12","9824":"label_13","10032":"label_14","10076":"label_15","10328":"label_16","10377":"label_17","13884":"label_18","13908":"label_19","13916":"label_20","14032":"label_21","41781":"label_22","101123":"label_23","558341":"label_24","558377":"label_25","558399":"label_26","558576":"label_27","558852":"label_28","558854":"label_29","558860":"label_30","558902":"label_31","558908":"label_32","559251":"label_33","559259":"label_34","559267":"label_35","559402":"label_36","559458":"label_37","559909":"label_38","559916":"label_39","559937":"label_40","559944":"label_41","559951":"label_42","559963":"label_43","561221":"label_44","561243":"label_45","561250":"label_46","561257":"label_47","562432":"label_48","563264":"label_49","563408":"label_50","563488":"label_51","563504":"label_52","563520":"label_53","563528":"label_54","563536":"label_55","563544":"label_56","563568":"label_57","563576":"label_58","563600":"label_59"},"shader":{"2192":"compute 224B h:39013910","2194":"compute 141B h:d53fab33","2200":"compute 500B h:d1728f32 br=1","2202":"compute 8043B h:251fc0fd br=14 lo=4","2210":"vertex 1749B h:737dc03e","2211":"fragment 2067B h:e505047a tex=4 br=2","2213":"compute 522B h:82e08bac br=1","2215":"compute 2821B h:40cd18d0 tex=2 br=7 lo=3","2217":"compute 2657B h:e2150f88","2222":"vertex 1222B h:df3ece14","2226":"vertex 2676B h:3a2e03fd","2227":"fragment 3182B h:c6c10c55 tex=4","2229":"compute 35258B h:f6d3bd82 tex=68 br=4 lo=4","2231":"fragment 2798B h:f21ac1de","3463":"vertex 2052B h:802c46ae","3464":"fragment 2342B h:19544759 tex=1 br=6","3466":"fragment 2315B h:b429702f tex=1 br=6","6687":"vertex 2123B h:72a65e4b","16635":"vertex 2806B h:43959392 br=2","16636":"fragment 282B h:2ada21de","16638":"vertex 1286B h:9af48b05","16641":"vertex 672B h:7e4063be","16643":"vertex 346B h:92281f6f","16644":"fragment 4809B h:25f4328e tex=2 br=6","16647":"vertex 9195B h:05695b90 tex=2 br=9 lo=1","16650":"vertex 9211B h:b059194a tex=2 br=9 lo=1","16839":"vertex 1364B h:178a83db","16844":"fragment 2364B h:e8c66d43 tex=1 br=6","16982":"vertex 6487B h:9634d1ae br=10","16984":"vertex 6488B h:7f97f170 br=6","16985":"fragment 828B h:b3efd2ca tex=1 br=1","16987":"vertex 3938B h:f34b0c06 br=2","16989":"vertex 4304B h:6b8ab998 br=6","16991":"vertex 5278B h:432ebd5e br=4","16992":"fragment 866B h:66608122 tex=1 br=1","16994":"vertex 2792B h:10eb135a","16996":"vertex 12870B h:b4394c95 tex=2 br=13 lo=1","16999":"vertex 10244B h:d61f96cc tex=2 br=9 lo=1","17004":"vertex 11846B h:81b4dc16 tex=2 br=13 lo=1","30533":"fragment 3044B h:d2d4c4a2 tex=1 br=8","30535":"fragment 2662B h:3bbd9117 br=8","30537":"fragment 3066B h:460135e9 tex=1 br=8","30539":"fragment 3046B h:249e3d2c tex=1 br=8","36250":"fragment 3074B h:258818f5 tex=1 br=8","36252":"fragment 2891B h:ffe1a3f1 tex=1 br=8","39831":"fragment 3520B h:b0bdd038 br=8","40764":"vertex 2115B h:80fa052c br=1","40768":"vertex 4864B h:060c97f0 br=1","40769":"fragment 1106B h:86dce6f6 tex=1 br=1","40773":"fragment 1106B h:e7a02e57 tex=1 br=1","40775":"vertex 3328B h:83aa0f72 br=1","40776":"fragment 1051B h:e4ec9917 tex=1 br=1","40778":"fragment 4582B h:b0dbd66c tex=2 br=6","40781":"vertex 8953B h:f29a50a6 tex=2 br=9 lo=1","40782":"fragment 824B h:f2111bb9","40784":"fragment 1456B h:642e5ae6 tex=1","40786":"vertex 11479B h:8f7a3960 tex=2 br=10 lo=1","40787":"fragment 10243B h:195a3130 tex=8 br=7 lo=1","40789":"fragment 10018B h:c962e35d tex=6 br=5 lo=1","40793":"vertex 11666B h:b6300f2f tex=2 br=10 lo=1"},"program":{"2193":"label_0","2195":"label_1","2201":"label_2","2203":"label_3","2212":"label_4","2214":"label_5","2216":"label_6","2218":"label_7","2228":"label_8","2230":"label_9","2232":"label_10","3465":"label_11","3467":"label_12","16637":"label_13","16639":"label_14","16642":"label_15","16645":"label_16","16845":"label_17","16983":"label_18","16986":"label_19","16988":"label_20","16990":"label_21","16993":"label_22","16995":"label_23","30534":"label_24","30536":"label_25","30538":"label_26","30540":"label_27","36251":"label_28","36253":"label_29","39832":"label_30","40765":"label_31","40770":"label_32","40774":"label_33","40777":"label_34","40779":"label_35","40783":"label_36","40785":"label_37","40788":"label_38","40790":"label_39","40795":"label_40","40805":"label_41","40807":"label_42","40809":"label_43","40811":"label_44","40813":"label_45","40815":"label_46","40820":"label_47","40823":"label_48","40827":"label_49","40829":"label_50","40833":"label_51","40835":"label_52","40839":"label_53","40842":"label_54","73062":"label_55","73876":"label_56","78389":"label_57","88024":"label_58","88026":"label_59"},"sampler":{"116":"label_0","120":"label_1","173":"label_2","174":"label_3","185":"label_4","244":"label_5","429":"label_6","460":"label_7","598":"label_8","3459":"label_9","16664":"label_10"},"fbo":{"632679":"label_0","580516":"label_1","2206":"label_3","16640":"label_6","580517":"label_9","2209":"label_10","580519":"label_11","428":"label_12"},"buffer":{}},"2":{"texture":{},"shader":{},"program":{},"sampler":{"116":"label_11","120":"label_12","173":"label_13","174":"label_14","185":"label_15","244":"label_16","429":"label_17","460":"label_18","598":"label_19","3459":"label_20","16664":"label_21"},"fbo":{"632679":"label_13","580516":"label_14","2206":"label_16","16640":"label_19","580517":"label_22","580776":"label_23","580519":"label_24","428":"label_25"},"buffer":{}},"3":{"texture":{},"shader":{},"program":{},"sampler":{"116":"label_22","120":"label_23","173":"label_24","174":"label_25","185":"label_26","244":"label_27","429":"label_28","460":"label_29","598":"label_30","3459":"label_31","16664":"label_32"},"fbo":{"632679":"label_26","580516":"label_27","2206":"label_29","16640":"label_32","580517":"label_35","580776":"label_36","580519":"label_37","428":"label_38"},"buffer":{}},"4":{"texture":{},"shader":{},"program":{},"sampler":{"116":"label_33","120":"label_34","173":"label_35","174":"label_36","185":"label_37","244":"label_38","429":"label_39","460":"label_40","598":"label_41","3459":"label_42","16664":"label_43"},"fbo":{"632679":"label_39","580516":"label_40","2206":"label_42","16640":"label_45","580517":"label_48","580776":"label_49","580519":"label_50","428":"label_51"},"buffer":{}},"5":{"texture":{},"shader":{},"program":{},"sampler":{"116":"label_44","120":"label_45","173":"label_46","174":"label_47","185":"label_48","244":"label_49","429":"label_50","460":"label_51","598":"label_52","3459":"label_53","16664":"label_54"},"fbo":{"632679":"label_52","580516":"label_53","2206":"label_55","16640":"label_58","580517":"label_59"},"buffer":{}}}};</script>
@@ -1366,7 +1379,7 @@ section.table-section .table-meta {
   const ROW_H = 32;
   const BUFFER = 8;
 
-  // For ID kinds: where to jump when an ID cell is clicked
+  // For ID kinds: where to jump when an ID cell is clicked (virtual mode).
   const LINK_TARGET = {
     shader: { table: 'shaders', col: 'shader_id' },
     program: { table: 'programs', col: 'program_id' },
@@ -1387,6 +1400,31 @@ section.table-section .table-meta {
       return (Math.round(v * 1e6) / 1e6).toString();
     }
     return String(v);
+  }
+
+  // SHARED comparator (ADR-24 natural-numeric). The comma-strip makes the numeric branch correct for
+  // BOTH raw JSON numbers (virtual) and comma-formatted display text (static); the {numeric:true}
+  // localeCompare natural-sorts mixed alphanumerics ("Mali-G78" < "Mali-G710"). Nulls sort last.
+  function cmpVals(aa, bb, isNum, dir){
+    if (aa == null && bb == null) return 0;
+    if (aa == null) return 1;
+    if (bb == null) return -1;
+    if (isNum){
+      const na = Number(String(aa).replace(/,/g, '')), nb = Number(String(bb).replace(/,/g, ''));
+      const aok = na === na, bok = nb === nb;
+      if (!aok && !bok) return 0;
+      if (!aok) return 1;
+      if (!bok) return -1;
+      return (na - nb) * dir;
+    }
+    return String(aa).localeCompare(String(bb), undefined, {numeric: true}) * dir;
+  }
+
+  // SHARED heatmap tint: a UNIFORM color-mix shade as a background-IMAGE (so the class-driven
+  // background-COLOR zebra/hover still shows through). tt is a pre-clamped magnitude in [0,1].
+  function tintImage(tt){
+    const c = 'color-mix(in oklch, var(--accent-data) ' + Math.round(tt * 30) + '%, transparent)';
+    return 'linear-gradient(' + c + ', ' + c + ')';
   }
 
   function lookupLabel(labels, kind, id){
@@ -1413,6 +1451,7 @@ section.table-section .table-meta {
     return '';
   }
 
+  // ---- VTable: virtual mode (windowed; rows come from the externalized _pagedata payload) ----
   class VTable {
     constructor(host, payload, labels, groups){
       this.host = host;
@@ -1438,20 +1477,15 @@ section.table-section .table-meta {
         if (count > 0 && num / count > 0.7) this.numericCols.add(ci);
       }
 
-      // Type split (c16i): non-numeric ID/hash/path columns render mono (left-aligned) so hashes
-      // stay legible while text columns go Inter sans. Decided by column NAME (deterministic, not
-      // value-sniffed); numeric columns already get mono via .numeric, so exclude them here.
+      // Type split (c16i): non-numeric ID/hash/path columns render mono. Decided by column NAME.
       this.monoCols = new Set();
       const MONO_RE = /(_id|_hash|_hex)$|^stable_key$|.*_path$|^capture$/;
       for (let ci = 0; ci < this.cols.length; ci++){
         if (!this.numericCols.has(ci) && MONO_RE.test(this.cols[ci])) this.monoCols.add(ci);
       }
 
-      // Heatmap data-bars (c16i): per-column min/max for the numeric MAGNITUDE columns, so a cell
-      // can show a relative-value bar behind the number. Exclude ID/reference columns (their
-      // magnitude is meaningless) and any column already flagged as a cross-link label. Scanned
-      // over ALL rows (the immutable source, not the sorted view) so the scale is deterministic and
-      // stable across sort/filter. Columns with hi<=lo (constant) get no entry -> no bar.
+      // Heatmap (c16i): per-column min/max for numeric MAGNITUDE columns. Exclude ID/reference cols
+      // and cross-link label cols. Scanned over ALL rows so the scale is stable across sort/filter.
       const ID_RE = /_id$|^event_id$/;
       this.colStats = {};
       for (let ci = 0; ci < this.cols.length; ci++){
@@ -1470,10 +1504,7 @@ section.table-section .table-meta {
         if (seen > 0 && hi > lo) this.colStats[ci] = {lo: lo, hi: hi};
       }
 
-      // Collapsible column groups (c16i, catalog only): map column name -> index, then seed the
-      // hidden set from any group whose `open` flag is false. Toggling visibility never touches the
-      // ROW_H math (rows keep full height regardless of visible columns), so virtual-scroll stays
-      // aligned. numericCols/monoCols/colStats stay keyed by the ORIGINAL ci, unaffected by hiding.
+      // Collapsible column groups (c16i, catalog only).
       this.hiddenCols = new Set();
       this.colByName = {};
       for (let i = 0; i < this.cols.length; i++) this.colByName[this.cols[i]] = i;
@@ -1481,22 +1512,19 @@ section.table-section .table-meta {
         this.groups.forEach(g => {
           if (!g.open){
             g.cols.forEach(c => {
-              const ci = this.colByName[c];
+              const ci = (typeof c === 'number') ? c : this.colByName[c];
               if (ci != null) this.hiddenCols.add(ci);
             });
           }
         });
       }
 
-      // detect slot_kind column for draw_bindings (resource_id auto-label)
       this.slotKindCol = this.cols.indexOf('slot_kind');
       this.descriptorKindCol = this.cols.indexOf('descriptor_kind');
 
       this.build();
     }
 
-    // (Re)build the header row, honouring hidden columns. Each th carries data-ci = its ORIGINAL
-    // column index so sort()/arrow logic stays correct when columns are hidden (c16i, fix #7).
     buildHead(){
       const tr = this.headRow;
       while (tr.firstChild) tr.removeChild(tr.firstChild);
@@ -1515,16 +1543,13 @@ section.table-section .table-meta {
       }
     }
 
-    // Build the column-group toggle bar (catalog only). Each group is a real <button> with
-    // aria-pressed; toggling hides/shows that group's columns and re-renders. Keyboard-native,
-    // no animation -> reduced-motion safe.
     buildGroupBar(){
       if (!this.groups) return;
       const section = this.host.closest('section');
       const bar = section ? section.querySelector('.col-groups') : null;
       if (!bar) return;
       this.groups.forEach(g => {
-        const cis = g.cols.map(c => this.colByName[c]).filter(x => x != null);
+        const cis = g.cols.map(c => (typeof c === 'number') ? c : this.colByName[c]).filter(x => x != null);
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'col-group-toggle';
@@ -1571,7 +1596,6 @@ section.table-section .table-meta {
 
       this.host.addEventListener('scroll', () => this.render());
       window.addEventListener('resize', () => this.render());
-      // Re-render when a containing <details class="category"> opens.
       const detailsEl = this.host.closest('details');
       if (detailsEl){
         detailsEl.addEventListener('toggle', () => {
@@ -1582,9 +1606,7 @@ section.table-section .table-meta {
         });
       }
       this.render();
-      // Re-render after layout settles (initial clientHeight can be 0)
       requestAnimationFrame(() => this.render());
-      // And once more after fonts/sizes stabilize
       setTimeout(() => this.render(), 50);
     }
 
@@ -1593,19 +1615,7 @@ section.table-section .table-meta {
       else { this.sortCol = ci; this.sortDir = 1; }
       const dir = this.sortDir;
       const isNum = this.numericCols.has(ci);
-      this.view.sort((a, b) => {
-        const aa = a[ci], bb = b[ci];
-        if (aa == null && bb == null) return 0;
-        if (aa == null) return 1;
-        if (bb == null) return -1;
-        if (isNum){
-          const na = +aa, nb = +bb;
-          return (na - nb) * dir;
-        }
-        return String(aa).localeCompare(String(bb)) * dir;
-      });
-      // Match on the th's ORIGINAL column index (data-ci), not its position: with hidden columns
-      // the header list is shorter, so positional matching would put the arrow on the wrong th.
+      this.view.sort((a, b) => cmpVals(a[ci], b[ci], isNum, dir));
       const headers = this.host.querySelectorAll('thead th');
       for (let k = 0; k < headers.length; k++){
         const a = headers[k].querySelector('.sort-arrow');
@@ -1630,7 +1640,6 @@ section.table-section .table-meta {
             const v = r[i];
             if (v == null) continue;
             if (String(v).toLowerCase().indexOf(q) >= 0) return true;
-            // also match against the resolved label, if any
             const lc = labelCols[cols[i]];
             if (!lc || v === 0 || v === '0' || v === '') continue;
             let kind = lc;
@@ -1650,18 +1659,10 @@ section.table-section .table-meta {
           return false;
         });
       }
-      // resort if a sort was active
       if (this.sortCol >= 0){
         const ci = this.sortCol, dir = this.sortDir;
         const isNum = this.numericCols.has(ci);
-        this.view.sort((a, b) => {
-          const aa = a[ci], bb = b[ci];
-          if (aa == null && bb == null) return 0;
-          if (aa == null) return 1;
-          if (bb == null) return -1;
-          if (isNum) return (+aa - +bb) * dir;
-          return String(aa).localeCompare(String(bb)) * dir;
-        });
+        this.view.sort((a, b) => cmpVals(a[ci], b[ci], isNum, dir));
       }
       this.host.scrollTop = 0;
       this.render();
@@ -1681,7 +1682,6 @@ section.table-section .table-meta {
         kind = autoKindForDescriptor(this.view[ri][this.descriptorKindCol]);
       }
 
-      // primary cell value: cross-link if we have a target for this kind
       const formatted = fmt(value);
       const link = LINK_TARGET[kind];
       if (link && value != null && value !== '' && value !== 0 && value !== '0' && kind !== 'texture_list'){
@@ -1698,11 +1698,6 @@ section.table-section .table-meta {
         td.textContent = formatted;
       }
 
-      // Heatmap (c16i): for magnitude columns shade the WHOLE cell by relative value -> the bigger
-      // the number, the stronger the tint (column min = no tint). A UNIFORM shade (not a partial
-      // fill) so there is no gradient edge to misread as an artifact. Applied as a solid-colour
-      // background-IMAGE so the class-driven background-COLOR (zebra tr.alt / row-hover) still shows
-      // through underneath. The number stays the cell text, on top. Deterministic (no random/Date).
       const stat = this.colStats[ci];
       if (stat != null && value != null && value !== ''){
         const n = +value;
@@ -1710,13 +1705,11 @@ section.table-section .table-meta {
           let tt = (n - stat.lo) / (stat.hi - stat.lo);
           tt = tt < 0 ? 0 : (tt > 1 ? 1 : tt);
           const pct = Math.round(tt * 100);
-          const c = 'color-mix(in oklch, var(--accent-data) ' + Math.round(tt * 30) + '%, transparent)';
-          td.style.backgroundImage = 'linear-gradient(' + c + ', ' + c + ')';
+          td.style.backgroundImage = tintImage(tt);
           td.setAttribute('aria-label', formatted + ' (' + pct + '% of column max)');
         }
       }
 
-      // label enrichment (appears after the value/link)
       if (lc && value != null && value !== '' && value !== 0 && value !== '0'){
         if (kind === 'texture_list'){
           const ids = String(value).split(';').filter(x => x);
@@ -1748,15 +1741,12 @@ section.table-section .table-meta {
       const start = Math.max(0, Math.floor(scrollTop / ROW_H) - BUFFER);
       const end = Math.min(len, Math.ceil((scrollTop + height) / ROW_H) + BUFFER);
 
-      // clear data rows between spacers
       while (this.sTop.nextSibling !== this.sBot){
         this.tbody.removeChild(this.sTop.nextSibling);
       }
-      // spacers span only the VISIBLE columns (changes when a group is toggled)
       const visible = this.cols.length - this.hiddenCols.size;
       this.tdTop.colSpan = visible;
       this.tdBot.colSpan = visible;
-      // height on <tr> directly; <td> alone doesn't make a row tall in all browsers
       this.sTop.style.height = (start * ROW_H) + 'px';
       this.sBot.style.height = ((len - end) * ROW_H) + 'px';
       this.tdTop.style.height = (start * ROW_H) + 'px';
@@ -1778,14 +1768,168 @@ section.table-section .table-meta {
     }
   }
 
+  // ---- StaticTable: static mode (in-place; rows are server-baked) ----
+  // Enhances an existing server-baked table.data WITHOUT removing rows from the DOM, so JS-off / print /
+  // Ctrl-F keep every row (ADR-37). Sort reorders the live <tr> nodes (nested components ride along);
+  // heatmap tints existing numeric <td>s; column-groups toggle display. Numeric cols are read from
+  // the header class (no value-sniff); column groups come from window.__colgroups_<data-table> and
+  // may key by column INDEX (reports, where header text can repeat) or NAME (the catalog path).
+  class StaticTable {
+    constructor(host){
+      this.host = host;
+      const table = host.querySelector('table');
+      if (!table) return;
+      this.table = table;
+      const thead = table.tHead;
+      this.ths = (thead && thead.rows[0]) ? Array.prototype.slice.call(thead.rows[0].cells) : [];
+      this.cols = this.ths.map(th => th.textContent.trim());
+      this.colByName = {};
+      for (let i = 0; i < this.cols.length; i++) this.colByName[this.cols[i]] = i;
+      this.tbody = table.tBodies[0];
+      if (!this.tbody) return;
+      this.trNodes = Array.prototype.slice.call(this.tbody.rows);
+      this.sortCol = -1; this.sortDir = 1;
+      this.hiddenCols = new Set();
+
+      // numeric columns from header class (.numeric, or legacy .num from report markup)
+      this.numericCols = new Set();
+      this.ths.forEach((th, ci) => {
+        if (th.classList.contains('numeric') || th.classList.contains('num')) this.numericCols.add(ci);
+      });
+
+      // colStats for the auto-heatmap (comma-stripped values). Skip a column whose cells already
+      // carry an <rdc-heatmap-cell> (already shaded) so we never double-tint.
+      this.colStats = {};
+      for (let ci = 0; ci < this.cols.length; ci++){
+        if (!this.numericCols.has(ci)) continue;
+        const first = this.trNodes.length ? this.trNodes[0].cells[ci] : null;
+        if (first && first.querySelector('rdc-heatmap-cell')) continue;
+        let lo = Infinity, hi = -Infinity, seen = 0;
+        for (let ri = 0; ri < this.trNodes.length; ri++){
+          const cell = this.trNodes[ri].cells[ci];
+          if (!cell) continue;
+          const t = cell.textContent.trim();
+          if (t === '') continue;
+          const n = Number(t.replace(/,/g, ''));
+          if (n !== n) continue;
+          if (n < lo) lo = n;
+          if (n > hi) hi = n;
+          seen++;
+        }
+        if (seen > 0 && hi > lo) this.colStats[ci] = {lo: lo, hi: hi};
+      }
+
+      this._wireHeaders();
+      this._applyHeatmap();
+      this._buildGroups();
+
+      // default sort (data-default-sort = header text; data-default-dir = asc|desc, default desc)
+      const def = host.dataset.defaultSort;
+      if (def){
+        let idx = -1;
+        for (let i = 0; i < this.cols.length; i++){
+          if (this.cols[i].toLowerCase() === def.toLowerCase()){ idx = i; break; }
+        }
+        if (idx >= 0){
+          this.sortCol = idx;
+          this.sortDir = (host.dataset.defaultDir === 'asc') ? 1 : -1;
+          this._paintSort(idx);
+        }
+      }
+    }
+
+    _wireHeaders(){
+      this.ths.forEach((th, ci) => {
+        th.style.cursor = 'pointer';
+        let arrow = th.querySelector('.sort-arrow');
+        if (!arrow){ arrow = document.createElement('span'); arrow.className = 'sort-arrow'; th.appendChild(arrow); }
+        th.addEventListener('click', () => this.sort(ci));
+      });
+    }
+
+    sort(ci){
+      if (this.sortCol === ci) this.sortDir = -this.sortDir;
+      else { this.sortCol = ci; this.sortDir = 1; }
+      this._paintSort(ci);
+    }
+
+    _paintSort(ci){
+      const dir = this.sortDir, isNum = this.numericCols.has(ci);
+      const getv = (tr) => { const c = tr.cells[ci]; const t = c ? c.textContent.trim() : ''; return t === '' ? null : t; };
+      this.trNodes.sort((ra, rb) => cmpVals(getv(ra), getv(rb), isNum, dir));
+      const frag = document.createDocumentFragment();
+      this.trNodes.forEach(tr => frag.appendChild(tr));
+      this.tbody.appendChild(frag);
+      this.ths.forEach((th, k) => {
+        const a = th.querySelector('.sort-arrow');
+        if (a) a.textContent = (k === ci) ? (dir > 0 ? ' ▲' : ' ▼') : '';
+      });
+    }
+
+    _applyHeatmap(){
+      for (const k in this.colStats){
+        const ci = +k, stat = this.colStats[ci];
+        this.trNodes.forEach(tr => {
+          const td = tr.cells[ci];
+          if (!td) return;
+          const t = td.textContent.trim();
+          if (t === '') return;
+          const n = Number(t.replace(/,/g, ''));
+          if (n !== n) return;
+          let tt = (n - stat.lo) / (stat.hi - stat.lo);
+          tt = tt < 0 ? 0 : (tt > 1 ? 1 : tt);
+          td.style.backgroundImage = tintImage(tt);
+          td.setAttribute('aria-label', t + ' (' + Math.round(tt * 100) + '% of column max)');
+        });
+      }
+    }
+
+    _buildGroups(){
+      const groups = window['__colgroups_' + (this.host.dataset.table || '')];
+      if (!groups) return;
+      const section = this.host.closest('section');
+      const bar = section ? section.querySelector('.col-groups') : null;
+      if (!bar) return;
+      const idx = (c) => (typeof c === 'number') ? c : this.colByName[c];
+      groups.forEach(g => {
+        if (!g.open) g.cols.forEach(c => { const ci = idx(c); if (ci != null) this.hiddenCols.add(ci); });
+      });
+      this._applyVisibility();
+      groups.forEach(g => {
+        const cis = g.cols.map(idx).filter(x => x != null);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'col-group-toggle';
+        btn.dataset.group = g.name;
+        btn.textContent = g.name;
+        btn.setAttribute('aria-pressed', g.open ? 'true' : 'false');
+        btn.addEventListener('click', () => {
+          const next = btn.getAttribute('aria-pressed') !== 'true';
+          btn.setAttribute('aria-pressed', next ? 'true' : 'false');
+          cis.forEach(ci => { if (next) this.hiddenCols.delete(ci); else this.hiddenCols.add(ci); });
+          this._applyVisibility();
+        });
+        bar.appendChild(btn);
+      });
+    }
+
+    _applyVisibility(){
+      this.ths.forEach((th, ci) => { th.style.display = this.hiddenCols.has(ci) ? 'none' : ''; });
+      this.trNodes.forEach(tr => {
+        for (let ci = 0; ci < tr.cells.length; ci++){
+          tr.cells[ci].style.display = this.hiddenCols.has(ci) ? 'none' : '';
+        }
+      });
+    }
+  }
+
   function jumpToTable(tableName, idValue){
-    const host = document.querySelector('div.table-scroll[data-table="' + tableName + '"]');
+    const host = document.querySelector('rdc-table[data-table="' + tableName + '"]');
     if (!host || !host._vt) return;
     const section = host.closest('section');
     const input = section ? section.querySelector('input[type=search]') : null;
     if (input){
       input.value = idValue;
-      // trigger filter immediately (no debounce on programmatic set)
       host._vt.filter(idValue);
       const counter = section.querySelector('.ct.visible-count');
       if (counter){
@@ -1793,37 +1937,44 @@ section.table-section .table-meta {
         counter.textContent = v.toLocaleString() + ' / ' + t.toLocaleString() + ' visible';
       }
     }
-    section.scrollIntoView({behavior: 'smooth', block: 'start'});
+    if (section) section.scrollIntoView({behavior: 'smooth', block: 'start'});
   }
   window.__jumpToTable = jumpToTable;
 
   window.addEventListener('DOMContentLoaded', () => {
     const labels = window.__labels || {};
-    document.querySelectorAll('div.table-scroll[data-table]').forEach(host => {
+    document.querySelectorAll('rdc-table[data-mode]').forEach(host => {
+      if (host.dataset.mode === 'static'){
+        host._vt = new StaticTable(host);
+        return;
+      }
+      // virtual
       const name = host.dataset.table;
       const payload = window['__data_' + name];
       if (!payload){ return; }
       const labelsForTable = Object.assign({}, labels);
-      // Per-section: capture from data is row-level; use the section's data-capture if set
       labelsForTable.capture = host.dataset.capture || (payload.rows[0] ? payload.rows[0][3] : '');
-      // Column groups are catalog-only (window.__colgroups_catalog); undefined elsewhere -> no bar.
       const groups = window['__colgroups_' + name];
       const vt = new VTable(host, payload, labelsForTable, groups);
       host._vt = vt;
 
       const section = host.closest('section');
-      const input = section.querySelector('input[type=search]');
-      const counter = section.querySelector('.ct.visible-count');
-      function updateCounter(){
-        const v = vt.view.length, t = vt.rows.length;
-        counter.textContent = v.toLocaleString() + ' / ' + t.toLocaleString() + ' visible';
+      const input = section ? section.querySelector('input[type=search]') : null;
+      const counter = section ? section.querySelector('.ct.visible-count') : null;
+      if (counter){
+        function updateCounter(){
+          const v = vt.view.length, t = vt.rows.length;
+          counter.textContent = v.toLocaleString() + ' / ' + t.toLocaleString() + ' visible';
+        }
+        updateCounter();
+        if (input){
+          let timer = null;
+          input.addEventListener('input', () => {
+            clearTimeout(timer);
+            timer = setTimeout(() => { vt.filter(input.value); updateCounter(); }, 80);
+          });
+        }
       }
-      updateCounter();
-      let timer = null;
-      input.addEventListener('input', () => {
-        clearTimeout(timer);
-        timer = setTimeout(() => { vt.filter(input.value); updateCounter(); }, 80);
-      });
     });
   });
 })();
