@@ -826,3 +826,31 @@ golden-as-output) hold in the bundle. The `package` summary line emits the size 
 the "measured problem" stays on record. **Consequence.** The measured size win is captured cleanly via the
 render-time mechanism ADR-37 implied for the eventual revisit, without a second render-default golden;
 ADR-37 is confronted and extended, not forked. Reaffirms ADR-37/6/34.
+
+### ADR-42 — a server-side component system; stop brute-forcing per-page CSS (v0.2.5, c16x)
+**Context.** c16q shipped the exec one-pager's styling as a page-scoped inline `<style>` (keyed on
+`body[data-page-kind="summary"]`) plus bespoke markup helpers (`summary._kpi`, `_trendline`, a status
+badge, the Movement layout) that re-implement card/kpi patterns chrome already half-owns. The untyped
+inline-CSS approach bit back immediately: a typo'd `var(--sp-5)` (there is no `--sp-5` - the token scale
+is 1/2/3/4/6/8/12) made the padding shorthand invalid, which computes to `0`, silently zeroing the chip
+padding until a visual review caught it (recorded G-30). This is the structural smell: every new surface
+hand-rolls markup + a scoped `<style>` against one big inlined CSS string, with no reusable + testable
+component layer and no guard that a referenced token actually exists. It does not scale past one page.
+**Decision.** Introduce a small **server-side component system** - plain render helpers + one owned
+stylesheet, NOT a CSS framework, build step, or runtime dependency (ADR-37 holds: static, offline,
+JS-optional, golden-as-output). Concretely: (1) promote the ad-hoc one-pager primitives into composable
+`chrome` components (e.g. `kpi_card`, `trendline`, `status_badge`) alongside the existing
+`section_card`/`callout`/`summary_bar`, so pages COMPOSE components instead of emitting bespoke markup;
+(2) their classes live ONCE in the shared chrome CSS bundle (the same bytes ADR-41's seam extracts to
+`_assets/report.css`), never in a per-page `<style>`; (3) a **token-validity guard** - a `_tokens`
+accessor / lint that rejects any `var(--…)` not in the declared design-token scale - so the c16q
+`--sp-5` failure mode is structurally impossible; (4) every component gets a structural test (mirroring
+`tests/test_report_structure.py`) and one instance in the existing `_chrome_preview.html` gallery (c08),
+which becomes the living component catalog. `summary.py`'s inline `<style>` + `_kpi`/`_trendline`/badge
+are the first migration (a reviewed golden refresh; the chrome-family pages re-render because the
+component CSS joins the always-on bundle - visual parity, no body-markup change beyond summary's). This
+is why it is its OWN commit (c16x), separate from c16q's tight 5-file delta. Best sequenced after c16t
+so the now-larger shared CSS is a single packaged asset (render still inlines it per page, ADR-41), and
+before the c16w close-out. **Consequence.** New surfaces compose tested, gallery-reviewed components;
+the inline-CSS / undefined-token failure class is gone; the preview gallery is the component catalog.
+Closes G-30. Reaffirms ADR-37/34/27 (design tokens), rides ADR-41 (where the component CSS lives).
