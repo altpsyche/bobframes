@@ -7,8 +7,13 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        v0.2 close-out    (status: c16m DONE 2026-06-03 - the c16k-c16m table-unification EPIC is
-                COMPLETE. c16m added controllable cell truncation + `title=` hover-reveal to the ONE `rdc-table`
+current:        c16n_clip_coverage_print    (status: not-started. c16m DONE 2026-06-03 - the c16k-c16m
+                table-unification EPIC core is COMPLETE; AUTHORED 3 close-out commits (user-requested): c16n
+                (truncation-coverage tail: draws_by_class clip + dashboard-mini print full-wrap), c16o (table
+                a11y parity: VTable aria-sort + keyboard sort headers both modes + search-input aria-label),
+                c16p (v0.2 close-out: FULL re-ingest + version 0.2.0 + CHANGELOG + push/CI/merge/tag). ORDER:
+                c16n -> c16o -> c16p -> c20. c16m added controllable cell truncation + `title=` hover-reveal to
+                the ONE `rdc-table`
                 engine (ADR-38): one mechanism both modes - the clip lives on an INNER element (in-cell `<a>` or
                 `<span class="clip">`), never the `<td>`, so copy-buttons / sparklines / `.lbl` labels ride
                 OUTSIDE the clip + stay visible; removed the c16l no-clip stopgap + the td-level 380px clip
@@ -543,16 +548,25 @@ next_action:    c16m DONE (2026-06-03) - the c16k-c16m table-unification EPIC is
                 toggle (default truncated, single-line release in virtual to protect ROW_H, static also wraps);
                 print full-wraps within the page. 181 -> 188 green, parquet parity NO digests refresh (§21.9),
                 smoke lint clean, browser-verified offline (crafted long path + real heaviest drill). QUALITY_GATES
-                §21.1o; ALL HTML goldens refreshed, _pagedata/digests/golden_parquet byte-unchanged. THE V0.2 CODE
-                IS DONE - now the close-out before the tag:
-                (1) V0.2 CLOSE-OUT: re-ingest the real Perf drop (now the cumulative flaw is fixed + the
-                R-17 replay salvage is automatic - re-test the 6 manual-flipped run2 captures) and eyeball
-                all reports. Working root C:\tmp\perf (hardlinks; Downloads read-only). Replay is
-                ~150-220s PER capture, sequential. NOTE: the full re-ingest also REGENERATES every drill page,
-                clearing the stale 29MB inline-data OLDER-run drills that render-only leaves untouched (c16j
-                only refreshes current-run drills via render-only; older-run drills externalize on a full
-                ingest/render of that run).
-                (2) Tag v0.2 (outward + IRREVERSIBLE — authorize first).
+                §21.1o; ALL HTML goldens refreshed, _pagedata/digests/golden_parquet byte-unchanged. AUTHORED the
+                3 close-out commits (user-requested). DO c16n NEXT (commits/v02/c16n_clip_coverage_print.md):
+                (c16n) truncation-coverage tail - clip+title the one tabled report c16m skipped (draws_by_class
+                area/drop) + a @media print rule so the bare dashboard/preview minis full-wrap on paper (today
+                they print clipped, no tooltip). Presentation-only, golden refresh, no digests refresh.
+                (c16o) table a11y parity (commits/v02/c16o_table_a11y_parity.md) - VTable (catalog/drill) gains
+                aria-sort (the c16l-noted gap), sort headers become keyboard-operable in BOTH modes (tabindex +
+                Enter/Space), virtual search input gets an aria-label. Golden refresh, no digests refresh.
+                (c16p) v0.2 CLOSE-OUT + RELEASE (commits/v02/c16p_v02_closeout.md):
+                (1) FULL re-ingest of real Perf (NOT render-only - regenerates EVERY drill, clearing the stale
+                29MB inline-data OLDER-run drills render-only leaves; exercises R-16 adb-handle commit + R-17
+                replay crash-on-teardown salvage; re-test the 6 manual-flipped r110788 captures). Working root
+                C:\tmp\perf (hardlinks; Downloads read-only). Replay ~150-220s/capture, sequential. Eyeball all
+                reports + drills (light+dark); counts stable where extraction unchanged (§21.9).
+                (2) version 0.1.0->0.2.0 (_version.py; provenance strip omits version so golden-safe); CHANGELOG
+                [Unreleased]->[0.2.0] summarizing c04-c16o; lint CHANGELOG.
+                (3) PUSH branch -> CI GREEN on the FULL matrix (FIRST CI run for c04-c16o; 48 commits ahead of
+                origin/main, never matrix-validated). (4) MERGE v0.2-roadmap-c04 -> main. (5) TAG v0.2.0 (outward
+                + IRREVERSIBLE - AUTHORIZE FIRST) -> OIDC publish (c19 path) -> PyPI + GH Release -> post-install verify.
                 THEN c20 (--json output, v0.3): open commits/v03/c20_json_output.md and do exactly that one
                 commit. NOTE for c27/c35: the c09 classifier is already STATE-CAPABLE (when{} over any draw
                 column), so the state-first generic preset (D-10) is a preset not a rewrite; c35 removes the
@@ -619,6 +633,9 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | [c16k unified rdc-table component](commits/v02/c16k_unified_table_component.md) | **done** (ADR-38) — ONE bespoke `rdc-table` engine BUILT in chrome.py (shared cmpVals/tintImage; `VTable` virtual + new `StaticTable`; DCL-bootstrapped, no customElements). Catalog/drill migrated to `virtual` (old `_JS` subsumed, zero dead code); shader_hotlist main table migrated to `static` (server-baked rows, opt-in via `report_page(rdc_table=True)`) as the ADR-37 proof. 176→180 green; refreshed only catalog+drill+both shader_hotlist; `_pagedata`/other goldens/digests byte-unchanged; browser-verified offline both modes |
 | ☑ | [c16l unified table rollout](commits/v02/c16l_unified_table_rollout.md) | **done** (ADR-38) — rolled `static` rdc-table onto every report/A-B/per-run/trend/dashboard-mini surface, folded the engine into the always-on shared bundle, DELETED the old rdc-sortable-table + table.report (grep-clean), restored aria-sort, overdraw got column groups; one table system (G-23 fully resolved); 181 green, golden refreshed, no digests refresh; QUALITY_GATES §21.1n |
 | ☑ | [c16m cell truncation + hover](commits/v02/c16m_cell_truncation_hover.md) | **done** (ADR-38) — controllable per-column truncation on the ONE engine: inner `.clip…` element (never the td, so widgets/labels stay visible), 3 tiers (320/200/560px), full value in the DOM (Ctrl-F) + length-gated `title=`, copy/link payloads full (c16c), Expand-cells `<button aria-pressed>` toggle (default truncated; single-line release in virtual to keep ROW_H, static also wraps), print full-wrap. EPIC COMPLETE; 181→188 green, all HTML goldens refreshed, `_pagedata`/digests/parquet byte-unchanged; QUALITY_GATES §21.1o |
+| ☐ | [c16n clip coverage + dashboard print](commits/v02/c16n_clip_coverage_print.md) | **next** (ADR-38 tail) — close the c16m truncation-coverage gaps: clip+`title=` the one tabled report c16m skipped (`draws_by_class` area/drop), and a `@media print` rule so the bare dashboard/preview minis full-wrap on paper (today they print clipped, no tooltip). Presentation-only; golden refresh; no digests refresh |
+| ☐ | [c16o table a11y parity](commits/v02/c16o_table_a11y_parity.md) | planned (ADR-38 a11y tail) — bring the VTable (catalog/drill) to a11y parity with StaticTable: `aria-sort` on virtual headers (the c16l-noted gap), keyboard-operable sort headers in BOTH modes (`tabindex`+Enter/Space), an `aria-label` on the virtual search input. Golden refresh; no digests refresh |
+| ☐ | [c16p v0.2 close-out + release](commits/v02/c16p_v02_closeout.md) | planned — FULL re-ingest of real Perf (regenerates stale older-run drills; exercises R-16/R-17) + eyeball; version 0.1.0→0.2.0; CHANGELOG [0.2.0]; push → CI green (full matrix, first run for c04–c16o); merge → main; **tag v0.2.0** (outward+IRREVERSIBLE — authorize). Then c20 |
 
 ## v0.3 — CI/automation surface (planned — [ROADMAP](ROADMAP.md))
 
@@ -664,6 +681,17 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-03 — AUTHORED the v0.2 close-out commits (c16n/c16o/c16p), pulled forward at the user's request after a
+  pre-tag "do you foresee anything else?" review. The review surfaced: (a) minor presentation/a11y consistency
+  gaps left by the c16k-c16m epic, and (b) release mechanics not yet done (48 commits ahead of origin/main +
+  NEVER CI-matrix-validated; version still 0.1.0; CHANGELOG [Unreleased] empty). Split: c16n = truncation-coverage
+  tail (draws_by_class report table clip+title - the one tabled report c16m's scope skipped; + a @media print
+  rule so the bare dashboard/preview minis full-wrap on paper, since the static print rule is rdc-table-scoped).
+  c16o = table a11y parity (VTable/catalog-drill gains aria-sort = the c16l-noted gap; sort headers become
+  keyboard-operable in BOTH modes via tabindex+Enter/Space; virtual search input gets an aria-label). c16p =
+  v0.2 close-out + release (FULL real-Perf re-ingest regenerating stale older-run drills + exercising R-16/R-17;
+  version 0.1.0->0.2.0; CHANGELOG [0.2.0]; push->CI-green full matrix; merge->main; tag v0.2.0 OIDC-publish,
+  authorize first). Re-sequenced current -> c16n -> c16o -> c16p -> c20. Docs-only; no code, no golden change.
 - 2026-06-03 — c16m DONE (controllable cell truncation + `title=` hover-reveal on the ONE `rdc-table` engine;
   ADR-38, FINAL of the c16k-c16m table-unification epic). One mechanism both modes: clip on an INNER element
   (in-cell `<a class="clip…">` / `<span class="clip…">` via new chrome.clip_attrs/clip_span), never the td, so
