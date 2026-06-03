@@ -202,6 +202,13 @@
     const c = 'color-mix(in oklch, var(--accent-data) ' + Math.round(tt * 30) + '%, transparent)';
     return 'linear-gradient(' + c + ', ' + c + ')';
   }
+  function wireSortHeader(th, ci, onSort){
+    th.setAttribute('tabindex', '0');
+    th.addEventListener('click', () => onSort(ci));
+    th.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); onSort(ci); }
+    });
+  }
   function lookupLabel(labels, kind, id){
     if (!labels || !kind || id == null || id === '' || id === 0 || id === '0') return '';
     const k = String(id);
@@ -303,7 +310,8 @@
         arrow.className = 'sort-arrow';
         if (i === this.sortCol) arrow.textContent = this.sortDir > 0 ? ' ▲' : ' ▼';
         th.appendChild(arrow);
-        th.addEventListener('click', () => this.sort(i));
+        th.setAttribute('aria-sort', (i === this.sortCol) ? (this.sortDir > 0 ? 'ascending' : 'descending') : 'none');
+        wireSortHeader(th, i, (ci) => this.sort(ci));
         tr.appendChild(th);
       }
     }
@@ -377,8 +385,10 @@
       this.view.sort((a, b) => cmpVals(a[ci], b[ci], isNum, dir));
       const headers = this.host.querySelectorAll('thead th');
       for (let k = 0; k < headers.length; k++){
+        const match = (+headers[k].dataset.ci === ci);
         const a = headers[k].querySelector('.sort-arrow');
-        if (a) a.textContent = (+headers[k].dataset.ci === ci) ? (dir > 0 ? ' ▲' : ' ▼') : '';
+        if (a) a.textContent = match ? (dir > 0 ? ' ▲' : ' ▼') : '';
+        headers[k].setAttribute('aria-sort', match ? (dir > 0 ? 'ascending' : 'descending') : 'none');  // a11y (c16o)
       }
       this.host.scrollTop = 0;
       this.render();
@@ -582,11 +592,10 @@
     }
     _wireHeaders(){
       this.ths.forEach((th, ci) => {
-        th.style.cursor = 'pointer';
         th.setAttribute('aria-sort', 'none');   // a11y: report sort state (c16l - was on rdc-sortable-table)
         let arrow = th.querySelector('.sort-arrow');
         if (!arrow){ arrow = document.createElement('span'); arrow.className = 'sort-arrow'; th.appendChild(arrow); }
-        th.addEventListener('click', () => this.sort(ci));
+        wireSortHeader(th, ci, (i) => this.sort(i));   // a11y (c16o): keyboard-operable (shared with VTable)
       });
     }
     sort(ci){

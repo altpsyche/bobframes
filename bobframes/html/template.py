@@ -365,7 +365,7 @@ def _inline_table_with_data(table_name: str, out_dir: str,
     section.append(f'<span class="table-meta">{n_total:,} rows, {n_cols} cols</span>')
     section.append('</header>')
     section.append('<div class="controls">')
-    section.append(f'<input type="search" placeholder="filter {table_name}...">')
+    section.append(f'<input type="search" aria-label="filter {table_name}" placeholder="filter {table_name}...">')
     section.append('<span class="ct visible-count"></span>')
     section.append(f'<a class="dl" href="{prefix}{table_name}.csv">CSV</a>')
     section.append(f'<a class="dl" href="{prefix}{table_name}.parquet">parquet</a>')
@@ -751,7 +751,7 @@ def render_root(root: str) -> str:
 
     parts.append('<section><h2>catalog</h2>')
     parts.append('<div class="controls">')
-    parts.append('<input type="search" placeholder="filter">')
+    parts.append('<input type="search" aria-label="filter catalog" placeholder="filter">')
     parts.append('<span class="ct visible-count"></span>')
     parts.append(f'<a class="dl" href="{_paths.DATA_DIR}/_catalog.csv" data-link-kind="inline">CSV</a>')
     parts.append(f'<a class="dl" href="{_paths.DATA_DIR}/_catalog.parquet" data-link-kind="inline">parquet</a>')

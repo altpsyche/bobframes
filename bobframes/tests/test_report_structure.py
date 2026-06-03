@@ -409,6 +409,17 @@ def test_c16l_engine_in_shared_report_bundle():
     assert 'rdc_table' not in inspect.signature(chrome.report_page).parameters
     assert 'rdc_table' not in inspect.signature(chrome.page_open).parameters
 
+    # c16o (ADR-38 a11y tail): the sort-header a11y contract is authored ONCE (shared helper) and
+    # behaves the same in BOTH modes. _minify_js is comment/whitespace-only (no name-mangling, no
+    # intra-line space collapse), so these substrings survive _compose_js() verbatim.
+    assert 'function wireSortHeader' in js              # keyboard contract authored once
+    assert "setAttribute('tabindex', '0')" in js         # sort headers are focusable
+    assert "e.key === 'Enter'" in js                      # Enter/Space triggers sort
+    v, s = js.index('class VTable'), js.index('class StaticTable')   # VTable is defined first
+    vtable_src, static_src = js[v:s], js[s:]
+    assert 'aria-sort' in vtable_src and 'aria-sort' in static_src   # both engines announce sort state
+    assert 'wireSortHeader(' in vtable_src and 'wireSortHeader(' in static_src   # both call the shared helper
+
 
 # --- c16m: controllable cell truncation + hover-reveal on the one rdc-table engine (ADR-38). ---
 
@@ -496,3 +507,15 @@ def test_c16n_draws_by_class_area_drop_clip(rendered):
     # c16n (the engine JS applies clip via .className, never the literal class="clip").
     dbc = _report(rendered, 'draws_by_class')
     assert 'class="clip"' in dbc
+
+
+# --- c16o: table a11y parity - both rdc-table modes (ADR-38 a11y tail). ---
+
+def test_c16o_search_input_labelled(rendered):
+    # The virtual filter <input type="search"> gets an aria-label (a placeholder is not a label
+    # substitute). Every search input on the catalog + drill pages must carry one.
+    for html in (_root(rendered), _drill(rendered)):
+        inputs = re.findall(r'<input type="search"[^>]*>', html)
+        assert inputs, 'expected at least one search input'
+        for tag in inputs:
+            assert 'aria-label="filter' in tag, tag

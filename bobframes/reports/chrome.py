@@ -1311,6 +1311,18 @@ _RDC_TABLE_JS_TMPL = r"""
     return 'linear-gradient(' + c + ', ' + c + ')';
   }
 
+  // SHARED sort-header wiring (c16o, ADR-38 a11y tail). One contract for BOTH modes: the sortable
+  // <th> (implicit role columnheader - where aria-sort belongs) is made keyboard-operable
+  // (tabindex 0 + Enter/Space) on top of its click. cursor:pointer already comes from the
+  // `table.data thead th` CSS rule, so it is not re-set here. onSort(ci) is the mode's own sort.
+  function wireSortHeader(th, ci, onSort){
+    th.setAttribute('tabindex', '0');
+    th.addEventListener('click', () => onSort(ci));
+    th.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); onSort(ci); }
+    });
+  }
+
   function lookupLabel(labels, kind, id){
     if (!labels || !kind || id == null || id === '' || id === 0 || id === '0') return '';
     const k = String(id);
@@ -1429,7 +1441,9 @@ _RDC_TABLE_JS_TMPL = r"""
         arrow.className = 'sort-arrow';
         if (i === this.sortCol) arrow.textContent = this.sortDir > 0 ? ' ▲' : ' ▼';
         th.appendChild(arrow);
-        th.addEventListener('click', () => this.sort(i));
+        // a11y (c16o): announce sort state + keep it correct across group-toggle rebuilds.
+        th.setAttribute('aria-sort', (i === this.sortCol) ? (this.sortDir > 0 ? 'ascending' : 'descending') : 'none');
+        wireSortHeader(th, i, (ci) => this.sort(ci));
         tr.appendChild(th);
       }
     }
@@ -1509,8 +1523,10 @@ _RDC_TABLE_JS_TMPL = r"""
       this.view.sort((a, b) => cmpVals(a[ci], b[ci], isNum, dir));
       const headers = this.host.querySelectorAll('thead th');
       for (let k = 0; k < headers.length; k++){
+        const match = (+headers[k].dataset.ci === ci);
         const a = headers[k].querySelector('.sort-arrow');
-        if (a) a.textContent = (+headers[k].dataset.ci === ci) ? (dir > 0 ? ' ▲' : ' ▼') : '';
+        if (a) a.textContent = match ? (dir > 0 ? ' ▲' : ' ▼') : '';
+        headers[k].setAttribute('aria-sort', match ? (dir > 0 ? 'ascending' : 'descending') : 'none');  // a11y (c16o)
       }
       this.host.scrollTop = 0;
       this.render();
@@ -1742,11 +1758,10 @@ _RDC_TABLE_JS_TMPL = r"""
 
     _wireHeaders(){
       this.ths.forEach((th, ci) => {
-        th.style.cursor = 'pointer';
         th.setAttribute('aria-sort', 'none');   // a11y: report sort state (c16l - was on rdc-sortable-table)
         let arrow = th.querySelector('.sort-arrow');
         if (!arrow){ arrow = document.createElement('span'); arrow.className = 'sort-arrow'; th.appendChild(arrow); }
-        th.addEventListener('click', () => this.sort(ci));
+        wireSortHeader(th, ci, (i) => this.sort(i));   // a11y (c16o): keyboard-operable (shared with VTable)
       });
     }
 
