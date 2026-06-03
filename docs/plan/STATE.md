@@ -22,8 +22,10 @@ current:        c16p_v02_closeout    (status: not-started. c16o DONE 2026-06-03 
                 (NOT render-only: regenerates EVERY drill, clears the stale older-run inline-data drills) +
                 version 0.1.0->0.2.0 + CHANGELOG [Unreleased]->[0.2.0] (summarize c04-c16o) + PUSH -> CI green
                 on the full matrix (FIRST CI for c04-c16o) + MERGE -> main + TAG v0.2.0 (outward + IRREVERSIBLE -
-                AUTHORIZE FIRST) -> OIDC publish -> PyPI + GH Release -> post-install verify. THEN c20. G-20
-                (3+-run column collapse) still deferred - no 3+-run data. ADR-37 governs (reports static); SPA VOIDED.)
+                AUTHORIZE FIRST) -> OIDC publish -> PyPI + GH Release -> post-install verify. THEN v0.2.5 (c16q-c16w:
+                report packaging + exec one-pager; DESIGNED 2026-06-03 - commits/v025/ + v025_packaging_and_onepager_proposal.md
+                + ADR-39/40/41; slots before c20), THEN c20. G-20 (3+-run column collapse) still deferred - no
+                3+-run data. ADR-37 governs (reports static); SPA VOIDED.)
 last_session:   2026-06-03 — c16o DONE (table a11y parity, both rdc-table modes; ADR-38 a11y tail; closes the
                 G-23 a11y tail; rides ADR-37/6/24/c16l). A feature added once to the ONE engine now behaves the
                 same in BOTH modes. (1) VTable aria-sort (virtual parity): `VTable.buildHead` seeds `aria-sort`
@@ -742,6 +744,21 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-03 — v0.2.5 DESIGNED (planning session; report packaging + exec one-pager; NO code, NO golden refresh).
+  Output: proposal (v025_packaging_and_onepager_proposal.md), ADR-39/40/41, commit spine c16q-c16w (commits/v025/),
+  QUALITY_GATES 21.1q/r/s, FINDINGS G-24..G-27, HARDCODE H-40, MIGRATION/ROADMAP/INDEX slotting. Process: 3 Explore +
+  2 Plan agents, then an adversarial design-review workflow (4 critics + synthesis) that materially changed the plan.
+  Key decisions: (1) the health verdict is HOISTED out of summary.py into a presentation-independent `bobframes/health.py`
+  (stable State enum incl. UNKNOWN - no false-green on missing data; consumed by c20 --json + c21 report --gate, not
+  re-implemented). (2) `package` = a non-mutating STREAM transform (no 2x staging), output OUTSIDE the read tree, and
+  NEVER gains --format - a 4-contract output-verb taxonomy (ADR-40) resolves the collision with c26 export --format zip.
+  (3) `--shared-assets` KEPT but via a `head_assets(sink)` ONE-source-of-truth seam (not scraping rendered HTML);
+  ADR-41 revisits ADR-37's accepted per-page duplication now that it is MEASURED (30 pages 1.30 MB inlined -> 48 KB
+  shared; zip per-file DEFLATE does not dedup cross-page). (4) `--redact` scrubs at the provenance DATA seam,
+  strip-by-default (usable on real captures). (5) the one-pager is made DISCOVERABLE (dashboard nav + root slot +
+  crumb), not an orphan; the converged 3-surface IA is recorded. Default `render` output stays byte-identical (ADR-37
+  literal). Slots after v0.2 (c16p) + before c20. NEXT BUILD SESSION: start c16q. (current/last_session below unchanged -
+  they track IMPLEMENTATION; no code shipped this session.)
 - 2026-06-03 — c16o DONE (table a11y parity, both rdc-table modes; ADR-38 a11y tail; closes G-23 a11y tail).
   A shared `wireSortHeader(th, ci, onSort)` helper (authored once in the engine IIFE) makes the sort `<th>`
   keyboard-operable (`tabindex=0` + Enter/Space → the mode's own `sort(ci)`) in BOTH modes; `VTable.buildHead`

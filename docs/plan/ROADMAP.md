@@ -39,6 +39,21 @@ parity pinned to the canonical cell py3.12+pa21, [ADR-11](DECISIONS.md)).
 - **Schema:** no `SCHEMA_VERSION` bump. Output byte-identical.
 - **Deps:** v0.1 shipped. **Unblocks everything below.**
 
+### v0.2.5 — report packaging + exec one-pager (S) — shareability + a non-technical read
+- **Commits:** c16q `health.py` verdict + `summary.py` one-pager -> c16r `head_assets` seam -> c16s
+  `package` verb + shareable bundle -> c16t shared-assets default -> c16u `--redact` -> c16v multi-capture
+  per-frame normalization -> c16w close-out.
+- **Closes:** G-24 (no exec one-pager / health verdict). Opens G-25/G-26/G-27 (per-area verdict +
+  `[gating]` config; `aggregates.py`; dashboard-hero verdict convergence) + H-40 (shader `*1.25` band).
+- **Serves:** the **leads/producers** "is my frame healthy" one-screen read, and the **adoptability**
+  "hand a colleague a shareable artifact" gap. Seeds the **CI** verdict contract (`health.Verdict`) that
+  c20 `--json` + c21 `report --gate` consume.
+- **Schema:** none. Default `render` output byte-identical (ADR-37); the one-pager adds a golden page +
+  an intentional index/dashboard nav refresh; `package` is a non-mutating transform with its own gate.
+- **Deps:** v0.2 (ReportCfg thresholds, run model, the chrome primitives). **Unblocks** the c20/c21
+  verdict consumers. See [v025_packaging_and_onepager_proposal.md](v025_packaging_and_onepager_proposal.md),
+  ADR-39/40/41.
+
 ### v0.3 — CI/automation surface (S–M) — the high-leverage next step
 - **Commits:** c20 `--json` + `json_schema_version` → c21 config-driven regression gating → c22
   isolated `parse`/`replay` → c23 `--dry-run` → c24 `verify` → c25 `diff` → c26 `export`.
