@@ -53,8 +53,10 @@ Operates on the renamed `bobframes/` package. Each guarded by parity.
 
 A focused minor: make the reports shareable and give execs/non-technical readers a one-pager. Compositions
 of existing primitives; the default `render` output stays byte-identical (ADR-37 holds). No schema bump.
-See [v025_packaging_and_onepager_proposal.md](v025_packaging_and_onepager_proposal.md) + ADR-39/40/41.
+See [v025_packaging_and_onepager_proposal.md](v025_packaging_and_onepager_proposal.md) + ADR-39/40/41/42.
 Continues the c16 report-epic letter lineage (c17-c19 are shipped v0.1; no free integers before c20).
+Order = q,r,s,t,u,v,x then the **w close-out LAST** (the letter is just a label; c16x was added after the
+spine - ADR-42 - so c16w stays the final commit).
 
 | Commit | Leaves working state of… |
 |---|---|
@@ -64,6 +66,7 @@ Continues the c16 report-epic letter lineage (c17-c19 are shipped v0.1; no free 
 | [c16t shared-assets default](commits/v025/c16t_shared_assets.md) | shared-assets becomes the DEFAULT bundle delivery via the seam (`--inline` opts out); per-family `_assets/` + depth-relative links; revisits ADR-37 (ADR-41) |
 | [c16u redact](commits/v025/c16u_redact.md) | `--redact` at the provenance data seam, strip-by-default; abs-path completeness scan |
 | [c16v multi-capture normalize](commits/v025/c16v_multicapture_normalize.md) | per-frame normalization of instancing repeat-count + shader cost across the reports + dashboard + verdict (G-29); golden-neutral on 1-capture data |
+| [c16x component system](commits/v025/c16x_component_system.md) | server-side `chrome` components (`kpi_card`/`trendline`/`status_badge`) + ONE owned stylesheet + a token-validity guard + preview-gallery catalog; migrates the c16q one-pager off its inline `<style>` (ADR-42, G-30). Stop brute-forcing per-page CSS |
 | [c16w close-out](commits/v025/c16w_v025_closeout.md) | v0.2.5 close-out: 0.2.0 -> 0.2.5, CHANGELOG, full re-ingest verify, tag v0.2.5 -> PyPI |
 
 ## v0.3 — CI/automation surface (after v0.2.5)

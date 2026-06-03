@@ -796,6 +796,11 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-04 — SCOPE: added c16x (component system) to v0.2.5 + ADR-42 + FINDINGS G-30. c16q's one-pager
+  CSS shipped brute-forced (page-scoped inline `<style>` + bespoke `_kpi`/`_trendline`; a typo'd
+  `var(--sp-5)` silently zeroed padding) - c16x introduces server-side `chrome` components + ONE owned
+  stylesheet + a token-validity guard + a preview-gallery catalog (after c16t, before the c16w close-out).
+  Wired into MIGRATION/INDEX/proposal §9. To be picked up after the spine.
 - 2026-06-04 — c16q DONE (health verdict module + exec one-pager; ADR-39; first v0.2.5 commit). NEW health.py
   (State OK<UNKNOWN<AT_RISK<ALARM, absolute-first verdict, trend) + reports/summary.py one-pager + dashboard
   area-keyed helpers + discoverability nav. 5-file golden delta (recorded ADR-23 vs the doc's 4); parquet

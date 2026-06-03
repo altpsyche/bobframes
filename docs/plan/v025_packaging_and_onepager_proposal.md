@@ -283,7 +283,8 @@ After v0.2.5 there are three overview surfaces; their roles are fixed so they co
 | [c16t](commits/v025/c16t_shared_assets.md) | shared-assets becomes the DEFAULT bundle delivery via the seam (`--inline` opts out); revisits ADR-37 (ADR-41) |
 | [c16u](commits/v025/c16u_redact.md) | `--redact` at the provenance data seam, strip-by-default; abs-path completeness scan |
 | [c16v](commits/v025/c16v_multicapture_normalize.md) | per-frame normalization of instancing repeat + shader cost across reports + dashboard + verdict (G-29); golden-neutral on 1-capture data |
-| [c16w](commits/v025/c16w_v025_closeout.md) | v0.2.5 close-out: 0.2.0 -> 0.2.5, CHANGELOG, full re-ingest verify, tag v0.2.5 -> PyPI |
+| [c16x](commits/v025/c16x_component_system.md) | server-side component system: `chrome` components (`kpi_card`/`trendline`/`status_badge`) + one owned stylesheet + a token-validity guard + a preview-gallery catalog; migrates the c16q one-pager off its inline `<style>` (ADR-42, G-30). Added AFTER the spine; runs before the close-out |
+| [c16w](commits/v025/c16w_v025_closeout.md) | v0.2.5 close-out (LAST): 0.2.0 -> 0.2.5, CHANGELOG, full re-ingest verify, tag v0.2.5 -> PyPI |
 
 ## 7. Rejected alternatives
 
@@ -317,4 +318,25 @@ After v0.2.5 there are three overview surfaces; their roles are fixed so they co
 2. Verdict home: `bobframes/health.py` (presentation-independent; seeds c20/c21).
 3. Bundle scope: the whole VIEWABLE tree (HTML + `_pagedata` + linked `_data`); the data-zip is c26.
 4. Redaction: data-seam scrub, strip-by-default; fail-closed only in a CI mode.
-5. ADR count: three (ADR-39 one-pager + verdict + IA, ADR-40 packaging + taxonomy, ADR-41 shared-asset seam).
+5. ADR count: three at design time (ADR-39 one-pager + verdict + IA, ADR-40 packaging + taxonomy, ADR-41
+   shared-asset seam); a fourth (ADR-42, the component system) was added during c16q execution - see §9.
+
+## 9. Added during execution — the component system (c16x, ADR-42)
+
+c16q exposed that report styling is **brute-forced**: the one-pager shipped its look as a page-scoped
+inline `<style>` (keyed on `body[data-page-kind="summary"]`) plus bespoke markup helpers (`_kpi`,
+`_trendline`, a status badge, the Movement layout) that re-implement card/kpi patterns chrome already
+half-owns. The untyped inline CSS bit immediately: a typo'd `var(--sp-5)` (no such token - the scale is
+1/2/3/4/6/8/12) made the padding shorthand invalid, which computes to `0`, silently zeroing the chip
+padding until a visual review caught it (G-30). Every new surface would repeat this pattern against one
+big inlined CSS string, with no reusable + testable component layer and no guard that a referenced token
+exists.
+
+**c16x** adds a small **server-side component system** (ADR-42) - plain `chrome` render helpers
+(`kpi_card`, `trendline`, `status_badge`, beside the existing `section_card`/`callout`/`summary_bar`) +
+ONE owned stylesheet (the shared chrome CSS / ADR-41's `_assets/report.css`, never per-page `<style>`) +
+a **token-validity guard** (reject any `var(--…)` not in the design-token scale) + a **preview-gallery
+catalog** (each component rendered once into `_chrome_preview.html`, with a structural test). It is NOT a
+CSS framework / build step / new dependency - ADR-37 holds. It migrates the c16q one-pager off its inline
+`<style>` as the first consumer (visual parity, a reviewed golden refresh). Sequenced after c16t (so the
+component CSS rides the single shared asset) and before the c16w close-out; the close-out stays last.
