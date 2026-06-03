@@ -74,6 +74,13 @@ def build_global_entities(root: str) -> int:
             dl = t.column('drop_label').to_pylist()
             cp = t.column('capture').to_pylist()
             lid = t.column(id_col).to_pylist()
+            # R-18: skip rotation backups / staging dirs. The `*/*` glob also matches a `--force`
+            # backup `<drop>.<ts>` (R-16) and `.stage`/`.tmp` trees, whose Parquet keeps the clean
+            # drop_label - so the dir basename no longer equals `<drop_date>_<drop_label>`. Counting
+            # them would double up every entity row.
+            drop_entry = os.path.basename(os.path.dirname(path))
+            if dd and drop_entry != _paths.drop_dirname(dd[0], dl[0] or ''):
+                continue
             for i in range(len(sk)):
                 if not sk[i]:
                     continue  # skip entities without a stable_key (best-effort only)

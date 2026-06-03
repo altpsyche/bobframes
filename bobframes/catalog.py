@@ -53,6 +53,13 @@ def _find_manifests(root: str) -> list[tuple[str, str, dict]]:
                     m = json.load(f)
             except Exception:
                 continue
+            # R-18: skip non-canonical drop dirs. A `--force` run rotates the live drop to a SIBLING
+            # backup `<drop>.<ts>` (R-16) that still carries the ORIGINAL manifest, so its dir name no
+            # longer equals `<drop_date>_<drop_label>`; counting it would emit a DUPLICATE capture row.
+            # `.stage`/`.tmp` staging dirs are excluded the same way. Reconstructing from the manifest
+            # (not a `'.' in name` test) keeps legit labels that contain a dot.
+            if drop_entry != _paths.drop_dirname(m.get('drop_date', ''), m.get('drop_label') or ''):
+                continue
             rel = _paths.drop_dir_rel(area_entry, drop_entry)
             out.append((drop_dir, rel, m))
     return out
