@@ -180,12 +180,12 @@ _LABEL_COLS: dict[str, dict[str, str]] = {
 }
 
 
+# Drill/catalog-only chrome (c16k: the table.data engine CSS + col-groups + the table-var :root block
+# moved to reports/chrome._RDC_TABLE_CSS so one class serves both modes; reports never load this
+# remainder, so their goldens stay byte-stable). What stays here is catalog/drill page chrome: the
+# wide-body width, the toc/controls, the .table-scroll virtual container + loading hint, the sidecar
+# list, and the per-drop visual hierarchy (category label/rail + table-section cards).
 _PER_DROP_CSS = """
-:root { --label: #4a6a3a; --th-bg: var(--surface-2); --th-bg-active: var(--row-hover); }
-@media (prefers-color-scheme: dark) {
-  :root { --label: #a3d39c; }
-}
-
 body { max-width: 1800px; }
 
 nav.toc a { display: flex; justify-content: space-between; padding: 2px 0; gap: 1rem; }
@@ -205,19 +205,6 @@ nav.toc a .ct { color: var(--text-3); font-variant-numeric: tabular-nums; }
 .controls .ct { color: var(--text-2); font-variant-numeric: tabular-nums; }
 .controls .dl { font-size: var(--fs-small); color: var(--accent); }
 
-/* Collapsible column groups (c16i, catalog only). Real <button> toggles; no transition so the
-   show/hide is instant and reduced-motion-safe. Buttons are built client-side into .col-groups. */
-.col-groups { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin: 0 0 var(--sp-2); }
-.col-groups .col-group-toggle {
-  font: var(--fs-small) 'Inter', 'Segoe UI', system-ui, sans-serif;
-  padding: 4px 10px; cursor: pointer; color: var(--text-2);
-  background: var(--surface-1); border: 1px solid var(--border-2); border-radius: 2px;
-}
-.col-groups .col-group-toggle[aria-pressed="true"] {
-  color: var(--accent); border-color: var(--accent); background: var(--surface-2);
-}
-.col-groups .col-group-toggle:hover { background: var(--row-hover); }
-
 .table-scroll {
   /* c16i: size to content, capped at 60vh. A 1-row table is now ~1 row tall instead of a big empty
      box; tables past the cap scroll (the virtual-scroll spacers reserve the full height regardless,
@@ -235,51 +222,6 @@ nav.toc a .ct { color: var(--text-3); font-variant-numeric: tabular-nums; }
   content: 'loading...';
   display: block; padding: 12px; opacity: 0.6;
 }
-table.data {
-  border-collapse: separate; border-spacing: 0;
-  font: var(--fs-body)/1.3 'Inter', 'Segoe UI', system-ui, sans-serif;
-  width: max-content; min-width: 100%; table-layout: auto;
-}
-table.data thead th {
-  position: sticky; top: 0; z-index: 2;
-  background: var(--th-bg);
-  text-align: left; cursor: pointer; user-select: none;
-  color: var(--accent); font-weight: 600;
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--border-2);
-  white-space: nowrap;
-}
-table.data thead th:hover { background: var(--th-bg-active); }
-table.data thead th .sort-arrow { display: inline-block; width: 10px; color: var(--text-3); }
-table.data thead th.numeric, table.data tbody td.numeric {
-  text-align: right; font-variant-numeric: tabular-nums;
-}
-/* Type split (c16i): mono+tabular only for numeric BODY cells; headers stay Inter sans.
-   Longhands (not the `font` shorthand) so the inherited line-height 1.3 is preserved. */
-table.data tbody td.numeric, table.data tbody td.mono {
-  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
-  font-size: var(--fs-mono);
-}
-table.data tbody td {
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--border-1);
-  vertical-align: top; white-space: nowrap;
-  max-width: 380px; overflow: hidden; text-overflow: ellipsis;
-  background: var(--surface-0);
-}
-table.data tbody tr.alt td { background: var(--surface-1); }
-table.data tbody tr:hover td { background: var(--row-hover); }
-table.data tbody td .lbl {
-  color: var(--label); margin-left: 6px;
-  font-style: italic; opacity: .85;
-}
-table.data tbody td a {
-  color: inherit; text-decoration: none;
-  border-bottom: 1px dotted var(--accent);
-}
-table.data tbody td a:hover { color: var(--accent); border-bottom-style: solid; }
-.spacer td { padding: 0; border: 0; background: var(--surface-0); }
-
 .sidecar-list a { font-family: ui-monospace, monospace; font-size: var(--fs-small); }
 ul.sidecar-list { list-style: none; padding: 0; margin: var(--sp-2) 0;
                   columns: 5; column-gap: var(--sp-6); column-rule: 1px solid var(--border-1); }
@@ -347,488 +289,18 @@ section.table-section .table-meta {
 def _compose_css() -> str:
     return (reports_base.design_tokens_css()
             + reports_base.chrome_css()
+            + reports_base.rdc_table_css()
             + _PER_DROP_CSS)
 
 
 _CSS = _compose_css()
 
-# Virtual-scroll row height (px). Single source of truth (c16i): the same number drives the JS
-# `const ROW_H` (via the __ROW_H__ sentinel below) and the CSS cell padding is tuned to fit within
-# it. ROW_H alone governs the virtual-scroll offset math (spacer heights + start/end window), so
-# the CSS must NOT also set a row height — see the c16i plan, fix #3.
-_ROW_H = 32
-
-# Virtual-scroll JS. One VTable per table.
-_JS_TMPL = r"""
-(function(){
-  const ROW_H = __ROW_H__;
-  const BUFFER = 8;
-
-  // For ID kinds: where to jump when an ID cell is clicked
-  const LINK_TARGET = {
-    shader: { table: 'shaders', col: 'shader_id' },
-    program: { table: 'programs', col: 'program_id' },
-    texture: { table: 'textures', col: 'tex_id' },
-    sampler: { table: 'samplers', col: 'sampler_id' },
-    buffer: { table: 'buffers', col: 'buffer_id' },
-    fbo: { table: 'fbos', col: 'fbo_id' },
-  };
-
-  function isNumeric(v){
-    return v != null && (typeof v === 'number' || (typeof v === 'string' && /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(v)));
-  }
-  function fmt(v){
-    if (v == null) return '';
-    if (typeof v === 'number'){
-      if (v === 0) return '0';
-      if (Math.abs(v) < 1e-4 || Math.abs(v) >= 1e7) return v.toExponential(4);
-      return (Math.round(v * 1e6) / 1e6).toString();
-    }
-    return String(v);
-  }
-
-  function lookupLabel(labels, kind, id){
-    if (!labels || !kind || id == null || id === '' || id === 0 || id === '0') return '';
-    const k = String(id);
-    const cap = labels.capture;
-    if (!cap || !labels.by_capture || !labels.by_capture[cap]) return '';
-    const buckets = labels.by_capture[cap];
-    if (kind === 'auto_by_slot_kind' || kind === 'auto_by_kind') return '';
-    if (kind === 'texture_list') return '';
-    return (buckets[kind] && buckets[kind][k]) || '';
-  }
-
-  function autoKindForSlot(slotKind){
-    if (slotKind === 'texture') return 'texture';
-    if (slotKind === 'sampler') return 'sampler';
-    if (slotKind === 'ubo' || slotKind === 'ssbo') return 'buffer';
-    return '';
-  }
-  function autoKindForDescriptor(descriptorKind){
-    if (descriptorKind === 'ReadOnlyResource' || descriptorKind === 'ImageSampler' || descriptorKind === 'TypedBuffer') return 'texture';
-    if (descriptorKind === 'Sampler') return 'sampler';
-    if (descriptorKind === 'ConstantBuffer' || descriptorKind === 'ReadWriteResource' || descriptorKind === 'ReadWriteBuffer') return 'buffer';
-    return '';
-  }
-
-  class VTable {
-    constructor(host, payload, labels, groups){
-      this.host = host;
-      this.cols = payload.cols;
-      this.rows = payload.rows;
-      this.labelCols = payload.labelCols || {};
-      this.labels = labels;
-      this.groups = groups || null;  // catalog-only column groups (c16i); null elsewhere
-      this.view = this.rows.slice();
-      this.sortCol = -1;
-      this.sortDir = 1;
-
-      // detect numeric columns from first 50 non-null cells
-      this.numericCols = new Set();
-      for (let ci = 0; ci < this.cols.length; ci++){
-        let count = 0, num = 0;
-        for (let ri = 0; ri < this.rows.length && count < 50; ri++){
-          const v = this.rows[ri][ci];
-          if (v == null || v === '') continue;
-          count++;
-          if (typeof v === 'number' || (typeof v === 'string' && /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(v))) num++;
-        }
-        if (count > 0 && num / count > 0.7) this.numericCols.add(ci);
-      }
-
-      // Type split (c16i): non-numeric ID/hash/path columns render mono (left-aligned) so hashes
-      // stay legible while text columns go Inter sans. Decided by column NAME (deterministic, not
-      // value-sniffed); numeric columns already get mono via .numeric, so exclude them here.
-      this.monoCols = new Set();
-      const MONO_RE = /(_id|_hash|_hex)$|^stable_key$|.*_path$|^capture$/;
-      for (let ci = 0; ci < this.cols.length; ci++){
-        if (!this.numericCols.has(ci) && MONO_RE.test(this.cols[ci])) this.monoCols.add(ci);
-      }
-
-      // Heatmap data-bars (c16i): per-column min/max for the numeric MAGNITUDE columns, so a cell
-      // can show a relative-value bar behind the number. Exclude ID/reference columns (their
-      // magnitude is meaningless) and any column already flagged as a cross-link label. Scanned
-      // over ALL rows (the immutable source, not the sorted view) so the scale is deterministic and
-      // stable across sort/filter. Columns with hi<=lo (constant) get no entry -> no bar.
-      const ID_RE = /_id$|^event_id$/;
-      this.colStats = {};
-      for (let ci = 0; ci < this.cols.length; ci++){
-        if (!this.numericCols.has(ci)) continue;
-        if (ID_RE.test(this.cols[ci]) || this.labelCols[this.cols[ci]]) continue;
-        let lo = Infinity, hi = -Infinity, seen = 0;
-        for (let ri = 0; ri < this.rows.length; ri++){
-          const v = this.rows[ri][ci];
-          if (v == null || v === '') continue;
-          const n = +v;
-          if (n !== n) continue;  // NaN guard
-          if (n < lo) lo = n;
-          if (n > hi) hi = n;
-          seen++;
-        }
-        if (seen > 0 && hi > lo) this.colStats[ci] = {lo: lo, hi: hi};
-      }
-
-      // Collapsible column groups (c16i, catalog only): map column name -> index, then seed the
-      // hidden set from any group whose `open` flag is false. Toggling visibility never touches the
-      // ROW_H math (rows keep full height regardless of visible columns), so virtual-scroll stays
-      // aligned. numericCols/monoCols/colStats stay keyed by the ORIGINAL ci, unaffected by hiding.
-      this.hiddenCols = new Set();
-      this.colByName = {};
-      for (let i = 0; i < this.cols.length; i++) this.colByName[this.cols[i]] = i;
-      if (this.groups){
-        this.groups.forEach(g => {
-          if (!g.open){
-            g.cols.forEach(c => {
-              const ci = this.colByName[c];
-              if (ci != null) this.hiddenCols.add(ci);
-            });
-          }
-        });
-      }
-
-      // detect slot_kind column for draw_bindings (resource_id auto-label)
-      this.slotKindCol = this.cols.indexOf('slot_kind');
-      this.descriptorKindCol = this.cols.indexOf('descriptor_kind');
-
-      this.build();
-    }
-
-    // (Re)build the header row, honouring hidden columns. Each th carries data-ci = its ORIGINAL
-    // column index so sort()/arrow logic stays correct when columns are hidden (c16i, fix #7).
-    buildHead(){
-      const tr = this.headRow;
-      while (tr.firstChild) tr.removeChild(tr.firstChild);
-      for (let i = 0; i < this.cols.length; i++){
-        if (this.hiddenCols.has(i)) continue;
-        const th = document.createElement('th');
-        th.dataset.ci = i;
-        th.appendChild(document.createTextNode(this.cols[i]));
-        if (this.numericCols.has(i)) th.classList.add('numeric');
-        const arrow = document.createElement('span');
-        arrow.className = 'sort-arrow';
-        if (i === this.sortCol) arrow.textContent = this.sortDir > 0 ? ' ▲' : ' ▼';
-        th.appendChild(arrow);
-        th.addEventListener('click', () => this.sort(i));
-        tr.appendChild(th);
-      }
-    }
-
-    // Build the column-group toggle bar (catalog only). Each group is a real <button> with
-    // aria-pressed; toggling hides/shows that group's columns and re-renders. Keyboard-native,
-    // no animation -> reduced-motion safe.
-    buildGroupBar(){
-      if (!this.groups) return;
-      const section = this.host.closest('section');
-      const bar = section ? section.querySelector('.col-groups') : null;
-      if (!bar) return;
-      this.groups.forEach(g => {
-        const cis = g.cols.map(c => this.colByName[c]).filter(x => x != null);
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'col-group-toggle';
-        btn.dataset.group = g.name;
-        btn.textContent = g.name;
-        btn.setAttribute('aria-pressed', g.open ? 'true' : 'false');
-        btn.addEventListener('click', () => {
-          const next = btn.getAttribute('aria-pressed') !== 'true';
-          btn.setAttribute('aria-pressed', next ? 'true' : 'false');
-          cis.forEach(ci => { if (next) this.hiddenCols.delete(ci); else this.hiddenCols.add(ci); });
-          this.buildHead();
-          this.render();
-        });
-        bar.appendChild(btn);
-      });
-    }
-
-    build(){
-      const table = document.createElement('table');
-      table.className = 'data';
-      const thead = table.createTHead();
-      this.headRow = thead.insertRow();
-      this.buildHead();
-      const tbody = document.createElement('tbody');
-      const sTop = document.createElement('tr');
-      const sBot = document.createElement('tr');
-      sTop.className = 'spacer'; sBot.className = 'spacer';
-      const tdTop = document.createElement('td');
-      const tdBot = document.createElement('td');
-      tdTop.colSpan = this.cols.length;
-      tdBot.colSpan = this.cols.length;
-      sTop.appendChild(tdTop); sBot.appendChild(tdBot);
-      tbody.appendChild(sTop); tbody.appendChild(sBot);
-      table.appendChild(tbody);
-      this.host.appendChild(table);
-
-      this.tbody = tbody;
-      this.sTop = sTop;
-      this.sBot = sBot;
-      this.tdTop = tdTop;
-      this.tdBot = tdBot;
-
-      this.buildGroupBar();
-
-      this.host.addEventListener('scroll', () => this.render());
-      window.addEventListener('resize', () => this.render());
-      // Re-render when a containing <details class="category"> opens.
-      const detailsEl = this.host.closest('details');
-      if (detailsEl){
-        detailsEl.addEventListener('toggle', () => {
-          if (detailsEl.open){
-            requestAnimationFrame(() => this.render());
-            setTimeout(() => this.render(), 50);
-          }
-        });
-      }
-      this.render();
-      // Re-render after layout settles (initial clientHeight can be 0)
-      requestAnimationFrame(() => this.render());
-      // And once more after fonts/sizes stabilize
-      setTimeout(() => this.render(), 50);
-    }
-
-    sort(ci){
-      if (this.sortCol === ci) this.sortDir = -this.sortDir;
-      else { this.sortCol = ci; this.sortDir = 1; }
-      const dir = this.sortDir;
-      const isNum = this.numericCols.has(ci);
-      this.view.sort((a, b) => {
-        const aa = a[ci], bb = b[ci];
-        if (aa == null && bb == null) return 0;
-        if (aa == null) return 1;
-        if (bb == null) return -1;
-        if (isNum){
-          const na = +aa, nb = +bb;
-          return (na - nb) * dir;
-        }
-        return String(aa).localeCompare(String(bb)) * dir;
-      });
-      // Match on the th's ORIGINAL column index (data-ci), not its position: with hidden columns
-      // the header list is shorter, so positional matching would put the arrow on the wrong th.
-      const headers = this.host.querySelectorAll('thead th');
-      for (let k = 0; k < headers.length; k++){
-        const a = headers[k].querySelector('.sort-arrow');
-        if (a) a.textContent = (+headers[k].dataset.ci === ci) ? (dir > 0 ? ' ▲' : ' ▼') : '';
-      }
-      this.host.scrollTop = 0;
-      this.render();
-    }
-
-    filter(query){
-      const q = (query || '').trim().toLowerCase();
-      if (!q){
-        this.view = this.rows.slice();
-      } else {
-        const labels = this.labels;
-        const labelCols = this.labelCols;
-        const cols = this.cols;
-        const slotKindCol = this.slotKindCol;
-        const descriptorKindCol = this.descriptorKindCol;
-        this.view = this.rows.filter(r => {
-          for (let i = 0; i < r.length; i++){
-            const v = r[i];
-            if (v == null) continue;
-            if (String(v).toLowerCase().indexOf(q) >= 0) return true;
-            // also match against the resolved label, if any
-            const lc = labelCols[cols[i]];
-            if (!lc || v === 0 || v === '0' || v === '') continue;
-            let kind = lc;
-            if (kind === 'auto_by_slot_kind' && slotKindCol >= 0) kind = autoKindForSlot(r[slotKindCol]);
-            else if (kind === 'auto_by_kind' && descriptorKindCol >= 0) kind = autoKindForDescriptor(r[descriptorKindCol]);
-            if (kind === 'texture_list'){
-              const ids = String(v).split(';').filter(x => x);
-              for (const id of ids){
-                const lbl = lookupLabel(labels, 'texture', id);
-                if (lbl && lbl.toLowerCase().indexOf(q) >= 0) return true;
-              }
-            } else if (kind){
-              const lbl = lookupLabel(labels, kind, v);
-              if (lbl && lbl.toLowerCase().indexOf(q) >= 0) return true;
-            }
-          }
-          return false;
-        });
-      }
-      // resort if a sort was active
-      if (this.sortCol >= 0){
-        const ci = this.sortCol, dir = this.sortDir;
-        const isNum = this.numericCols.has(ci);
-        this.view.sort((a, b) => {
-          const aa = a[ci], bb = b[ci];
-          if (aa == null && bb == null) return 0;
-          if (aa == null) return 1;
-          if (bb == null) return -1;
-          if (isNum) return (+aa - +bb) * dir;
-          return String(aa).localeCompare(String(bb)) * dir;
-        });
-      }
-      this.host.scrollTop = 0;
-      this.render();
-    }
-
-    cellNode(value, ri, ci){
-      const td = document.createElement('td');
-      if (this.numericCols.has(ci)) td.classList.add('numeric');
-      else if (this.monoCols.has(ci)) td.classList.add('mono');
-
-      const colName = this.cols[ci];
-      const lc = this.labelCols[colName];
-      let kind = lc;
-      if (kind === 'auto_by_slot_kind' && this.slotKindCol >= 0){
-        kind = autoKindForSlot(this.view[ri][this.slotKindCol]);
-      } else if (kind === 'auto_by_kind' && this.descriptorKindCol >= 0){
-        kind = autoKindForDescriptor(this.view[ri][this.descriptorKindCol]);
-      }
-
-      // primary cell value: cross-link if we have a target for this kind
-      const formatted = fmt(value);
-      const link = LINK_TARGET[kind];
-      if (link && value != null && value !== '' && value !== 0 && value !== '0' && kind !== 'texture_list'){
-        const a = document.createElement('a');
-        a.href = '#' + link.table;
-        a.textContent = formatted;
-        a.title = 'jump to ' + link.table + ' filtered to ' + link.col + '=' + value;
-        a.addEventListener('click', (ev) => {
-          ev.preventDefault();
-          jumpToTable(link.table, String(value));
-        });
-        td.appendChild(a);
-      } else {
-        td.textContent = formatted;
-      }
-
-      // Heatmap (c16i): for magnitude columns shade the WHOLE cell by relative value -> the bigger
-      // the number, the stronger the tint (column min = no tint). A UNIFORM shade (not a partial
-      // fill) so there is no gradient edge to misread as an artifact. Applied as a solid-colour
-      // background-IMAGE so the class-driven background-COLOR (zebra tr.alt / row-hover) still shows
-      // through underneath. The number stays the cell text, on top. Deterministic (no random/Date).
-      const stat = this.colStats[ci];
-      if (stat != null && value != null && value !== ''){
-        const n = +value;
-        if (n === n){
-          let tt = (n - stat.lo) / (stat.hi - stat.lo);
-          tt = tt < 0 ? 0 : (tt > 1 ? 1 : tt);
-          const pct = Math.round(tt * 100);
-          const c = 'color-mix(in oklch, var(--accent-data) ' + Math.round(tt * 30) + '%, transparent)';
-          td.style.backgroundImage = 'linear-gradient(' + c + ', ' + c + ')';
-          td.setAttribute('aria-label', formatted + ' (' + pct + '% of column max)');
-        }
-      }
-
-      // label enrichment (appears after the value/link)
-      if (lc && value != null && value !== '' && value !== 0 && value !== '0'){
-        if (kind === 'texture_list'){
-          const ids = String(value).split(';').filter(x => x);
-          const labels = ids.map(id => lookupLabel(this.labels, 'texture', id))
-                            .filter(x => x);
-          if (labels.length){
-            const span = document.createElement('span');
-            span.className = 'lbl';
-            span.textContent = labels.join(', ');
-            td.appendChild(span);
-          }
-        } else if (kind){
-          const label = lookupLabel(this.labels, kind, value);
-          if (label){
-            const span = document.createElement('span');
-            span.className = 'lbl';
-            span.textContent = label;
-            td.appendChild(span);
-          }
-        }
-      }
-      return td;
-    }
-
-    render(){
-      const scrollTop = this.host.scrollTop;
-      const height = this.host.clientHeight || 600;
-      const len = this.view.length;
-      const start = Math.max(0, Math.floor(scrollTop / ROW_H) - BUFFER);
-      const end = Math.min(len, Math.ceil((scrollTop + height) / ROW_H) + BUFFER);
-
-      // clear data rows between spacers
-      while (this.sTop.nextSibling !== this.sBot){
-        this.tbody.removeChild(this.sTop.nextSibling);
-      }
-      // spacers span only the VISIBLE columns (changes when a group is toggled)
-      const visible = this.cols.length - this.hiddenCols.size;
-      this.tdTop.colSpan = visible;
-      this.tdBot.colSpan = visible;
-      // height on <tr> directly; <td> alone doesn't make a row tall in all browsers
-      this.sTop.style.height = (start * ROW_H) + 'px';
-      this.sBot.style.height = ((len - end) * ROW_H) + 'px';
-      this.tdTop.style.height = (start * ROW_H) + 'px';
-      this.tdBot.style.height = ((len - end) * ROW_H) + 'px';
-
-      const frag = document.createDocumentFragment();
-      for (let i = start; i < end; i++){
-        const tr = document.createElement('tr');
-        tr.style.height = ROW_H + 'px';
-        if (i % 2 === 1) tr.className = 'alt';
-        const row = this.view[i];
-        for (let ci = 0; ci < this.cols.length; ci++){
-          if (this.hiddenCols.has(ci)) continue;
-          tr.appendChild(this.cellNode(row[ci], i, ci));
-        }
-        frag.appendChild(tr);
-      }
-      this.tbody.insertBefore(frag, this.sBot);
-    }
-  }
-
-  function jumpToTable(tableName, idValue){
-    const host = document.querySelector('div.table-scroll[data-table="' + tableName + '"]');
-    if (!host || !host._vt) return;
-    const section = host.closest('section');
-    const input = section ? section.querySelector('input[type=search]') : null;
-    if (input){
-      input.value = idValue;
-      // trigger filter immediately (no debounce on programmatic set)
-      host._vt.filter(idValue);
-      const counter = section.querySelector('.ct.visible-count');
-      if (counter){
-        const v = host._vt.view.length, t = host._vt.rows.length;
-        counter.textContent = v.toLocaleString() + ' / ' + t.toLocaleString() + ' visible';
-      }
-    }
-    section.scrollIntoView({behavior: 'smooth', block: 'start'});
-  }
-  window.__jumpToTable = jumpToTable;
-
-  window.addEventListener('DOMContentLoaded', () => {
-    const labels = window.__labels || {};
-    document.querySelectorAll('div.table-scroll[data-table]').forEach(host => {
-      const name = host.dataset.table;
-      const payload = window['__data_' + name];
-      if (!payload){ return; }
-      const labelsForTable = Object.assign({}, labels);
-      // Per-section: capture from data is row-level; use the section's data-capture if set
-      labelsForTable.capture = host.dataset.capture || (payload.rows[0] ? payload.rows[0][3] : '');
-      // Column groups are catalog-only (window.__colgroups_catalog); undefined elsewhere -> no bar.
-      const groups = window['__colgroups_' + name];
-      const vt = new VTable(host, payload, labelsForTable, groups);
-      host._vt = vt;
-
-      const section = host.closest('section');
-      const input = section.querySelector('input[type=search]');
-      const counter = section.querySelector('.ct.visible-count');
-      function updateCounter(){
-        const v = vt.view.length, t = vt.rows.length;
-        counter.textContent = v.toLocaleString() + ' / ' + t.toLocaleString() + ' visible';
-      }
-      updateCounter();
-      let timer = null;
-      input.addEventListener('input', () => {
-        clearTimeout(timer);
-        timer = setTimeout(() => { vt.filter(input.value); updateCounter(); }, 80);
-      });
-    });
-  });
-})();
-"""
-
-# Bind the single-source row height into the JS (sentinel -> literal). Done once at import.
-_JS = _JS_TMPL.replace('__ROW_H__', str(_ROW_H))
+# The virtual-scroll table engine moved to reports/chrome.py as the unified `rdc-table` (c16k,
+# ADR-38): one bespoke engine serves BOTH the catalog/drill virtual mode (windowed, data from
+# _pagedata/*.js) and the reports' static mode (server-baked rows, JS enhances in place). Catalog
+# and drill now emit `<rdc-table data-mode="virtual">` hosts + `reports_base.rdc_table_js()`; the
+# `table.data`/col-groups/type-split/heatmap CSS lives in `reports_base.rdc_table_css()`. ROW_H is
+# single-sourced there (chrome._RDC_ROW_H). Drill-only chrome stays in _PER_DROP_CSS_REMAINDER below.
 
 
 def _h(s) -> str:
@@ -898,7 +370,7 @@ def _inline_table_with_data(table_name: str, out_dir: str,
     section.append(f'<a class="dl" href="{prefix}{table_name}.csv">CSV</a>')
     section.append(f'<a class="dl" href="{prefix}{table_name}.parquet">parquet</a>')
     section.append('</div>')
-    section.append(f'<div class="table-scroll" data-table="{table_name}"></div>')
+    section.append(f'<rdc-table class="table-scroll" data-mode="virtual" data-table="{table_name}"></rdc-table>')
     section.append('</section>')
 
     return '\n'.join(section), table_name, payload
@@ -1142,7 +614,7 @@ def render_drop(drill_dir: str, *, data_dir: str,
 
     parts.append(f'<script>window.__labels={labels_json};</script>')
     parts.extend(data_refs)
-    parts.append(f'<script>{_JS}</script>')
+    parts.append(f'<script>{reports_base.rdc_table_js()}</script>')
     parts.append('</body></html>')
 
     out_path = os.path.join(drill_dir, 'index.html')
@@ -1287,7 +759,7 @@ def render_root(root: str) -> str:
     # Empty container for the column-group toggle bar; the buttons are built client-side from
     # window.__colgroups_catalog (c16i). Catalog only - drill pages emit neither.
     parts.append('<div class="col-groups" role="group" aria-label="column groups"></div>')
-    parts.append(f'<div class="table-scroll" data-table="catalog"></div>')
+    parts.append(f'<rdc-table class="table-scroll" data-mode="virtual" data-table="catalog"></rdc-table>')
     parts.append('</section>')
 
     catalog_src = _write_page_data(os.path.join(root, _paths.PAGEDATA_DIR), 'catalog', payload)
@@ -1295,7 +767,7 @@ def render_root(root: str) -> str:
     parts.append('<script>window.__colgroups_catalog='
                  f'{json.dumps(_catalog_col_groups(cols), separators=(",", ":"))};</script>')
     parts.append(f'<script>window.__labels={{}};</script>')
-    parts.append(f'<script>{_JS}</script>')
+    parts.append(f'<script>{reports_base.rdc_table_js()}</script>')
     parts.append('</body></html>')
 
     out_path = root_index

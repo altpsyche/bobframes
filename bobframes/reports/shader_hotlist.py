@@ -6,6 +6,7 @@ back to live scan of **/shaders.parquet.
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from collections import Counter, defaultdict
@@ -201,28 +202,51 @@ def build(root: str, *, drops: list | None = None, ab=None,
                            chart_id='shader-hist'),
             'complexity distribution (current run)'))
 
-        # Primary (diet) table: shader / complexity / uses / cost / flags / src (c16b column diet).
-        sec = ['<div class="table-wrap">'
-               '<rdc-sortable-table data-default-sort="cost proxy" data-default-dir="desc">',
-               '<table class="report">',
+        # Primary (diet) table -> the c16k STATIC-mode rdc-table proof (ADR-38): rows stay SERVER-BAKED
+        # (golden-visible, readable JS-off, printable, Ctrl-F-able); JS only enhances IN PLACE (client
+        # sort, .num/.mono type-split via table.data, uniform-tint heatmap on plain-numeric cells, and
+        # collapsible column groups). Build the header list while recording each column's INDEX into a
+        # group: per-drop header text repeats ("delta"), so the groups key by index, not name.
+        ident_cols, cost_cols, hist_cols = [], [], []
+        ci = 0
+        sec = ['<div class="col-groups" role="group" aria-label="column groups"></div>',
+               '<div class="table-wrap">',
+               '<rdc-table data-mode="static" data-default-sort="cost proxy" data-default-dir="desc" '
+               'data-table="shader_hotlist">',
+               '<table class="data">',
                f'<caption>top {stage} shaders ranked by cost proxy</caption>',
-               '<thead><tr>', '<th scope="col">shader</th>',
-               '<th class="num" scope="col" title="shader complexity score (weighted instruction proxy)">complexity</th>',
-               '<th class="num" scope="col" title="used-by-draw count in the current run">uses (current)</th>']
+               '<thead><tr>', '<th scope="col">shader</th>']
+        ident_cols.append(ci); ci += 1   # shader
+        sec.append('<th class="num" scope="col" title="shader complexity score (weighted instruction proxy)">complexity</th>')
+        cost_cols.append(ci); ci += 1     # complexity
+        sec.append('<th class="num" scope="col" title="used-by-draw count in the current run">uses (current)</th>')
+        cost_cols.append(ci); ci += 1     # uses (current)
         for i, k in enumerate(drop_keys):
             head = 'uses' if single else f'uses<span class="dim">@{base.h(k)}</span>'
             sec.append(f'<th class="num" scope="col">{head}</th>')
+            (cost_cols if single else hist_cols).append(ci); ci += 1   # per-drop uses
             if i > 0:
                 latest = ' delta-latest' if i == len(drop_keys) - 1 else ''
                 sec.append(f'<th class="num{latest}" scope="col">delta</th>')
+                hist_cols.append(ci); ci += 1   # delta
         if len(drop_keys) >= 3:
             sec.append('<th class="num" scope="col">trend</th>')
-        sec.extend([
-            '<th class="num" scope="col" title="cost proxy = complexity x total uses">cost proxy</th>',
-            '<th scope="col">flags</th>',
-            '<th scope="col">src</th>',
-            '</tr></thead><tbody>',
-        ])
+            hist_cols.append(ci); ci += 1   # trend
+        sec.append('<th class="num" scope="col" title="cost proxy = complexity x total uses">cost proxy</th>')
+        cost_cols.append(ci); ci += 1     # cost proxy
+        sec.append('<th scope="col">flags</th>')
+        cost_cols.append(ci); ci += 1     # flags
+        sec.append('<th scope="col">src</th>')
+        ident_cols.append(ci); ci += 1    # src
+        sec.append('</tr></thead><tbody>')
+
+        # Column groups for static rdc-table: identity (shader+src) and cost open; the per-drop
+        # history wall (per-drop uses + delta + trend) collapsed. Empty groups dropped, so the
+        # single-drop synthetic omits history. Keyed by index (header text repeats).
+        colgroups = [{'name': 'identity', 'open': True, 'cols': ident_cols},
+                     {'name': 'cost', 'open': True, 'cols': cost_cols}]
+        if hist_cols:
+            colgroups.append({'name': 'history', 'open': False, 'cols': hist_cols})
 
         for rank_i, (sk, p, total_uses, cost) in enumerate(ranked, 1):
             sec.append('<tr>')
@@ -262,13 +286,18 @@ def build(root: str, *, drops: list | None = None, ab=None,
             sec.append(f'<td>{base.h(",".join(flags))}</td>')
 
             if src_link:
-                sec.append(f'<td><a href="{base.h(src_link)}" data-link-kind="inline" target="_blank" rel="noopener">{base.h(p["rep_src_path"])}{base.icon("file")}</a>'
+                sec.append(f'<td class="mono"><a href="{base.h(src_link)}" data-link-kind="inline" target="_blank" rel="noopener">{base.h(p["rep_src_path"])}{base.icon("file")}</a>'
                            f'<rdc-copy-button data-value="{base.safe_chrome_text(p["rep_src_path"])}" data-label="copy src path"></rdc-copy-button></td>')
             else:
-                sec.append('<td></td>')
+                sec.append('<td class="mono"></td>')
 
             sec.append('</tr>')
-        sec.append('</tbody></table></rdc-sortable-table></div>')
+        # c16k: close the STATIC rdc-table; ship the column-groups spec (index-keyed) as its own
+        # inline classic script (offline, ASCII) - the engine reads window.__colgroups_shader_hotlist
+        # on DOMContentLoaded, same contract as the catalog's __colgroups_catalog.
+        sec.append('</tbody></table></rdc-table></div>')
+        sec.append('<script>window.__colgroups_shader_hotlist='
+                   f'{json.dumps(colgroups, separators=(",", ":"))};</script>')
         sbody.append(''.join(sec))
 
         # Secondary metrics (collapsed): per-shader instruction-mix detail (c16b column diet).
@@ -338,7 +367,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
         drops=len(drops), captures=sum(d.n_captures for d in drops),
         build_ts=base.now_iso(), crumb_depth=base.crumb_depth(ab, run=rc),
         ab=ab, root=root, report_key='shader_hotlist',
-        kpis=kpis, run=rc,
+        kpis=kpis, run=rc, rdc_table=True,
         device=base.provenance_strip(*base.newest_drop_provenance(root, [cur] if cur else [])))])
 
 

@@ -222,12 +222,14 @@ def test_c16i_column_groups_catalog_only(rendered):
 
 
 def test_c16i_reports_layer_untouched(rendered):
-    # c16i is the template.py layer ONLY. The reports/dashboard pages must carry none of the
-    # catalog/drill VTable chrome - a leak here would mean shared CSS/JS bled into reports.
+    # c16i was the template.py layer ONLY. c16k (ADR-38) brings the column-groups chrome to the ONE
+    # static proof report (shader_hotlist) via its own __colgroups_shader_hotlist; every OTHER report
+    # stays clean, and the CATALOG global never leaks anywhere.
     for name in _ALL_REPORTS + ['index']:
         rel = '_reports/index.html' if name == 'index' else f'_reports/{name}.html'
         html = rendered[rel]
-        assert 'class="col-groups"' not in html, name
+        if name != 'shader_hotlist':
+            assert 'class="col-groups"' not in html, name
         assert 'window.__colgroups_catalog=' not in html, name
 
 
@@ -310,3 +312,67 @@ def test_c16j_loading_hint_catalog_drill_only(rendered):
     for name in _ALL_REPORTS + ['index']:
         rel = '_reports/index.html' if name == 'index' else f'_reports/{name}.html'
         assert '.table-scroll:empty::before' not in rendered[rel], name
+
+
+# --- c16k: the unified rdc-table component (ADR-38). One engine, two data-delivery modes. ---
+# virtual (catalog/drill): windowed, rows from _pagedata/*.js. static (a proof report): rows
+# server-baked, JS enhances IN PLACE so JS-off/print/Ctrl-F keep every row. The byte-golden proves
+# the emitted shell; these guards pin the STRUCTURE the merge introduced.
+
+def test_c16k_virtual_hosts_on_catalog_and_drill(rendered):
+    # catalog + drill render through <rdc-table data-mode="virtual"> (the old div.table-scroll host is
+    # gone); the engine + data-delivery are unchanged (c16j externalization still holds, asserted above).
+    for html in (_root(rendered), _drill(rendered)):
+        assert '<rdc-table class="table-scroll" data-mode="virtual" data-table=' in html
+        assert '<div class="table-scroll" data-table=' not in html   # host renamed div -> rdc-table
+    # one engine string ships (class VTable + class StaticTable in the same IIFE), offline + det.
+    for html in (_root(rendered), _drill(rendered)):
+        assert 'class VTable' in html and 'class StaticTable' in html
+        for bad in ('Math.random', 'Date.now', 'new Date', 'fetch('):
+            assert bad not in html, bad
+
+
+def test_c16k_static_proof_server_baked(rendered):
+    # shader_hotlist is the static-mode proof (ADR-37 preserved): its main table is SERVER-BAKED into
+    # the HTML (golden-visible, readable JS-off, printable, Ctrl-F-able), enhanced by
+    # <rdc-table data-mode="static">. It is NOT virtual (no client data payload, no windowing spacers).
+    import re
+    import json as _json
+    html = _report(rendered, 'shader_hotlist')
+    assert '<rdc-table data-mode="static"' in html
+    assert '<table class="data">' in html                    # consolidated table class
+    assert 'window.__data_shader_hotlist' not in html         # not virtual: rows are baked, not streamed
+    assert 'class="spacer"' not in html                       # not windowed: no virtual spacer rows
+    # server-baked rows live in the HTML source: >=1 <tr> in the main table's tbody (the ranked rows).
+    main_tbody = html.split('<tbody>', 1)[1].split('</tbody>', 1)[0]
+    assert main_tbody.count('<tr>') >= 1
+    # the report's OWN column-groups spec, keyed by INDEX (per-drop header text repeats), distinct
+    # from the catalog global; identity+cost groups present, empty toggle-bar container emitted.
+    m = re.search(r'__colgroups_shader_hotlist=(\[.*?\]);</script>', html)
+    assert m, 'colgroups spec script not found'
+    groups = _json.loads(m.group(1))
+    assert [g['name'] for g in groups][:2] == ['identity', 'cost']
+    assert all(isinstance(c, int) for g in groups for c in g['cols'])
+    assert '<div class="col-groups" role="group" aria-label="column groups">' in html
+
+
+def test_c16k_static_proof_offline_and_coexists(rendered):
+    # the static proof ships the rdc-table engine inline (opt-in via report_page); rdc-sortable-table
+    # is NOT removed in c16k (it still wraps the secondary table and stays defined in the shared bundle
+    # for the non-migrated reports - c16l deletes it). So the page carries BOTH engines.
+    html = _report(rendered, 'shader_hotlist')
+    assert 'class StaticTable' in html and 'class VTable' in html   # the rdc-table engine, inline
+    assert '<rdc-sortable-table>' in html                            # still wraps the secondary table
+    assert "customElements.define('rdc-sortable-table'" in html      # shared bundle untouched
+    # The rdc-table ENGINE is offline/deterministic (no random/Date/fetch) - asserted on the same
+    # engine string by test_c16i_heatmap_deterministic_and_offline. The page as a whole legitimately
+    # contains rdc-sortable-table's runtime-only Math.random live-region id (never in the output
+    # bytes), so determinism of shader_hotlist.html itself is proven by the byte-golden (test_parity).
+
+
+def test_c16k_other_reports_have_no_rdc_table(rendered):
+    # only shader_hotlist (the c16k proof) carries <rdc-table>; the shared report bundle stays
+    # byte-stable for every other report + dashboard until c16l rolls them over.
+    for name in [n for n in _ALL_REPORTS if n != 'shader_hotlist'] + ['index']:
+        rel = '_reports/index.html' if name == 'index' else f'_reports/{name}.html'
+        assert '<rdc-table' not in rendered[rel], name
