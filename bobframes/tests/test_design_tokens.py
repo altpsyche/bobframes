@@ -136,6 +136,18 @@ def test_c16m_clip_contract_in_rdc_table_css():
     assert '$' not in css and css.isascii()
 
 
+def test_c16n_dashboard_mini_print_fullwrap():
+    """c16n (ADR-38 tail): the bare dashboard/preview minis (table.data with NO rdc-table host) print
+    CLIPPED on paper (the 380px td-clip + dash-card overflow:hidden, no title= hover in print). The print
+    rule releases them to wrap in full - the mini analogue of the rdc-table static print full-wrap,
+    co-located in the engine CSS with the 380px clip it releases. The .table-wrap > direct-child combinator
+    targets the preview mini only (report tables interpose <rdc-table>)."""
+    css = chrome._RDC_TABLE_CSS
+    assert 'a.dash-card table.data th, a.dash-card table.data td,' in css
+    assert '.table-wrap > table.data th, .table-wrap > table.data td {' in css
+    assert css.isascii()
+
+
 def test_c16d_shadow_and_motion_tokens_emitted():
     """c16d adds the [shadow] elevation block + spring/hover-scale motion tokens; they emit :root
     vars (light/dark-aware shadows) and are wired through token_subst (ADR-27/34)."""

@@ -70,8 +70,12 @@ def _build_table(counts: dict, drop_keys: list) -> str:
         cc = counts[(area, date)]
         total = sum(cc.values())
         rows.append('<tr>')
-        rows.append(f'<td>{base.h(area)}</td>')
-        rows.append(f'<td>{base.h(date)}</td>')
+        # c16n (ADR-38 tail): truncate the area/drop text cells via the inner .clip (default tier),
+        # matching the other tabled reports - the last tabled report c16m's scope skipped. clip_span
+        # HTML-escapes + adds the length-gated title= hover-reveal; the cell is in a static rdc-table,
+        # so it gets the clip + static print full-wrap for free. (was base.h.)
+        rows.append(f'<td>{base.clip_span(area)}</td>')
+        rows.append(f'<td>{base.clip_span(date)}</td>')
         rows.append(f'<td class="num">{base.heatmap_cell(total, 0, hi_total, text=base.fmt_int(total))}</td>')
         for c in classes:
             n = cc.get(c, 0)

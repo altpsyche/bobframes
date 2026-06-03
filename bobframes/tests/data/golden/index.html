@@ -874,6 +874,17 @@ rdc-table[data-mode="static"][data-expand="true"] table.data tbody td { white-sp
   rdc-table[data-mode="static"] table.data .clip-wide {
     display: inline; max-width: none; overflow: visible; white-space: normal; text-overflow: clip; overflow-wrap: anywhere;
   }
+  /* c16n: the bare dashboard/preview minis (table.data with NO rdc-table host) are clipped by the global
+     380px td-clip + (dashboard) table-layout:fixed overflow:hidden, with no title= hover in print, so on
+     PAPER they print CLIPPED. Release them to wrap in full - the mini analogue of the static rdc-table
+     rule above (which is rdc-table[data-mode=static]-scoped, so it cannot reach the bare minis). Covers
+     cells AND headers. Keep table-layout:fixed (the 2-up print grid bounds each card; auto could overflow
+     it) - white-space:normal + overflow-wrap:anywhere is enough that nothing stays hidden. The preview
+     mini is a DIRECT child of .table-wrap; report tables interpose <rdc-table>, so they are excluded. */
+  a.dash-card table.data th, a.dash-card table.data td,
+  .table-wrap > table.data th, .table-wrap > table.data td {
+    max-width: none; overflow: visible; white-space: normal; overflow-wrap: anywhere;
+  }
 }
 
 body { max-width: 1800px; }
