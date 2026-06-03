@@ -23,7 +23,8 @@ Everything else is reference — open it only when a commit doc points you there
 | [V02_PLANNING_PROMPT.md](V02_PLANNING_PROMPT.md) | The brief that produced the v0.2+ roadmap (executed 2026-05-31 → ROADMAP.md + commits/v03–v06). Provenance. | Provenance |
 | [commits/v01/](commits/v01/) | One doc per v0.1 commit (extraction). The execution units. | The daily driver |
 | [commits/v02/](commits/v02/) | One doc per v0.2 commit (de-hardcoding) | Next to execute (from c04) |
-| [commits/v03/](commits/v03/) … [v06/](commits/v06/) | One doc per v0.3–v0.6 commit (c20–c39): CI/automation → engine+ergonomics → Vulkan adapter epic → cross-platform+plugins | After v0.2 |
+| [commits/v025/](commits/v025/) | One doc per v0.2.5 commit (c16q–c16w): report packaging + exec one-pager. Continues the c16 report-epic letters (c17–c19 are shipped v0.1; no free integers before c20). See [v025_packaging_and_onepager_proposal.md](v025_packaging_and_onepager_proposal.md) + DECISIONS ADR-39/40/41. | After v0.2, before v0.3 |
+| [commits/v03/](commits/v03/) … [v06/](commits/v06/) | One doc per v0.3–v0.6 commit (c20–c39): CI/automation → engine+ergonomics → Vulkan adapter epic → cross-platform+plugins | After v0.2.5 |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | **Frozen** contract: tool identity, package layout, pyproject, CLI surface, tool discovery, config, portability | Reference; change = ADR |
 | [DECISIONS.md](DECISIONS.md) | **Frozen** rationale: versioning, backwards-compat, risks, and the review ADRs | Reference; append-only |
 | [BOOTSTRAP.md](BOOTSTRAP.md) | One-time repo setup, `.gitignore`, source-project cleanup | Once, then history |

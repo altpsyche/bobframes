@@ -49,10 +49,29 @@ Operates on the renamed `bobframes/` package. Each guarded by parity.
 | [c16j decouple heavy data](commits/v02/c16j_data_decoupling.md) | **(repurposed, ADR-37)** move catalog/drill VTable rows to `<script src>`'d `_data/*.js` (static, file://-safe, defer); kills the ~21MB drill TTI |
 | ~~ADR-36 SPA epic (c16k–c16n)~~ | **SUPERSEDED by ADR-37** — bespoke offline SPA rejected on a lifespan review (web-framework tax, weakens golden-as-correctness, loses JS-optional, hurts plugins/cross-platform). Reports stay static; only heavy data decoupled (c16j); durable data contract = c20/c30. Trail in DECISIONS ADR-36/37 + the [proposal](adr36_spa_architecture_proposal.md) |
 
-## v0.3 — CI/automation surface (after v0.2)
+## v0.2.5 — report packaging + exec one-pager (after v0.2, before v0.3)
+
+A focused minor: make the reports shareable and give execs/non-technical readers a one-pager. Compositions
+of existing primitives; the default `render` output stays byte-identical (ADR-37 holds). No schema bump.
+See [v025_packaging_and_onepager_proposal.md](v025_packaging_and_onepager_proposal.md) + ADR-39/40/41.
+Continues the c16 report-epic letter lineage (c17-c19 are shipped v0.1; no free integers before c20).
+
+| Commit | Leaves working state of… |
+|---|---|
+| [c16q health + one-pager](commits/v025/c16q_health_and_onepager.md) | `bobframes/health.py` (verdict + UNKNOWN, presentation-independent) + `reports/summary.py` print-first one-pager + discoverability nav (ADR-39, G-24) |
+| [c16r head_assets seam](commits/v025/c16r_head_assets_seam.md) | `head_assets(sink)` one-source-of-truth seam in chrome + template; render BYTE-UNCHANGED (zero-output refactor) |
+| [c16s package verb](commits/v025/c16s_package_verb.md) | `bobframes package` -> a shareable `.zip` (stream-from-source, output outside tree) + a standalone single-file `summary.html` + a root README + run-derived naming + a `--light` preset; the output-verb taxonomy (ADR-40) |
+| [c16t shared-assets default](commits/v025/c16t_shared_assets.md) | shared-assets becomes the DEFAULT bundle delivery via the seam (`--inline` opts out); per-family `_assets/` + depth-relative links; revisits ADR-37 (ADR-41) |
+| [c16u redact](commits/v025/c16u_redact.md) | `--redact` at the provenance data seam, strip-by-default; abs-path completeness scan |
+| [c16v multi-capture normalize](commits/v025/c16v_multicapture_normalize.md) | per-frame normalization of instancing repeat-count + shader cost across the reports + dashboard + verdict (G-29); golden-neutral on 1-capture data |
+| [c16w close-out](commits/v025/c16w_v025_closeout.md) | v0.2.5 close-out: 0.2.0 -> 0.2.5, CHANGELOG, full re-ingest verify, tag v0.2.5 -> PyPI |
+
+## v0.3 — CI/automation surface (after v0.2.5)
 
 The high-leverage audience step. `--json` first (additive; no HTML-golden impact). See
-[ROADMAP.md](ROADMAP.md). Each guarded by parity.
+[ROADMAP.md](ROADMAP.md). Each guarded by parity. **c20/c21 CONSUME `bobframes/health.verdict()` (built at
+c16q) — `--json` emits the `Verdict`, `report --gate` maps its `State` to an exit code — they do NOT
+re-implement it (G-25).**
 
 | Commit | Leaves working state of… |
 |---|---|

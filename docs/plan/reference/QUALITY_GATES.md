@@ -454,6 +454,70 @@ column announces `aria-sort`, header focusable via `el.focus()`, a real **Enter*
 catalog"`, header focusable, Enter sorts + arrow shows; dark-mode body background differs light↔dark. No new ADR
 (rides ADR-38 a11y tail). **Closes the G-23 a11y tail — both modes of the one engine at sort/filter a11y parity.**
 
+## 21.1q Exec one-pager + health verdict (c16q, ADR-39) -- see [c16q](../commits/v025/c16q_health_and_onepager.md)
+Two test files. `tests/test_health.py`: `area_verdict` + the global rollup are deterministic and recomputable
+from `get_config().report` (catches a creeping hardcoded threshold, ADR-23); `state == max(area_verdicts)`
+and `worst_area` is the worst-scoring area; the `State` + `Direction` enum members are stable wire
+identifiers; `trend()` is deterministic and on a single-run / missing-parquet fixture both the verdict and
+the `Direction` are `UNKNOWN` (NOT a false-green `OK` / false IMPROVING) with the missing inputs marked
+`present=False`; on a 2-run fixture the improvements/regressions ledger is correctly signed (lower-is-better)
+and `direction` reflects the net of the headline deltas. `tests/test_summary.py`: `_reports/summary.html`
+exists and carries the verdict `summary-bar` + the "N of M areas" scope line + a `Direction` tag + a
+`kpi-strip` with >= 4 `kpi-chip` each bearing a vs-prior delta + a sparkline + `id="movement"` (Improvements
++ Regressions lists + a resolved/new count) + `id="by_area"` (one row per area, with per-area vs-prior deltas
++ a per-area status) + a `device-strip`; the headline KPIs are AVERAGES (`avg draws/frame`, `avg gpu/frame`)
+whose values reconcile against the dashboard's current-run totals divided by the run frame count, and the
+small total line matches the dashboard totals (the coupling contract that lets `aggregates.py` stay
+deferred); `lint.lint_file(summary.html)` returns zero hits (the plain-language copy + the
+direction/movement labels are banlist-clean). **Golden delta
+is exactly** {new `_reports/summary.html`, new `_reports/run/<k>/summary.html`, intentional `index.html` +
+`dashboard.html` nav}; everything else byte-unchanged; `test_parquet_parity` green with NO digest refresh
+(§21.9, presentation only). Refresh `python -m bobframes.tests.make_golden`; review the 4-file delta.
+
+## 21.1r The `head_assets(sink)` seam parity (c16r) -- see [c16r](../commits/v025/c16r_head_assets_seam.md)
+A pure zero-output refactor: the head asset emission is routed through one `head_assets(sink, depth)` helper
+(`INLINE` default = today's exact bytes; `REF` = `_assets/` depth-relative links). **No golden refresh** -
+all 15 HTML goldens + `_pagedata/*.js` + the preview stay BYTE-UNCHANGED (`pytest tests/test_parity.py` green
+by construction), `test_parquet_parity` untouched. `tests/test_head_assets.py` asserts `head_assets(INLINE)`
+equals the prior inlined composed string (a snapshot) and `head_assets(REF, d)` emits depth-correct
+`_assets/report.{css,js}` (and the template family's `catalog.{css,js}`) links for `d in {0,1,2,4}`. This gate
+exists to PROVE the seam introduced no output change before c16t builds on it.
+
+## 21.1s Packaging parity: the `package` verb, shared assets, redaction (c16s-c16u, ADR-40/41) -- see [c16s](../commits/v025/c16s_package_verb.md), [c16t](../commits/v025/c16t_shared_assets.md), [c16u](../commits/v025/c16u_redact.md)
+`tests/test_package.py` over the variant golden trees under `tests/data/golden_package/` - `shared/` (the
+DEFAULT, c16t), `inline/` (`--inline`, c16s), `light/` (`--light`, c16s), `redacted/` + `shared_redacted/`
+(c16u) - where each golden is the tree **extracted from the produced `.zip`** (HTML via `normalize`, parquet
+via the logical `parquet_digest`, raw bytes elsewhere - so zlib/parquet-writer drift is not gated). Asserts:
+(a) **non-mutation** - the source `<root>` digest is unchanged before/after `build`; (b) **determinism** -
+build twice equals itself, and each variant tree equals its golden; (c) **stream + round-trip** - the zip
+extracts byte-equal to the gated tree, `ZipInfo.date_time==(1980,1,1,0,0,0)` and the compress type/level are
+fixed (the zip bytes themselves are NOT byte-compared); (d) **taxonomy** - `package` argparse rejects a
+`--format` flag; (e) **shared-assets (default)** - `_assets/report.css`==`_compose_css()`,
+`report.js`==`_compose_js()`, `catalog.css`==`template._CSS`, `catalog.js`==`rdc_table_js()`; the base64 font
+head is ABSENT from every page; each page links the depth-correct `_assets/*` for its family; no `fetch(` /
+`type="module"` in any HTML or asset; the shared tree is >= `(report_pages-1) * ~95 KB` smaller than
+`--inline`, and `--inline` reproduces the `inline/` golden byte-for-byte; (f) **friendly artifacts** - the
+standalone `<project>-<rundate>-summary.html` emitted beside the zip is SELF-CONTAINED (no `_assets/` link,
+no external ref, no `fetch`/module); a root `README.txt` is present + ASCII; both artifact names match
+`<project>-<rundate>-...`; the `light/` tree has no `drill/`/`_pagedata/`/`_data/`; (g) **redaction** - no
+page carries a device field value, the abs-path completeness scan is clean by default (strip mode), and
+`--redact-paths=fail` exits nonzero on a planted leak (a crafted-input unit test covers the device-strip
+scrub if the synthetic provenance is empty). The HTML/asset BYTE gate is pinned to the canonical cell
+(py3.12+pa21, ADR-11); structure / round-trip / redaction-marker / self-determinism / `--format`-rejected /
+standalone-summary-self-contained run on the full matrix. Refresh `python -m bobframes.tests.make_package_golden`.
+
+## 21.1t Multi-capture per-frame normalization (c16v, G-29) -- see [c16v](../commits/v025/c16v_multicapture_normalize.md)
+Latent-correctness fix: instancing repeat-count + shader cost/uses are normalized PER FRAME
+(`/ ok_captures`) in `instancing_opportunities` + `shader_hotlist` + `dashboard._top_meshes`/`_top_shaders`
++ `health.verdict`. **Golden-neutral on current data:** the synthetic + real-Perf fixtures are 1
+capture/drop, so `/1` is a no-op -> ALL HTML + parquet goldens BYTE-UNCHANGED (`pytest tests/test_parity.py`
++ `test_parquet_parity` green with NO refresh; this gate's whole point is that parity stays green by
+construction). The behavior is proven by a CONSTRUCTED multi-capture unit test (a temp tree / in-test
+parquet with 3 captures of one area: a mesh drawn once/frame asserts `repeat-per-frame == 1` not `3`; a
+shader used once/frame asserts cost normalized) plus a 1-capture no-op assertion. The `instancing_repeat_min`
+threshold + the shader cost now carry PER-FRAME semantics (documented in the report + config comment,
+ADR-23). Runs on the full matrix (no golden dependency).
+
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,
 dropped column, dtype slip). Skip `_`-prefixed (`_catalog`, `_global_entities`). Runs on synthetic +

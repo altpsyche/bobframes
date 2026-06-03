@@ -717,3 +717,112 @@ each stage (split into sub-commits if it balloons, precedent c16d/c16i); reports
 (§21.9). **Consequence.** One table system, feature-parity across reports + drill, ADR-37 intact (reports
 stay static/golden/JS-optional/printable), no new dependency. **Reaffirms ADR-37 + ADR-6 + ADR-24; resolves
 G-23.** Additive to ADR-6/24/27/32/33/34/35/37.
+
+### ADR-39 — the exec one-pager + a presentation-independent health verdict + the converged surface model (v0.2.5)
+**Context.** Every output surface is engineer-facing (report_roadmap calls the dashboard "flat,
+developer-oriented"); a perf lead / producer has no one-screen health read. The verdict ("is my frame
+healthy") is the tool's single most durable output, and the roadmap already wires its consumers below
+presentation: c20 `--json`, c21 `report --gate` exit code, c37 alerts. **Decision.** (1) Add a NEW
+standalone report `reports/summary.py` (`_reports/summary.html`), print/PDF-first, a composition of the
+existing primitives (KPI strip, callout, charts, run model, provenance) that **supplements, not replaces**
+the dashboard. (2) The verdict logic lives in a presentation-INDEPENDENT module `bobframes/health.py`
+(peer of the future `jsonout.py`/`export.py`, NOT under `reports/`). It is computed **PER AREA then rolled
+up**: `area_verdict(area_metrics, cfg)` scores one area first-match from `ReportCfg` thresholds (no new
+threshold; each comparison mirrors a source report so the verdict cannot disagree); `verdict()` returns a
+stable `Verdict` (`State` enum `OK/AT_RISK/ALARM/UNKNOWN` + a `Trigger` list + `worst_area` +
+`area_verdicts: dict[str,State]`) where `state = max(area_verdicts)`. The headline is therefore scope-able
+("N of M areas needs attention - <worst_area>") instead of a single global tier one bad area paints red -
+this pulls forward the per-area work G-25 had deferred. It is **data-aware**: a missing input (no baseline,
+missing parquet) yields `UNKNOWN`, never a false-green `OK` (ADR-23). `summary.py` builds per-area
+`AreaMetrics` via direct reuse of `dashboard.py`'s current-run helpers (`_top_*` keyed on area, `n=999` for
+true maxima) + per-area frame counts, calls `health.verdict()`, and RENDERS it. The headline KPIs are
+**AVERAGES** (mean `draws/frame` and `gpu/frame` across the run, each with a baseline delta; the run total
+shown small for scale) over a worst-first per-area breakdown table; "worst overdraw"/"worst shader" stay
+MAX and name their area, so averaging the headline cannot bury a fire the worst-based verdict still catches.
+The stable enum is the wire key while the banlist-clean human labels (`Healthy`/`Needs attention`/`Action
+needed`/an UNKNOWN label) are a presentation lookup, never in `health.py`. A sibling `health.trend(current, baseline)` answers the dual-use need ("are draws reducing / is there a
+regression"): a `Direction` (IMPROVING/MIXED/REGRESSING/UNKNOWN, net of the headline deltas, lower-is-better,
+NEVER a cross-run sum - the G-19 flaw) + an `improvements`/`regressions` ledger of ranked `Change` items
+(incl. resolved/new counts). The one-pager is thus dual-use - execs read the verdict + scope; tech leads
+glance the Direction tag, the Movement card (Improvements | Regressions + counts), the per-KPI vs-prior
+deltas + sparklines, and the per-area vs-prior deltas. **c20 `--json` and c21 `report --gate` will CONSUME
+`health.verdict()` + `health.trend()` (the regression signal), not re-implement them**
+(a FINDINGS row ties c21 to health.py); the `reports/aggregates.py` extraction is deferred to the 3rd
+consumer (YAGNI), guarded by a parity test that the average KPIs reconcile with the dashboard's current-run
+totals / frame count. (3) **Converged surface
+model (recorded end-state):** root `index.html` = the directory; `summary` = the human/exec landing +
+verdict; `dashboard` = the engineer drill-board. summary is made discoverable now (a `summary` chip in
+`dashboard._NAV`, a promoted slot in the root-index dashboard section excluded from the auto-listed report
+grid, and `chrome.header` taught the `summary` surface) rather than shipping as an orphan; the convergence
+target (deferred, churns `dashboard.html`) is the dashboard hero `summary_bar` consuming `health.verdict()`
+so the verdict shows on both surfaces from one source. **Consequence.** Additive: a new golden page (+
+per-run) plus an intentional, reviewed `index.html`/`dashboard.html` nav refresh; the verdict is seated in
+the durable layer ADR-37 asked for. Extends ADR-32's report contract; reaffirms ADR-33/35/37. The per-area
+rollup + worst-area naming + the "N of M areas" headline + the averaged KPIs all ship in c16q (pulled
+forward at the user's request, to convey scope rather than alarm). The verdict tier asymmetry (only
+overdraw/gpu reach ALARM, since config has a warn+alarm band only there) is recorded; what REMAINS deferred
+is a per-dimension warn+alarm `[gating]` config table that lifts the inline `shader_hotlist` `*1.25` band
+(G-25, H-40).
+
+### ADR-40 — `bobframes package`: a non-mutating stream transform + the output-verb taxonomy (v0.2.5)
+**Context.** Users need a first-class way to hand the HTML tree to a colleague; the output-verb set
+(serve/package/export/--json/schema) is accreting one-at-a-time, and a `package` zip would collide head-on
+with the already-specified c26 `export --format csv|json|zip` (two verbs emitting a `.zip`, with
+`export.py` not yet built). **Decision.** Add a `package` verb that is a deterministic, NON-MUTATING
+transform: it reads an already-rendered `<root>` and **streams** entries into a reproducible `.zip`
+(HTML transformed in memory; parquet/sidecars/`_pagedata` written raw from source; NO physical 2x staging
+copy by default - the gate reads entries back out of the zip; `--stage` is the opt-in for a materialized
+tree). The zip is written OUTSIDE the read tree (default `./<root-basename>-report.zip`), so non-mutation
+holds at the filesystem level. Because render is untouched, the default single-file inlined output and
+`test_parity` are unchanged and **ADR-37 holds literally**. Define FOUR orthogonal output-verb contracts -
+**PRESENTATION** (`render`/`package`/`serve`: emit HTML, never `--format`, never machine data, never an
+asset-build engine beyond the render-time sink), **DATA** (`export` `--format csv|json` / `--json` /
+`schema`/`query`: versioned contract per ADR-16, never HTML; `export` owns the `_data` data-zip),
+**ANALYSIS/GATING** (`diff`/`verify`/`report --gate`: exit-code-bearing, consume `health.Verdict`),
+**PIPELINE** (`ingest`/`parse`/`replay`/`catalog`) - with the invariant that a presentation verb may
+relocate/bundle already-rendered bytes but may NOT become a data emitter or asset-build engine; durable
+capability lives in the data contract (c20/c30). Concretely **`package` never gains `--format`**, which is
+what keeps it from drifting into the SPA ambitions ADR-37 rejected, and c26 `export` inherits the boundary.
+The byte gate is the tree extracted from the produced zip (zip bytes are not stable across zlib/Python, so
+they are round-tripped, not byte-compared; reproducible-zip knobs: sorted `/` arcnames, fixed `ZipInfo`
+date, pinned `ZIP_DEFLATED`, per-entry `writestr`). `--redact` scrubs at the provenance DATA seam (give
+`provenance_strip` a redact mode + re-emit from the manifest), not an HTML regex, and strips abs-path
+tokens by default (usable on real captures that carry a path in a value); fail-closed only in an explicit
+`--redact-paths=fail` CI mode, where the abs-path scan is a post-scrub completeness assertion.
+**Friendly-UX defaults (so a non-expert gets the right artifact without flag knowledge).** `package`
+emits TWO tiers in one run: a standalone single-file `<project>-<rundate>-summary.html` (the one-pager with
+assets inlined via `head_assets(INLINE)`) for the email/double-click/`Ctrl-P -> PDF` case with NO unzip,
+AND the explorable `<project>-<rundate>-report.zip`. The zip DEFAULTS to shared-assets (small, the common
+multi-run case; `--inline` is the opt-out, c16t); carries a root `README.txt` (extract first, open
+index.html, start at the summary); is named from the project + the current run's `drop_date` (deterministic,
+filenames are not golden-gated); and a `--light` preset bundles summary + the 6 reports only (no
+drill/`_data`) for a small "read, do not drill" share. **Accurate-usage facts recorded** (the contract a
+recipient relies on): the zip must be EXTRACTED before opening (Windows' in-zip preview extracts a single
+file without its siblings, breaking relative `_assets/`/`_pagedata/` links); in `--inline` the summary/6
+reports/dashboard are each individually portable but DRILL pages need their `_pagedata/` siblings; in the
+default shared-assets bundle NO page is individually portable (all need `_assets/`), which is exactly why
+the standalone summary exists; PDF is the recipient-friendliest format but is a manual `Ctrl-P` (no runtime
+PDF dep), so the one-pager is print-tuned for it. **Consequence.** A first-class human-share path with a
+measured multi-run size win (via ADR-41), a coherent verb taxonomy the rest of the roadmap inherits, ADR-37
+unforked. Reaffirms ADR-37/6/11/16.
+
+### ADR-41 — shared-asset extraction via a render-emission seam; revisits ADR-37's accepted duplication (v0.2.5)
+**Context.** ADR-37 accepted the per-page font/CSS duplication ("negligible next to the data") and
+reserved `_assets/` extraction "only on a measured size problem." That problem is now **measured**: 30
+inlined report pages zip to 1.30 MB versus 48 KB when the ~95 KB of chrome is a single shared asset (a
+zip's per-file DEFLATE compresses each entry independently and does NOT collapse cross-page duplication),
+and multi-run trees multiply it. **Decision.** Introduce a single `head_assets(sink, depth)` seam in
+`chrome.page_open()` (and the catalog/drill equivalent in `html/template.py`): the `INLINE` sink is the
+render default and is BYTE-IDENTICAL to today (ADR-37's single-file default stands, golden untouched); the
+`REF` sink emits `_assets/` + depth-relative `<link>`/`<script defer src>`. `bobframes package
+--shared-assets` produces the REF form by calling the SAME seam and writing each `_assets/*` file once from
+the composer output, so the asset boundary is one source of truth - **zero-drift by construction**, with no
+needle, no `str.replace`, and no "exactly one replacement" tripwire (the rejected post-render-scrape
+mechanism). Extraction is per page-family (`report.css`/`report.js` for the `page_open` family,
+`catalog.css`/`catalog.js` for the template family) because the two families emit different CSS bundles +
+JS tags; the unique `__labels` inline and the per-page `_pagedata/*.js` data scripts stay. All ADR-37
+report guarantees (file://-safe links, JS-optional server-baked bodies, printable, Ctrl-F-able,
+golden-as-output) hold in the bundle. The `package` summary line emits the size measurement so
+the "measured problem" stays on record. **Consequence.** The measured size win is captured cleanly via the
+render-time mechanism ADR-37 implied for the eventual revisit, without a second render-default golden;
+ADR-37 is confronted and extended, not forked. Reaffirms ADR-37/6/34.
