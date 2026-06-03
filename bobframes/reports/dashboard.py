@@ -269,14 +269,21 @@ def _card_table(rows: list, columns: list, *, caption: str = '') -> str:
     parts.append('<thead><tr>')
     for col_name, _, num in columns:
         cls = ' class="num"' if num else ''
-        parts.append(f'<th{cls} scope="col">{base.h(col_name)}</th>')
+        # c16m: the mini uses table-layout:fixed (so it never overflows the card), which can clip a long
+        # HEADER too (e.g. "avg draws / frame"). Carry the full header in title= so it also reveals on hover.
+        parts.append(f'<th{cls} scope="col" title="{base.h(col_name)}">{base.h(col_name)}</th>')
     parts.append('</tr></thead><tbody>')
     for row in rows:
         parts.append('<tr>')
         for col_name, fn, num in columns:
             cls = ' class="num"' if num else ''
             val = fn(row)
-            parts.append(f'<td{cls}>{val}</td>')
+            # c16m: a bare mini is not engine-hosted, so it carries no inner `.clip` + JS title. Set a
+            # server-side title= on the (clippable) text cells so the FULL value is revealed on hover -
+            # the cell text stays inline, so the td-level ellipsis still renders + Ctrl-F still matches.
+            # val is already escaped plain text (base.h / safe_chrome_text), so it is attribute-safe.
+            title = f' title="{val}"' if (not num and val) else ''
+            parts.append(f'<td{cls}{title}>{val}</td>')
         parts.append('</tr>')
     parts.append('</tbody></table>')
     return ''.join(parts)
@@ -395,7 +402,10 @@ def build(root: str, *, drops: list | None = None, ab=None,
         top_p,
         [
             ('area', lambda r: base.h(r[0]), False),
-            ('marker', lambda r: base.safe_chrome_text(base.trunc_left(r[1], 32)), False),
+            # c16m: emit the FULL marker (was builder-truncated via trunc_left, which discarded the value
+            # so hover could never reveal it). The CSS clip now truncates the display + the td title=
+            # reveals the full value on hover - consistent with every other mini text column.
+            ('marker', lambda r: base.safe_chrome_text(r[1]), False),
             ('gpu (s)', lambda r: base.fmt_float(r[2], 3), True),
         ],
         caption='heaviest passes by GPU time')

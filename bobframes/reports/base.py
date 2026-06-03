@@ -23,6 +23,8 @@ from .chrome import (
     callout,
     chrome_css,
     class_color_var,
+    clip_attrs,
+    clip_span,
     components_js,
     design_tokens_css,
     empty_state,
@@ -121,7 +123,7 @@ from .cli import (
 __all__ = [
     # chrome
     'DRAW_CLASSES', 'ab_picker', 'ab_picker_for', 'ab_strip', 'callout',
-    'chrome_css', 'class_color_var',
+    'chrome_css', 'class_color_var', 'clip_attrs', 'clip_span',
     'components_js', 'design_tokens_css', 'empty_state', 'h', 'header', 'heatmap_cell',
     'icon', 'kpi_chip', 'kpi_strip', 'legend', 'link',
     'page_close', 'page_open', 'provenance_strip',

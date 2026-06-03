@@ -386,6 +386,16 @@ a.dash-card:visited { color: inherit; }
 a.dash-card h3 { margin: 0; color: var(--accent); font-size: var(--fs-h2); }
 a.dash-card table.data { font-size: var(--fs-small); }
 a.dash-card table.data a { pointer-events: none; }
+/* Dashboard mini tables are teasers inside a fixed-width card; the default `width:max-content` lets a
+   long label column push the table past the card (cutting the rightmost column at the narrow 3-up grid
+   width). Pin the layout to the card: table-layout:fixed + width:100% so it never overflows; the numeric
+   columns take a compact fixed width and the text/label columns flex to fill the rest (roomy when the
+   card is wide, clean ellipsis when narrow). Both th + td clip so a long header/value never spills. */
+a.dash-card table.data { table-layout: fixed; width: 100%; }
+a.dash-card table.data th, a.dash-card table.data td {
+  overflow: hidden; text-overflow: ellipsis;
+}
+a.dash-card table.data th.num, a.dash-card table.data td.num { width: 5.5em; }
 a.dash-card .dash-sub { margin: 0; color: var(--text-2); font-size: var(--fs-small); }
 /* dashboard small-multiple: the card is the frame, so the mini chart blends in (no boxed panel,
    no box-in-box against the borderless summary table below it) - c16c. */
@@ -769,6 +779,23 @@ table.data tbody td {
   max-width: 380px; overflow: hidden; text-overflow: ellipsis;
   background: var(--surface-0);
 }
+/* Cell truncation (c16m). DEFAULT: every table.data <td> clips at 380px - this is what the un-enhanced
+   bare dashboard/preview minis rely on (they have NO rdc-table host + NO inner .clip, so the td-level
+   clip is their only truncation; without it a long mesh/marker name overflows the card). rdc-table cells
+   OPT OUT below and truncate via an INNER element instead (an in-cell <a> or a <span class="clip">), so a
+   trailing copy-button / sparkline / heatmap-cell / .lbl label rides OUTSIDE the clip and stays visible +
+   clickable. Three width tiers; the full value is recoverable via a server-set title= (static) / JS-set
+   title (virtual) + the real DOM text (Ctrl-F / selection-copy). ASCII ellipsis via the CSS keyword (no
+   literal U+2026). One inner-clip contract, both rdc-table modes - VTable.cellNode wraps client cells,
+   the report builders wrap server cells. */
+rdc-table table.data tbody td { max-width: none; overflow: visible; text-overflow: clip; }
+table.data { --clip-cap: 320px; --clip-cap-narrow: 200px; --clip-cap-wide: 560px; }
+table.data .clip {
+  display: inline-block; max-width: var(--clip-cap);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: top;
+}
+table.data .clip-narrow { max-width: var(--clip-cap-narrow); }
+table.data .clip-wide { max-width: var(--clip-cap-wide); }
 table.data tbody tr.alt td { background: var(--surface-1); }
 table.data tbody tr:hover td { background: var(--row-hover); }
 table.data tbody td .lbl {
@@ -810,7 +837,23 @@ table.data > caption {
   font-size: var(--fs-small); padding: 0 0 var(--sp-2);
 }
 rdc-table[data-mode="static"] table.data tbody td:first-child { font-weight: 600; color: var(--text-1); }
-rdc-table[data-mode="static"] table.data tbody td { max-width: none; overflow: visible; text-overflow: clip; }
+/* Expand/wrap toggle (c16m): flip data-expand on the host -> release the clip. SINGLE line in both modes
+   (max-width:none, still nowrap) so the VTable's fixed ROW_H stays valid; static ALSO wraps to multi-line
+   (static rows auto-size - virtual must NOT, windowing locks row height). The toggle button + the
+   .rdc-controls bar are built in JS (enhancement); JS-off keeps clip + title= + Ctrl-F, nothing hidden. */
+rdc-table[data-expand="true"] table.data .clip { max-width: none; overflow: visible; text-overflow: clip; }
+rdc-table[data-mode="static"][data-expand="true"] table.data .clip,
+rdc-table[data-mode="static"][data-expand="true"] table.data tbody td { white-space: normal; overflow-wrap: anywhere; }
+.rdc-controls { display: flex; gap: var(--sp-2); align-items: center; margin: 0 0 var(--sp-2); }
+.rdc-controls .rdc-expand-toggle {
+  font: var(--fs-small) 'Inter', 'Segoe UI', system-ui, sans-serif;
+  padding: 4px 10px; cursor: pointer; color: var(--text-2);
+  background: var(--surface-1); border: 1px solid var(--border-2); border-radius: 2px;
+}
+.rdc-controls .rdc-expand-toggle[aria-pressed="true"] {
+  color: var(--accent); border-color: var(--accent); background: var(--surface-2);
+}
+.rdc-controls .rdc-expand-toggle:hover { background: var(--row-hover); }
 @media (max-width: 720px) {
   rdc-table[data-mode="static"] table.data thead th,
   rdc-table[data-mode="static"] table.data tbody td { padding: var(--sp-1) var(--sp-2); }
@@ -821,6 +864,16 @@ rdc-table[data-mode="static"] table.data tbody td { max-width: none; overflow: v
   }
   rdc-table[data-mode="static"] table.data thead { display: table-header-group; }
   rdc-table[data-mode="static"] table.data tbody tr { break-inside: avoid; }
+  /* c16m: full-wrap on paper - nothing hidden (no title= tooltips in print). Static only; virtual pages
+     are windowed and never print-complete (ADR-37). Constrain the table to the page (it is width:
+     max-content on screen, which would overflow + clip the paper edge) and let every clip cell flow
+     inline so long unbroken paths wrap instead of running off the page. */
+  rdc-table[data-mode="static"] table.data { width: 100%; max-width: 100%; }
+  rdc-table[data-mode="static"] table.data .clip,
+  rdc-table[data-mode="static"] table.data .clip-narrow,
+  rdc-table[data-mode="static"] table.data .clip-wide {
+    display: inline; max-width: none; overflow: visible; white-space: normal; text-overflow: clip; overflow-wrap: anywhere;
+  }
 }
 
 body { max-width: 1800px; }
@@ -1440,6 +1493,13 @@ section.table-section .table-meta {
       for (let ci = 0; ci < this.cols.length; ci++){
         if (!this.numericCols.has(ci) && MONO_RE.test(this.cols[ci])) this.monoCols.add(ci);
       }
+      // c16m: known-long non-numeric columns get the WIDE clip tier (src paths, hashes, stable_keys);
+      // other non-numeric columns get the default clip tier. Numeric cells are never clipped.
+      this.wideCols = new Set();
+      const WIDE_RE = /(_hash|_hex)$|^stable_key$|.*_path$/;
+      for (let ci = 0; ci < this.cols.length; ci++){
+        if (!this.numericCols.has(ci) && WIDE_RE.test(this.cols[ci])) this.wideCols.add(ci);
+      }
 
       // Heatmap (c16i): per-column min/max for numeric MAGNITUDE columns. Exclude ID/reference cols
       // and cross-link label cols. Scanned over ALL rows so the scale is stable across sort/filter.
@@ -1640,17 +1700,28 @@ section.table-section .table-meta {
       }
 
       const formatted = fmt(value);
+      // c16m: clip non-numeric cells on an inner element (the <a>, or a <span class="clip">) so the
+      // .lbl label + heatmap background (set on the td below) ride OUTSIDE the clip and stay visible.
+      // Numeric cells are never clipped. Re-applied every windowed render() (cellNode rebuilds nodes).
+      const clipCls = this.numericCols.has(ci) ? '' : (this.wideCols.has(ci) ? 'clip clip-wide' : 'clip');
       const link = LINK_TARGET[kind];
       if (link && value != null && value !== '' && value !== 0 && value !== '0' && kind !== 'texture_list'){
         const a = document.createElement('a');
         a.href = '#' + link.table;
         a.textContent = formatted;
         a.title = 'jump to ' + link.table + ' filtered to ' + link.col + '=' + value;
+        if (clipCls) a.className = clipCls;   // truncate long link text; keep the nav title
         a.addEventListener('click', (ev) => {
           ev.preventDefault();
           jumpToTable(link.table, String(value));
         });
         td.appendChild(a);
+      } else if (clipCls){
+        const span = document.createElement('span');
+        span.className = clipCls;
+        span.textContent = formatted;
+        if (formatted && formatted.length > (this.wideCols.has(ci) ? 64 : 40)) span.title = formatted;
+        td.appendChild(span);
       } else {
         td.textContent = formatted;
       }
@@ -1900,11 +1971,36 @@ section.table-section .table-meta {
   }
   window.__jumpToTable = jumpToTable;
 
+  // c16m: global expand/wrap toggle. Built in JS (enhancement) only when the table actually carries
+  // clippable cells (no dead button on simple tables). Inserted before the host so it sits above the
+  // table (static) / scroll box (virtual). Click flips data-expand on the host; the CSS does the rest
+  // (full-width single line in both modes; static also wraps - virtual keeps one line so the windowed
+  // ROW_H stays valid). JS-off: no toggle, but clip + title= + Ctrl-F keep nothing hidden.
+  function buildExpandToggle(host){
+    if (host._expandWired || !host.querySelector('.clip')) return;
+    host._expandWired = true;
+    const bar = document.createElement('div');
+    bar.className = 'rdc-controls';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'rdc-expand-toggle';
+    btn.textContent = 'Expand cells';
+    btn.setAttribute('aria-pressed', 'false');
+    btn.addEventListener('click', () => {
+      const next = btn.getAttribute('aria-pressed') !== 'true';
+      btn.setAttribute('aria-pressed', next ? 'true' : 'false');
+      if (next) host.dataset.expand = 'true'; else host.removeAttribute('data-expand');
+    });
+    bar.appendChild(btn);
+    if (host.parentNode) host.parentNode.insertBefore(bar, host);
+  }
+
   window.addEventListener('DOMContentLoaded', () => {
     const labels = window.__labels || {};
     document.querySelectorAll('rdc-table[data-mode]').forEach(host => {
       if (host.dataset.mode === 'static'){
         host._vt = new StaticTable(host);
+        buildExpandToggle(host);
         return;
       }
       // virtual
@@ -1916,6 +2012,7 @@ section.table-section .table-meta {
       const groups = window['__colgroups_' + name];
       const vt = new VTable(host, payload, labelsForTable, groups);
       host._vt = vt;
+      buildExpandToggle(host);
 
       const section = host.closest('section');
       const input = section ? section.querySelector('input[type=search]') : null;

@@ -286,7 +286,9 @@ def build(root: str, *, drops: list | None = None, ab=None,
             sec.append(f'<td>{base.h(",".join(flags))}</td>')
 
             if src_link:
-                sec.append(f'<td class="mono"><a href="{base.h(src_link)}" data-link-kind="inline" target="_blank" rel="noopener">{base.h(p["rep_src_path"])}{base.icon("file")}</a>'
+                # c16m: clip the path text (wide tier) on an inner span so the file icon + the copy
+                # button ride OUTSIDE the clip; the copy data-value keeps the FULL path (c16c).
+                sec.append(f'<td class="mono"><a href="{base.h(src_link)}" data-link-kind="inline" target="_blank" rel="noopener">{base.clip_span(p["rep_src_path"], tier="wide")}{base.icon("file")}</a>'
                            f'<rdc-copy-button data-value="{base.safe_chrome_text(p["rep_src_path"])}" data-label="copy src path"></rdc-copy-button></td>')
             else:
                 sec.append('<td class="mono"></td>')
