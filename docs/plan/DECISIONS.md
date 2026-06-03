@@ -679,3 +679,41 @@ Far smaller, lower-risk, durable: no bespoke framework, no re-homing of the just
 golden keeps proving correctness, JS-optional + single-file survive for the reports, and the lasting effort
 routes to the data contract (c20/c30). G-22 resolved as **"SPA rejected; heavy-data decoupling done statically
 (c16j); durable data contract = c20/c30."** Additive to ADR-6/27/32/33/34/35; supersedes ADR-36.
+
+### ADR-38 — unify the two table systems into ONE bespoke, progressive-enhancement table component (G-23)
+**Context.** The product renders tabular data through **two** unrelated systems (G-23): (1) the **reports**
+use a server-baked `<table class="report">` (rows in the HTML) enhanced by the `rdc-sortable-table` web
+component (client sort only; degrades gracefully — JS-optional, printable, Ctrl-F-able, golden-visible);
+(2) the **catalog + per-drop drill** use the `html/template.py` **VTable** (client-built virtual scroll from
+`_pagedata/*.js`, with its OWN sort/filter, numeric detection, type-split, uniform-tint heatmap, and
+collapsible column groups). The two duplicate sort/numeric-detection/type-split logic and diverge in look +
+capability (filter/heatmap/column-groups exist only in the VTable; golden/print/Ctrl-F/JS-optional exist only
+in the report tables). A reviewer asked to unify them, feature-rich, before closing v0.2.
+**Forces.** (a) ADR-37 (just frozen) keeps **reports static, self-contained, JS-optional, golden-as-output,
+printable**; moving reports onto a client-built virtual grid would forfeit all of those (the byte-golden can't
+see client rows; virtual scroll prints/Ctrl-Fs only the windowed DOM). (b) The drill is ~600K rows — it MUST
+virtualize (server-baking it was the 21 MB problem c16j just removed); it cannot become a static `<table>`.
+(c) A third-party grid (AG-Grid/Tabulator/DataTables/Grid.js) adds a vendored JS dependency, several need
+`fetch`/ES-modules (break `file://`) or emit nondeterministic ids (break the golden), and reintroduces the
+perpetual web-framework maintenance tax that ADR-37 rejected when it killed the SPA. The repo already has a
+~27 KB zero-dep deterministic VTable + the `rdc-sortable-table` component.
+**Decision.** Unify on **ONE bespoke component** — `rdc-table` — built by merging the VTable engine with
+`rdc-sortable-table` (NO third-party library; offline, byte-deterministic, file://-safe, ASCII, no new dep).
+It is **progressive-enhancement with two data-delivery modes**, selected by `data-mode`:
+- **`static`** (reports, A/B, per-run, trend, dashboard minis): the rows are **server-baked into the HTML**;
+  JS *enhances* (sort/filter/heatmap/column-groups/truncation). JS-off, print, Ctrl-F, single-file, and
+  **golden-as-output all hold** — ADR-37's report guarantees are *preserved, not reversed*. This also brings
+  c16i's heatmap + column-groups + type-split to the reports (today VTable-only).
+- **`virtual`** (catalog + drill): rows stream from `_pagedata/*.js` and the DOM is windowed (today's VTable
+  behaviour). These pages were never JS-optional/portable (ADR-37), so nothing is lost.
+The shared engine owns sort (natural-numeric, ADR-24), numeric/type detection, the type-split classes, the
+uniform-tint heatmap, column groups, search/filter, and truncation+`title=` hover (c16m). Determinism holds:
+no `random`/`Date` in rendered output. **Rollout is staged:** **c16k** builds `rdc-table` + both modes and
+migrates the catalog/drill (virtual) + one report (static proof); **c16l** migrates the remaining reports +
+A/B + per-run + trend + dashboard minis and removes the old `rdc-sortable-table` + VTable scaffolding;
+**c16m** adds controllable truncation + hover-reveal to the one component. Golden is refreshed + reviewed at
+each stage (split into sub-commits if it balloons, precedent c16d/c16i); reports' server-baked `<td>` row
+**content** stays byte-stable (only the wrapper/markup/classes change), `test_parquet_parity` untouched
+(§21.9). **Consequence.** One table system, feature-parity across reports + drill, ADR-37 intact (reports
+stay static/golden/JS-optional/printable), no new dependency. **Reaffirms ADR-37 + ADR-6 + ADR-24; resolves
+G-23.** Additive to ADR-6/24/27/32/33/34/35/37.

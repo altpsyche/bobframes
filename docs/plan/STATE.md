@@ -7,16 +7,19 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        v0.2 close-out (re-ingest validation -> tag)    (status: not-started. c16e-j ALL DONE ->
-                v0.2 REPORT WORK COMPLETE. c16j DONE 2026-06-03 - see last_session. There is NO commit doc for
-                the close-out; it is the re-ingest + tag milestone. ORDER: v0.2 close-out (re-ingest the real
-                Perf drop, eyeball all reports) -> tag v0.2 (outward + IRREVERSIBLE, authorize first) -> c20
-                (--json, v0.3). ADR-37 SETTLED the report architecture: server-rendered + static +
-                self-contained; the only real perf problem (the ~21MB drill/catalog) was decoupled STATICALLY in
-                c16j (heavy VTable rows -> _pagedata/*.js via <script defer src>); the durable data investment is
-                the data contract (c20 --json / c30 schema+query, already roadmapped). The SPA epic (old
-                c16k-c16n) is VOIDED; ADR-36 superseded by ADR-37. G-20 (3+-run column collapse) still deferred -
-                no 3+-run data. G-23 (unify the two table systems) deferred to post-v0.2, likely with c20/c30.)
+current:        c16k_unified_table_component    (status: not-started; AUTHORED 2026-06-03. c16e-j DONE. NEW
+                table-unification epic c16k/c16l/c16m pulled into the v0.2 close (user-requested) - resolves
+                G-23 (two table systems) via NEW ADR-38: unify on ONE bespoke `rdc-table` component (merge the
+                drill VTable engine + the reports' rdc-sortable-table), progressive-enhancement with two
+                data-delivery modes: `static` (reports - rows SERVER-BAKED, JS enhances; ADR-37's golden/
+                JS-optional/print/Ctrl-F PRESERVED, NOT reversed) + `virtual` (catalog/drill - windowed from
+                _pagedata/*.js, today's VTable). NO third-party grid (ADR-6/37 anti-framework). c16k builds the
+                component + both modes + migrates catalog/drill + ONE proof report; c16l rolls out to all
+                remaining reports/A-B/per-run/trend/dashboard-minis + DELETES the old rdc-sortable-table +
+                VTable scaffolding; c16m adds controllable truncation + `title=` hover-reveal on the one
+                component. ORDER: c16k -> c16l -> c16m -> v0.2 close-out (re-ingest + eyeball) -> tag v0.2
+                (IRREVERSIBLE, authorize first) -> c20. G-20 (3+-run column collapse) still deferred - no
+                3+-run data. ADR-37 still governs (reports stay static); the SPA epic is VOIDED.)
 last_session:   2026-06-03 — c16j DONE (decouple the heavy catalog/drill data; the html/template.py layer;
                 the ~21MB TTI fix; STATIC per ADR-37, NO SPA; no new ADR - rides ADR-6/27/34/37). Moved each
                 VTable's heavy row payload OUT of the HTML into its own _pagedata/<key>.js
@@ -371,11 +374,17 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    c16j DONE (2026-06-03; see last_session). c16e-j ALL DONE -> v0.2 REPORT WORK COMPLETE. DO the
-                v0.2 CLOSE-OUT NEXT (no commit doc; it is the re-ingest + tag milestone). ADR-37 SETTLED the
-                report architecture: server-rendered + STATIC + self-contained; the heavy data was decoupled
-                STATICALLY in c16j (catalog/drill VTable rows -> _pagedata/*.js via classic <script defer src>,
-                file://-safe, no SPA, no router); the durable investment is the data contract (c20/c30).
+next_action:    c16j DONE (2026-06-03). NEW table-unification epic AUTHORED (ADR-38 + c16k/c16l/c16m;
+                user pulled G-23 into the v0.2 close). DO c16k NEXT (commits/v02/c16k_unified_table_component.md):
+                build the ONE bespoke `rdc-table` component (merge the drill VTable engine + the reports'
+                rdc-sortable-table), progressive-enhancement with `static` (reports, rows SERVER-BAKED, JS
+                enhances - ADR-37 golden/JS-optional/print/Ctrl-F PRESERVED) + `virtual` (catalog/drill,
+                windowed from _pagedata/*.js) modes; migrate catalog/drill + ONE proof report; NO third-party
+                grid (ADR-38). THEN c16l (roll out to all remaining report/A-B/per-run/trend/mini surfaces +
+                DELETE the old rdc-sortable-table + VTable scaffolding) -> c16m (controllable truncation +
+                `title=` hover-reveal on rdc-table). Add QUALITY_GATES §21.1m when the epic lands. Golden
+                refresh + per-page review each stage (split sub-commits if it balloons, precedent c16d/c16i);
+                reports keep server-baked rows (verify JS-off); test_parquet_parity untouched (§21.9).
                 THEN before the tag:
                 (1) V0.2 CLOSE-OUT: re-ingest the real Perf drop (now the cumulative flaw is fixed + the
                 R-17 replay salvage is automatic - re-test the 6 manual-flipped run2 captures) and eyeball
@@ -446,8 +455,11 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 | ☑ | c16g quality sweep | **done** — pre-tag, behaviour-neutral: Q-1 (stable_key dict-of-builders, oracle-locked), Q-2 (cast-failure tally + warn), Q-4 (zip strict on derive), Q-7 (`_to_dict_of_lists` callers), Q-8 (dead buffers no-op deleted), D-3 (coupling doc), D-9 (`_TABLE_DISPLAY_ORDER` origin recovered + recorded). 148 -> 160 green; golden + digests frozen; no new ADR |
 | ☑ | c16h reliability sweep | **done** — R-12 (`_best_effort_rmtree` logs held-handle cleanup failures), R-14 (UTF-8 U+FFFD warning in `iter_chunks`), R-11 (single-process sidecar doc), R-15 (`parquetize` skips markerless/incomplete-replay captures so half-written CSVs never merge). R-10 deferred (OOM-gated). 160 -> 165 green; golden + digests frozen; no new ADR |
 | ☑ | [c16i catalog + drill readability](commits/v02/c16i_catalog_drill_readability.md) | **done** (revived, ADR-37) — STATIC `html/template.py` pass: Inter/mono type split, roomier VTable rows (ROW_H=32 single-source), client-side uniform-tint heatmap on numeric magnitude cells, collapsible column groups on the wide catalog, `.table-scroll` sizes to content, drill visual hierarchy (category=group-label+rail / table-section=card). 165→171 green; root+drill golden refreshed, reports byte-unchanged, no digests refresh; QUALITY_GATES §21.1l. G-21 readability half (heavy-data half = c16j); G-23 opened (two table systems) |
-| ☐ | [c16j decouple heavy data](commits/v02/c16j_data_decoupling.md) | **next** (ADR-37) — move the catalog/drill VTable rows out of the HTML into `<script src>`'d `_data/*.js` (file://-safe, classic + defer) so the shell paints first; kills the ~21MB drill TTI. STATIC, no router |
-| ✗ | ~~c16k–c16n SPA epic~~ | **VOIDED** — the SPA (ADR-36) was rejected on a lifespan review (ADR-37); reports stay static, only heavy data is decoupled (c16j), durable data contract = c20/c30. Docs removed; trail in ADR-36/37 + the proposal doc |
+| ☑ | [c16j decouple heavy data](commits/v02/c16j_data_decoupling.md) | **done** (ADR-37) — moved the catalog/drill VTable rows out of the HTML into `<script defer src>`'d `_pagedata/*.js` (a sibling dir, NOT `_data/`; file://-safe classic script) so the shell paints first; real Perf heaviest drill 17.6MB→134KB shell + 17.5MB streamed. 176 green, reports byte-unchanged, browser-verified offline; G-21/G-22 closed, §21.1l consolidated |
+| ✗ | ~~c16k–c16n SPA epic~~ | **VOIDED** — the SPA (ADR-36) was rejected on a lifespan review (ADR-37); reports stay static. The `c16k`/`c16l`/`c16m` SLOTS are REUSED below for the table-unification epic (ADR-38); the SPA `c16n` is dropped. Trail in ADR-36/37 + the proposal doc |
+| ☐ | [c16k unified rdc-table component](commits/v02/c16k_unified_table_component.md) | **next** (ADR-38) — build the ONE bespoke `rdc-table` (merge the drill VTable engine + the reports' rdc-sortable-table), progressive-enhancement: `static` (reports, rows SERVER-BAKED, JS enhances — ADR-37 golden/JS-optional/print/Ctrl-F PRESERVED) + `virtual` (catalog/drill, _pagedata/*.js) modes; migrate catalog/drill + 1 proof report. NO third-party grid |
+| ☐ | [c16l unified table rollout](commits/v02/c16l_unified_table_rollout.md) | planned (ADR-38) — migrate ALL remaining report/A-B/per-run/trend/dashboard-mini surfaces onto `rdc-table` (static mode) + DELETE the old rdc-sortable-table + VTable scaffolding; one table system (G-23 fully resolved) |
+| ☐ | [c16m cell truncation + hover](commits/v02/c16m_cell_truncation_hover.md) | planned (ADR-38) — controllable per-column truncation (ellipsis) + full-value `title=` hover-reveal on `rdc-table`, both modes; global expand/wrap toggle; copy/links keep the full value |
 
 ## v0.3 — CI/automation surface (planned — [ROADMAP](ROADMAP.md))
 
@@ -493,6 +505,16 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-03 — AUTHORED the table-unification epic (ADR-38 + c16k/c16l/c16m), pulled into the v0.2 close
+  (user-requested). Resolves G-23 (two table systems: reports' server-baked table.report + rdc-sortable-table
+  vs the drill VTable). ADR-38: unify on ONE bespoke `rdc-table` (merge the two engines; NO third-party grid -
+  ADR-6/37 anti-framework), progressive-enhancement with `static` (reports - rows SERVER-BAKED, JS enhances;
+  ADR-37's golden-as-output/JS-optional/print/Ctrl-F PRESERVED, not reversed) + `virtual` (catalog/drill -
+  windowed from _pagedata/*.js) modes. c16k builds the component + both modes + migrates catalog/drill + 1
+  proof report; c16l rolls out to all remaining report/A-B/per-run/trend/mini surfaces + DELETES the old
+  rdc-sortable-table + VTable scaffolding; c16m adds controllable truncation + `title=` hover-reveal (both
+  modes). Re-sequenced: c16k -> c16l -> c16m -> v0.2 close-out -> tag. current -> c16k. Docs-only commit; no
+  code, no golden change. Reused the voided SPA c16k-c16m slots; SPA c16n dropped.
 - 2026-06-03 — c16j DONE (decouple the heavy catalog/drill data; html/template.py layer; the ~21MB TTI fix;
   STATIC per ADR-37, NO SPA; no new ADR). Each VTable's heavy rows moved OUT of the HTML into its own
   _pagedata/<key>.js (window.__data_<key>={...};, same compact json.dumps) loaded by a CLASSIC file://-safe
