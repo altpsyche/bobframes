@@ -54,6 +54,18 @@ def data_root(root: str) -> str:
     return os.path.join(root, DATA_DIR)
 
 
+def drop_dirname(drop_date: str, drop_label: str) -> str:
+    """Canonical per-drop dir basename: ``<drop_date>_<drop_label>`` (or just ``<drop_date>``
+    when there is no label), the inverse of ``discovery.DATED_RE``.
+
+    Used to tell a live drop dir from a rotation backup / staging dir (R-18): a ``--force`` run
+    rotates ``<drop>`` to a SIBLING ``<drop>.<ts>`` (R-16) and the ``.stage``/``.tmp`` trees share
+    the prefix, but all of them keep the ORIGINAL manifest/Parquet whose ``drop_label`` is the clean
+    value -- so their dir basename no longer equals this reconstruction, while a live drop's does.
+    """
+    return f'{drop_date}_{drop_label}' if drop_label else drop_date
+
+
 def drop_data_dir(root: str, area: str, drop_label_dated: str) -> str:
     """<root>/_data/<area>/<drop>/"""
     return os.path.join(data_root(root), area, drop_label_dated)
