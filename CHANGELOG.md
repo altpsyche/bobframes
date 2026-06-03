@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-03
+
+De-hardcoding + a full report overhaul. No schema change (still schema 3); extraction output is stable
+where the pipeline is unchanged, so parquet digests are byte-identical to 0.1.0 on the same captures.
+
+### Added
+- Inline-SVG chart toolkit (`reports/charts.py`): a flagship chart per report (pass-GPU treemap,
+  draws-by-class donut, shader complexity-vs-cost scatter, overdraw reject-rate bars, instancing
+  wasted-index bars, per-KPI trend lines), deterministic and dependency-free (no `random`/`Date`).
+- Report design language: hero KPI strip, callouts with config-driven severity, provenance/device
+  strip, section cards, sticky section headers, copy buttons on long IDs, vendored Inter subset font
+  (offline, base64-inlined), and an auto-tint heatmap on ranked numeric columns.
+- Run model: per-run truth (each report names "run N of M"), a run picker, A/B compare, and a trend
+  table across runs; older runs are pre-rendered up to a configurable limit.
+- One unified `rdc-table` engine (progressive enhancement, two modes): server-baked `static` for reports
+  (JS-off / print / Ctrl-F / golden all hold) and windowed `virtual` for the catalog + per-drop drill.
+  Shared natural-numeric sort, type-split, heatmap, column groups, search/filter, controllable cell
+  truncation with hover-reveal, and full sort/filter a11y (aria-sort + keyboard-operable headers + a
+  labelled filter input) across both modes.
+- TOML config (`.bobframes.toml`, `[report]`/`[pipeline]` sections), `design_tokens.toml` token system,
+  and a state-capable draw classifier driven by table columns.
+- Reports cache with a SHA256 sidecar (corrupt/missing/mismatch falls back to a live scan, never
+  silent-empty); manifest schema-version guard (`ingest --force` hint on mismatch).
+
+### Changed
+- Catalog + drill readability: roomier rows, type-split mono/sans, and the heavy per-table row data moved
+  out of the HTML into `_pagedata/*.js` companions (the ~21 MB time-to-interactive fix) loaded via a
+  file://-safe `<script defer src>`.
+- External tool resolution + clearer pipeline error messages and exit codes; environment variables
+  renamed `RDC_*` -> `BOBFRAMES_*` (one-release legacy fallback with a deprecation warning).
+- Project paths, the report registry, and the drill-size budget are configurable rather than hardcoded.
+
 ## [0.1.0] - 2026-05-31
 
 First standalone release. v1 is Windows-only (the replay stage drives `qrenderdoc`).
