@@ -7,18 +7,64 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        c16l_unified_table_rollout    (status: not-started. c16k DONE 2026-06-03 - the ONE bespoke
-                `rdc-table` engine is BUILT and BOTH modes proven: catalog/drill migrated to `virtual`
-                (windowed, _pagedata/*.js) and shader_hotlist's main table migrated to `static` (rows
-                SERVER-BAKED, JS enhances) as the ADR-37-preserving proof. ADR-38. c16e-k DONE. NEXT c16l:
-                roll rdc-table out to ALL remaining reports/A-B/per-run/trend/dashboard-minis (static mode) +
-                DELETE the old rdc-sortable-table web component (the drill VTable was already SUBSUMED into
-                rdc-table in c16k, leaving zero dead code) -> one table system, grep-clean, G-23 FULLY
-                resolved. THEN c16m adds controllable truncation + `title=` hover-reveal on rdc-table. ORDER:
-                c16l -> c16m -> v0.2 close-out (re-ingest + eyeball) -> tag v0.2 (IRREVERSIBLE, authorize
-                first) -> c20. G-20 (3+-run column collapse) still deferred - no 3+-run data. ADR-37 still
-                governs (reports stay static); the SPA epic is VOIDED.)
-last_session:   2026-06-03 — c16k DONE (build the unified `rdc-table` component; ADR-38, G-23 BUILD half;
+current:        c16m_cell_truncation_hover    (status: not-started. c16l DONE 2026-06-03 - ONE table system
+                achieved: the `rdc-table` engine folded ALWAYS-ON into the shared report bundle, EVERY remaining
+                report/per-run/trend/dashboard-mini/preview surface migrated to `static` mode, and the old
+                `rdc-sortable-table` web component + the dead `table.report` CSS DELETED (grep-clean: no
+                rdc-sortable-table / RdcSortableTable / class="report" anywhere). G-23 FULLY RESOLVED. ADR-38.
+                c16e-l DONE. NEXT c16m: add controllable truncation + `title=` hover-reveal on rdc-table (both
+                modes) so the c16l no-clip stopgap (static report cells render full-width to protect copy-
+                buttons/sparklines) becomes a real policy. ORDER: c16m -> v0.2 close-out (re-ingest + eyeball)
+                -> tag v0.2 (IRREVERSIBLE, authorize first) -> c20. G-20 (3+-run column collapse) still deferred
+                - no 3+-run data. ADR-37 still governs (reports stay static); the SPA epic is VOIDED.)
+last_session:   2026-06-03 — c16l DONE (roll `rdc-table` out + delete the old systems; ADR-38, G-23 ROLLOUT
+                half -> G-23 FULLY RESOLVED; single commit per user choice; rides ADR-37/6/24). Folded the
+                engine CSS/JS into the ALWAYS-ON report bundle (chrome._compose_css/_compose_js gain
+                _RDC_TABLE_CSS/_RDC_TABLE_JS); DELETED the c16k opt-in (the `rdc_table=` param on
+                report_page/page_open + rdc_table_assets() + its base re-export) - kept rdc_table_css()/
+                rdc_table_js() since template.py still composes the catalog/drill bundle itself (so NO
+                double-include; template.py UNTOUCHED). MIGRATED every remaining static surface
+                `<rdc-sortable-table><table class=report>` -> `<rdc-table data-mode=static data-table=<key>>
+                <table class=data>`: overdraw, draws_by_class (default-sort moved to host), instancing x3,
+                shader_hotlist secondary+resolved, trend x3; <td> CONTENT byte-stable (only wrapper/class
+                moved) so type-split + auto-heatmap + client sort come FREE and ADR-37 holds (rows
+                server-baked, JS-off/print/Ctrl-F/golden). The report-table semantics table.data lacked
+                (styled <caption> [GLOBAL so bare minis get it too], first-child emphasis [static-scoped])
+                moved into _RDC_TABLE_CSS; the 380px cell-clip is OPTED OUT in static mode (report cells hold
+                copy-buttons/sparklines/links - c16m owns real truncation); the table.report print + narrow-
+                viewport rules re-homed STATIC-SCOPED so catalog/drill virtual gain no render churn. COLUMN
+                GROUPS added to overdraw (a separable current/per-drop-history split, history collapsed,
+                index-keyed __colgroups_overdraw shared across the per-area tables via the section-scoped bar
+                lookup) alongside shader_hotlist; instancing/trend/draws_by_class kept as clean sort+heatmap -
+                they have no separable wall so a collapse would hide the headline metric (deliberate ADR-23
+                scoping, recorded). A11Y: StaticTable now sets aria-sort none->ascending/descending on headers,
+                restoring the sort-state announcement the deleted rdc-sortable-table provided (the unified
+                engine never had it - a c16k gap; fixed at root). DELETED rdc-sortable-table (web component +
+                CSS + RdcSortableTable JS class + customElements.define) and the now-dead table.report CSS
+                (main block + a/caption/dash-card/responsive/print) - grep-clean (no rdc-sortable-table /
+                RdcSortableTable / class="report" anywhere in source). DASHBOARD/PREVIEW minis -> bare
+                `<table class=data>` (NOT wrapped: a sortable header inside the card-link <a> would both sort
+                and navigate); unified styling, no enhancement. HARNESS: test_report_structure swapped the 2
+                c16k coexistence guards for c16l guards (test_c16l_sortable_table_deleted = grep-clean over
+                every page; test_c16l_all_tabled_reports_on_static_rdc_table = every tabled report static +
+                server-baked <tr>, pass_gpu none, dashboard minis bare; test_c16l_engine_in_shared_report_bundle
+                = engine in _compose_*, aria-sort present, rdc_table_assets gone, no rdc_table param);
+                test_c16i_reports_layer_untouched widened col-groups exemption to {shader_hotlist, overdraw};
+                test_design_tokens caption assert re-pointed to rdc_table_css() (table.data > caption). PARITY
+                (ADR-6/37/38): REFRESHED all 6 reports + dashboard + 6 per-run + catalog index + drill index +
+                the preview gallery (reports/dashboard by markup+bundle; catalog/drill by the dead-byte removal
+                + the inert static-scoped CSS the embedded engine string now carries - verified ZERO body-markup
+                change, virtual host intact); _pagedata/*.js + digests.json + golden_parquet BYTE-UNCHANGED (git
+                status scope); test_parquet_parity GREEN, NO digests refresh (presentation only, §21.9). 180 ->
+                181 green. smoke render-only 15 pages lint clean exit 0. BROWSER-VERIFIED OFFLINE (headless
+                Chrome, file://): static reports show all rows JS-off + enhance in place (sort + aria-sort
+                desc on shader_hotlist/draws_by_class default-sort cols + auto-heatmap [shader_hotlist 125 tinted
+                cells; overdraw/trend no-tint = correct-for-data, 1 area / flat cols] + real column-group toggle
+                BUTTONS [3 on shader_hotlist + overdraw, 0 elsewhere], NO JS errors, no clipped widgets); dashboard
+                minis stay un-enhanced; catalog/drill virtual unchanged. QUALITY_GATES §21.1n added; G-23 ticked
+                FULLY DONE. NOTE (minor, recorded): the VTable (catalog/drill) sort still has no aria-sort -
+                pre-existing, separate a11y pass. Commits on v0.2-roadmap-c04, UNPUSHED. current -> c16m.
+former_last_c16k: 2026-06-03 — c16k DONE (build the unified `rdc-table` component; ADR-38, G-23 BUILD half;
                 rides ADR-37/6/24). Replaced the two divergent table systems' ENGINES with ONE bespoke
                 `rdc-table` (NO third-party grid). It lives in reports/chrome.py (_RDC_TABLE_CSS +
                 _RDC_TABLE_JS + rdc_table_css/js/assets(), re-exported via base.py) and is a SINGLE IIFE:
@@ -426,18 +472,17 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    c16k DONE (2026-06-03) - `rdc-table` engine built, both modes proven (catalog/drill virtual +
-                shader_hotlist static proof), 180 green, QUALITY_GATES §21.1m added. DO c16l NEXT
-                (commits/v02/c16l_unified_table_rollout.md): roll rdc-table out to ALL remaining report/A-B/
-                per-run/trend/dashboard-mini surfaces in `static` mode (reuse the c16k `report_page(rdc_table=
-                True)` opt-in + the per-report index-keyed __colgroups_<key> pattern), THEN fold the engine
-                CSS/JS into the always-on shared bundle (_compose_css/_compose_js) and DELETE the now-unused
-                rdc-sortable-table web component + its CSS (the drill VTable was ALREADY subsumed into
-                rdc-table in c16k). One table system, grep-clean -> tick G-23 FULLY DONE. EXPECT a big golden
-                refresh (every report/dashboard/per-run/A-B page changes when the shared bundle gains rdc-table
-                + loses rdc-sortable-table) - per-page review, split sub-commits if it balloons (precedent
-                c16d/c16i). test_parquet_parity untouched (§21.9). THEN c16m (controllable truncation + `title=`
-                hover-reveal on rdc-table, both modes). THEN before the tag:
+next_action:    c16l DONE (2026-06-03) - ONE table system: engine folded always-on, all remaining report/
+                per-run/trend/dashboard-mini/preview surfaces on `static` rdc-table, rdc-sortable-table +
+                table.report DELETED (grep-clean), aria-sort restored, overdraw got column groups, 181 green,
+                browser-verified offline, QUALITY_GATES §21.1n added, G-23 FULLY RESOLVED. DO c16m NEXT
+                (commits/v02/c16m_cell_truncation_hover.md): add controllable cell truncation + `title=`
+                hover-reveal to the ONE rdc-table engine (both modes). c16l shipped a no-clip STOPGAP in static
+                mode (`rdc-table[data-mode=static] table.data td { max-width:none }`) so report copy-buttons/
+                sparklines/links stay visible+clickable - c16m replaces that with a real, controllable
+                truncation policy (e.g. a width cap + ellipsis + full-value `title=` hover, applied where it
+                helps without clipping interactive widgets). EXPECT a golden refresh on whatever surfaces gain
+                truncation; test_parquet_parity untouched (§21.9). THEN before the tag:
                 (1) V0.2 CLOSE-OUT: re-ingest the real Perf drop (now the cumulative flaw is fixed + the
                 R-17 replay salvage is automatic - re-test the 6 manual-flipped run2 captures) and eyeball
                 all reports. Working root C:\tmp\perf (hardlinks; Downloads read-only). Replay is
@@ -450,7 +495,7 @@ next_action:    c16k DONE (2026-06-03) - `rdc-table` engine built, both modes pr
                 commit. NOTE for c27/c35: the c09 classifier is already STATE-CAPABLE (when{} over any draw
                 column), so the state-first generic preset (D-10) is a preset not a rewrite; c35 removes the
                 zeroed passes.draws_by_class_* + slims passes (D-11a). GIT: still on branch v0.2-roadmap-c04
-                (off main; c07 + c08 + c09 + c10 + c16 + c16b-c16j UNPUSHED). Post-release nit
+                (off main; c07 + c08 + c09 + c10 + c16 + c16b-c16l UNPUSHED). Post-release nit
                 (non-blocking): bump CI actions off Node20 (checkout@v5/setup-python@v6 before 2026-06-16).
 DONE-2026-05-31: c19 — bobframes 0.1.0 PUBLISHED. tag v0.1.0 -> CI publish job green (OIDC trusted
                 publishing, ubuntu). Live on PyPI (wheel + sdist) + GitHub Release with both assets.
@@ -557,6 +602,18 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-03 — c16l DONE (roll `rdc-table` out + delete the old systems; ADR-38; single commit). ONE table
+  system: engine folded ALWAYS-ON into chrome._compose_css/_compose_js; the c16k opt-in (rdc_table= param +
+  rdc_table_assets()) DELETED (rdc_table_css/js kept for template.py); every remaining report (overdraw,
+  draws_by_class, instancing x3, shader_hotlist secondary+resolved, trend x3) + dashboard/preview minis
+  migrated off rdc-sortable-table/table.report onto static rdc-table/table.data (<td> content byte-stable);
+  rdc-sortable-table component + dead table.report CSS DELETED (grep-clean); aria-sort sort-state restored on
+  StaticTable; overdraw gained column groups (separable current/history) - instancing/trend/draws_by_class
+  kept clean sort+heatmap (no separable wall, ADR-23 scoping); 380px clip opted out in static (c16m owns real
+  truncation); minis bare (not wrapped - sort-vs-navigate conflict). Refreshed 6 reports + dashboard + 6 per-run
+  + catalog + drill + preview goldens; _pagedata/digests/parquet BYTE-UNCHANGED; 181 green; smoke 15 pages lint
+  clean; browser-verified offline. QUALITY_GATES §21.1n; G-23 FULLY RESOLVED. UNPUSHED on v0.2-roadmap-c04.
+  current -> c16m.
 - 2026-06-03 — AUTHORED the table-unification epic (ADR-38 + c16k/c16l/c16m), pulled into the v0.2 close
   (user-requested). Resolves G-23 (two table systems: reports' server-baked table.report + rdc-sortable-table
   vs the drill VTable). ADR-38: unify on ONE bespoke `rdc-table` (merge the two engines; NO third-party grid -

@@ -105,7 +105,9 @@ def test_c16c_section_card_css_present():
     assert 'section.card {' in c
     assert 'section.card > header {' in c
     assert '.card-subtitle {' in c
-    assert 'table.report > caption {' in c
+    # c16l (ADR-38): the table caption rule moved off the retired table.report onto the unified
+    # table.data, which lives in the rdc-table engine CSS.
+    assert 'table.data > caption {' in chrome._RDC_TABLE_CSS
     assert 'a.dash-card .dash-sub {' in c
     assert '$' not in c
 

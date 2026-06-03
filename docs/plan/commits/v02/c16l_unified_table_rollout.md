@@ -1,5 +1,10 @@
 # c16l — roll `rdc-table` out to every report surface; delete the old systems     release: v0.2 · phase: De-hardcoding
 
+> **STATUS: DONE 2026-06-03** (single commit per user choice). Engine folded always-on; all reports +
+> per-run + trend + dashboard-mini + preview migrated to `static` rdc-table; `rdc-sortable-table` +
+> `table.report` CSS DELETED (grep-clean); `aria-sort` sort-state restored on the static engine; column
+> groups added to overdraw; 181 green; browser-verified offline. G-23 fully resolved. See QUALITY_GATES §21.1n.
+
 > **ADR-38.** Second of three. **c16k** built `rdc-table` + both modes (proven on catalog/drill + one
 > report). c16l migrates ALL remaining table surfaces onto it and removes the old `rdc-sortable-table` +
 > VTable scaffolding. **c16m** then adds truncation + hover. Reports stay static (ADR-37).

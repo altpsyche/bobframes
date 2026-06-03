@@ -147,9 +147,6 @@ a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; text-decoration-thickness: 2px; }
 a:visited { color: var(--text-2); }
 a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-table.report a { text-decoration: underline; text-decoration-thickness: 1px;
-                 text-underline-offset: 2px; }
-table.report a:visited { color: var(--text-3); }
 
 header.strip {
   display: flex; flex-wrap: wrap; gap: var(--sp-3) var(--sp-6);
@@ -223,7 +220,7 @@ nav.crumb a + a::before { content: ''; }
   overflow-x: auto;
   margin: 0 0 var(--sp-6);
 }
-.table-wrap > table.report { border: 0; margin: 0; }
+.table-wrap > rdc-table > table.data { border: 0; margin: 0; }
 
 nav.toc {
   display: grid;
@@ -236,43 +233,6 @@ nav.toc {
   border: 1px solid var(--border-1);
 }
 nav.toc a { display: inline-block; padding: 2px 0; }
-
-table.report {
-  width: 100%;
-  border-collapse: collapse;
-  font: var(--fs-mono) ui-monospace, 'Cascadia Code', Consolas, monospace;
-  margin-top: var(--sp-1);
-}
-table.report thead th {
-  position: sticky;
-  top: var(--hdr-offset);
-  background: var(--surface-2); color: var(--accent);
-  text-align: left; font-weight: 600;
-  padding: var(--sp-2) var(--sp-3);
-  border-bottom: 1px solid var(--border-2);
-  white-space: nowrap;
-  z-index: 1;
-}
-table.report thead th.num { text-align: right; }
-table.report tbody td {
-  padding: var(--sp-2) var(--sp-3);
-  border-bottom: 1px solid var(--border-1);
-  vertical-align: top;
-}
-table.report tbody td:first-child {
-  font-weight: 600; color: var(--text-1);
-}
-table.report td.num { text-align: right; font-variant-numeric: tabular-nums; }
-table.report tbody tr:nth-child(even) td { background: var(--surface-2); }
-table.report tbody tr:hover td { background: var(--row-hover); }
-table.report tbody td .lbl {
-  color: var(--text-2);
-  margin-left: 6px;
-  font-style: italic;
-  opacity: .85;
-}
-table.report tr.area-break td { border-top: 2px solid var(--border-2); }
-table.report td.area-cell { color: var(--text-2); }
 
 .bar-row {
   display: grid;
@@ -319,19 +279,11 @@ section.card > header {
 section.card > header > h2 { margin: 0; }
 section.card > :last-child { margin-bottom: 0; }
 section.card .table-wrap { border: 0; border-radius: 0; margin: 0; }
-/* A sticky header that detaches and floats over a framed card reads as broken (a lone data row ends
-   up above it). Pin the header only on the un-carded drill page - not inside report/dashboard cards. */
-section.card table.report thead th,
-a.dash-card table.report thead th { position: static; top: auto; z-index: auto; }
 .card-count {
   font: 600 var(--fs-small) ui-monospace, monospace; color: var(--text-2);
   background: var(--surface-2); padding: 1px 8px; border-radius: 3px;
 }
 .card-subtitle { margin: 0 0 var(--sp-4); color: var(--text-2); font-size: var(--fs-small); }
-table.report > caption {
-  caption-side: top; text-align: left; color: var(--text-2);
-  font-size: var(--fs-small); padding: 0 0 var(--sp-2);
-}
 
 .ibar {
   display: inline-block; width: ${ibar_width}; height: ${ibar_height};
@@ -467,8 +419,8 @@ a.dash-card:hover { background: var(--surface-2); box-shadow: var(--elev-3);
                     transform: scale(var(--hover-scale)); text-decoration: none; }
 a.dash-card:visited { color: inherit; }
 a.dash-card h3 { margin: 0; color: var(--accent); font-size: var(--fs-h2); }
-a.dash-card table.report { font-size: var(--fs-small); }
-a.dash-card table.report a { pointer-events: none; }
+a.dash-card table.data { font-size: var(--fs-small); }
+a.dash-card table.data a { pointer-events: none; }
 a.dash-card .dash-sub { margin: 0; color: var(--text-2); font-size: var(--fs-small); }
 /* dashboard small-multiple: the card is the frame, so the mini chart blends in (no boxed panel,
    no box-in-box against the borderless summary table below it) - c16c. */
@@ -666,8 +618,6 @@ body { container-type: inline-size; container-name: page; }
   .kpi-chip .kpi-value { font-size: var(--fs-h1); }
   body { padding: var(--sp-3); }
   .summary-bar .sb-headline { font-size: var(--fs-h2); }
-  table.report thead th,
-  table.report tbody td { padding: var(--sp-1) var(--sp-2); }
 }
 """
 
@@ -703,14 +653,6 @@ _PRINT_CSS = """
 
   h1, h2 { color: #000; }
   h2[id] { position: static; background: transparent; break-after: avoid; }
-  table.report thead th {
-    position: static;
-    background: #f0f0f0;
-    color: #000;
-    print-color-adjust: exact;
-  }
-  table.report thead { display: table-header-group; }
-  table.report tbody tr { break-inside: avoid; }
 
   .kpi-strip { break-inside: avoid; grid-template-columns: repeat(4, 1fr); }
   .kpi-chip { background: #fff; }
@@ -753,15 +695,6 @@ _PRINT_CSS = """
 
 
 _COMPONENTS_CSS_BASE = """
-rdc-sortable-table { display: block; }
-rdc-sortable-table table.report thead th { cursor: pointer; user-select: none; }
-rdc-sortable-table table.report thead th[aria-sort="ascending"]::after {
-  content: ' \\25B4'; color: var(--text-3);
-}
-rdc-sortable-table table.report thead th[aria-sort="descending"]::after {
-  content: ' \\25BE'; color: var(--text-3);
-}
-
 rdc-copy-button {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 28px; padding: 0 6px; height: 22px;
@@ -888,71 +821,6 @@ _COMPONENTS_JS_ALL = """
     }
     init(){}
   }
-
-  class RdcSortableTable extends RdcBase {
-    init(){
-      const table = this.querySelector('table');
-      if (!table) return;
-      this._table = table;
-      const ths = table.querySelectorAll('thead th');
-      this._ths = ths;
-      ths.forEach((th, ci) => {
-        const isNum = th.classList.contains('num');
-        th.setAttribute('aria-sort', 'none');
-        th.addEventListener('click', () => this.sort(ci, isNum));
-      });
-      const liveId = 'rdc-live-' + Math.random().toString(36).slice(2, 8);
-      const live = document.createElement('div');
-      live.id = liveId;
-      live.setAttribute('aria-live', 'polite');
-      live.setAttribute('aria-atomic', 'true');
-      live.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)';
-      this.appendChild(live);
-      this._live = live;
-      const def = this.dataset.defaultSort;
-      const dir = this.dataset.defaultDir || 'desc';
-      if (def){
-        const cols = Array.from(ths).map(th => th.textContent.trim().toLowerCase());
-        const idx = cols.indexOf(def.toLowerCase());
-        if (idx >= 0){
-          const isNum = ths[idx].classList.contains('num');
-          this._applySort(idx, isNum, dir === 'asc' ? 'ascending' : 'descending');
-        }
-      }
-    }
-    sort(ci, isNum){
-      const cur = this._ths[ci].getAttribute('aria-sort') || 'none';
-      const dir = cur === 'ascending' ? 'descending' : 'ascending';
-      this._applySort(ci, isNum, dir);
-    }
-    _applySort(ci, isNum, dir){
-      const tbody = this._table.tBodies[0];
-      if (!tbody) return;
-      const rows = Array.from(tbody.rows);
-      rows.sort((a, b) => {
-        const av = (a.cells[ci] ? a.cells[ci].textContent : '').trim();
-        const bv = (b.cells[ci] ? b.cells[ci].textContent : '').trim();
-        if (isNum){
-          const an = parseFloat(av.replace(/,/g, ''));
-          const bn = parseFloat(bv.replace(/,/g, ''));
-          const aok = !isNaN(an), bok = !isNaN(bn);
-          if (!aok && !bok) return 0;
-          if (!aok) return 1;
-          if (!bok) return -1;
-          return dir === 'ascending' ? an - bn : bn - an;
-        }
-        return dir === 'ascending' ? av.localeCompare(bv) : bv.localeCompare(av);
-      });
-      rows.forEach(r => tbody.appendChild(r));
-      this._ths.forEach(th => th.setAttribute('aria-sort', 'none'));
-      this._ths[ci].setAttribute('aria-sort', dir);
-      if (this._live) {
-        const colName = (this._ths[ci].textContent || '').trim();
-        this._live.textContent = 'sorted by ' + colName + ' ' + dir;
-      }
-    }
-  }
-  customElements.define('rdc-sortable-table', RdcSortableTable);
 
   class RdcCopyButton extends RdcBase {
     init(){
@@ -1171,14 +1039,15 @@ def _minify_js(s: str) -> str:
 
 
 def _compose_css() -> str:
-    return _minify_css(_TOKENS_CSS + _PRIMITIVES_CSS + _COMPONENTS_CSS)
+    # c16l (ADR-38): the rdc-table engine is now ALWAYS-ON in the report bundle (was opt-in via
+    # report_page(rdc_table=True) in c16k). Every report/dashboard/A-B/per-run page hosts a STATIC
+    # rdc-table, so the engine CSS ships unconditionally. template.py composes its own bundle for
+    # catalog/drill (it adds rdc_table_css() explicitly), so this fold does NOT double-include there.
+    return _minify_css(_TOKENS_CSS + _PRIMITIVES_CSS + _COMPONENTS_CSS + _RDC_TABLE_CSS)
 
 
 def _compose_js() -> str:
-    return _minify_js(_COMPONENTS_JS)
-
-
-_CSS = _compose_css()
+    return _minify_js(_COMPONENTS_JS + _RDC_TABLE_JS)
 
 
 def design_tokens_css() -> str:
@@ -1197,8 +1066,9 @@ def components_js() -> str:
 
 
 # ---------------------------------------------------------------------------
-# rdc-table: the ONE bespoke table engine (c16k, ADR-38). Unifies the catalog/drill VTable with the
-# reports' rdc-sortable-table. Progressive-enhancement, two data-delivery modes picked by data-mode:
+# rdc-table: the ONE bespoke table engine (c16k build + c16l rollout, ADR-38). It SUBSUMED both the
+# old catalog/drill VTable and the reports' rdc-sortable-table (now deleted - G-23 fully resolved).
+# Progressive-enhancement, two data-delivery modes picked by data-mode:
 #   - virtual: rows stream from window.__data_<key> (_pagedata/*.js); the DOM is windowed (VTable).
 #   - static : rows are SERVER-BAKED into <table class="data">; JS only enhances IN PLACE (sort
 #              reorders existing <tr> nodes, heatmap tints existing <td>s, column-groups toggle
@@ -1206,9 +1076,10 @@ def components_js() -> str:
 # Bootstrapped from a single DOMContentLoaded pass (NOT customElements) so it dodges the parse-time
 # connectedCallback footgun and matches today's VTable timing. Offline, byte-deterministic (NO
 # random/Date/fetch in the rendered output), ASCII (the runtime ' ▲'/' ▼' textContent is tolerated,
-# as in the old VTable). The merged engine + CSS are emitted OPT-IN (only on catalog/drill +
-# whatever report calls report_page(rdc_table=True)) so the shared report bundle stays byte-stable
-# for non-migrated reports until c16l folds it in and deletes rdc-sortable-table.
+# as in the old VTable). c16l folded the engine into the ALWAYS-ON shared bundle (_compose_css/
+# _compose_js): every report/dashboard/A-B/per-run page hosts a STATIC rdc-table, so the opt-in is
+# gone. template.py composes its own bundle for catalog/drill (it adds rdc_table_css()/rdc_table_js()
+# explicitly), so the fold does not double-include there.
 # ---------------------------------------------------------------------------
 
 # Single-source virtual-scroll row height (c16i): the JS `const ROW_H` (via the __ROW_H__ sentinel)
@@ -1278,12 +1149,11 @@ table.data tbody td a {
 }
 table.data tbody td a:hover { color: var(--accent); border-bottom-style: solid; }
 .spacer td { padding: 0; border: 0; background: var(--surface-0); }
-/* Report markup bakes class="num" on numeric cells (the rdc-sortable-table convention) while the
+/* Report markup bakes class="num" on numeric cells (the old report-table convention) while the
    VTable adds class="numeric"; alias .num to the table.data numeric treatment so a STATIC report
    styles correctly JS-off WITHOUT re-classing every cell (and without touching the shared delta/
-   heatmap/sparkline cell helpers). Scoped to table.data, so table.report (secondary/other reports)
-   is unaffected; inert on catalog/drill (they never use .num). Kept as its own rule so the c16i
-   type-split guard's exact `.numeric, ...td.mono` substrings stay intact. */
+   heatmap/sparkline cell helpers). Inert on catalog/drill (they never use .num). Kept as its own rule
+   so the c16i type-split guard's exact `.numeric, ...td.mono` substrings stay intact. */
 table.data thead th.num, table.data tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
 table.data tbody td.num { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-size: var(--fs-mono); }
 /* Static mode has no .alt class (rows are server-baked) so zebra rides nth-child, which follows the
@@ -1295,6 +1165,31 @@ rdc-table[data-mode="static"] table.data tbody tr:nth-child(even) td { backgroun
    catalog tables live in their own <section> / drill in section.table-section, so this matches only
    the report context. */
 section.card table.data thead th, a.dash-card table.data thead th { position: static; }
+/* c16l (ADR-38): a STATIC report table replaces the retired table.report. Restore the report-table
+   semantics table.data didn't carry - styled <caption>, an emphasized label (first) column - and OPT
+   OUT of the 380px cell clip (report cells hold copy-buttons / sparklines / links that must stay
+   visible + clickable; c16m owns controllable truncation). Scoped to static so the catalog/drill
+   virtual tables stay byte-stable. Also re-home the table.report print + narrow-viewport rules here. */
+/* caption: global (not static-scoped) so the bare dashboard/preview minis - table.data WITHOUT an
+   rdc-table host - also get it. Catalog/drill build rows at runtime and emit no <caption>, so this is
+   inert there + golden-safe. */
+table.data > caption {
+  caption-side: top; text-align: left; color: var(--text-2);
+  font-size: var(--fs-small); padding: 0 0 var(--sp-2);
+}
+rdc-table[data-mode="static"] table.data tbody td:first-child { font-weight: 600; color: var(--text-1); }
+rdc-table[data-mode="static"] table.data tbody td { max-width: none; overflow: visible; text-overflow: clip; }
+@media (max-width: 720px) {
+  rdc-table[data-mode="static"] table.data thead th,
+  rdc-table[data-mode="static"] table.data tbody td { padding: var(--sp-1) var(--sp-2); }
+}
+@media print {
+  rdc-table[data-mode="static"] table.data thead th {
+    position: static; background: #f0f0f0; color: #000; print-color-adjust: exact;
+  }
+  rdc-table[data-mode="static"] table.data thead { display: table-header-group; }
+  rdc-table[data-mode="static"] table.data tbody tr { break-inside: avoid; }
+}
 """
 
 # Engine JS. One IIFE; shared cmpVals (natural-numeric, ADR-24) + tintImage (uniform-tint heatmap);
@@ -1766,6 +1661,7 @@ _RDC_TABLE_JS_TMPL = r"""
     _wireHeaders(){
       this.ths.forEach((th, ci) => {
         th.style.cursor = 'pointer';
+        th.setAttribute('aria-sort', 'none');   // a11y: report sort state (c16l - was on rdc-sortable-table)
         let arrow = th.querySelector('.sort-arrow');
         if (!arrow){ arrow = document.createElement('span'); arrow.className = 'sort-arrow'; th.appendChild(arrow); }
         th.addEventListener('click', () => this.sort(ci));
@@ -1788,6 +1684,7 @@ _RDC_TABLE_JS_TMPL = r"""
       this.ths.forEach((th, k) => {
         const a = th.querySelector('.sort-arrow');
         if (a) a.textContent = (k === ci) ? (dir > 0 ? ' ▲' : ' ▼') : '';
+        th.setAttribute('aria-sort', (k === ci) ? (dir > 0 ? 'ascending' : 'descending') : 'none');
       });
     }
 
@@ -1909,20 +1806,16 @@ _RDC_TABLE_JS = _RDC_TABLE_JS_TMPL.replace('__ROW_H__', str(_RDC_ROW_H))
 
 
 def rdc_table_css() -> str:
-    """Engine CSS for the unified rdc-table (c16k). Used by template.py (catalog/drill) and, via
-    rdc_table_assets(), by report_page(rdc_table=True). Emitted verbatim (un-minified) so the c16i
-    substring guards over the catalog/drill output stay green."""
+    """Engine CSS for the unified rdc-table (c16k). Used by template.py (catalog/drill), emitted
+    verbatim (un-minified) so the c16i substring guards over the catalog/drill output stay green. The
+    report bundle folds it in via _compose_css() (c16l, ADR-38 — always-on, no longer opt-in)."""
     return _RDC_TABLE_CSS
 
 
 def rdc_table_js() -> str:
-    """Engine JS for the unified rdc-table (c16k)."""
+    """Engine JS for the unified rdc-table (c16k). Used verbatim by template.py (catalog/drill); the
+    report bundle folds it into _compose_js() (c16l)."""
     return _RDC_TABLE_JS
-
-
-def rdc_table_assets() -> str:
-    """`<style>` + `<script>` head block for a STATIC-mode report (opt-in via report_page)."""
-    return f'<style>{_RDC_TABLE_CSS}</style><script>{_RDC_TABLE_JS}</script>'
 
 
 def h(s) -> str:
@@ -1941,19 +1834,18 @@ def class_color_var(cls: str) -> str:
 
 
 def page_open(title: str, *, hdr_offset_px: int | None = None,
-              body_attrs: dict | None = None, rdc_table: bool = False) -> str:
+              body_attrs: dict | None = None) -> str:
     """Open a self-contained HTML page. hdr_offset_px sets --hdr-offset on <body>.
 
     Use 48 for dashboard / single-section reports, 84 for multi-section reports
     that carry ab_strip / device_strip / toc above the first sticky h2.
     body_attrs: extra attributes on <body> (e.g. {'data-multi-section': 'true'}).
-    rdc_table: when True, append the opt-in rdc-table engine CSS+JS to <head> (c16k, ADR-38). Only a
-    report that hosts a STATIC-mode <rdc-table> sets it; default-False keeps every other page's bytes
-    identical (the shared bundle is untouched) so non-migrated goldens stay byte-stable until c16l.
+
+    The rdc-table engine CSS+JS ship in the shared bundle (_compose_css/_compose_js) for EVERY page
+    (c16l, ADR-38 — every report now hosts a STATIC <rdc-table>); the c16k opt-in is gone.
     """
     js = _compose_js()
     script = f'<script>{js}</script>' if js else ''
-    extra = rdc_table_assets() if rdc_table else ''
     attrs: list[str] = []
     if hdr_offset_px is not None:
         attrs.append(f'style="--hdr-offset: {int(hdr_offset_px)}px"')
@@ -1964,7 +1856,7 @@ def page_open(title: str, *, hdr_offset_px: int | None = None,
             f'<title>{_html.escape(title)}</title>'
             f'<link rel="icon" href="{_FAVICON_HREF}">'
             f'<style>{_compose_css()}</style>'
-            f'{script}{extra}</head><body{body_attr_str}>'
+            f'{script}</head><body{body_attr_str}>'
             f'{_ICON_SPRITE}')
 
 
@@ -2190,7 +2082,7 @@ def report_page(title: str, body, *, drops: int = 0, captures: int = 0,
                 current_page: str | None = None, hdr_offset_px: int | None = 120,
                 body_attrs: dict | None = None, ab=None, root: str | None = None,
                 report_key: str | None = None, device: str = '', run=None,
-                run_nav_key: str | None = None, rdc_table: bool = False) -> str:
+                run_nav_key: str | None = None) -> str:
     """Assemble a standard Layer-2 report page, deduping the open/header/strip/close shared by every
     report (Q-6). ``body`` is an HTML string or a list of fragments (the report's summary_bar +
     sections, in order). The fragments are '\\n'-joined exactly as write_report joins a parts list, so
@@ -2207,8 +2099,7 @@ def report_page(title: str, body, *, drops: int = 0, captures: int = 0,
     page's own file stem for the run-selector hrefs (defaults to ``report_key``; the dashboard passes
     'index' since it carries no report_key).
     """
-    parts = [page_open(title, hdr_offset_px=hdr_offset_px, body_attrs=body_attrs,
-                       rdc_table=rdc_table),
+    parts = [page_open(title, hdr_offset_px=hdr_offset_px, body_attrs=body_attrs),
              header(title, drops=drops, captures=captures, build_ts=build_ts,
                     kpis=kpis, crumb_depth=crumb_depth, current_page=current_page,
                     run=run)]

@@ -299,6 +299,40 @@ crafted varying-data table — real Perf's `uses`/`cost` are all 0, so the auto-
 `complexity` shades via `rdc-heatmap-cell`). **G-23 is NOT closed here** — the BUILD half only; the rollout +
 deletion of `rdc-sortable-table` is c16l, truncation is c16m.
 
+## 21.1n The `rdc-table` rollout: ONE table system (c16l, ADR-38, G-23 resolved) — see [c16l](../commits/v02/c16l_unified_table_rollout.md)
+c16l rolls the `static` mode onto **every** remaining tabular surface and **deletes** the old second system, so
+the codebase has ONE table engine (G-23 fully resolved). **Engine now always-on:** `_RDC_TABLE_CSS`/`_RDC_TABLE_JS`
+fold into `chrome._compose_css/_compose_js`, so every report/dashboard/A-B/per-run/preview page ships the engine
+(the c16k opt-in `report_page(rdc_table=True)` + `page_open(rdc_table=)` + `rdc_table_assets()` are DELETED;
+`rdc_table_css()`/`rdc_table_js()` stay — `template.py` still composes its own catalog/drill bundle, so the fold
+does NOT double-include). **Reports migrated:** every `<rdc-sortable-table><table class="report">` →
+`<rdc-table data-mode="static" data-table="<key>"><table class="data">` (overdraw, draws_by_class, instancing ×3,
+shader_hotlist secondary+resolved, trend ×3); `<td>` content stays byte-stable (only wrapper/class moves), so the
+type-split + auto-heatmap + client sort come **free** and ADR-37 holds (rows server-baked → JS-off / print /
+Ctrl-F / golden-as-output). `class="report"` retired for `class="data"`; the report-table semantics `table.data`
+lacked (styled `<caption>`, first-child emphasis) move into `_RDC_TABLE_CSS` scoped to `rdc-table[data-mode="static"]`,
+and the 380px cell clip is **opted out** there (report cells hold copy-buttons / sparklines / links — c16m owns
+controllable truncation). The print + narrow-viewport `table.report` rules are re-homed (static-scoped) so
+catalog/drill (virtual) gain no new render churn. **Column groups** added to `overdraw` (a separable current /
+per-drop-history split, history collapsed) alongside shader_hotlist; instancing / trend / draws_by_class ship as
+clean sort+heatmap tables — they have no separable wall (a collapse would hide the headline metric), a deliberate
+ADR-23 scoping. **a11y:** the `StaticTable` now sets `aria-sort` on headers (none→ascending/descending), restoring
+the sort-state announcement the deleted `rdc-sortable-table` provided; `<caption>` + `scope="col"` + real `<th>` +
+`<button aria-pressed>` column toggles intact. **Dashboard/preview minis** become bare `<table class="data">`
+(NOT wrapped) — a 3-row preview inside a card-link `<a>` must not gain sortable headers (sort + navigate conflict);
+they get the unified styling, no enhancement. **Deleted:** `rdc-sortable-table` (web component + CSS + JS class +
+`customElements.define`) and the now-dead `table.report` CSS — grep-clean (no `rdc-sortable-table` / `RdcSortableTable`
+/ `class="report"` anywhere). `test_report_structure` swaps the c16k coexistence guards for c16l guards (sortable
+GONE everywhere; every tabled report on `static` rdc-table with server-baked `<tr>`; pass_gpu has none; dashboard
+minis bare `table.data`; engine in the shared bundle; `aria-sort` present); `test_design_tokens` re-points the caption
+assert to `rdc_table_css()`. **Output-changing → refreshed** all 6 reports + dashboard + 6 per-run + catalog + drill +
+the preview gallery (reports/dashboard by markup+bundle; catalog/drill by the dead-byte removal + the inert
+static-scoped CSS the engine string carries). `_pagedata/*.js`, `digests.json`, `golden_parquet` **byte-unchanged**;
+`test_parquet_parity` green with NO digests refresh (presentation only, §21.9). 181 green. `bobframes smoke`
+render-only 15 pages lint clean exit 0. Browser-verified offline (headless Chrome, `file://`): static reports show
+all rows JS-off, enhance in place (sort + `aria-sort` + auto-heatmap + real column-group toggle buttons, no JS
+errors, no clipped widgets); dashboard minis stay un-enhanced; catalog/drill virtual unchanged.
+
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,
 dropped column, dtype slip). Skip `_`-prefixed (`_catalog`, `_global_entities`). Runs on synthetic +

@@ -6,6 +6,7 @@ Gracefully renders 'no data' when pixel_history absent for a drop.
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from collections import defaultdict
@@ -229,6 +230,24 @@ def build(root: str, *, drops: list | None = None, ab=None,
     if not by_area:
         parts.append(base.empty_state('no pixel_history data in the current run'))
     else:
+        # c16l: column groups for the static rdc-table (shared across every per-area table - the
+        # column structure is identical, so one index-keyed __colgroups_overdraw spec + one inline
+        # script serve them all; each area-section finds its OWN .col-groups bar via the section-scoped
+        # lookup). identity (rt label/format/dims) + current (latest sample stats) open; the per-drop
+        # samples wall + deltas collapsed. Indices are fixed by the header order built below.
+        ident_cols = [0, 1, 2]
+        cur_cols = [3, 4, 5, 6, 7, 8, 9]
+        hist_cols = []
+        _ci = 10
+        for _i, _k in enumerate(drop_keys):
+            hist_cols.append(_ci); _ci += 1            # samples@k
+            if _i > 0:
+                hist_cols.append(_ci); _ci += 1        # delta
+        colgroups = [{'name': 'identity', 'open': True, 'cols': ident_cols},
+                     {'name': 'current', 'open': True, 'cols': cur_cols}]
+        if hist_cols:
+            colgroups.append({'name': 'per-drop history', 'open': False, 'cols': hist_cols})
+
         for ai, area in enumerate(sorted(by_area.keys())):
             rows = []
             for label in set(by_area[area]):
@@ -238,7 +257,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
             rows.sort(key=lambda x: x[2], reverse=True)
 
             sec = []
-            sec.append('<table class="report">')
+            sec.append('<table class="data">')
             sec.append(f'<caption>per-render-target sample rejection in {base.h(area)}</caption>')
             sec.append('<thead><tr>')
             sec.append('<th scope="col">rt label</th>')
@@ -313,11 +332,18 @@ def build(root: str, *, drops: list | None = None, ab=None,
                         chart_id=f'overdraw-{ai}'),
                     f'{area}: sample rejection % per RT'))
 
-            # c16c: frame the per-area section in a sticky-highlighted card.
-            body.append(f'<div class="table-wrap"><rdc-sortable-table>{"".join(sec)}</rdc-sortable-table></div>')
+            # c16c: frame the per-area section in a sticky-highlighted card. c16l: the per-area table is
+            # a STATIC rdc-table; its own .col-groups bar (section-scoped) drives the shared spec below.
+            body.append('<div class="col-groups" role="group" aria-label="column groups"></div>')
+            body.append('<div class="table-wrap"><rdc-table data-mode="static" data-table="overdraw">'
+                        f'{"".join(sec)}</rdc-table></div>')
             parts.append('<rdc-sticky-h2>'
                          + base.section_card(area, area, ''.join(body), count=len(rows))
                          + '</rdc-sticky-h2>')
+
+        # One inline, index-keyed column-groups spec for every per-area overdraw table (offline, ASCII).
+        parts.append('<script>window.__colgroups_overdraw='
+                     f'{json.dumps(colgroups, separators=(",", ":"))};</script>')
 
     return base.write_report(out_path, [base.report_page(
         'overdraw', parts,

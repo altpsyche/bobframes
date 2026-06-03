@@ -222,13 +222,15 @@ def test_c16i_column_groups_catalog_only(rendered):
 
 
 def test_c16i_reports_layer_untouched(rendered):
-    # c16i was the template.py layer ONLY. c16k (ADR-38) brings the column-groups chrome to the ONE
-    # static proof report (shader_hotlist) via its own __colgroups_shader_hotlist; every OTHER report
-    # stays clean, and the CATALOG global never leaks anywhere.
+    # c16i was the template.py layer ONLY. Column groups are an OPT-IN report feature, declared per
+    # report as its own index-keyed __colgroups_<key>: c16k brought them to shader_hotlist; c16l adds
+    # overdraw (a wide per-drop-fanning table with a separable current/history split). Reports without
+    # a separable wall stay clean, and the CATALOG global never leaks into any report.
+    _COL_GROUP_REPORTS = {'shader_hotlist', 'overdraw'}
     for name in _ALL_REPORTS + ['index']:
         rel = '_reports/index.html' if name == 'index' else f'_reports/{name}.html'
         html = rendered[rel]
-        if name != 'shader_hotlist':
+        if name not in _COL_GROUP_REPORTS:
             assert 'class="col-groups"' not in html, name
         assert 'window.__colgroups_catalog=' not in html, name
 
@@ -356,23 +358,53 @@ def test_c16k_static_proof_server_baked(rendered):
     assert '<div class="col-groups" role="group" aria-label="column groups">' in html
 
 
-def test_c16k_static_proof_offline_and_coexists(rendered):
-    # the static proof ships the rdc-table engine inline (opt-in via report_page); rdc-sortable-table
-    # is NOT removed in c16k (it still wraps the secondary table and stays defined in the shared bundle
-    # for the non-migrated reports - c16l deletes it). So the page carries BOTH engines.
-    html = _report(rendered, 'shader_hotlist')
-    assert 'class StaticTable' in html and 'class VTable' in html   # the rdc-table engine, inline
-    assert '<rdc-sortable-table>' in html                            # still wraps the secondary table
-    assert "customElements.define('rdc-sortable-table'" in html      # shared bundle untouched
-    # The rdc-table ENGINE is offline/deterministic (no random/Date/fetch) - asserted on the same
-    # engine string by test_c16i_heatmap_deterministic_and_offline. The page as a whole legitimately
-    # contains rdc-sortable-table's runtime-only Math.random live-region id (never in the output
-    # bytes), so determinism of shader_hotlist.html itself is proven by the byte-golden (test_parity).
+# --- c16l: the rollout. rdc-table (static) on every report surface; rdc-sortable-table DELETED. ---
+
+def test_c16l_sortable_table_deleted(rendered):
+    # c16l (ADR-38): the old rdc-sortable-table is GONE everywhere - the component def + its CSS + every
+    # wrapper. The ONE rdc-table engine now serves every surface; table.report is retired for table.data.
+    # G-23 fully resolved (no two code paths). Grep-clean over EVERY rendered page.
+    for rel, html in rendered.items():
+        if not rel.endswith('.html'):
+            continue
+        assert '<rdc-sortable-table' not in html, rel
+        assert 'RdcSortableTable' not in html, rel
+        assert "customElements.define('rdc-sortable-table'" not in html, rel
+        assert 'class="report"' not in html, rel
 
 
-def test_c16k_other_reports_have_no_rdc_table(rendered):
-    # only shader_hotlist (the c16k proof) carries <rdc-table>; the shared report bundle stays
-    # byte-stable for every other report + dashboard until c16l rolls them over.
-    for name in [n for n in _ALL_REPORTS if n != 'shader_hotlist'] + ['index']:
-        rel = '_reports/index.html' if name == 'index' else f'_reports/{name}.html'
-        assert '<rdc-table' not in rendered[rel], name
+def test_c16l_all_tabled_reports_on_static_rdc_table(rendered):
+    # every tabled report renders through a STATIC rdc-table with SERVER-BAKED rows (ADR-37): readable
+    # JS-off, printable, Ctrl-F-able. Not virtual (no client payload, no windowing spacers). The engine
+    # (StaticTable + VTable) now ships in the always-on shared bundle, so it is inline on every page.
+    for name in _TABLED:
+        html = _report(rendered, name)
+        assert '<rdc-table data-mode="static"' in html, name
+        assert '<table class="data">' in html, name
+        assert 'class="spacer"' not in html, name            # not windowed
+        assert 'window.__data_' not in html, name             # static, not streamed
+        assert '<tbody>' in html and '<tr>' in html, name     # server-baked rows in the HTML source
+        assert 'class StaticTable' in html and 'class VTable' in html, name
+    # pass_gpu is charts / bar-rows only - no table engine host
+    assert '<rdc-table' not in _report(rendered, 'pass_gpu')
+    # dashboard minis are bare table.data (deliberately NOT wrapped - a sortable header inside the
+    # card-link <a> would both sort and navigate); the dashboard hosts no rdc-table.
+    idx = rendered['_reports/index.html']
+    assert '<rdc-table' not in idx
+    assert '<table class="data">' in idx
+
+
+def test_c16l_engine_in_shared_report_bundle():
+    # c16l folds the engine into the ALWAYS-ON report bundle; the c16k opt-in (rdc_table_assets +
+    # report_page(rdc_table=...)) is gone. template.py keeps rdc_table_css()/rdc_table_js() for the
+    # catalog/drill bundle.
+    from bobframes.reports import chrome
+    css, js = chrome._compose_css(), chrome._compose_js()
+    assert 'table.data' in css
+    assert 'class StaticTable' in js and 'class VTable' in js
+    assert "aria-sort" in js   # static-table sort state is announced (a11y parity with old rdc-sortable-table)
+    assert not hasattr(chrome, 'rdc_table_assets')
+    assert callable(chrome.rdc_table_css) and callable(chrome.rdc_table_js)
+    import inspect
+    assert 'rdc_table' not in inspect.signature(chrome.report_page).parameters
+    assert 'rdc_table' not in inspect.signature(chrome.page_open).parameters
