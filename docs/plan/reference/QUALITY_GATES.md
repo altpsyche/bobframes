@@ -422,6 +422,38 @@ inline on every page; `draws_by_class` additionally gains the `<span class="clip
 toggle now appears, since a `.clip` cell exists); the dashboard print-preview shows full mini cell + header
 values - nothing clipped.
 
+## 21.1p Table a11y parity: both `rdc-table` modes at sort/filter a11y parity (c16o, ADR-38 a11y tail) — see [c16o](../commits/v02/c16o_table_a11y_parity.md)
+c16o closes the **G-23 a11y tail**: a feature added once to the ONE engine now behaves the same in BOTH modes.
+c16l restored `aria-sort` on the `StaticTable` engine (parity with the deleted `rdc-sortable-table`), but the
+`VTable` (catalog/drill, virtual) never got it, and **neither** mode's sort header was keyboard-operable (a bare
+`<th>` + click listener). c16o fixes both at the root. **(1) VTable `aria-sort` (virtual parity):**
+`VTable.buildHead` seeds `aria-sort` from the current `sortCol`/`sortDir` (so a group-toggle rebuild keeps it
+correct) and `VTable.sort` flips it none→ascending/descending per header, mirroring `StaticTable._paintSort` —
+screen readers now announce sort state on catalog/drill too. **(2) Keyboard-operable sort headers (BOTH modes):**
+a single shared free function `wireSortHeader(th, ci, onSort)` (authored once in the engine IIFE, alongside
+`cmpVals`/`tintImage`) sets `tabindex="0"` + a click + an Enter/Space `keydown` handler (`e.preventDefault()`,
+matching the `RdcCopyButton` pattern) that calls the mode's own `sort(ci)`; both `VTable.buildHead` and
+`StaticTable._wireHeaders` call it, so sort is reachable by keyboard everywhere. `<th>` keeps its implicit
+`role="columnheader"` (where `aria-sort` belongs — `role="button"` would WRONGLY strip it), and `cursor:pointer`
+already comes from the `table.data thead th` CSS (not re-set in JS). The **sort RESULT and row content are
+unchanged** — only how sort is reached + announced. **(3) Search-input `aria-label`:** the virtual filter
+`<input type="search">` gains an `aria-label` (`filter <table>` per drill table; `filter catalog` on the catalog)
+in `html/template.py` — a placeholder is not a label substitute. `test_c16l_engine_in_shared_report_bundle` is
+extended (slices `_compose_js()` at the two class boundaries and asserts `aria-sort` + `wireSortHeader(` appear in
+BOTH `VTable` and `StaticTable`, plus `function wireSortHeader` / `tabindex` / `Enter` are present — `_minify_js`
+is comment/whitespace-only so the substrings survive); `test_c16o_search_input_labelled` asserts every catalog +
+drill search input carries an `aria-label`. **Output-changing → refreshed** all 15 HTML goldens + the preview
+(the engine JS is inline on every page — the c16l scope; catalog/drill additionally gain the search `aria-label`
+markup); `_pagedata/*.js`, `digests.json`, `golden_parquet` **byte-unchanged** (behavior/markup only; the VTable
+DOM is JS-built at runtime, not in the golden), `test_parquet_parity` green with NO digests refresh (§21.9).
+190 → 191 green. `bobframes smoke` render-only 15 pages lint clean exit 0. **Browser-verified offline (headless
+Chrome over CDP, `file://`, real Perf):** static report — 19 headers all `tabindex=0`, exactly 1 default-sort
+column announces `aria-sort`, header focusable via `el.focus()`, a real **Enter** key flips `aria-sort=ascending`
++ reorders rows, the Expand-cells toggle flips `data-expand=true`; virtual catalog — 25 client-built headers all
+`tabindex=0` + **all carry `aria-sort`** (the gap closed in the live DOM), search input `aria-label="filter
+catalog"`, header focusable, Enter sorts + arrow shows; dark-mode body background differs light↔dark. No new ADR
+(rides ADR-38 a11y tail). **Closes the G-23 a11y tail — both modes of the one engine at sort/filter a11y parity.**
+
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,
 dropped column, dtype slip). Skip `_`-prefixed (`_catalog`, `_global_entities`). Runs on synthetic +

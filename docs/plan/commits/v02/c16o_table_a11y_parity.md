@@ -1,5 +1,18 @@
 # c16o — table a11y parity (both rdc-table modes)     release: v0.2 · phase: De-hardcoding
 
+> **Status: DONE (2026-06-03).** 190 -> 191 green (+`test_c16o_search_input_labelled`,
+> `test_c16l_engine_in_shared_report_bundle` extended). A shared `wireSortHeader(th, ci, onSort)` helper
+> (authored once in the engine IIFE) makes the sort `<th>` keyboard-operable (`tabindex=0` + Enter/Space →
+> `sort(ci)`) in BOTH modes; `VTable.buildHead`/`sort` now set `aria-sort` none→asc/desc (mirroring
+> `StaticTable._paintSort`) so catalog/drill announce sort state too; the virtual filter `<input>` gains an
+> `aria-label` (`filter <table>` / `filter catalog`) in `html/template.py`. Sort RESULT + row content
+> unchanged - only how sort is reached/announced. All 15 HTML goldens + preview refreshed (engine JS inline
+> on every page); `_pagedata/*.js` + `digests.json` + `golden_parquet` byte-unchanged, `test_parquet_parity`
+> green with NO digests refresh (§21.9). smoke render-only 15 pages lint clean exit 0. Browser-verified
+> offline (headless Chrome over CDP, `file://`, real Perf): static - tabindex/aria-sort/focusable/Enter-sorts/
+> expand-toggle; virtual catalog - 25 built headers all tabindex+aria-sort, search aria-label, Enter sorts;
+> dark mode differs. No new ADR (rides ADR-38 a11y tail). QUALITY_GATES §21.1p added; G-23 a11y tail closed.
+
 > **ADR-38 (a11y tail).** The unified `rdc-table` engine has two modes (StaticTable / VTable). c16l restored
 > `aria-sort` on the STATIC engine (parity with the deleted `rdc-sortable-table`), but the VTable (catalog/
 > drill, virtual) never got it, and neither mode's sort headers are keyboard-operable. c16o brings the

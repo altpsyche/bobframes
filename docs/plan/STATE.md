@@ -7,28 +7,57 @@
 
 ```
 active_release: v0.2    (v0.1 COMPLETE — bobframes 0.1.0 live on PyPI 2026-05-31)
-current:        c16o_table_a11y_parity    (status: not-started. c16n DONE 2026-06-03 - the c16k-c16n
-                table-unification + truncation EPIC is COMPLETE. Authored close-out ORDER: c16n DONE ->
-                c16o (table a11y parity: the VTable catalog/drill sort still has NO aria-sort - a
-                pre-existing gap noted at c16l - so c16o adds aria-sort + keyboard-operable sort headers
-                to BOTH rdc-table modes + a search-input aria-label) -> c16p (v0.2 close-out: FULL
-                re-ingest + version 0.2.0 + CHANGELOG + push/CI/merge/tag) -> c20. c16n closed the last
-                truncation-coverage gaps (ADR-38 tail): (1) draws_by_class area/drop cells now clip via the
-                inner `.clip` (default tier, base.clip_span) - all 5 tabled reports + catalog/drill virtual
-                consistent; (2) a `@media print` rule in `_RDC_TABLE_CSS` releases the bare dashboard/preview
-                minis (`a.dash-card table.data` + the direct-child `.table-wrap > table.data` preview mini) to
-                full-wrap on paper - the mini analogue of the static rdc-table print rule, which is
-                data-mode=static-scoped + never reached the bare minis (table-layout:fixed KEPT - the 2-up
-                print grid bounds each card); (3) mini `title=` kept UNCONDITIONAL (responsive widths, no
-                deterministic server clip point - ADR-23 documented scoping in §21.1o, no heuristic, no new
-                ADR). 188 -> 190 green; ALL 15 HTML goldens + preview refreshed (engine CSS inline on every
-                page; draws_by_class also gains the `<span class="clip">` area/drop markup);
+current:        c16p_v02_closeout    (status: not-started. c16o DONE 2026-06-03 - the G-23 a11y tail is
+                CLOSED, so the WHOLE c16k-c16o table epic (unification + truncation + a11y parity) is COMPLETE.
+                c16o brought the one rdc-table engine to a11y parity across BOTH modes: a shared
+                `wireSortHeader` helper made the sort headers keyboard-operable (tabindex + Enter/Space) in
+                StaticTable AND VTable; VTable now announces `aria-sort` none->asc/desc (the c16l-noted virtual
+                gap); the virtual filter `<input>` gained an `aria-label`. Sort RESULT + row content UNCHANGED.
+                190 -> 191 green; ALL 15 HTML goldens + preview refreshed (engine JS inline on every page);
                 `_pagedata`/digests/golden_parquet BYTE-UNCHANGED, parquet parity NO digests refresh (§21.9);
-                smoke render-only 15 pages lint clean exit 0; browser-verified offline (draws_by_class clip
-                spans + Expand-cells toggle injects, no JS errors; dashboard print-to-PDF shows every mini cell
-                + header FULL, nothing clipped). QUALITY_GATES §21.1o extended. G-20 (3+-run column collapse)
-                still deferred - no 3+-run data. ADR-37 governs (reports static); SPA VOIDED.)
-last_session:   2026-06-03 — c16n DONE (truncation-coverage tail + dashboard print; ADR-38 tail; rides
+                smoke lint clean; browser-verified offline (headless Chrome over CDP, real Perf: tabindex +
+                aria-sort + focusable + Enter-sorts in BOTH modes, search aria-label, expand-toggle, dark mode).
+                QUALITY_GATES §21.1p; G-23 a11y tail closed in FINDINGS; no new ADR (rides ADR-38). NOW DO c16p
+                (commits/v02/c16p_v02_closeout.md): the v0.2 CLOSE-OUT + RELEASE - FULL re-ingest of real Perf
+                (NOT render-only: regenerates EVERY drill, clears the stale older-run inline-data drills) +
+                version 0.1.0->0.2.0 + CHANGELOG [Unreleased]->[0.2.0] (summarize c04-c16o) + PUSH -> CI green
+                on the full matrix (FIRST CI for c04-c16o) + MERGE -> main + TAG v0.2.0 (outward + IRREVERSIBLE -
+                AUTHORIZE FIRST) -> OIDC publish -> PyPI + GH Release -> post-install verify. THEN c20. G-20
+                (3+-run column collapse) still deferred - no 3+-run data. ADR-37 governs (reports static); SPA VOIDED.)
+last_session:   2026-06-03 — c16o DONE (table a11y parity, both rdc-table modes; ADR-38 a11y tail; closes the
+                G-23 a11y tail; rides ADR-37/6/24/c16l). A feature added once to the ONE engine now behaves the
+                same in BOTH modes. (1) VTable aria-sort (virtual parity): `VTable.buildHead` seeds `aria-sort`
+                from sortCol/sortDir (so a group-toggle rebuild keeps it correct) + `VTable.sort` flips it
+                none->ascending/descending per header, mirroring `StaticTable._paintSort` - catalog/drill now
+                announce sort state, closing the gap recorded at c16l. (2) Keyboard-operable sort headers (BOTH
+                modes): a single shared free fn `wireSortHeader(th, ci, onSort)` (authored once in the engine
+                IIFE, beside cmpVals/tintImage) sets tabindex=0 + click + an Enter/Space keydown handler
+                (e.preventDefault, matching RdcCopyButton) -> the mode's own sort(ci); both `VTable.buildHead`
+                and `StaticTable._wireHeaders` call it. `<th>` keeps implicit role=columnheader (NOT role=button,
+                which would strip aria-sort); cursor:pointer already comes from `table.data thead th` CSS (not
+                re-set in JS). (3) Search-input aria-label: the virtual filter `<input type="search">` gains an
+                `aria-label` (`filter <table>` per drill table; `filter catalog` on the catalog) in
+                html/template.py. Sort RESULT + row content UNCHANGED - only how sort is reached/announced.
+                HARNESS: test_report_structure +test_c16o_search_input_labelled (catalog+drill search inputs
+                carry aria-label); test_c16l_engine_in_shared_report_bundle EXTENDED (slices `_compose_js()` at
+                the two class boundaries, asserts aria-sort + `wireSortHeader(` in BOTH VTable and StaticTable,
+                plus `function wireSortHeader`/tabindex/Enter present - `_minify_js` is comment/whitespace-only,
+                no name-mangling, so the substrings survive). PARITY (ADR-6/37/38): ALL 15 HTML goldens + preview
+                REFRESHED (the engine JS string is inline on every page - the c16l scope; catalog/drill index
+                also gain the search aria-label markup); `_pagedata/*.js` + digests.json + golden_parquet
+                BYTE-UNCHANGED (behavior/markup only; the VTable DOM is JS-built at runtime, not in the golden);
+                test_parquet_parity GREEN, NO digests refresh (§21.9). git status scope = exactly 15 goldens +
+                preview + the 3 source files. 190 -> 191 green. smoke render-only 15 pages lint clean exit 0.
+                BROWSER-VERIFIED OFFLINE (headless Chrome over CDP, file://, real Perf re-rendered render-only):
+                STATIC shader_hotlist - 19 headers all tabindex=0, exactly 1 default-sort col announces
+                aria-sort, header focusable via el.focus(), a real Enter key flips aria-sort=ascending + reorders
+                rows, the Expand-cells toggle flips data-expand=true; VIRTUAL catalog - 25 client-built headers
+                all tabindex=0 + ALL carry aria-sort (the gap closed in the LIVE DOM), search input
+                aria-label="filter catalog", header focusable, Enter sorts + arrow shows; dark-mode body bg
+                differs light<->dark. QUALITY_GATES §21.1p added. G-23 a11y tail closed (FINDINGS row note
+                appended; row already ☑ from c16l). No new ADR (rides ADR-38 a11y tail). Commits on
+                v0.2-roadmap-c04, UNPUSHED. current -> c16p (v0.2 close-out + release).
+former_last_c16n: 2026-06-03 — c16n DONE (truncation-coverage tail + dashboard print; ADR-38 tail; rides
                 ADR-37/6/24/c16c/ADR-23). Two coverage gaps closed so EVERY tabled surface is consistent.
                 (1) draws_by_class - the only tabled report c16m's scope skipped - now wraps its raw
                 per-(area,drop) table's area + drop text cells in base.clip_span (default tier), so all 5
@@ -573,22 +602,22 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    c16m DONE (2026-06-03) - the c16k-c16m table-unification EPIC is COMPLETE (ADR-38). Controllable
-                cell truncation + `title=` hover-reveal landed on the ONE rdc-table engine (both modes): inner
-                `.clip…` element (never the td) so widgets/labels stay visible; THREE tiers (320/200/560px); full
-                value in the DOM (Ctrl-F) + length-gated title; copy/link payloads full (c16c); Expand-cells
-                toggle (default truncated, single-line release in virtual to protect ROW_H, static also wraps);
-                print full-wraps within the page. 181 -> 188 green, parquet parity NO digests refresh (§21.9),
-                smoke lint clean, browser-verified offline (crafted long path + real heaviest drill). QUALITY_GATES
-                §21.1o; ALL HTML goldens refreshed, _pagedata/digests/golden_parquet byte-unchanged. AUTHORED the
-                3 close-out commits (user-requested). DO c16n NEXT (commits/v02/c16n_clip_coverage_print.md):
-                (c16n) truncation-coverage tail - clip+title the one tabled report c16m skipped (draws_by_class
-                area/drop) + a @media print rule so the bare dashboard/preview minis full-wrap on paper (today
-                they print clipped, no tooltip). Presentation-only, golden refresh, no digests refresh.
-                (c16o) table a11y parity (commits/v02/c16o_table_a11y_parity.md) - VTable (catalog/drill) gains
-                aria-sort (the c16l-noted gap), sort headers become keyboard-operable in BOTH modes (tabindex +
-                Enter/Space), virtual search input gets an aria-label. Golden refresh, no digests refresh.
-                (c16p) v0.2 CLOSE-OUT + RELEASE (commits/v02/c16p_v02_closeout.md):
+next_action:    c16o DONE (2026-06-03) - the G-23 a11y tail is CLOSED, so the WHOLE c16k-c16o table epic
+                (unification + truncation + a11y parity) is COMPLETE (ADR-38). A shared `wireSortHeader` helper
+                made the sort headers keyboard-operable (tabindex + Enter/Space) in BOTH modes; VTable now
+                announces aria-sort none->asc/desc (the c16l-noted virtual gap); the virtual filter `<input>`
+                gained an aria-label. Sort RESULT + row content UNCHANGED. 190 -> 191 green, parquet parity NO
+                digests refresh (§21.9), smoke lint clean, browser-verified offline (CDP, real Perf: tabindex +
+                aria-sort + focusable + Enter-sorts BOTH modes, search aria-label, expand-toggle, dark mode).
+                QUALITY_GATES §21.1p; ALL 15 HTML goldens + preview refreshed, _pagedata/digests/golden_parquet
+                byte-unchanged. G-23 a11y tail closed in FINDINGS; no new ADR. NOW DO c16p
+                (commits/v02/c16p_v02_closeout.md): the v0.2 CLOSE-OUT + RELEASE:
+                (1) FULL re-ingest of real Perf (NOT render-only - regenerates EVERY drill, clearing the stale
+                29MB inline-data OLDER-run drills render-only leaves; exercises R-16 adb-handle commit + R-17
+                replay crash-on-teardown salvage; re-test the 6 manual-flipped r110788 captures). Working root
+                C:\tmp\perf (hardlinks; Downloads read-only). Replay ~150-220s/capture, sequential. Eyeball all
+                reports + drills (light+dark); counts stable where extraction unchanged (§21.9).
+                (2) version 0.1.0->0.2.0 (_version.py; provenance strip omits version so golden-safe); CHANGELOG
                 (1) FULL re-ingest of real Perf (NOT render-only - regenerates EVERY drill, clearing the stale
                 29MB inline-data OLDER-run drills render-only leaves; exercises R-16 adb-handle commit + R-17
                 replay crash-on-teardown salvage; re-test the 6 manual-flipped r110788 captures). Working root
@@ -713,6 +742,24 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-03 — c16o DONE (table a11y parity, both rdc-table modes; ADR-38 a11y tail; closes G-23 a11y tail).
+  A shared `wireSortHeader(th, ci, onSort)` helper (authored once in the engine IIFE) makes the sort `<th>`
+  keyboard-operable (`tabindex=0` + Enter/Space → the mode's own `sort(ci)`) in BOTH modes; `VTable.buildHead`
+  seeds `aria-sort` from sortCol/sortDir (stays correct across group-toggle rebuilds) + `VTable.sort` flips it
+  none→asc/desc, mirroring `StaticTable._paintSort` (closes the c16l-noted virtual gap); the virtual filter
+  `<input type="search">` gains an `aria-label` (`filter <table>` / `filter catalog`) in `html/template.py`.
+  `<th>` keeps implicit role=columnheader (not role=button, which would strip aria-sort); cursor:pointer
+  stays from CSS. Sort RESULT + row content UNCHANGED - only how sort is reached/announced. 190 -> 191 green
+  (+test_c16o_search_input_labelled; test_c16l_engine_in_shared_report_bundle extended - aria-sort +
+  wireSortHeader in BOTH class bodies, tabindex/Enter present; `_minify_js` is comment/whitespace-only so the
+  substrings survive). ALL 15 HTML goldens + preview refreshed (engine JS inline on every page; catalog/drill
+  also gain the search aria-label markup); `_pagedata`/digests/golden_parquet BYTE-UNCHANGED, parquet parity
+  NO refresh (§21.9); smoke render-only 15 pages lint clean exit 0. BROWSER-VERIFIED OFFLINE (headless Chrome
+  over CDP, file://, real Perf re-rendered): static - 19 headers all tabindex=0, 1 default-sort col announces
+  aria-sort, focusable, real Enter flips aria-sort=ascending + reorders rows, Expand-toggle flips data-expand;
+  virtual catalog - 25 built headers all tabindex+aria-sort, search aria-label="filter catalog", Enter sorts +
+  arrow; dark mode bg differs. QUALITY_GATES §21.1p added; G-23 a11y tail closed in FINDINGS; no new ADR.
+  v0.2-roadmap-c04, UNPUSHED. current -> c16p (v0.2 close-out + release).
 - 2026-06-03 — c16n DONE (truncation-coverage tail + dashboard print; ADR-38 tail). draws_by_class area/drop
   cells now clip via the inner `.clip` (base.clip_span, default tier) - all 5 tabled reports consistent; a
   `@media print` rule in `_RDC_TABLE_CSS` releases the bare dashboard/preview minis (`a.dash-card table.data` +
