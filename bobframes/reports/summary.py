@@ -279,12 +279,14 @@ def build(root: str, *, drops: list | None = None, ab=None,
     n_areas = len(v.area_verdicts)
     n_attention = sum(1 for s in v.area_verdicts.values() if s in (State.AT_RISK, State.ALARM))
     n_unknown = sum(1 for s in v.area_verdicts.values() if s == State.UNKNOWN)
+    areas_w = 'area' if n_areas == 1 else 'areas'
     if n_attention:
-        scope = f'{n_attention} of {n_areas} areas needs attention - {v.worst_area}'
+        verb = 'needs' if n_attention == 1 else 'need'
+        scope = f'{n_attention} of {n_areas} {areas_w} {verb} attention - {v.worst_area}'
     elif v.state == State.UNKNOWN:
-        scope = f'{n_unknown} of {n_areas} areas could not be assessed'
+        scope = f'{n_unknown} of {n_areas} {areas_w} could not be assessed'
     else:
-        scope = f'{n_areas} of {n_areas} areas healthy'
+        scope = f'{n_areas} of {n_areas} {areas_w} healthy'
     parts.append(base.summary_bar('build health', _STATE_LABEL[v.state], sub=scope,
                                   tone=_STATE_TONE[v.state],
                                   link_href='index.html', link_text='dashboard'))
