@@ -407,7 +407,9 @@ def _card(href: str, title: str, subtitle: str, chart: str, table: str) -> str:
 
 
 def build(root: str, *, drops: list | None = None, ab=None,
-          run_label=None, run_date=None) -> str:
+          run_label=None, run_date=None,
+          sink: base.AssetSink = base.AssetSink.INLINE,
+          build_ts: str | None = None) -> str:
     if drops is None:
         drops = base.discover_drops(root)
 
@@ -618,8 +620,8 @@ def build(root: str, *, drops: list | None = None, ab=None,
     return base.write_report(out_path, [base.report_page(
         'reports dashboard', parts,
         drops=len(drops), captures=sum(d.n_captures for d in drops),
-        build_ts=base.now_iso(), crumb_depth=crumb, current_page='dashboard',
-        kpis=_global_kpis(cur_drops), run=rc, root=root, run_nav_key='index',
+        build_ts=build_ts or base.now_iso(), crumb_depth=crumb, current_page='dashboard',
+        kpis=_global_kpis(cur_drops), run=rc, root=root, run_nav_key='index', sink=sink,
         device=base.provenance_strip(*base.newest_drop_provenance(root, cur_drops)))])
 
 

@@ -237,7 +237,8 @@ def _cmd_package(args: argparse.Namespace) -> int:
     # PackageError (exit 2) on a bad tree / unknown --run / output-inside-root; main() maps it.
     from . import package
     package.build(os.path.abspath(args.root), out=args.out, light=args.light,
-                  summary_file=not args.no_summary_file, stage=args.stage, run=args.run)
+                  inline=args.inline, summary_file=not args.no_summary_file,
+                  stage=args.stage, run=args.run)
     return 0
 
 
@@ -334,6 +335,8 @@ def _build_parser() -> argparse.ArgumentParser:
     sp.add_argument('root', nargs='?', default='.')
     sp.add_argument('--light', action='store_true',
                     help='bundle only index.html + the top-level reports (no drill/_pagedata/_data)')
+    sp.add_argument('--inline', action='store_true',
+                    help='self-contained per-page bundle (opt out of the deduped shared-assets default)')
     sp.add_argument('--out',
                     help='zip path/name (default: <project>-<rundate>-report.zip beside <root>)')
     sp.add_argument('--no-summary-file', action='store_true',
