@@ -34,9 +34,13 @@ current:        c16s_package_verb    (status: not-started. c16r DONE 2026-06-04 
                 taxonomy) + the friendly single-file `<project>-<rundate>-summary.html` + the explorable
                 `<project>-<rundate>-report.zip` + README.txt + `--light`/`--inline`; default shared-assets is
                 c16t (builds on this seam). §21.1s. ADR-37 governs.
-                NOTE: c16p's release bookkeeping (tag v0.2.0 / OIDC PyPI publish / GH Release / the FULL
-                real-Perf re-ingest) is still UNRECONCILED - separate from the v0.2.5 spine, NOT verified this
-                session.)
+                NOTE: c16p (v0.2 close-out + release) is COMPLETE - VERIFIED 2026-06-04: PyPI `bobframes`
+                0.2.0 LIVE (wheel+sdist); GH Release v0.2.0 published 2026-06-03 with both assets (PR #1,
+                github-actions[bot]); tag v0.2.0 -> 765a4db, on main, main==origin/main; version 0.2.0 +
+                CHANGELOG [0.2.0]-2026-06-03; CI green; the FULL real-Perf re-ingest is DONE (older-run
+                2026-05-25 drills regenerated to ~155KB via c16i/j _pagedata, NOT the stale ~29MB inline).
+                Only residual: the non-blocking Node20 CI-actions bump (checkout@v5/setup-python@v6) by
+                2026-06-16. The earlier "UNRECONCILED" note was stale/wrong.)
 last_session:   2026-06-04 — c16r DONE (the `head_assets(sink)` seam; ADR-41; ZERO-output refactor; rides
                 ADR-37/23). ONE source of truth for the chrome CSS/JS boundary so c16t's `package --shared-
                 assets` emits `_assets/`-linked assets BY CONSTRUCTION (not HTML scraping). As-built is a
@@ -684,9 +688,9 @@ next_action:    c16r DONE (2026-06-04) - the `head_assets(sink)` seam (ADR-41), 
                 commit. NOTE for c27/c35: the c09 classifier is already STATE-CAPABLE (when{} over any draw
                 column), so the state-first generic preset (D-10) is a preset not a rewrite; c35 removes the
                 zeroed passes.draws_by_class_* + slims passes (D-11a). GIT: on branch plan/v0.2.5 (off main;
-                c16q + c16r + the v0.2.5 scope/grammar commits UNPUSHED). UNRECONCILED: c16p's release
-                bookkeeping (tag v0.2.0 / OIDC PyPI publish / GH Release / FULL real-Perf re-ingest), separate
-                from the spine. Post-release nit (non-blocking): bump CI actions off Node20
+                c16q + c16r + the v0.2.5 scope/grammar commits UNPUSHED). c16p (v0.2 close-out + release) is
+                COMPLETE + verified 2026-06-04 (PyPI 0.2.0 live, GH Release + both assets, tag v0.2.0 on main,
+                FULL real-Perf re-ingest done). Post-release nit (non-blocking): bump CI actions off Node20
                 (checkout@v5/setup-python@v6 before 2026-06-16).
 DONE-2026-05-31: c19 — bobframes 0.1.0 PUBLISHED. tag v0.1.0 -> CI publish job green (OIDC trusted
                 publishing, ubuntu). Live on PyPI (wheel + sdist) + GitHub Release with both assets.
@@ -796,6 +800,11 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-04 — c16p VERIFIED COMPLETE (correcting a stale "UNRECONCILED" note). PyPI bobframes 0.2.0 live
+  (wheel+sdist); GH Release v0.2.0 (2026-06-03, both assets, PR #1); tag v0.2.0 -> 765a4db on main
+  (main==origin/main); version 0.2.0 + CHANGELOG [0.2.0]-2026-06-03; CI green; FULL real-Perf re-ingest done
+  (older-run 2026-05-25 drills regenerated to ~155KB via c16i/j _pagedata, not stale ~29MB inline). Residual:
+  non-blocking Node20 CI-actions bump (checkout@v5/setup-python@v6) by 2026-06-16.
 - 2026-06-04 — c16r DONE (head_assets seam; ADR-41; ZERO-output refactor). Uniform `HeadAssets(head, body_js)`
   + per-family asset MANIFEST `AssetFile(name, kind, content)` (chrome.REPORT_ASSETS / template.CATALOG_ASSETS)
   as the SINGLE source of the (filename->content) pairing; `head_assets(REF)` links FROM it via
