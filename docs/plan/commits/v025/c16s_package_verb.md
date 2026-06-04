@@ -67,3 +67,38 @@ path in `cli.main`, the `parquet_digest` + `normalize` golden helpers.
 
 ## Closes
 The share-a-folder gap (the friendly tier-0 + tier-1 artifacts). Next: c16t (shared-assets default).
+
+## As-built (2026-06-04) — rides ADR-40/41, NO new ADR (deliberate scoping per ADR-23)
+
+Shipped the inline tier-0 + tier-1 spine. Deviations from the doc above, each rationalized:
+
+1. **`--shared-assets` deferred to c16t (whole feature, not an accepted-then-error flag); `--redact`
+   deferred to c16u.** Frozen ADR-41 explicitly rejects the cheap package-side mechanism (the
+   inline->REF head swap is a `str.replace` on rendered HTML: "no needle, no `str.replace`, no 'exactly
+   one replacement' tripwire"). The faithful mechanism is c16t's named scope: thread a `sink=INLINE`
+   default through `page_open`/`report_page`/every `build()`/`render_root`/`render_drop` and have
+   `package` re-render pages with the REF sink (render's default stays byte-identical). A CLI must not
+   advertise flags in `--help` that never work, so the flags arrive WITH their implementations. c16s
+   delivery is INLINE only -- which is exactly today's render bytes, so the HTML transform is an identity
+   copy. (User-confirmed in planning.)
+2. **Tests REUSE the render golden (`golden/`); no stored `golden_package/{inline,light}` trees.** The
+   inline bundle's HTML is a byte-identical copy of the render output, so a stored tree would duplicate
+   `golden/` and force a permanent double-refresh on every presentation change. `test_package.py` asserts
+   bundle HTML/`_pagedata` == `golden/<rel>` and parquet == source by `parquet_digest`. `golden_package/`
+   + `make_package_golden.py` are BORN at c16t (where `shared/` genuinely diverges). (User-confirmed.)
+3. **Zip nests under one `<project>-<rundate>/` top folder** (not flat) -- matches the README's "extract
+   this whole folder", prevents cwd splatter, the universal convention; deterministic in tests.
+4. **Default out = PARENT of `os.path.abspath(root)`** (not literal cwd) + a `commonpath` guard rejecting
+   `--out` inside `<root>` -- closes the `package .`-from-inside-root mutation trap the cwd `./` default has.
+5. **`--run` resolves by `DropSet.key`** (the `<date>_<label>` id), since `current_run` matches `d.label`.
+6. **`build()` signature** is the implemented subset `build(root, *, out=None, light=False,
+   summary_file=True, stage=False, run=None) -> (zip, summary)` -- `shared`/`redact`/`inline` params land
+   with c16t/c16u (keyword-only, non-breaking).
+
+Result: NEW `bobframes/package.py` + `_cmd_package` (no `--format`, ever). NO render change ->
+`test_parity` + `test_parquet_parity` UNCHANGED, NO golden refresh. 237 -> 252 green (+15
+`tests/test_package.py`: inline/light vs render golden, non-mutation, determinism, round-trip with fixed
+`ZipInfo` timestamps, standalone-summary self-contained, README ASCII, default naming, `--format` rejected,
+edge errors). Eyeballed real Perf: full bundle 2725 files / 62 MB (2.86 MB duplicated-chrome reported) +
+`--light` 10 files / 445 KB, both OUTSIDE the tree, source untouched, summary self-contained.
+QUALITY_GATES §21.1s reconciled for the c16s slice.

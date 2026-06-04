@@ -231,6 +231,16 @@ def _cmd_serve(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_package(args: argparse.Namespace) -> int:
+    # Non-mutating stream transform of a rendered tree -> a shareable zip + standalone summary, both
+    # OUTSIDE <root> (c16s, ADR-40). build() prints the one summary line and raises a typed
+    # PackageError (exit 2) on a bad tree / unknown --run / output-inside-root; main() maps it.
+    from . import package
+    package.build(os.path.abspath(args.root), out=args.out, light=args.light,
+                  summary_file=not args.no_summary_file, stage=args.stage, run=args.run)
+    return 0
+
+
 def _cmd_smoke(args: argparse.Namespace) -> int:
     # End-to-end smoke (G-12). No --data → render-only against the bundled synthetic fixture;
     # --data DIR → full ingest + render against a real capture root.
@@ -318,6 +328,22 @@ def _build_parser() -> argparse.ArgumentParser:
     sp.add_argument('--port', type=int, default=8000)
     sp.add_argument('--bind', default='127.0.0.1')
     sp.set_defaults(func=_cmd_serve)
+
+    sp = sub.add_parser('package', parents=[common],
+                        help='bundle a rendered tree into a shareable zip + standalone summary')
+    sp.add_argument('root', nargs='?', default='.')
+    sp.add_argument('--light', action='store_true',
+                    help='bundle only index.html + the top-level reports (no drill/_pagedata/_data)')
+    sp.add_argument('--out',
+                    help='zip path/name (default: <project>-<rundate>-report.zip beside <root>)')
+    sp.add_argument('--no-summary-file', action='store_true',
+                    help='skip the standalone <project>-<rundate>-summary.html one-pager')
+    sp.add_argument('--stage', action='store_true',
+                    help='also materialize the bundle tree to a sibling .stage dir (debug)')
+    sp.add_argument('--run',
+                    help='package this run key instead of the newest (e.g. 2026-05-28_r110600)')
+    sp.set_defaults(func=_cmd_package)
+    # NOTE: no --format, ever (ADR-40 taxonomy invariant -- `package` is a PRESENTATION verb).
 
     sp = sub.add_parser('smoke', parents=[common], help='end-to-end smoke test')
     sp.add_argument('--data', help='capture dir (default: bundled synthetic; c15)')
