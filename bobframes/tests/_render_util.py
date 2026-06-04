@@ -200,3 +200,21 @@ def compute_digest_map(root: str) -> dict:
     """{relpath: parquet_digest} for every rendered parquet under <root>/_data."""
     return {rel: parquet_digest(os.path.join(root, rel))
             for rel in rendered_parquet_files(root)}
+
+
+def extract_zip(zip_path: str, dest: str) -> str:
+    """Extract `zip_path` into `dest`; return `dest`. The c16s package gate reads the tree back out
+    of the produced zip (zip bytes are not byte-stable across zlib/Python -- ADR-40)."""
+    import zipfile
+    with zipfile.ZipFile(zip_path) as zf:
+        zf.extractall(dest)
+    return dest
+
+
+def tree_files(root: str) -> list[str]:
+    """Relative paths of every file under `root`, sorted (`\\`->`/`). For comparing extracted trees."""
+    out = []
+    for dirpath, _dirs, files in os.walk(root):
+        for fn in files:
+            out.append(os.path.relpath(os.path.join(dirpath, fn), root).replace("\\", "/"))
+    return sorted(out)

@@ -8,40 +8,69 @@
 ```
 active_release: v0.2.5    (v0.1 COMPLETE - bobframes 0.1.0 live on PyPI 2026-05-31; v0.2.0 bump committed
                 867dcc5 on plan/v0.2.5)
-current:        c16s_package_verb    (status: not-started. c16r DONE 2026-06-04 - the `head_assets(sink)`
-                one-source-of-truth seam; ADR-41; a ZERO-output refactor; rides ADR-37/23. The chrome CSS/JS
-                boundary now routes through ONE seam so c16t's `package --shared-assets` can emit `_assets/`-
-                linked assets BY CONSTRUCTION (not by scraping rendered HTML, the rejected str.replace path).
-                As-built (a user-approved refinement of the doc's terse "string/tuple", recorded in the c16r
-                doc - rides ADR-41, no new ADR; precedent c16j): a uniform frozen `HeadAssets(head, body_js)`
-                return for BOTH page families (head -> <head>; body_js -> body end) + a per-family asset
-                MANIFEST `AssetFile(name, kind, content)` that is the SINGLE source of the (filename ->
-                content) pairing - `chrome.REPORT_ASSETS` (report.{css,js} -> `_compose_css`/`_compose_js`,
-                JS rides in the head so body_js='') and `template.CATALOG_ASSETS` (catalog.{css,js} -> `_CSS`
-                un-minified / `rdc_table_js`, engine script at body-end). `head_assets(REF, depth)` builds
-                depth-relative links FROM the manifest via the shared `AssetFile.ref_link(prefix)` (css ->
-                <link>, js -> <script DEFER src>) + `chrome.assets_prefix(depth)`; c16t writes each `_assets/*`
-                file FROM the same `content()` - so the `report.css` literal is never duplicated between link
-                and writer (the zero-drift property ADR-41 is built around). NEW `paths.ASSETS_DIR='_assets'`.
-                page_open + render_drop + render_root rewired to splice `ha.head`/`ha.body_js`; INLINE = today's
-                EXACT bytes -> ALL 15 HTML goldens + `_pagedata/*.js` + preview BYTE-UNCHANGED, NO golden
-                refresh (test_parity green BY CONSTRUCTION); test_parquet_parity untouched. 229 -> 237 green
-                (+8 `tests/test_head_assets.py`: INLINE byte-faithful incl. the page_open snapshot, REF depth-
-                correct d in {0,1,2,4} both families, manifest single-source). git scope = exactly 4 source
-                (paths/chrome/base/template) + 1 new test. §21.1r holds (already authored; generic wording
-                covers the HeadAssets/manifest shape). NOW DO c16s (commits/v025/c16s_package_verb.md): the
-                `package` verb (non-mutating STREAM, output OUTSIDE the read tree, NEVER --format; ADR-40
-                taxonomy) + the friendly single-file `<project>-<rundate>-summary.html` + the explorable
-                `<project>-<rundate>-report.zip` + README.txt + `--light`/`--inline`; default shared-assets is
-                c16t (builds on this seam). §21.1s. ADR-37 governs.
-                NOTE: c16p (v0.2 close-out + release) is COMPLETE - VERIFIED 2026-06-04: PyPI `bobframes`
-                0.2.0 LIVE (wheel+sdist); GH Release v0.2.0 published 2026-06-03 with both assets (PR #1,
-                github-actions[bot]); tag v0.2.0 -> 765a4db, on main, main==origin/main; version 0.2.0 +
-                CHANGELOG [0.2.0]-2026-06-03; CI green; the FULL real-Perf re-ingest is DONE (older-run
-                2026-05-25 drills regenerated to ~155KB via c16i/j _pagedata, NOT the stale ~29MB inline).
-                The Node20 CI-actions bump (checkout@v5/setup-python@v6, both jobs) is DONE 2026-06-04 - NO
-                residuals. The earlier "UNRECONCILED" note was stale/wrong.)
-last_session:   2026-06-04 — c16r DONE (the `head_assets(sink)` seam; ADR-41; ZERO-output refactor; rides
+current:        c16t_shared_assets    (status: not-started. c16s DONE 2026-06-04 - the `package` verb +
+                shareable bundle; ADR-40 (rides ADR-41/37/35/23). NEW `bobframes/package.py`
+                build(root,*,out=None,light=False,summary_file=True,stage=False,run=None) -> (zip, summary):
+                a non-mutating STREAM transform of a rendered <root> into TWO artifacts OUTSIDE the tree -
+                `<project>-<rundate>-report.zip` (full viewable tree under ONE `<project>-<rundate>/` folder +
+                ASCII README "extract first") AND a standalone self-contained `<project>-<rundate>-summary.html`
+                (verbatim copy of `_reports/summary.html`, the c16q one-pager, already head_assets(INLINE)).
+                `_cmd_package` beside `serve`, NO --format ever (ADR-40 taxonomy). Delivery INLINE only (each
+                page = today's render bytes, identity copy); `--light` = index.html + top-level _reports/*.html
+                (drops drill/_pagedata/_data); `--out`/`--no-summary-file`/`--stage`/`--run KEY`. Reproducible
+                zip: sorted '/' arcnames, ZipInfo.date_time=(1980,1,1,0,0,0), pinned ZIP_DEFLATED, per-entry
+                writestr (gate the EXTRACTED tree, not zip bytes). Default out = PARENT of abspath(root)
+                (always outside; commonpath guard rejects --out inside <root> - fixes the cwd-`.`-inside-root
+                mutation trap). rundate = run-model drop_date (ADR-35); `--run` matched by DropSet.key, default
+                newest. ONE ASCII summary line (file count, bundle bytes, duplicated-chrome bytes, summary+zip
+                paths). AS-BUILT (rides ADR-40/41, NO new ADR; recorded in the c16s doc + §21.1s, per ADR-23):
+                (1) `--shared-assets` DEFERRED to c16t + `--redact` to c16u as WHOLE features (flags arrive WITH
+                impl, NOT accepted-then-error) - frozen ADR-41 forbids the cheap package-side head-swap
+                str.replace, so shared = c16t's render-layer REF-sink threading. (2) tests REUSE the render
+                golden (`golden/`) - the inline bundle HTML is an identity copy, so a stored golden_package/inline
+                would double-refresh forever; parquet by digest vs source; golden_package/ + make_package_golden.py
+                BORN at c16t. (3) zip NESTS under one top folder (not flat). (4) `--run` by DropSet.key. NO render
+                change -> test_parity + test_parquet_parity UNCHANGED, NO refresh. 237 -> 252 green (+15
+                tests/test_package.py). Eyeballed real Perf: 2725f/62MB full (2.86MB dup-chrome) + 10f/445KB
+                --light, both OUTSIDE the tree, source untouched, summary self-contained. NOW DO c16t
+                (commits/v025/c16t_shared_assets.md): make the deduped shared-asset bundle the DEFAULT via the
+                c16r seam - thread sink=INLINE default through page_open/report_page/every build()/render_root/
+                render_drop so `package` re-renders pages with REF (render's default stays byte-identical);
+                `--inline` reproduces the c16s inline bundle byte-for-byte; ADD golden_package/{shared,inline,
+                light}/ + make_package_golden.py + the size-win assertion. ADR-41. §21.1s.
+                NOTE: c16p (v0.2 close-out + release) is COMPLETE - VERIFIED 2026-06-04: PyPI `bobframes` 0.2.0
+                LIVE (wheel+sdist); GH Release v0.2.0 (2026-06-03, both assets, PR #1); tag v0.2.0 -> 765a4db on
+                main (main==origin/main); CHANGELOG [0.2.0]; CI green; FULL real-Perf re-ingest done; Node20
+                CI-actions bump (checkout@v5/setup-python@v6, both jobs) DONE 2026-06-04 - NO residuals.)
+last_session:   2026-06-04 — c16s DONE (the `package` verb + shareable bundle; ADR-40, rides ADR-41/37/35/23).
+                NEW `bobframes/package.py` build(root,*,out=None,light=False,summary_file=True,stage=False,
+                run=None) -> (zip_path, summary_path): a non-mutating STREAM transform of a rendered <root> into
+                TWO artifacts OUTSIDE the tree - `<project>-<rundate>-report.zip` (full viewable tree under ONE
+                `<project>-<rundate>/` folder + ASCII README "extract this whole folder first") AND a standalone
+                self-contained `<project>-<rundate>-summary.html` (verbatim copy of `_reports/summary.html`, the
+                c16q one-pager, already head_assets(INLINE) so no `_assets/`/fetch/module). `_cmd_package` beside
+                `serve`, NO --format EVER (ADR-40 PRESENTATION-verb taxonomy). Delivery INLINE only (each page =
+                today's render bytes -> HTML transform is identity); `--light` bundles index.html + the top-level
+                _reports/*.html only (drops drill/_pagedata/_data); `--out`/`--no-summary-file`/`--stage`/`--run`.
+                Reproducible zip: sorted '/' arcnames, ZipInfo.date_time=(1980,1,1,0,0,0), pinned ZIP_DEFLATED,
+                per-entry writestr (gate the EXTRACTED tree, not zip bytes). Default out = PARENT of abspath(root)
+                (always outside; commonpath guard rejects --out inside <root> - fixes the cwd-`.`-inside-root
+                mutation trap that literal `./` has). rundate = run-model drop_date (ADR-35); `--run` matched by
+                DropSet.key (current_run matches d.label), default newest. ONE ASCII summary line: file count,
+                bundle bytes, duplicated-chrome bytes (Sum_family (n-1)*(inline head+body_js), the ADR-37/41
+                measure c16t reclaims), summary+zip paths. AS-BUILT (rides ADR-40/41, NO new ADR; recorded in the
+                c16s doc + §21.1s, per ADR-23): `--shared-assets`/`--redact` DEFERRED to c16t/c16u as WHOLE
+                features (flags arrive WITH impl, not accepted-then-error) - frozen ADR-41 forbids the cheap
+                package-side head-swap str.replace, so shared = c16t render-layer REF-sink threading; tests REUSE
+                the render golden (inline bundle HTML is an identity copy -> a stored golden_package/inline would
+                double-refresh forever), parquet by digest vs source, golden_package/ + make_package_golden.py
+                BORN at c16t; zip NESTS under one top folder (not flat). NO render change -> test_parity +
+                test_parquet_parity UNCHANGED, NO golden refresh. 237 -> 252 green (+15 tests/test_package.py:
+                inline/light vs render golden, non-mutation, determinism, round-trip fixed-ts, standalone-self-
+                contained, README ASCII, default naming, --format-rejected, edge errors). Eyeballed real Perf
+                (2725f/62MB full incl 2.86MB dup-chrome; 10f/445KB --light; both outside tree, source untouched,
+                summary self-contained). Commits on plan/v0.2.5 (UNPUSHED). current -> c16t.
+former_last_c16r:   2026-06-04 — c16r DONE (the `head_assets(sink)` seam; ADR-41; ZERO-output refactor; rides
                 ADR-37/23). ONE source of truth for the chrome CSS/JS boundary so c16t's `package --shared-
                 assets` emits `_assets/`-linked assets BY CONSTRUCTION (not HTML scraping). As-built is a
                 user-approved refinement of the c16r doc's terse "string/tuple" (recorded in the c16r doc -
@@ -674,16 +703,20 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    c16r DONE (2026-06-04) - the `head_assets(sink)` seam (ADR-41), a ZERO-output refactor:
-                ONE source of truth for the chrome CSS/JS boundary (uniform `HeadAssets(head, body_js)` + a
-                per-family asset MANIFEST `AssetFile(name, kind, content)`; REF links built FROM the manifest,
-                c16t writes files FROM the same manifest - zero-drift). INLINE = today's exact bytes -> all
-                goldens byte-UNCHANGED, NO refresh; 237 green (+8 test_head_assets); git scope = 4 source + 1
-                test. NOW DO c16s (commits/v025/c16s_package_verb.md): the `package` verb (non-mutating STREAM,
-                output OUTSIDE the read tree, NEVER --format - ADR-40 taxonomy) + the friendly single-file
-                `<project>-<rundate>-summary.html` + the explorable `<project>-<rundate>-report.zip` +
-                README.txt + `--light`/`--inline`; default shared-assets builds on the c16r seam at c16t.
-                §21.1s. Spine: c16s -> c16t -> c16u -> c16v -> c16x (component system, ADR-42) -> c16w close-out.
+next_action:    c16s DONE (2026-06-04) - the `package` verb (ADR-40): a non-mutating STREAM transform of a
+                rendered <root> -> `<project>-<rundate>-report.zip` (full tree under one folder + ASCII README)
+                + standalone self-contained `<project>-<rundate>-summary.html`; INLINE only, `--light`,
+                reproducible zip, default out = PARENT of <root> (guarded). NEW bobframes/package.py +
+                _cmd_package (no --format). NO render change -> test_parity/test_parquet_parity UNCHANGED, NO
+                refresh; 237 -> 252 green (+15 test_package.py). AS-BUILT: `--shared-assets`/`--redact` deferred
+                to c16t/c16u as WHOLE features (frozen ADR-41 forbids the package-side head-swap str.replace);
+                tests REUSE the render golden (golden_package/ + make_package_golden.py born at c16t). NOW DO
+                c16t (commits/v025/c16t_shared_assets.md): make the deduped shared-asset bundle the DEFAULT via
+                the c16r seam - thread sink=INLINE default through page_open/report_page/every build()/
+                render_root/render_drop so `package` re-renders pages with REF (render default stays
+                byte-identical); `--inline` reproduces the c16s inline bundle byte-for-byte; ADD
+                golden_package/{shared,inline,light}/ + make_package_golden.py + the size-win assertion. ADR-41.
+                §21.1s. Spine: c16s ✓ -> c16t -> c16u -> c16v -> c16x (component system, ADR-42) -> c16w close-out.
                 THEN c20 (--json output, v0.3): open commits/v03/c20_json_output.md and do exactly that one
                 commit. NOTE for c27/c35: the c09 classifier is already STATE-CAPABLE (when{} over any draw
                 column), so the state-first generic preset (D-10) is a preset not a rewrite; c35 removes the
@@ -800,6 +833,17 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-04 — c16s DONE (the `package` verb + shareable bundle; ADR-40, rides ADR-41/37/35/23). NEW
+  `bobframes/package.py` build() + `_cmd_package`: a non-mutating STREAM transform of a rendered <root> ->
+  `<project>-<rundate>-report.zip` (full tree under one `<project>-<rundate>/` folder + ASCII README) + a
+  standalone self-contained `<project>-<rundate>-summary.html`. INLINE only; `--light` drops
+  drill/_pagedata/_data; reproducible zip (fixed ZipInfo ts + DEFLATE); default out = PARENT of <root>
+  (guarded); `--run` by DropSet.key. AS-BUILT (rides ADR-40/41, no new ADR; c16s doc + §21.1s, ADR-23):
+  `--shared-assets`/`--redact` deferred to c16t/c16u as whole features (frozen ADR-41 forbids the cheap
+  package-side head-swap str.replace); tests REUSE the render golden (inline bundle HTML is an identity copy;
+  golden_package/ + make_package_golden.py born at c16t); zip nests under one folder. NO render change ->
+  test_parity + test_parquet_parity UNCHANGED, NO refresh; 237 -> 252 green (+15 test_package.py). Eyeballed
+  real Perf (2725f/62MB full + 10f/445KB --light, outside tree, source untouched). current -> c16t.
 - 2026-06-04 — CI: bumped actions off Node20 (actions/checkout v4->v5, actions/setup-python v5->v6, both the
   test + publish jobs in .github/workflows/ci.yml) ahead of the 2026-06-16 deprecation. The last c16p residual;
   no source/golden impact. Confirm green on the next push.

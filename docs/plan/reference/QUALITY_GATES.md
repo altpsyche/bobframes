@@ -510,7 +510,20 @@ page carries a device field value, the abs-path completeness scan is clean by de
 `--redact-paths=fail` exits nonzero on a planted leak (a crafted-input unit test covers the device-strip
 scrub if the synthetic provenance is empty). The HTML/asset BYTE gate is pinned to the canonical cell
 (py3.12+pa21, ADR-11); structure / round-trip / redaction-marker / self-determinism / `--format`-rejected /
-standalone-summary-self-contained run on the full matrix. Refresh `python -m bobframes.tests.make_package_golden`.
+standalone-summary-self-contained run on the full matrix. Refresh `python -m bobframes.tests.make_package_golden`
+(c16t onward).
+
+**c16s as-built (rides ADR-40/41; recorded in the c16s doc, ADR-23).** The inline bundle's HTML is a
+byte-identical copy of the render output, so `test_package.py` REUSES the render golden (`golden/`) for the
+`inline/` + `light/` slices rather than storing duplicate trees (which would force a permanent double-refresh);
+parquet is checked by the logical `parquet_digest` against the unchanged source. `--shared-assets` (the
+`shared/` golden + asset-byte / font-absent / depth-link / size-win asserts) is c16t and `--redact`
+(`redacted/`) is c16u: the flags arrive WITH their features, so c16s neither ships nor tests them, and the
+`golden_package/` trees + `make_package_golden.py` are BORN at c16t. The zip nests under one
+`<project>-<rundate>/` top folder; default out is the PARENT of `<root>` (guarded outside the read tree).
+Render is untouched -> `test_parity` + `test_parquet_parity` stay green with NO refresh; the c16s slice is
+non-mutation / determinism / round-trip / inline+light-vs-render-golden / standalone-self-contained / README /
+naming / `--format`-rejected (252 green, +15 `tests/test_package.py`).
 
 ## 21.1t Multi-capture per-frame normalization (c16v, G-29) -- see [c16v](../commits/v025/c16v_multicapture_normalize.md)
 Latent-correctness fix: instancing repeat-count + shader cost/uses are normalized PER FRAME
