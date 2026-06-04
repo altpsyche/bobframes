@@ -24,17 +24,18 @@ from .. import manifest
 
 def render_pair(root: str, baseline, compare, *,
                 sink: base.AssetSink = base.AssetSink.INLINE,
-                build_ts: str | None = None) -> list[str]:
+                build_ts: str | None = None, redact: bool = False) -> list[str]:
     """Render every report for one ``(baseline, compare)`` pair; return the written paths.
 
     Reused by `package` shared-asset re-render (c16t, ADR-41): ``sink=REF`` re-emits the pair's pages
     with depth-relative ``_assets/`` links and ``build_ts`` pins the deterministic stamp (the caller
-    renders into a staging copy of the tree). Raises on a failing report (the caller wraps it). The
-    newest-run dashboard A/B picker is rebuilt by the orchestrator, so this does not touch the dashboard.
+    renders into a staging copy of the tree). ``redact`` (c16u, ADR-40) scrubs the device strip. Raises
+    on a failing report (the caller wraps it). The newest-run dashboard A/B picker is rebuilt by the
+    orchestrator, so this does not touch the dashboard.
     """
     drops = [baseline, compare]
     ab = (baseline, compare)
-    return [mod.build(root, drops=drops, ab=ab, sink=sink, build_ts=build_ts)
+    return [mod.build(root, drops=drops, ab=ab, sink=sink, build_ts=build_ts, redact=redact)
             for mod in all_reports()]
 
 

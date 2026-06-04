@@ -551,6 +551,42 @@ real Perf bundle (catalog VTable + a report + a drill all enhance from the share
 `_assets` links across 30 pages). 253 -> 262 green (+9 shared asserts). Real Perf: 2.86 MB duplicated chrome
 reclaimed (4 shared assets ~206 KB vs ~30 inlined copies).
 
+**c16u as-built (`--redact`; rides ADR-40; recorded in the c16u doc, ADR-23).** `package --redact` produces a
+bundle safe to share externally; `--redact-paths={strip,fail}` (default `strip`) controls absolute-path
+handling. **Device/host provenance is scrubbed at the structured DATA seam, never an HTML regex:**
+`chrome.provenance_strip(host_info, tool_versions, *, redact=False)` gains a redact mode (emits `<div
+class="device-strip">redacted</div>`), threaded `redact: bool = False` through the SAME render seam as c16t's
+sink/build_ts (orchestrator -> the 8 `build()` + dashboard + per-run, `ab.render_pair`, `render_drop`'s
+`gl_renderer` strip, and `trend_table`'s in-body per-drop device chips), so the package re-render emits
+redacted provenance BY CONSTRUCTION. **Whole-tree, drop-sidecars (resolved design fork, recorded):** the
+bundled raw `_data` also leaks device values — `_manifest.json` (host_info + tool versions) and
+`frame_metadata.jsonl` (gl_renderer/driver/vendor) — so a redacted bundle EXCLUDES those two sidecars wholesale
+(linked by no viewable page; robust to manifest schema growth, unlike enumerated field-scrub). **Absolute
+paths:** a fixed drive-letter `[A-Za-z]:\\…` token pattern — UNAMBIGUOUSLY absolute, so the base64 font /
+`data:` URIs / `http:` URLs (no `:\`) and RELATIVE backslash paths (e.g. a `shader_src\2192.glsl` resource ref,
+the real-Perf false positive a blanket UNC match caused) are NOT touched (`_assets/*` skipped). `strip`
+(default) replaces each token with `<path redacted>` across ALL bundled text (HTML, `_pagedata`, CSV, JSON
+sidecars) — share-safe; `fail` (CI) modifies nothing and asserts the RENDERED surface (HTML + `_pagedata`)
+carries no residual path, exiting nonzero BEFORE the zip is written. **`--redact` FORCES a re-render** (redaction is a structural transform): `--inline
+--redact` re-renders at the INLINE sink + pinned `build_ts` (so its "built" line shows the run date, like
+shared — new divergence vs the non-redact `--inline` copy) rather than the fast identity copy; `--inline` alone
+stays a copy. The standalone summary stays self-contained + redacted (the INLINE staging copy, or a dedicated
+INLINE render for the shared bundle). **Recorded limitations (ADR-23, FINDINGS):** abs-paths inside BINARY
+parquet are NOT stripped (the CSV twins + rendered `_pagedata` are; the viewer renders from those, not
+parquet); UNC `\\host\share` paths and forward-slash drive paths `C:/…` are out of the token-strip scope (a
+JSON-escaped single separator is indistinguishable from a literal UNC in assembled text, and `C:/` would
+false-match `http://`). New golden trees `redacted/` (inline+redact) +
+`shared_redacted/` (shared+redact) via `make_package_golden.py` (HTML normalized, `_pagedata`/`_assets`/README
+raw, `_data` digest-gated). Asserts (g): no device value on any page/`_pagedata` of either tree (generic
+footgun net for a future report forgetting `redact=`); the two provenance sidecars excluded + not dangling-
+linked; a denylist→tripwire over `_data` text files (CSV twins + `_resource_labels.json` + `_catalog.json`
+only); strip-mode abs-path scan clean; `fail` raises on a planted leak; `--redact-paths=fail` requires
+`--redact`; redacted determinism + non-mutation; crafted-input units for the strip (drive+UNC replaced, font
+untouched) + `provenance_strip(redact=True)`. Render UNTOUCHED (redact defaults `False` everywhere) ->
+`test_parity` + `test_parquet_parity` green with NO refresh; the `shared/` golden is byte-unchanged. 262 -> 277
+green (+15). Real Perf `--redact`: 1306 abs-path tokens stripped, sidecars excluded, `grep` of the extracted
+tree for device values + drive-letter paths is clean.
+
 ## 21.1t Multi-capture per-frame normalization (c16v, G-29) -- see [c16v](../commits/v025/c16v_multicapture_normalize.md)
 Latent-correctness fix: instancing repeat-count + shader cost/uses are normalized PER FRAME
 (`/ ok_captures`) in `instancing_opportunities` + `shader_hotlist` + `dashboard._top_meshes`/`_top_shaders`

@@ -25,11 +25,19 @@ from .. import package as pkg
 from ..reports import all_reports, chrome
 from ..reports import discovery as disc
 from ..html import template
+from .make_synthetic import SYNTH_HOST_INFO, SYNTH_TOOL_VERSIONS
 
 # The inline base64 @font-face data URI lives once in `_assets/report.css`/`catalog.css` for the shared
 # bundle; its presence in a *page* would mean that page still inlines chrome (a dedup miss).
 FONT_MARKER = "data:font/woff2;base64"
-SHARED_GOLDEN = os.path.join(os.path.dirname(__file__), "data", "golden_package", "shared")
+_GOLDEN_PKG = os.path.join(os.path.dirname(__file__), "data", "golden_package")
+SHARED_GOLDEN = os.path.join(_GOLDEN_PKG, "shared")
+REDACTED_GOLDEN = os.path.join(_GOLDEN_PKG, "redacted")
+SHARED_REDACTED_GOLDEN = os.path.join(_GOLDEN_PKG, "shared_redacted")
+REDACTED_STRIP = '<div class="device-strip">redacted</div>'
+# The synthetic's known device/host values (G-6/G-7) -- must appear NOWHERE in a redacted bundle.
+SYNTH_DEVICE_VALUES = [v for v in SYNTH_HOST_INFO.values() if v != SYNTH_HOST_INFO["bobframes"]]
+SYNTH_DEVICE_VALUES += list(SYNTH_TOOL_VERSIONS.values())
 
 
 def _only_dir(extract_root: str) -> str:
@@ -73,6 +81,9 @@ def env(tmp_path_factory):
     inline_zip, inline_summary = pkg.build(dest, out=str(base / "inl" / "x.zip"), inline=True)
     # `--light` (inherently self-contained); its own out dir, no summary file.
     light_zip, _ = pkg.build(dest, out=str(base / "lite" / "x.zip"), summary_file=False, light=True)
+    # `--redact` (c16u): inline-sink + redact (`redacted/`) and shared + redact (`shared_redacted/`).
+    red_zip, red_summary = pkg.build(dest, out=str(base / "red" / "x.zip"), inline=True, redact=True)
+    sred_zip, sred_summary = pkg.build(dest, out=str(base / "sred" / "x.zip"), redact=True)
     return SimpleNamespace(
         dest=dest,
         shared_zip=shared_zip, shared_summary=shared_summary,
@@ -80,6 +91,8 @@ def env(tmp_path_factory):
         inline_zip=inline_zip, inline_summary=inline_summary,
         inline_tree=u.extract_zip(inline_zip, str(base / "inline_x")),
         light_tree=u.extract_zip(light_zip, str(base / "light_x")),
+        red_summary=red_summary, red_tree=u.extract_zip(red_zip, str(base / "red_x")),
+        sred_summary=sred_summary, sred_tree=u.extract_zip(sred_zip, str(base / "sred_x")),
     )
 
 
@@ -335,6 +348,180 @@ def test_not_a_rendered_tree(tmp_path):
 def test_out_inside_root_rejected(env, tmp_path):
     with pytest.raises(pkg.PackageError):
         pkg.build(env.dest, out=os.path.join(env.dest, "inside.zip"))
+
+
+# --- redaction (--redact, c16u, ADR-40) -----------------------------------------------------------
+
+def _red_trees(env):
+    """(extracted top, golden dir) for both redacted variants."""
+    return [(_top(env.red_tree), REDACTED_GOLDEN), (_top(env.sred_tree), SHARED_REDACTED_GOLDEN)]
+
+
+def test_redacted_tree_matches_golden(env):
+    for root, golden in _red_trees(env):
+        golden_files = set(u.tree_files(golden))
+        for rel in golden_files:
+            g = open(os.path.join(golden, rel), encoding="utf-8").read()
+            a = open(os.path.join(root, rel), encoding="utf-8").read()
+            if rel.endswith(".html"):
+                a = u.normalize(a)
+            assert a == g, f"redacted bundle diverged from golden {golden}: {rel}"
+        got = {r for r in u.tree_files(root) if not (r == "_data" or r.startswith("_data/"))}
+        assert got == golden_files, f"redacted file-set != golden for {golden}"
+
+
+def test_redacted_no_device_value(env):
+    """The lifespan footgun net: NO device value on ANY rendered page/_pagedata of EITHER redacted tree
+    (a future report that forgets `redact=redact` surfaces its un-redacted strip here, generically)."""
+    saw_redacted_strip = False
+    for root, _golden in _red_trees(env):
+        surfaces = list(u.rendered_html_files(root)) + list(u.rendered_page_data_files(root))
+        assert surfaces
+        for rel in surfaces:
+            txt = open(os.path.join(root, rel), encoding="utf-8").read()
+            for val in SYNTH_DEVICE_VALUES:
+                assert val not in txt, f"device value {val!r} leaked into {rel} of {root}"
+            assert "gpu <strong>" not in txt and "driver <strong>" not in txt, \
+                f"un-redacted device-strip markup in {rel}"
+            if REDACTED_STRIP in txt:
+                saw_redacted_strip = True
+    assert saw_redacted_strip, "no page carried the redacted device strip (scrub never exercised)"
+
+
+def test_redacted_excludes_provenance_sidecars(env):
+    """The provenance-only `_data` sidecars are dropped wholesale from a redacted bundle (the manifest's
+    host_info + frame_metadata's gl_renderer would otherwise leak raw)."""
+    for root, _golden in _red_trees(env):
+        got = set(u.tree_files(root))
+        assert not any(os.path.basename(r) in ("_manifest.json", "frame_metadata.jsonl") for r in got), \
+            f"a provenance sidecar survived in {root}"
+
+
+def test_redacted_no_dangling_sidecar_links(env):
+    """Dropping the sidecars is safe only if no page links them -- prove it (no dead links)."""
+    for root, _golden in _red_trees(env):
+        for rel in list(u.rendered_html_files(root)) + list(u.rendered_page_data_files(root)):
+            txt = open(os.path.join(root, rel), encoding="utf-8").read()
+            assert "_manifest.json" not in txt and "frame_metadata.jsonl" not in txt, \
+                f"{rel} references a dropped sidecar"
+
+
+def test_redacted_data_text_files_are_known(env):
+    """Denylist -> tripwire: the redacted bundle's `_data` TEXT files are only the CSV twins +
+    `_resource_labels.json`. A NEW provenance-bearing sidecar trips this and forces a redact decision."""
+    root = _top(env.sred_tree)  # shared_redacted carries the full _data
+    data_text = [r for r in u.tree_files(root)
+                 if r.startswith("_data/") and r.endswith((".csv", ".json", ".jsonl"))]
+    assert data_text, "expected _data text files to gate"
+    # Known-safe _data text: CSV table twins (path columns scrubbed by the strip pass) + the per-drop
+    # resource labels + the catalog summary (counts/areas only -- verified no device/host fields).
+    known_json = ("_resource_labels.json", "_catalog.json")
+    for r in data_text:
+        base = os.path.basename(r)
+        assert base.endswith(".csv") or base in known_json, \
+            f"unexpected _data text file {r} -- a new sidecar may carry provenance; review redaction"
+
+
+def test_redacted_abs_path_scan_clean(env):
+    """strip mode (default): no absolute-path token remains in the bundle's text (incl. CSV)."""
+    for root, _golden in _red_trees(env):
+        for rel in u.tree_files(root):
+            if not rel.endswith((".html", ".js", ".csv", ".json", ".jsonl")):
+                continue
+            if rel == "_assets" or rel.startswith("_assets/"):
+                continue
+            txt = open(os.path.join(root, rel), "rb").read().decode("utf-8", "surrogateescape")
+            m = pkg._ABS_PATH.search(txt)
+            assert m is None, f"abs-path {m.group(0)!r} survived strip in {rel}"
+
+
+def test_redacted_standalone_summary(env):
+    """Both redacted standalone summaries stay self-contained (INLINE) AND carry no device value."""
+    for p in (env.red_summary, env.sred_summary):
+        assert os.path.isfile(p)
+        html = open(p, encoding="utf-8").read()
+        assert "_assets/" not in html, "redacted standalone summary must not link shared assets"
+        assert FONT_MARKER in html, "redacted standalone summary must inline its own font"
+        assert "fetch(" not in html and 'type="module"' not in html
+        assert REDACTED_STRIP in html, "redacted standalone summary missing the redacted strip"
+        for val in SYNTH_DEVICE_VALUES:
+            assert val not in html, f"device value {val!r} leaked into the standalone summary"
+
+
+def test_redacted_non_mutation(tmp_path):
+    dest = u.render_fresh(str(tmp_path / "root"))
+    before = _source_digest(dest)
+    pkg.build(dest, out=str(tmp_path / "out" / "b.zip"), redact=True)
+    assert _source_digest(dest) == before
+
+
+def test_redacted_is_deterministic(env, tmp_path):
+    z1, _ = pkg.build(env.dest, out=str(tmp_path / "a" / "x.zip"), summary_file=False, redact=True)
+    z2, _ = pkg.build(env.dest, out=str(tmp_path / "b" / "x.zip"), summary_file=False, redact=True)
+    t1, t2 = u.extract_zip(z1, str(tmp_path / "ax")), u.extract_zip(z2, str(tmp_path / "bx"))
+    assert u.tree_files(t1) == u.tree_files(t2)
+    for rel in u.tree_files(t1):
+        assert open(os.path.join(t1, rel), "rb").read() == open(os.path.join(t2, rel), "rb").read(), rel
+
+
+# --- redaction: crafted-input unit tests (ADR-23: the synthetic has no abs-path value / gl_renderer) --
+
+def test_provenance_strip_redact_mode():
+    s = chrome.provenance_strip(SYNTH_HOST_INFO, SYNTH_TOOL_VERSIONS, redact=True)
+    assert s == REDACTED_STRIP
+    for val in SYNTH_DEVICE_VALUES:
+        assert val not in s
+    assert chrome.provenance_strip({}, {}, redact=True) == ""  # nothing to redact -> empty
+
+
+def test_strip_bytes_replaces_drive_paths_only():
+    """Drive-letter abs paths are stripped; the base64 font, relative backslash paths (a shader resource
+    ref like `shader_src\\2192.glsl` -- the real-Perf false-positive that bit us), and UNC paths are NOT
+    touched (the c16u 'no false positives' goal; UNC + forward-slash drive are recorded limitations)."""
+    font = "url(data:font/woff2;base64,d09GMgABAAAAAA/+aZ==)"  # base64 has no `:\` -> untouched
+    body = (
+        'shader at C:\\Users\\dev\\proj\\cache\\shaders\\frag.spv done. '          # drive -> stripped
+        '{"src_file_path": "shader_src\\\\2192.glsl", "abs": "D:\\\\Caps\\\\f.rdc"} ' + font
+    )
+    out, n = pkg._strip_bytes(body.encode("utf-8"))
+    txt = out.decode("utf-8")
+    assert n == 2, "exactly the two drive-letter paths (C:\\... and D:\\...) are stripped"
+    assert pkg._ABS_PATH.search(txt) is None, "a drive-letter path survived the strip"
+    assert pkg._PATH_REDACTED in txt
+    assert font in txt, "the base64 font must be untouched (no `:\\` to match)"
+    assert "shader_src\\\\2192.glsl" in txt, "a RELATIVE backslash path must NOT be redacted (no drive)"
+    import json
+    assert json.loads('{"src_file_path": "shader_src\\\\2192.glsl", "abs": "<path redacted>"}')
+
+
+def test_redact_paths_fail_raises_on_planted_leak(tmp_path):
+    leak = tmp_path / "page.html"
+    leak.write_text("<p>built at C:\\Users\\ci\\secret\\cap.rdc</p>", encoding="utf-8")
+    entries = [("_reports/x.html", str(leak))]
+    with pytest.raises(pkg.PackageError):
+        pkg._redact_text_files(entries, mode="fail")
+    # strip mode sanitizes the same file in place (no raise)
+    n = pkg._redact_text_files(entries, mode="strip")
+    assert n == 1
+    assert "C:\\Users" not in leak.read_text(encoding="utf-8")
+
+
+def test_redact_paths_fail_clean_passes(tmp_path):
+    clean = tmp_path / "page.html"
+    clean.write_text("<p>no paths here, just text</p>", encoding="utf-8")
+    assert pkg._redact_text_files([("_reports/x.html", str(clean))], mode="fail") == 0
+
+
+def test_redact_paths_fail_requires_redact(env, tmp_path):
+    from .. import cli
+    rc = cli.main(["package", env.dest, "--out", str(tmp_path / "o" / "x.zip"),
+                   "--redact-paths", "fail"])  # missing --redact -> user error
+    assert rc != 0
+
+
+def test_redact_paths_invalid_rejected(env, tmp_path):
+    with pytest.raises(pkg.PackageError):
+        pkg.build(env.dest, out=str(tmp_path / "o" / "x.zip"), redact=True, redact_paths="nope")
 
 
 def test_unknown_run_rejected(env, tmp_path):

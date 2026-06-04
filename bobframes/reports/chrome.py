@@ -2183,12 +2183,18 @@ def heatmap_cell(value, lo, hi, *, direction: str = 'hot', text: str | None = No
             f'data-direction="{h(direction)}">{h(disp)}</rdc-heatmap-cell>')
 
 
-def provenance_strip(host_info: dict | None, tool_versions: dict | None) -> str:
+def provenance_strip(host_info: dict | None, tool_versions: dict | None,
+                     *, redact: bool = False) -> str:
     """Capture-context strip: GPU/driver/CPU/OS + external tool versions (G-6/G-7) recorded at ingest.
 
     Renders the .device-strip primitive under the page header so every report shows the machine + tool
     versions the data came from. Omits the bobframes version on purpose (a release bump must not churn
     the golden). Returns '' when no provenance was recorded (older manifests).
+
+    ``redact=True`` (c16u, ADR-40) emits a fixed ``redacted`` strip in place of the values -- the
+    `package --redact` re-render scrubs device/host provenance at the structured DATA seam, never by an
+    HTML regex. It still returns '' when there was nothing to redact (so an empty manifest stays empty).
+    Default ``False`` -> byte-identical to the pre-c16u output.
     """
     host_info = host_info or {}
     tool_versions = tool_versions or {}
@@ -2203,6 +2209,8 @@ def provenance_strip(host_info: dict | None, tool_versions: dict | None) -> str:
             fields.append(f'{tool} <strong>{h(v)}</strong>')
     if not fields:
         return ''
+    if redact:
+        return '<div class="device-strip">redacted</div>'
     return f'<div class="device-strip">{" | ".join(fields)}</div>'
 
 

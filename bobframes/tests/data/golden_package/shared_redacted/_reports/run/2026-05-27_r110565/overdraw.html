@@ -1,0 +1,54 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>overdraw</title><link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect x='2' y='3' width='12' height='2' fill='%23888'/><rect x='2' y='7' width='12' height='2' fill='%234a8'/><rect x='2' y='11' width='12' height='2' fill='%23d54'/></svg>"><link rel="stylesheet" href="../../../_assets/report.css"><script defer src="../../../_assets/report.js"></script></head><body style="--hdr-offset: 120px">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="icon-link-out" viewBox="0 0 16 16">
+      <path d="M4 4h5v1H5v6h6V8h1v3.5a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-7a.5.5 0 0 1 .5-.5z"/>
+      <path d="M11 5L7.5 8.5M11 5h-3M11 5v3" stroke="currentColor" fill="none" stroke-width="1"/>
+    </symbol>
+    <symbol id="icon-file" viewBox="0 0 16 16">
+      <path d="M4 2h5l3 3v9H4z" stroke="currentColor" fill="none" stroke-width="1"/>
+      <path d="M9 2v3h3" stroke="currentColor" fill="none" stroke-width="1"/>
+    </symbol>
+    <symbol id="icon-arrow-right" viewBox="0 0 16 16">
+      <path d="M4 8h8M9 5l3 3-3 3" stroke="currentColor" fill="none" stroke-width="1.5"/>
+    </symbol>
+    <symbol id="icon-copy" viewBox="0 0 16 16">
+      <path d="M5 5h7v8H5z" stroke="currentColor" fill="none" stroke-width="1"/>
+      <path d="M3 3h7v2" stroke="currentColor" fill="none" stroke-width="1"/>
+    </symbol>
+    <symbol id="icon-search" viewBox="0 0 16 16">
+      <circle cx="7" cy="7" r="4" stroke="currentColor" fill="none" stroke-width="1.5"/>
+      <path d="M10 10l3 3" stroke="currentColor" stroke-width="1.5"/>
+    </symbol>
+    <symbol id="icon-warn" viewBox="0 0 16 16">
+      <path d="M8 2l6 11H2L8 2zM8 7v3M8 11.5v.5" stroke="currentColor" fill="none" stroke-width="1"/>
+    </symbol>
+  </defs>
+</svg>
+
+<h1>overdraw</h1>
+<header class="strip">
+<span>built <strong><TS></strong></span>
+<span>drops <strong>2</strong></span>
+<span>run <strong>1 of 2</strong>: <strong>2026-05-27_r110565</strong></span>
+</header>
+<nav class="crumb"><a href="../../../index.html" data-link-kind="crumb">root catalog</a><a href="../../../_reports/index.html" data-link-kind="crumb">dashboard</a></nav>
+<div class="kpi-strip"><div class="kpi-chip tone-neg"><div class="kpi-label">worst reject %</div><div class="kpi-value">75.0%</div></div><div class="kpi-chip tone-neutral"><div class="kpi-label">rts &gt;= 40%</div><div class="kpi-value">1</div></div><div class="kpi-chip tone-neutral"><div class="kpi-label">samples</div><div class="kpi-value">60</div></div></div>
+<div class="device-strip">redacted</div>
+<rdc-alarm-banner data-severity="low"><div class="callout sev-warn"><svg class="icon" aria-hidden="true"><use href="#icon-warn"/></svg><div class="co-body"><div class="co-title">viewing an older run</div><div class="co-detail">this is run 1 of 2 (2026-05-27_r110565); the newest run is 2026-05-28_r110600</div><a href="../../overdraw.html" data-link-kind="inline">go to newest</a></div></div></rdc-alarm-banner>
+<rdc-ab-picker><label for="rdc-run-select">run</label><select id="rdc-run-select"><option value="../../run/2026-05-27_r110565/overdraw.html" selected>run 1/2: 2026-05-27_r110565</option><option value="../../overdraw.html">run 2/2: 2026-05-28_r110600 (newest)</option></select></rdc-ab-picker>
+
+<rdc-alarm-banner data-severity="high"><aside class="summary-bar tone-alarm" aria-label="page summary"><div class="sb-label">worst rt rejection</div><div class="sb-headline">District 01 / rt_386</div><div class="sb-sub">75.0% rejected</div><a class="sb-link" href="#District 01" data-link-kind="primary">area</a></aside></rdc-alarm-banner>
+<rdc-alarm-banner data-severity="high"><div class="callout sev-alarm"><svg class="icon" aria-hidden="true"><use href="#icon-warn"/></svg><div class="co-body"><div class="co-title">District 01 / rt_386 rejects 75.0% of samples</div><div class="co-detail">shading paid then thrown away - cull earlier (backface / shadow / depth pre-pass).</div><a href="#District 01" data-link-kind="inline">jump to area</a></div></div></rdc-alarm-banner>
+<div class="legend">
+<span class="chip"><span class="swatch" style="background: var(--c-opaque)"></span>passed</span>
+<span class="chip"><span class="swatch" style="background: var(--c-prepass)"></span>depth failed</span>
+<span class="chip"><span class="swatch" style="background: var(--c-ui)"></span>discarded</span>
+<span class="chip"><span class="swatch" style="background: var(--c-other)"></span>scissor</span>
+<span class="chip"><span class="swatch" style="background: var(--c-shadow)"></span>backface</span>
+<span class="chip"><span class="swatch" style="background: var(--c-translucent)"></span>stencil</span>
+<span class="chip"><span class="swatch" style="background: var(--c-additive)"></span>other</span>
+</div>
+<rdc-sticky-h2><section class="card" id="District 01"><header><h2>District 01</h2><span class="card-count">1</span></header><figure class="chart"><figcaption>District 01: sample rejection % per RT</figcaption><svg class="chart-svg" role="img" viewBox="0 0 640 36" width="640" height="36" aria-label="sample rejection % per rt"><title>sample rejection % per rt</title><desc>percent of shaded samples rejected per render target</desc><defs><linearGradient id="g-overdraw-0-bar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent-data)" stop-opacity="1"/><stop offset="1" stop-color="var(--accent-data)" stop-opacity="0.55"/></linearGradient></defs><text x="10.00" y="21.84" fill="var(--text-2)">rt_3~</text><rect x="57.00" y="10.00" width="381.75" height="16" fill="url(#g-overdraw-0-bar)" rx="1"><title>rt_386: 75.0%</title></rect><text x="442.75" y="21.84" fill="var(--text-2)">75.0%</text><line x1="260.60" y1="8.00" x2="260.60" y2="28.00" stroke="var(--status-warn)" stroke-width="1" stroke-dasharray="3 2"/><text x="262.60" y="16.00" fill="var(--status-warn)">warn</text><line x1="413.30" y1="8.00" x2="413.30" y2="28.00" stroke="var(--status-alarm)" stroke-width="1" stroke-dasharray="3 2"/><text x="415.30" y="16.00" fill="var(--status-alarm)">alarm</text></svg></figure><div class="col-groups" role="group" aria-label="column groups"></div><div class="table-wrap"><rdc-table data-mode="static" data-table="overdraw"><table class="data"><caption>per-render-target sample rejection in District 01</caption><thead><tr><th scope="col">rt label</th><th scope="col">format</th><th scope="col">dims</th><th class="num" scope="col">samples (latest)</th><th class="num" scope="col">passed</th><th class="num" scope="col">depth failed</th><th class="num" scope="col">discarded</th><th class="num" scope="col">scissor</th><th class="num" scope="col">backface</th><th scope="col">rejection bar</th><th class="num" scope="col">samples@2026-05-27_r110565</th><th class="num" scope="col">samples@2026-05-28_r110600</th><th class="num delta-latest" scope="col">delta</th></tr></thead><tbody><tr><td><span class="clip">rt_386</span></td><td><span class="clip clip-narrow">R8G8B8A8_UNORM</span></td><td class="num">1536x720</td><td class="num">60</td><td class="num">25.0%</td><td class="num">0.0%</td><td class="num">0.0%</td><td class="num">0.0%</td><td class="num">75.0%</td><td><div class="bar"><div class="seg" style="width: 25.0000%; background: var(--c-opaque);" title="opaque: 15">15</div><div class="seg" style="width: 75.0000%; background: var(--c-shadow);" title="shadow: 45">45</div></div></td><td class="num">60</td><td class="num">60</td><td class="delta flat">0</td></tr></tbody></table></rdc-table></div></section></rdc-sticky-h2>
+<script>window.__colgroups_overdraw=[{"name":"identity","open":true,"cols":[0,1,2]},{"name":"current","open":true,"cols":[3,4,5,6,7,8,9]},{"name":"per-drop history","open":false,"cols":[10,11,12]}];</script>
+</body></html>

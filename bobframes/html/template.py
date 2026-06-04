@@ -544,7 +544,7 @@ def render_drop(drill_dir: str, *, data_dir: str,
                 captures: list[str], schema_version: int, build_timestamp: str,
                 row_counts: dict[str, int],
                 sink: reports_base.AssetSink = reports_base.AssetSink.INLINE,
-                depth: int = 0) -> str:
+                depth: int = 0, redact: bool = False) -> str:
     """Render the per-drop browser HTML into drill_dir, reading data from data_dir.
 
     drill_dir: <root>/_reports/drill/<area>/<drop>/  (HTML output target)
@@ -616,7 +616,9 @@ def render_drop(drill_dir: str, *, data_dir: str,
     ))
 
     if gl_renderer:
-        parts.append(f'<div class="device-strip">{_h(gl_renderer)}</div>')
+        # c16u: gl_renderer is device info -> scrub at the data seam under --redact (ADR-40).
+        parts.append('<div class="device-strip">redacted</div>' if redact
+                     else f'<div class="device-strip">{_h(gl_renderer)}</div>')
 
     parts.append(reports_base.kpi_strip(kpis))
 
