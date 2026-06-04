@@ -49,7 +49,7 @@ def test_verdict_bar_and_scope(rendered):
     s = _summary(rendered[1])
     assert 'class="summary-bar' in s
     assert 'build health' in s
-    assert re.search(r'\d+ of \d+ areas', s)
+    assert re.search(r'\d+ of \d+ area', s)   # "1 of 1 area" / "7 of 7 areas"
     assert 'Action needed' in s          # synthetic overdraw 75% -> ALARM
 
 
