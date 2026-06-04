@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import shutil
 import tempfile
 import zipfile
@@ -35,6 +36,24 @@ log = logging.getLogger('bobframes')
 # Fixed ZipInfo timestamp -> reproducible archives (the DOS/zip epoch; 1980-01-01 is the minimum a
 # ZipInfo accepts). The only wall-clock the verb touches is the `[HH:MM:SS]` log-line prefix.
 _ZIP_DATE = (1980, 1, 1, 0, 0, 0)
+
+# --- redaction (c16u, ADR-40) ---------------------------------------------------------------------
+# An absolute-path token: a drive-letter path `C:\...`. The token stops at whitespace / quotes / angle
+# brackets / pipe, so it never spans a line and a JSON-escaped `C:\\...` stops at its closing quote
+# (replacing the whole token keeps the JSON valid). The pattern REQUIRES a drive letter + colon +
+# backslash, which is UNAMBIGUOUSLY absolute -- base64 / `data:` URIs / `http:` URLs never have `:\` and
+# RELATIVE backslash paths (e.g. a `shader_src\2192.glsl` resource ref) have no drive letter, so neither
+# is touched (the c16u "no false positives" goal). Out of scope (recorded ADR-23 limitations, FINDINGS):
+# UNC `\\host\share` (a JSON-escaped single separator `\\` is indistinguishable from a literal UNC `\\`
+# in assembled text, so a blanket UNC strip would mangle relative paths) and forward-slash drive paths
+# `C:/...` (would false-match `http://`; RenderDoc emits backslash on Windows).
+_ABS_PATH = re.compile(r"[A-Za-z]:\\[^\s\"'<>|]+")
+_PATH_REDACTED = '<path redacted>'
+# Provenance-only `_data` sidecars carry device/host values (host_info, gl_renderer) but are linked by
+# NO viewable page -> dropped wholesale from a redacted bundle (robust to manifest schema growth).
+_REDACT_DROP_SIDECARS = (_paths.MANIFEST_NAME, 'frame_metadata.jsonl')
+# Bundled text the strip pass rewrites; binary `.parquet` is out of scope (recorded limitation).
+_REDACT_TEXT_EXT = ('.html', '.js', '.csv', '.json', '.jsonl')
 
 README_NAME = 'README.txt'
 README_TEXT = (
@@ -56,7 +75,8 @@ class PackageError(BobFramesError):
 
 def build(root: str, *, out: str | None = None, light: bool = False,
           inline: bool = False, summary_file: bool = True, stage: bool = False,
-          run: str | None = None) -> tuple[str, str]:
+          run: str | None = None, redact: bool = False,
+          redact_paths: str = 'strip') -> tuple[str, str]:
     """Package an already-rendered ``<root>`` into ``(zip_path, summary_path)``, both OUTSIDE ``<root>``.
 
     Non-mutating: ``<root>`` is only read. ``run`` selects the run whose ``drop_date`` names the
@@ -69,7 +89,17 @@ def build(root: str, *, out: str | None = None, light: bool = False,
     with the REF sink into a temp staging dir, ``_assets/`` written once per family, ``_data`` streamed
     raw from ``<root>``. ``inline=True`` (and ``light``, which is inherently self-contained) take the
     c16s identity-copy path instead. The standalone summary is INLINE (a verbatim source copy) regardless.
+
+    ``redact`` (c16u, ADR-40) produces a bundle safe to share externally: device/host provenance is
+    re-emitted as ``redacted`` at the render seam (so redaction FORCES a re-render -- ``--inline
+    --redact`` re-renders at the INLINE sink rather than copying), the provenance-only ``_data`` sidecars
+    (``_manifest.json`` / ``frame_metadata.jsonl``) are dropped, and absolute-path tokens are handled per
+    ``redact_paths``: ``'strip'`` (default) replaces them with ``<path redacted>`` across all bundled
+    text; ``'fail'`` is a CI completeness assertion that exits nonzero if a path remains in any rendered
+    page. ``redact=False`` -> the c16s/c16t paths byte-for-byte.
     """
+    if redact_paths not in ('strip', 'fail'):
+        raise PackageError(f"redact_paths must be 'strip' or 'fail', got {redact_paths!r}")
     root = os.path.abspath(root)
     from .reports import discovery
 
@@ -94,6 +124,9 @@ def build(root: str, *, out: str | None = None, light: bool = False,
     project = os.path.basename(os.path.normpath(root))
     rundate = target.date
     topdir = f'{project}-{rundate}'
+    newest = target.key == drops[-1].key
+    summary_rel = ('summary.html' if newest
+                   else f'{_paths.RUN_DIR}/{target.key}/summary.html')
 
     # Artifact paths -- default OUTSIDE the read tree (the parent of <root>, so `package .` from inside
     # a tree never drops the zip into the tree it is reading -- the cwd-relative `./` default would).
@@ -110,30 +143,40 @@ def build(root: str, *, out: str | None = None, light: bool = False,
 
     # Validate the standalone-summary source up front so a missing one-pager fails BEFORE any artifact
     # is written (no partial output). For an older `--run`, the per-run summary under _reports/run/<key>/.
-    src_summary = ''
     if summary_file:
-        if target.key == drops[-1].key:
-            src_summary = os.path.join(_paths.reports_dir(root), 'summary.html')
-        else:
-            src_summary = os.path.join(_paths.reports_dir(root), _paths.RUN_DIR, target.key, 'summary.html')
+        src_summary = os.path.join(_paths.reports_dir(root), summary_rel)
         if not os.path.isfile(src_summary):
             raise PackageError(
                 f'no rendered summary at {src_summary}; run `bobframes render` first '
                 f'(or pass --no-summary-file)')
 
-    # Bundle entries as (rel, abspath). Default = shared-assets: re-render the REF form into a temp
-    # staging dir (reading <root>, writing staging) and stream _data raw from <root>; `--inline`/`--light`
-    # keep the c16s identity copy of the live <root>. Staging lives only long enough to read its files
-    # into the zip, then is removed (the zip is the artifact; `--stage` extracts the zip, not staging).
+    # Bundle entries as (rel, abspath). Shared (default) + any redact re-render the tree into a temp
+    # staging dir (reading <root>, writing staging); plain `--inline`/`--light` keep the c16s identity
+    # copy of the live <root>. Staging lives only long enough to read its files into the zip (and, for
+    # a redacted shared bundle, render the standalone summary), then is removed.
     shared = not inline and not light
+    restage = shared or redact
+    sink_for_render = _ref_sink() if shared else _inline_sink()
     staging: str | None = None
+    n_stripped = 0
+    summary_bytes: bytes | None = None
     try:
-        if shared:
+        if restage:
             staging = tempfile.mkdtemp(prefix=f'{topdir}.', dir=out_dir)
-            _render_shared(root, staging, build_ts=rundate)
-            entries = _collect_shared(root, staging)
+            _render_tree(root, staging, sink=sink_for_render, build_ts=rundate, redact=redact)
+            if shared:
+                entries = _collect_shared(root, staging)
+            else:
+                entries = _collect(staging, light=light)
+                _append_preview(entries, root)  # preview isn't re-rendered -> add raw (matches --inline)
         else:
             entries = _collect(root, light=light)
+
+        if redact:
+            # Drop the provenance-only sidecars, then handle absolute paths over the bundled text.
+            entries = [(rel, ap) for rel, ap in entries
+                       if os.path.basename(rel) not in _REDACT_DROP_SIDECARS]
+            n_stripped = _redact_text_files(entries, mode=redact_paths)  # raises (fail) BEFORE the zip
 
         # Reproducible zip: fixed arcname order, fixed entry timestamps, pinned DEFLATE, per-entry
         # writestr; one file read into memory at a time (memory stays O(largest file), not O(tree)).
@@ -150,13 +193,24 @@ def build(root: str, *, out: str | None = None, light: bool = False,
                 zi.compress_type = zipfile.ZIP_DEFLATED
                 zf.writestr(zi, data)
                 file_count += 1
+
+        # Standalone summary bytes (while staging is alive, AFTER the zip is written). Non-redact:
+        # verbatim <root> copy. Redact: from the re-rendered staging (INLINE modes); for the shared
+        # bundle, a dedicated self-contained INLINE+redact render -- done here so it overwrites the
+        # staging summary only after the REF copy has already been zipped. Always self-contained.
+        if summary_file:
+            if not redact:
+                with open(src_summary, 'rb') as f:
+                    summary_bytes = f.read()
+            else:
+                summary_bytes = _redacted_summary_bytes(
+                    staging, summary_rel, newest=newest, target=target,
+                    build_ts=rundate, shared=shared, redact_paths=redact_paths)
     finally:
         if staging is not None:
             shutil.rmtree(staging, ignore_errors=True)
 
     if summary_file:
-        with open(src_summary, 'rb') as f:
-            summary_bytes = f.read()
         with open(summary_path, 'wb') as f:
             f.write(summary_bytes)
     else:
@@ -171,11 +225,26 @@ def build(root: str, *, out: str | None = None, light: bool = False,
     bundle_bytes = os.path.getsize(zip_path)
     chrome_note = (f'{dup} duplicated-chrome bytes reclaimed by shared-assets (default)' if shared
                    else f'{dup} duplicated-chrome bytes inlined (the default shared bundle dedupes these)')
+    redact_note = ''
+    if redact:
+        paths_note = (f'{n_stripped} abs-path tokens stripped' if redact_paths == 'strip'
+                      else 'rendered pages clean (0 residual paths)')
+        redact_note = f'; redacted: provenance scrubbed, manifest+frame_metadata excluded, {paths_note}'
     log.info(
-        f'packaged {file_count} files, {bundle_bytes} bytes; {chrome_note}; '
+        f'packaged {file_count} files, {bundle_bytes} bytes; {chrome_note}{redact_note}; '
         f'summary {summary_path or "(skipped)"}; zip {zip_path}')
 
     return zip_path, summary_path
+
+
+def _ref_sink():
+    from .reports import base as _rbase
+    return _rbase.AssetSink.REF
+
+
+def _inline_sink():
+    from .reports import base as _rbase
+    return _rbase.AssetSink.INLINE
 
 
 def _collect(root: str, *, light: bool) -> list[tuple[str, str]]:
@@ -251,20 +320,25 @@ def _duplicated_chrome_bytes(entries: list[tuple[str, str]]) -> int:
     return max(0, n_rep - 1) * rep + max(0, n_cat - 1) * cat
 
 
-def _render_shared(root: str, staging: str, *, build_ts: str) -> None:
-    """Re-render the tree in REF (shared-asset) form into ``staging`` (c16t, ADR-41).
+def _render_tree(root: str, staging: str, *, sink, build_ts: str, redact: bool = False) -> None:
+    """Re-render the tree into ``staging`` (c16t shared-assets; c16u redaction).
 
     ``_data`` is copied RAW into ``staging`` (no derive -> parquet bytes verbatim -> digests match the
     source) so the re-render reads AND links within ONE tree: the relative drill / CSV / parquet links
     resolve INSIDE the bundle (a decoupled out-dir would make them escape into the source tree). The
-    whole tree is then rendered with ``sink=REF``; ``build_ts`` pins a deterministic "built" stamp on
-    the report family so two packages are byte-identical (the standalone summary + the ``--inline`` copy
-    keep the source wall-clock stamp -- ADR-23 records the divergence). ``<root>`` is only ever READ.
+    whole tree is then rendered with the given ``sink``; ``build_ts`` pins a deterministic "built" stamp
+    on the report family so two packages are byte-identical (the ``--inline`` non-redact copy keeps the
+    source wall-clock stamp -- ADR-23 records the divergence). ``redact=True`` (c16u, ADR-40) re-emits
+    every page's device strip as ``redacted``. The per-family ``_assets/`` are written only for the REF
+    sink (the INLINE re-render is self-contained per page). ``<root>`` is only ever READ.
+
+    Default ``(sink=REF, redact=False)`` is byte-identical to the c16t shared re-render (guarded by the
+    shared golden); the call shape is unchanged on that path.
     """
     from .reports import ab as _ab, base as _rbase, discovery as _disc, orchestrator as _orch
     from .html import template as _template
     from . import manifest as _manifest
-    REF = _rbase.AssetSink.REF
+    is_ref = sink is _rbase.AssetSink.REF
 
     src_data = _paths.data_root(root)
     if os.path.isdir(src_data):
@@ -273,10 +347,10 @@ def _render_shared(root: str, staging: str, *, build_ts: str) -> None:
     def _silent(_msg: str) -> None:
         pass
 
-    rc = _orch.render_all_reports(staging, _silent, sink=REF, build_ts=build_ts)
+    rc = _orch.render_all_reports(staging, _silent, sink=sink, build_ts=build_ts, redact=redact)
     if rc != 0:
         raise PackageError(
-            f'shared re-render of {root!r} failed; cannot build a deduped bundle (try --inline)')
+            f're-render of {root!r} failed; cannot build the bundle (try --inline without --redact)')
 
     # Drill pages: mirror the existing per-(area, drop) set so the bundle reproduces EXACTLY the source
     # set (orchestrator renders reports/dashboard/per-run/root, never drill). render_drop reads + links
@@ -294,10 +368,10 @@ def _render_shared(root: str, staging: str, *, build_ts: str) -> None:
             drop_label=m.get('drop_label', ''),
             captures=m.get('captures') or [], schema_version=m.get('schema_version', 0),
             build_timestamp=m.get('build_timestamp', ''), row_counts=m.get('row_counts') or {},
-            sink=REF, depth=rel.count('/'))
+            sink=sink, depth=rel.count('/'), redact=redact)
 
     # A/B pairs: render-only never emits ab/, so this is usually a no-op. When present, resolve each
-    # <baselineKey>_vs_<compareKey> dir back to its DropSets and re-render REF; an unresolvable pair is
+    # <baselineKey>_vs_<compareKey> dir back to its DropSets and re-render; an unresolvable pair is
     # logged + omitted (never silently mislabeled -- ADR-23), so use --inline to bundle it verbatim.
     ab_root = os.path.join(_paths.reports_dir(root), _paths.AB_DIR)
     if os.path.isdir(ab_root):
@@ -310,11 +384,12 @@ def _render_shared(root: str, staging: str, *, build_ts: str) -> None:
             if not baseline or not compare:
                 log.warning(
                     f'package: A/B pair {pair!r} could not be resolved; its pages are omitted from the '
-                    f'shared bundle (use --inline to bundle them verbatim)')
+                    f'bundle (use --inline to bundle them verbatim)')
                 continue
-            _ab.render_pair(staging, baseline, compare, sink=REF, build_ts=build_ts)
+            _ab.render_pair(staging, baseline, compare, sink=sink, build_ts=build_ts, redact=redact)
 
-    _write_assets(staging)
+    if is_ref:
+        _write_assets(staging)
 
 
 def _write_assets(staging: str) -> None:
@@ -331,6 +406,105 @@ def _write_assets(staging: str) -> None:
     for a in (*_chrome.REPORT_ASSETS, *_template.CATALOG_ASSETS):
         with open(os.path.join(assets_dir, a.name), 'w', encoding='utf-8') as f:
             f.write(a.content())
+
+
+# --- redaction helpers (c16u) ---------------------------------------------------------------------
+
+def _append_preview(entries: list[tuple[str, str]], root: str) -> None:
+    """Add ``_reports/_chrome_preview.html`` raw from ``<root>`` to a staged (INLINE) bundle's entries.
+
+    The preview gallery is produced by `bobframes preview`, not the orchestrator, so a re-render into
+    staging never emits it. ``_collect_shared`` already adds it for the shared bundle; this mirrors that
+    for the INLINE re-render path (used by ``--inline --redact``) so the file-set matches non-redact
+    ``--inline``. The subsequent abs-path pass scrubs it like any other bundled HTML.
+    """
+    rel = f'{_paths.REPORTS_DIR}/_chrome_preview.html'
+    if any(r == rel for r, _ in entries):
+        return
+    preview = os.path.join(_paths.reports_dir(root), '_chrome_preview.html')
+    if os.path.isfile(preview):
+        entries.append((rel, preview))
+
+
+def _is_asset_rel(rel: str) -> bool:
+    return rel == _paths.ASSETS_DIR or rel.startswith(_paths.ASSETS_DIR + '/')
+
+
+def _is_rendered_surface(rel: str) -> bool:
+    """A viewer-facing rendered page: an HTML page or its decoupled ``_pagedata/*.js`` payload."""
+    if rel.endswith('.html'):
+        return True
+    return rel.endswith('.js') and os.path.basename(os.path.dirname(rel)) == _paths.PAGEDATA_DIR
+
+
+def _strip_bytes(raw: bytes) -> tuple[bytes, int]:
+    """Replace every absolute-path token in ``raw`` with ``<path redacted>``; return (bytes, count).
+
+    Decodes with ``surrogateescape`` so non-UTF-8 bytes round-trip exactly -- only the matched tokens
+    change, never surrounding bytes / line endings / the base64 font.
+    """
+    txt = raw.decode('utf-8', 'surrogateescape')
+    new, k = _ABS_PATH.subn(_PATH_REDACTED, txt)
+    return new.encode('utf-8', 'surrogateescape'), k
+
+
+def _redact_text_files(entries: list[tuple[str, str]], *, mode: str) -> int:
+    """Handle absolute paths in the bundle's text files (c16u, ADR-40).
+
+    ``strip`` (default, share-safe) rewrites every abs-path token to ``<path redacted>`` across ALL
+    bundled text (HTML, ``_pagedata``, CSV, JSON sidecars), skipping ``_assets/*`` and binary parquet;
+    returns the replacement count. ``fail`` (CI completeness assertion) modifies nothing -- it scans only
+    the rendered surface (HTML + ``_pagedata``), "did the device-strip scrub miss a path that surfaced
+    in a page?", and raises ``PackageError`` on any residual (so the caller exits nonzero BEFORE the zip
+    is written -- no partial artifact).
+    """
+    if mode == 'fail':
+        hits: list[tuple[str, str]] = []
+        for rel, ap in entries:
+            if _is_asset_rel(rel) or not _is_rendered_surface(rel):
+                continue
+            txt = open(ap, 'rb').read().decode('utf-8', 'surrogateescape')
+            for m in _ABS_PATH.finditer(txt):
+                hits.append((rel, m.group(0)))
+            if len(hits) >= 50:
+                break
+        if hits:
+            sample = '; '.join(f'{r}: {p}' for r, p in hits[:5])
+            raise PackageError(
+                f'--redact-paths=fail: {len(hits)} absolute path(s) remain in rendered pages '
+                f'(e.g. {sample}); scrub the source or use the default --redact-paths=strip')
+        return 0
+    n = 0
+    for rel, ap in entries:
+        if _is_asset_rel(rel) or not rel.endswith(_REDACT_TEXT_EXT):
+            continue
+        new, k = _strip_bytes(open(ap, 'rb').read())
+        if k:
+            with open(ap, 'wb') as f:
+                f.write(new)
+            n += k
+    return n
+
+
+def _redacted_summary_bytes(staging: str, summary_rel: str, *, newest: bool, target,
+                            build_ts: str, shared: bool, redact_paths: str) -> bytes:
+    """The standalone one-pager for a redacted bundle: self-contained (INLINE) + redacted.
+
+    INLINE bundle modes already re-rendered the summary self-contained into ``staging`` (and the strip
+    pass already touched it). The shared bundle's staging summary is REF-linked, so render a dedicated
+    self-contained INLINE+redact copy here -- safe because the REF copy was already zipped. In ``strip``
+    mode the bytes are stripped (idempotent for the INLINE-mode file; necessary for the freshly rendered
+    shared one). The summary is a verdict page with no path cells, so it is not scanned in ``fail`` mode.
+    """
+    summ_path = os.path.join(_paths.reports_dir(staging), summary_rel)
+    if shared:
+        from .reports import base as _rbase, summary as _summary
+        kw = {} if newest else {'run_label': target.label, 'run_date': target.date}
+        _summary.build(staging, sink=_rbase.AssetSink.INLINE, build_ts=build_ts, redact=True, **kw)
+    raw = open(summ_path, 'rb').read()
+    if redact_paths == 'strip':
+        raw, _ = _strip_bytes(raw)
+    return raw
 
 
 def _drill_index_rels(root: str) -> list[tuple[str, str, str]]:

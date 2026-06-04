@@ -246,7 +246,7 @@ def _change_list(changes: list, empty: str) -> str:
 def build(root: str, *, drops: list | None = None, ab=None,
           run_label=None, run_date=None,
           sink: base.AssetSink = base.AssetSink.INLINE,
-          build_ts: str | None = None) -> str:
+          build_ts: str | None = None, redact: bool = False) -> str:
     if drops is None:
         drops = base.discover_drops(root)
     # Run model (ADR-35): ONE current run, never a cumulative sum (the G-19 flaw). baseline = the
@@ -273,7 +273,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
             build_ts=build_ts or base.now_iso(), crumb_depth=base.crumb_depth(ab, run=rc),
             current_page='summary', body_attrs={'data-page-kind': 'summary'},
             ab=ab, root=root, report_key='summary', run=rc, run_nav_key='summary', sink=sink,
-            device=base.provenance_strip(*base.newest_drop_provenance(root, cur_drops)))])
+            device=base.provenance_strip(*base.newest_drop_provenance(root, cur_drops), redact=redact))])
 
     parts.append(_SUMMARY_CSS)
 
@@ -384,7 +384,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
         build_ts=build_ts or base.now_iso(), crumb_depth=base.crumb_depth(ab, run=rc),
         current_page='summary', body_attrs={'data-page-kind': 'summary'},
         ab=ab, root=root, report_key='summary', run=rc, run_nav_key='summary', sink=sink,
-        device=base.provenance_strip(*base.newest_drop_provenance(root, cur_drops)))])
+        device=base.provenance_strip(*base.newest_drop_provenance(root, cur_drops), redact=redact))])
 
 
 if __name__ == '__main__':

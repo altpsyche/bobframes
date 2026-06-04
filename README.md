@@ -42,7 +42,7 @@ time to rebuild the HTML from existing Parquet without re-replaying captures.
 | `lint <file>...` | Check HTML or markdown against the banlist. |
 | `check` | Print resolved tool paths; non-zero when a tool is missing. |
 | `serve [root] [--port 8000] [--bind 127.0.0.1]` | Static preview via the stdlib HTTP server. |
-| `package [root] [--inline] [--light] [--out PATH] [--run KEY] [--no-summary-file] [--stage]` | Bundle a rendered tree into a shareable `<project>-<rundate>-report.zip` + a standalone `<project>-<rundate>-summary.html`, both written OUTSIDE `<root>` (non-mutating). |
+| `package [root] [--inline] [--light] [--redact] [--redact-paths {strip,fail}] [--out PATH] [--run KEY] [--no-summary-file] [--stage]` | Bundle a rendered tree into a shareable `<project>-<rundate>-report.zip` + a standalone `<project>-<rundate>-summary.html`, both written OUTSIDE `<root>` (non-mutating). `--redact` scrubs device/host provenance + absolute paths for external sharing. |
 | `preview [root]` | Render the chrome gallery to `_reports/_chrome_preview.html`; no capture data needed. |
 | `export-tokens [--format toml\|json\|css]` | Print the design tokens to stdout in the chosen format. |
 | `smoke [--data DIR]` | End-to-end check; render-only against the bundled fixture when `--data` is omitted. |
@@ -69,6 +69,22 @@ folder, **no single page is portable on its own** — keep the extracted folder 
 standalone `summary.html` when you need just one file. `--inline` opts out and makes each page
 self-contained (larger, but any single report file is portable). `--light` bundles only `index.html`
 + the top-level reports (no drill pages or data) for a quick "read, don't drill" share.
+
+### Sharing externally — `--redact`
+
+`bobframes package <root> --redact` produces a bundle safe to hand to someone outside your team. It
+scrubs the GPU / driver / CPU / OS + capture-tool versions from every page's device strip (replaced with
+`redacted`), drops the raw provenance sidecars (`_manifest.json`, `frame_metadata.jsonl`) from the
+bundle, and replaces absolute Windows paths (`C:\…`) with `<path redacted>` across the pages and the
+downloadable CSVs. Redaction re-renders the tree, so `--inline --redact` is no longer a fast copy.
+
+- `--redact-paths=strip` (default) — replace the path tokens; the bundle stays usable on a real capture.
+- `--redact-paths=fail` — a CI completeness check: exit nonzero (don't write the zip) if any absolute
+  path remains in a rendered page, so a leak fails the build.
+
+**Caveat:** the pages and the downloadable CSVs are sanitized, but the **binary `.parquet`** tables still
+contain resource paths (they can't be string-edited safely) — strip `_data/` if the parquet itself must
+leave your team. UNC (`\\host\share`) and forward-slash (`C:/…`) paths are not auto-stripped.
 
 ## Customizing reports
 

@@ -8,39 +8,60 @@
 ```
 active_release: v0.2.5    (v0.1 COMPLETE - bobframes 0.1.0 live on PyPI 2026-05-31; v0.2.0 bump committed
                 867dcc5 on plan/v0.2.5)
-current:        c16u_redact    (status: not-started. c16t DONE 2026-06-04 - shared-assets is now the DEFAULT
-                `package` bundle (ADR-41, rides ADR-40/37/35/23). The ~95KB chrome (font+CSS+JS) lives ONCE per
-                family in `_assets/` and every page links it depth-relative; `--inline` opts out (self-contained
-                per page, byte-reproduces the c16s bundle); the standalone summary stays INLINE in BOTH modes.
-                MECHANISM: REF produced by the render SEAM, not a scrape - threaded `sink: AssetSink=INLINE`
-                through page_open/report_page/the 8 build()/render_root/render_drop/orchestrator/ab.render_pair
-                + `build_ts` through the 8 build()+orchestrator (all DEFAULTED -> render byte-identical).
-                `package` shared mode COPIES `_data` raw into a temp staging dir + re-renders the whole tree
-                with ONE root=staging (sink=REF) so relative drill/CSV links resolve IN the bundle, then zips
-                staging + the 4 `_assets/*` (written from REPORT_ASSETS/CATALOG_ASSETS .content()); <root> only
-                READ (non-mutation). PIVOT (recorded §21.1s + c16t doc, ADR-23): the c16t doc's decoupled
-                no-copy out_root was ABANDONED mid-build - a decoupled out-dir makes each report's relpath
-                drill/CSV links ESCAPE into the source tree (concrete failure); copy+single-root fixes it, so
-                out_root/rebuild_cache were NOT shipped. DETERMINISM: the report family stamps now_iso() -> the
-                re-render is given a pinned build_ts (run drop_date) so 2 packages are byte-identical;
-                consequence (recorded): a shared page's "built" line shows the run date, differing from the
-                --inline copy + the standalone summary (verbatim source). NEW make_package_golden.py +
-                golden_package/shared/ (HTML normalized + _pagedata/_assets/README raw, minus _data which is
-                digest-gated); inline/light REUSE golden/. NO render change -> test_parity + test_parquet_parity
-                UNCHANGED, NO refresh. 253 -> 262 green (+9 shared asserts: assets==composer, font absent every
-                page, head_assets(REF,depth) per family + all_reports() footgun guard, no fetch/module,
-                size-win, --inline==render golden, preview copied raw). Browser-VERIFIED offline file:// on real
-                Perf (catalog VTable + a report + a drill all enhance from shared _assets/; 0 unresolved
-                _assets links / 30 pages); real Perf 2.86MB dup-chrome reclaimed (4 shared assets ~206KB).
-                README "Sharing a report" added; ADR-41 already in DECISIONS (frozen, NOT re-appended); §21.1s
-                c16t as-built recorded. NOW DO c16u (commits/v025/c16u_redact.md): `--redact` scrubs provenance
-                at the DATA seam (give provenance_strip a redact mode + re-emit from the manifest), strips
-                abs-path tokens by default, fail-closed only in `--redact-paths=fail` CI mode (ADR-40). ADR-40.
-                NOTE: c16p (v0.2 close-out + release) is COMPLETE - VERIFIED 2026-06-04: PyPI `bobframes` 0.2.0
-                LIVE (wheel+sdist); GH Release v0.2.0 (2026-06-03, both assets, PR #1); tag v0.2.0 -> 765a4db on
-                main (main==origin/main); CHANGELOG [0.2.0]; CI green; FULL real-Perf re-ingest done; Node20
-                CI-actions bump (checkout@v5/setup-python@v6, both jobs) DONE 2026-06-04 - NO residuals.)
-last_session:   2026-06-04 — c16t DONE (shared-assets is the DEFAULT `package` bundle; ADR-41, rides
+current:        c16v_multicapture_normalize    (status: not-started. c16u DONE 2026-06-04 - `package --redact`
+                produces a bundle safe to share externally (ADR-40, rides ADR-41/37/23). Device/host provenance
+                (gpu/driver/cpu/os + renderdoccmd/qrenderdoc + the drill's gl_renderer reuse of .device-strip +
+                trend_table's in-body per-drop chips) re-emitted as `redacted` at the RENDER seam:
+                chrome.provenance_strip(host_info, tool_versions, *, redact=False) gains a redact mode, threaded
+                `redact` through orchestrator/the 8 build()+dashboard+per-run/ab.render_pair/render_drop (same
+                shape as c16t sink/build_ts; all DEFAULTED -> default render BYTE-IDENTICAL: test_parity +
+                test_parquet_parity UNCHANGED, NO refresh, shared/ golden byte-unchanged). WHOLE-TREE
+                drop-sidecars (the planning design fork, user-chosen): the bundled raw _data ALSO leaks device
+                values, so a redacted bundle EXCLUDES _manifest.json + frame_metadata.jsonl wholesale (no page
+                links them; robust to schema growth, unlike field-scrub). --redact FORCES a re-render (structural
+                transform) -> --inline --redact re-renders at INLINE+redact (no longer a fast copy) + pinned
+                build_ts (its "built" line shows the run date - recorded divergence). _render_shared generalized
+                to _render_tree(sink,build_ts,redact); (REF,redact=False) byte-identical to c16t. Standalone
+                summary stays self-contained INLINE + redacted (shared-mode dedicated INLINE render done AFTER
+                the REF copy is zipped). ABS-PATH strip DRIVE-LETTER ONLY (build-time correction, recorded §21.1s
+                + c16u doc + FINDINGS G-31): the doc's "+ UNC" was a FALSE POSITIVE - JSON-escaping makes a
+                relative `shader_src\\NNNN.glsl` indistinguishable from a literal UNC, so a blanket UNC match
+                mangled real shader refs; the goal demands no false positives, so _ABS_PATH = `[A-Za-z]:\\...`
+                only; UNC + forward-slash + binary-parquet path columns = recorded limitations. `strip` (default)
+                rewrites tokens across all bundled text; `fail` (CI) scans the rendered surface (HTML+_pagedata),
+                raises BEFORE the zip. argparse `--redact` + `--redact-paths={strip,fail}` (fail without --redact
+                errors; NO --format ever). NEW golden_package/{redacted,shared_redacted}/ via make_package_golden.
+                262 -> 277 green (+15). Real-Perf VERIFIED: 0 device-value/abs-path/sidecar residuals across 967
+                text files, shader refs preserved, fail-mode clean (exit 0) + raises on planted leak; browser
+                file://: a report shows the redacted strip + styled tables, a drill builds 493 VTable rows (JS
+                intact) + its gl_renderer strip reads redacted. §21.1s c16u as-built + FINDINGS G-31 recorded;
+                ADR-40 NOT re-appended (frozen). NOW DO c16v (commits/v025/c16v_multicapture_normalize.md, G-29):
+                normalize instancing repeat-count + shader cost PER FRAME (/ ok_captures) in
+                instancing_opportunities + shader_hotlist + dashboard._top_meshes/_top_shaders + health.verdict;
+                golden-neutral on the 1-capture fixtures (/1 no-op -> ALL goldens byte-unchanged), proven by a
+                CONSTRUCTED multi-capture unit test (ADR-23). NOTE: c16p (v0.2 release) COMPLETE - PyPI bobframes
+                0.2.0 LIVE; tag v0.2.0 -> 765a4db on main; Node20 CI-actions bump done.)
+last_session:   2026-06-04 — c16u DONE (`package --redact`; ADR-40, rides ADR-41/37/23). Device/host
+                provenance scrubbed at the RENDER seam (provenance_strip gains `redact`, threaded like c16t's
+                sink/build_ts through orchestrator/8 build()+dashboard+per-run/ab.render_pair/render_drop +
+                trend_table in-body chips; all DEFAULTED -> default render BYTE-IDENTICAL, test_parity +
+                test_parquet_parity UNCHANGED + NO refresh + shared/ golden byte-unchanged). WHOLE-TREE
+                drop-sidecars (planning fork, user-chosen): the redacted bundle EXCLUDES _manifest.json +
+                frame_metadata.jsonl (the raw _data leaks device values too); robust to schema growth. --redact
+                FORCES a re-render -> --inline --redact re-renders at INLINE+redact + pinned build_ts (no longer
+                a fast copy; "built" shows run date). _render_shared -> _render_tree(sink,build_ts,redact);
+                (REF,redact=False) byte-identical to c16t. Standalone summary stays self-contained INLINE +
+                redacted. ABS-PATH strip DRIVE-LETTER ONLY (build-time correction, §21.1s + G-31): real-Perf
+                exposed that "+UNC" false-matched JSON-escaped relative `shader_src\\NNNN.glsl` refs; the goal
+                demands no false positives, so _ABS_PATH=`[A-Za-z]:\\...` only (UNC + forward-slash + binary
+                parquet = recorded limits). `strip` (default) rewrites all bundled text; `fail` (CI) scans the
+                rendered surface + raises BEFORE the zip. argparse `--redact` + `--redact-paths={strip,fail}`
+                (fail w/o --redact errors; NO --format). NEW golden_package/{redacted,shared_redacted}/. 262 ->
+                277 green (+15). Real-Perf: 0 device/abs-path/sidecar residuals (967 text files), shader refs
+                preserved, fail-mode clean + raises on planted leak; browser file:// report+drill render with
+                redacted strips, drill built 493 VTable rows. §21.1s + FINDINGS G-31 recorded; ADR-40 NOT
+                re-appended (frozen). Commits on plan/v0.2.5 (UNPUSHED, atop c16q..c16t). current -> c16v.
+former_last_c16t:   2026-06-04 — c16t DONE (shared-assets is the DEFAULT `package` bundle; ADR-41, rides
                 ADR-40/37/35/23). Deduped chrome lives ONCE per family in `_assets/`; every page links it
                 depth-relative; `--inline` opts out (self-contained per page = the c16s bundle byte-for-byte);
                 the standalone summary stays INLINE in BOTH modes. REF produced by the render SEAM (no scrape,
@@ -722,21 +743,21 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    c16t DONE (2026-06-04) - shared-assets is the DEFAULT `package` bundle (ADR-41): chrome lives
-                ONCE per family in `_assets/`, every page links it depth-relative; `--inline` opts out
-                (byte-reproduces the c16s bundle); standalone summary stays INLINE both modes. REF via the render
-                SEAM (threaded sink=INLINE default + pinned build_ts through page_open/report_page/8 build()/
-                render_root/render_drop/orchestrator/ab.render_pair). `package` shared mode COPIES _data into a
-                temp staging dir + re-renders with ONE root=staging so links resolve in-bundle (the decoupled
-                no-copy out_root was ABANDONED - relpath drill/CSV links escaped into the source tree; recorded
-                §21.1s/ADR-23, so out_root/rebuild_cache NOT shipped). NEW make_package_golden.py +
-                golden_package/shared/; inline/light reuse golden/. NO render change ->
-                test_parity/test_parquet_parity UNCHANGED, NO refresh; 253 -> 262 green; browser-verified
-                offline file:// real Perf (2.86MB dup-chrome reclaimed). README + §21.1s updated. NOW DO c16u
-                (commits/v025/c16u_redact.md): `--redact` scrubs provenance at the DATA seam (provenance_strip
-                redact mode + re-emit from the manifest), strips abs-path tokens by default, fail-closed only in
-                --redact-paths=fail CI mode (ADR-40); ADD golden_package/redacted/. ADR-40. §21.1s.
-                Spine: c16s ✓ -> c16t ✓ -> c16u -> c16v -> c16x (component system, ADR-42) -> c16w close-out.
+next_action:    c16u DONE (2026-06-04) - `package --redact` (ADR-40): device/host provenance re-emitted as
+                `redacted` at the RENDER seam (provenance_strip gains `redact`, threaded like c16t's sink/build_ts
+                through orchestrator/8 build()+dashboard+per-run/ab.render_pair/render_drop + trend_table chips;
+                all DEFAULTED -> default render BYTE-IDENTICAL, NO golden refresh, shared/ golden byte-unchanged).
+                Whole-tree drop-sidecars: the redacted bundle EXCLUDES _manifest.json + frame_metadata.jsonl.
+                --redact FORCES a re-render (--inline --redact re-renders at INLINE+redact + pinned build_ts);
+                _render_shared -> _render_tree(sink,build_ts,redact). Abs-path strip DRIVE-LETTER ONLY (UNC was a
+                JSON-escape false positive on relative shader refs - recorded §21.1s/G-31; UNC+fwd-slash+binary
+                parquet = limits). `strip` default / `fail` CI-asserts the rendered surface. NEW
+                golden_package/{redacted,shared_redacted}/. 262 -> 277 green; real-Perf + browser file:// verified.
+                NOW DO c16v (commits/v025/c16v_multicapture_normalize.md, G-29): normalize instancing repeat-count
+                + shader cost PER FRAME (/ ok_captures) in instancing_opportunities + shader_hotlist +
+                dashboard._top_meshes/_top_shaders + health.verdict; golden-neutral on 1-capture fixtures (/1
+                no-op -> goldens byte-unchanged), proven by a CONSTRUCTED multi-capture unit test (ADR-23).
+                Spine: c16s ✓ -> c16t ✓ -> c16u ✓ -> c16v -> c16x (component system, ADR-42) -> c16w close-out.
                 THEN c20 (--json output, v0.3): open commits/v03/c20_json_output.md and do exactly that one
                 commit. NOTE for c27/c35: the c09 classifier is already STATE-CAPABLE (when{} over any draw
                 column), so the state-first generic preset (D-10) is a preset not a rewrite; c35 removes the
@@ -853,6 +874,22 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-04 — c16u DONE (`package --redact`; ADR-40, rides ADR-41/37/23). Device/host provenance scrubbed
+  at the RENDER seam (provenance_strip `redact` mode threaded like c16t's sink/build_ts through orchestrator/
+  8 build()+dashboard+per-run/ab.render_pair/render_drop + trend_table in-body chips; all DEFAULTED -> default
+  render BYTE-IDENTICAL, test_parity+test_parquet_parity UNCHANGED + NO refresh + shared/ golden byte-unchanged).
+  WHOLE-TREE drop-sidecars (planning fork, user-chosen): the redacted bundle EXCLUDES _manifest.json +
+  frame_metadata.jsonl (the raw _data leaks device values too). --redact FORCES a re-render (--inline --redact
+  re-renders at INLINE+redact + pinned build_ts, no longer a fast copy); _render_shared -> _render_tree(sink,
+  build_ts,redact). Standalone summary stays self-contained INLINE + redacted. ABS-PATH strip DRIVE-LETTER ONLY:
+  real-Perf exposed "+UNC" false-matched JSON-escaped relative `shader_src\NNNN.glsl` refs; goal demands no
+  false positives, so _ABS_PATH=`[A-Za-z]:\...` only (UNC+fwd-slash+binary-parquet = recorded limits, G-31).
+  `strip` (default) rewrites all bundled text; `fail` (CI) scans the rendered surface + raises before the zip.
+  argparse --redact + --redact-paths={strip,fail} (fail w/o --redact errors; NO --format). NEW
+  golden_package/{redacted,shared_redacted}/. 262 -> 277 green (+15). Real-Perf: 0 device/abs-path/sidecar
+  residuals (967 text files), shader refs preserved, fail clean + raises on planted leak; browser file://
+  report+drill render redacted (drill built 493 VTable rows). §21.1s c16u as-built + FINDINGS G-31. ADR-40 NOT
+  re-appended (frozen). Commits on plan/v0.2.5 (UNPUSHED). current -> c16v.
 - 2026-06-04 — c16t DONE (shared-assets is the DEFAULT `package` bundle; ADR-41, rides ADR-40/37/35/23).
   Deduped chrome (font+CSS+JS) lives ONCE per family in `_assets/`; every page links it depth-relative;
   `--inline` opts out (self-contained per page = the c16s bundle byte-for-byte); standalone summary stays

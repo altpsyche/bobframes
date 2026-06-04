@@ -65,7 +65,7 @@ def _drop_dir_first(drops: list, drop_date, drop_label) -> str:
 def build(root: str, *, drops: list | None = None, ab=None,
           stage: str = 'fragment', run_label=None, run_date=None,
           sink: base.AssetSink = base.AssetSink.INLINE,
-          build_ts: str | None = None) -> str:
+          build_ts: str | None = None, redact: bool = False) -> str:
     if drops is None:
         drops = base.discover_drops(root)
     # Run model (ADR-35): the hotlist ranks the CURRENT run's shaders; prior runs feed the per-drop
@@ -372,7 +372,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
         build_ts=build_ts or base.now_iso(), crumb_depth=base.crumb_depth(ab, run=rc),
         ab=ab, root=root, report_key='shader_hotlist', sink=sink,
         kpis=kpis, run=rc,
-        device=base.provenance_strip(*base.newest_drop_provenance(root, [cur] if cur else [])))])
+        device=base.provenance_strip(*base.newest_drop_provenance(root, [cur] if cur else []), redact=redact))])
 
 
 if __name__ == '__main__':

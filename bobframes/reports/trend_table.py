@@ -333,7 +333,7 @@ def _class_count_matrix(per_drop_area_class: list, areas: list,
 
 def build(root: str, *, drops: list | None = None, ab=None,
           sink: base.AssetSink = base.AssetSink.INLINE,
-          build_ts: str | None = None) -> str:
+          build_ts: str | None = None, redact: bool = False) -> str:
     if drops is None:
         drops = base.discover_drops(root)
     if not drops:
@@ -453,10 +453,14 @@ def build(root: str, *, drops: list | None = None, ab=None,
                 href=f'#{base.h(kpi)}', link_text='see trend'))
 
     if any(device_strings):
-        chips = []
-        for d, dev in zip(drops, device_strings):
-            chips.append(f'{base.h(d.key)}: {base.safe_chrome_text(dev) or "no metadata"}')
-        parts.append(f'<div class="device-strip">{" | ".join(chips)}</div>')
+        if redact:
+            # c16u: the per-drop gl-renderer chips are device info -> scrub at the data seam (ADR-40).
+            parts.append('<div class="device-strip">redacted</div>')
+        else:
+            chips = []
+            for d, dev in zip(drops, device_strings):
+                chips.append(f'{base.h(d.key)}: {base.safe_chrome_text(dev) or "no metadata"}')
+            parts.append(f'<div class="device-strip">{" | ".join(chips)}</div>')
 
     if len(drops) == 1:
         parts.append(_single_drop_matrix(per_drop_ft, all_areas, drops))
@@ -487,7 +491,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
         drops=len(drops), captures=sum(d.n_captures for d in drops),
         build_ts=build_ts or base.now_iso(), crumb_depth=base.crumb_depth(ab),
         body_attrs=body_attrs, kpis=kpis, sink=sink,
-        device=base.provenance_strip(*base.newest_drop_provenance(root, drops)))])
+        device=base.provenance_strip(*base.newest_drop_provenance(root, drops), redact=redact))])
 
 
 if __name__ == '__main__':

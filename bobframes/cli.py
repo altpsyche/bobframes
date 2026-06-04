@@ -236,9 +236,12 @@ def _cmd_package(args: argparse.Namespace) -> int:
     # OUTSIDE <root> (c16s, ADR-40). build() prints the one summary line and raises a typed
     # PackageError (exit 2) on a bad tree / unknown --run / output-inside-root; main() maps it.
     from . import package
+    if args.redact_paths == 'fail' and not args.redact:
+        raise package.PackageError('--redact-paths=fail requires --redact')
     package.build(os.path.abspath(args.root), out=args.out, light=args.light,
                   inline=args.inline, summary_file=not args.no_summary_file,
-                  stage=args.stage, run=args.run)
+                  stage=args.stage, run=args.run,
+                  redact=args.redact, redact_paths=args.redact_paths)
     return 0
 
 
@@ -345,6 +348,11 @@ def _build_parser() -> argparse.ArgumentParser:
                     help='also materialize the bundle tree to a sibling .stage dir (debug)')
     sp.add_argument('--run',
                     help='package this run key instead of the newest (e.g. 2026-05-28_r110600)')
+    sp.add_argument('--redact', action='store_true',
+                    help='scrub device/host provenance + absolute paths for external sharing')
+    sp.add_argument('--redact-paths', choices=['strip', 'fail'], default='strip',
+                    help="abs-path handling under --redact: 'strip' -> <path redacted> (default); "
+                         "'fail' exits nonzero if a path remains in any rendered page (CI check)")
     sp.set_defaults(func=_cmd_package)
     # NOTE: no --format, ever (ADR-40 taxonomy invariant -- `package` is a PRESENTATION verb).
 
