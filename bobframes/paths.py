@@ -39,6 +39,7 @@ DRILL_DIR = 'drill'          # per-drop browser HTML (under _reports/)
 AB_DIR = 'ab'                # A/B report pairs (under _reports/)
 RUN_DIR = 'run'              # per-run report pages (under _reports/run/<run_key>/, c16f)
 PAGEDATA_DIR = '_pagedata'   # externalized heavy VTable data (.js); sibling of each catalog/drill index.html (c16j)
+ASSETS_DIR = '_assets'       # shared chrome CSS/JS, depth-relative; the head_assets(REF) sink + c16s/c16t (ADR-41)
 TMP_SUFFIX = '.tmp'          # atomic-commit staging suffix (dir + file)
 MANIFEST_NAME = '_manifest.json'
 DONE_MARKER = 'done.marker'
