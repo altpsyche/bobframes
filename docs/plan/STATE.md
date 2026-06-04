@@ -8,47 +8,61 @@
 ```
 active_release: v0.2.5    (v0.1 COMPLETE - bobframes 0.1.0 live on PyPI 2026-05-31; v0.2.0 bump committed
                 867dcc5 on plan/v0.2.5)
-current:        c16r_head_assets_seam    (status: not-started. c16q DONE 2026-06-04 - the FIRST v0.2.5
-                commit (report packaging + exec one-pager spine; ADR-39). Shipped (1) `bobframes/health.py`,
-                a PRESENTATION-INDEPENDENT verdict/trend contract (peer of jsonout/export, NOT under reports/)
-                that c20 `--json` + c21 `report --gate` will CONSUME: State(OK<UNKNOWN<AT_RISK<ALARM - user
-                decision: ALARM outranks UNKNOWN so a real fire is never masked by a missing-data area, while
-                UNKNOWN still beats OK so no false-green), Direction, frozen dataclasses (Trigger/AreaMetrics/
-                HealthMetrics/Verdict/Change/Trend), `area_verdict` (first-match from ReportCfg ONLY, no new
-                threshold; ABSOLUTE-FIRST - user decision: OK needs overdraw+shader+mesh present+passing, a
-                missing gpu_regression [trajectory, None on every 1-run build] does NOT block OK, shows as
-                Direction=UNKNOWN), `verdict` (state=max(area_verdicts)), `trend` (Direction nets the 4
-                headline metrics draws/gpu/overdraw/shader, improvements/regressions ledger). (2)
-                `reports/summary.py` - a print-first one-pager: verdict summary_bar + "N of M areas needs
-                attention - <worst>" scope + Direction tag + 4 AVERAGED KPIs (avg draws/frame, avg gpu/frame,
-                worst overdraw, worst shader; each a colored vs-prior %-pill + micro sparkline + grey total),
-                baseline-gated Movement card (Improvements/Regressions + resolved/new), worst-first By-area
-                table (all areas, per-area deltas + status), provenance footer. REUSES dashboard helpers (no
-                aggregates.py - G-26 deferred): NEW `_top_shaders_by_area`/`_top_meshes_by_area` (area-keyed
-                siblings), `_top_areas_gpu` 5th elem avg_gpu/frame, `_run_totals` factor-out of `_global_kpis`
-                - all byte-neutral for dashboard.build. (3) Discoverability: `summary` in cli._REPORTS +
-                all_reports() (orchestrator renders it top-level + per older run free), one `_NAV` "build
-                health" chip, promoted root-index link (summary excluded from the auto grid), chrome.header
-                comment. SYNTHETIC: 1 area, overdraw 75% -> ALARM ("Action needed") yet draws/gpu/shader all
-                dropped -> Direction improving (the dual-use read); the oldest per-run summary is the
-                no-baseline case (ALARM absolute + Direction unknown + Movement hidden). GOLDEN delta = 5 files
-                (recorded ADR-23, the c16q-doc said 4): new `_reports/summary.html` + new
-                `_reports/run/<k>/summary.html` + root `index.html` (promoted link + grid exclude) + the `_NAV`
-                chip on BOTH dashboards (top-level `_reports/index.html` AND per-run `run/<k>/index.html` -
-                same builder); everything else (6 reports + per-run copies, drill, catalog, A/B, _pagedata,
-                preview, parquet) BYTE-UNCHANGED; test_parquet_parity green, NO digest refresh (§21.9,
-                presentation only). 229 green (+35: test_health.py 22 + test_summary.py 13). lint exit 0;
-                `bobframes report summary` verb works; headless-Chrome print = ONE page (chrome hidden,
-                sparklines vector). QUALITY_GATES §21.1q corrected to the 5-file delta; G-24 ticked ☑ (G-25/26/
-                27/29 + H-40 remain deferred per their rows); rides ADR-39/37/23/35. NOW DO c16r
-                (commits/v025/c16r_head_assets_seam.md): the `head_assets(sink)` one-source-of-truth seam in
-                chrome + template - a ZERO-output refactor (all goldens byte-UNCHANGED, §21.1r). G-20 still
-                deferred (no 3+-run data). ADR-37 governs; SPA VOIDED.
-                NOTE: STATE was BEHIND - it still listed c16p_v02_closeout as current/not-started while
-                867dcc5 already committed the 0.2.0 bump + CHANGELOG on plan/v0.2.5. c16q was built on that.
-                Reconcile c16p's release bookkeeping (tag v0.2.0 / OIDC PyPI publish / GH Release / the FULL
-                real-Perf re-ingest) separately - it is NOT verified from this session.)
-last_session:   2026-06-04 — c16q DONE (health verdict module + exec one-pager; ADR-39; FIRST v0.2.5 commit;
+current:        c16s_package_verb    (status: not-started. c16r DONE 2026-06-04 - the `head_assets(sink)`
+                one-source-of-truth seam; ADR-41; a ZERO-output refactor; rides ADR-37/23. The chrome CSS/JS
+                boundary now routes through ONE seam so c16t's `package --shared-assets` can emit `_assets/`-
+                linked assets BY CONSTRUCTION (not by scraping rendered HTML, the rejected str.replace path).
+                As-built (a user-approved refinement of the doc's terse "string/tuple", recorded in the c16r
+                doc - rides ADR-41, no new ADR; precedent c16j): a uniform frozen `HeadAssets(head, body_js)`
+                return for BOTH page families (head -> <head>; body_js -> body end) + a per-family asset
+                MANIFEST `AssetFile(name, kind, content)` that is the SINGLE source of the (filename ->
+                content) pairing - `chrome.REPORT_ASSETS` (report.{css,js} -> `_compose_css`/`_compose_js`,
+                JS rides in the head so body_js='') and `template.CATALOG_ASSETS` (catalog.{css,js} -> `_CSS`
+                un-minified / `rdc_table_js`, engine script at body-end). `head_assets(REF, depth)` builds
+                depth-relative links FROM the manifest via the shared `AssetFile.ref_link(prefix)` (css ->
+                <link>, js -> <script DEFER src>) + `chrome.assets_prefix(depth)`; c16t writes each `_assets/*`
+                file FROM the same `content()` - so the `report.css` literal is never duplicated between link
+                and writer (the zero-drift property ADR-41 is built around). NEW `paths.ASSETS_DIR='_assets'`.
+                page_open + render_drop + render_root rewired to splice `ha.head`/`ha.body_js`; INLINE = today's
+                EXACT bytes -> ALL 15 HTML goldens + `_pagedata/*.js` + preview BYTE-UNCHANGED, NO golden
+                refresh (test_parity green BY CONSTRUCTION); test_parquet_parity untouched. 229 -> 237 green
+                (+8 `tests/test_head_assets.py`: INLINE byte-faithful incl. the page_open snapshot, REF depth-
+                correct d in {0,1,2,4} both families, manifest single-source). git scope = exactly 4 source
+                (paths/chrome/base/template) + 1 new test. §21.1r holds (already authored; generic wording
+                covers the HeadAssets/manifest shape). NOW DO c16s (commits/v025/c16s_package_verb.md): the
+                `package` verb (non-mutating STREAM, output OUTSIDE the read tree, NEVER --format; ADR-40
+                taxonomy) + the friendly single-file `<project>-<rundate>-summary.html` + the explorable
+                `<project>-<rundate>-report.zip` + README.txt + `--light`/`--inline`; default shared-assets is
+                c16t (builds on this seam). §21.1s. ADR-37 governs.
+                NOTE: c16p's release bookkeeping (tag v0.2.0 / OIDC PyPI publish / GH Release / the FULL
+                real-Perf re-ingest) is still UNRECONCILED - separate from the v0.2.5 spine, NOT verified this
+                session.)
+last_session:   2026-06-04 — c16r DONE (the `head_assets(sink)` seam; ADR-41; ZERO-output refactor; rides
+                ADR-37/23). ONE source of truth for the chrome CSS/JS boundary so c16t's `package --shared-
+                assets` emits `_assets/`-linked assets BY CONSTRUCTION (not HTML scraping). As-built is a
+                user-approved refinement of the c16r doc's terse "string/tuple" (recorded in the c16r doc -
+                rides ADR-41, NO new ADR; precedent: c16j's `_data/`->`_pagedata/`): a uniform frozen
+                `HeadAssets(head, body_js)` for BOTH families (head -> <head>, body_js -> body end; the report
+                family keeps CSS+JS adjacent in head so its body_js='') + a per-family asset MANIFEST
+                `AssetFile(name, kind, content)` = the SINGLE source of the (filename -> content) pairing.
+                `chrome.REPORT_ASSETS` (report.{css,js} -> `_compose_css`/`_compose_js`) +
+                `template.CATALOG_ASSETS` (catalog.{css,js} -> `_CSS` un-minified / `rdc_table_js`). REF links
+                are built FROM the manifest via the shared `AssetFile.ref_link(prefix)` (css -> <link>, js ->
+                <script DEFER src> - defer is mandatory: an in-head external script must run after body parse)
+                + `chrome.assets_prefix(depth)`; c16t writes each `_assets/*` file FROM the same `content()`,
+                so the `report.css` literal is never duplicated between link and writer (ADR-41's zero-drift).
+                NEW `paths.ASSETS_DIR='_assets'`; the two families keep DISTINCT files (report.css minified vs
+                catalog.css raw; engine JS in-head vs body-end - cannot merge). Rewired `page_open` +
+                `render_drop` + `render_root` to splice `ha.head`/`ha.body_js`. INLINE reproduces today's EXACT
+                bytes (the empty-JS guard preserved) -> ALL 15 HTML goldens + `_pagedata/*.js` + preview
+                BYTE-UNCHANGED, NO golden refresh (test_parity green BY CONSTRUCTION); test_parquet_parity
+                untouched. 229 -> 237 green (+8 `tests/test_head_assets.py`: INLINE byte-faithful incl. a
+                page_open head-slice snapshot anchored on the favicon literal [_FAVICON_HREF contains literal
+                '>'], REF depth-correct d in {0,1,2,4} BOTH families, manifest single-source). git scope =
+                exactly 4 source files (paths/chrome/base/template) + 1 new test - no golden/`_pagedata`/preview/
+                parquet touched. §21.1r holds (already authored; its generic wording covers the HeadAssets/
+                manifest shape). No new ADR (rides ADR-41). Commits on plan/v0.2.5 (UNPUSHED). current -> c16s.
+former_last_c16q: 2026-06-04 — c16q DONE (health verdict module + exec one-pager; ADR-39; FIRST v0.2.5 commit;
                 rides ADR-37/23/35). NEW `bobframes/health.py` (presentation-INDEPENDENT verdict/trend the c20
                 `--json` + c21 `report --gate` will consume): `State` ordered OK<UNKNOWN<AT_RISK<ALARM (user
                 decision - a real ALARM is never masked by a missing-data UNKNOWN area, yet UNKNOWN still beats
@@ -656,38 +670,24 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    c16o DONE (2026-06-03) - the G-23 a11y tail is CLOSED, so the WHOLE c16k-c16o table epic
-                (unification + truncation + a11y parity) is COMPLETE (ADR-38). A shared `wireSortHeader` helper
-                made the sort headers keyboard-operable (tabindex + Enter/Space) in BOTH modes; VTable now
-                announces aria-sort none->asc/desc (the c16l-noted virtual gap); the virtual filter `<input>`
-                gained an aria-label. Sort RESULT + row content UNCHANGED. 190 -> 191 green, parquet parity NO
-                digests refresh (§21.9), smoke lint clean, browser-verified offline (CDP, real Perf: tabindex +
-                aria-sort + focusable + Enter-sorts BOTH modes, search aria-label, expand-toggle, dark mode).
-                QUALITY_GATES §21.1p; ALL 15 HTML goldens + preview refreshed, _pagedata/digests/golden_parquet
-                byte-unchanged. G-23 a11y tail closed in FINDINGS; no new ADR. NOW DO c16p
-                (commits/v02/c16p_v02_closeout.md): the v0.2 CLOSE-OUT + RELEASE:
-                (1) FULL re-ingest of real Perf (NOT render-only - regenerates EVERY drill, clearing the stale
-                29MB inline-data OLDER-run drills render-only leaves; exercises R-16 adb-handle commit + R-17
-                replay crash-on-teardown salvage; re-test the 6 manual-flipped r110788 captures). Working root
-                C:\tmp\perf (hardlinks; Downloads read-only). Replay ~150-220s/capture, sequential. Eyeball all
-                reports + drills (light+dark); counts stable where extraction unchanged (§21.9).
-                (2) version 0.1.0->0.2.0 (_version.py; provenance strip omits version so golden-safe); CHANGELOG
-                (1) FULL re-ingest of real Perf (NOT render-only - regenerates EVERY drill, clearing the stale
-                29MB inline-data OLDER-run drills render-only leaves; exercises R-16 adb-handle commit + R-17
-                replay crash-on-teardown salvage; re-test the 6 manual-flipped r110788 captures). Working root
-                C:\tmp\perf (hardlinks; Downloads read-only). Replay ~150-220s/capture, sequential. Eyeball all
-                reports + drills (light+dark); counts stable where extraction unchanged (§21.9).
-                (2) version 0.1.0->0.2.0 (_version.py; provenance strip omits version so golden-safe); CHANGELOG
-                [Unreleased]->[0.2.0] summarizing c04-c16o; lint CHANGELOG.
-                (3) PUSH branch -> CI GREEN on the FULL matrix (FIRST CI run for c04-c16o; 48 commits ahead of
-                origin/main, never matrix-validated). (4) MERGE v0.2-roadmap-c04 -> main. (5) TAG v0.2.0 (outward
-                + IRREVERSIBLE - AUTHORIZE FIRST) -> OIDC publish (c19 path) -> PyPI + GH Release -> post-install verify.
+next_action:    c16r DONE (2026-06-04) - the `head_assets(sink)` seam (ADR-41), a ZERO-output refactor:
+                ONE source of truth for the chrome CSS/JS boundary (uniform `HeadAssets(head, body_js)` + a
+                per-family asset MANIFEST `AssetFile(name, kind, content)`; REF links built FROM the manifest,
+                c16t writes files FROM the same manifest - zero-drift). INLINE = today's exact bytes -> all
+                goldens byte-UNCHANGED, NO refresh; 237 green (+8 test_head_assets); git scope = 4 source + 1
+                test. NOW DO c16s (commits/v025/c16s_package_verb.md): the `package` verb (non-mutating STREAM,
+                output OUTSIDE the read tree, NEVER --format - ADR-40 taxonomy) + the friendly single-file
+                `<project>-<rundate>-summary.html` + the explorable `<project>-<rundate>-report.zip` +
+                README.txt + `--light`/`--inline`; default shared-assets builds on the c16r seam at c16t.
+                §21.1s. Spine: c16s -> c16t -> c16u -> c16v -> c16x (component system, ADR-42) -> c16w close-out.
                 THEN c20 (--json output, v0.3): open commits/v03/c20_json_output.md and do exactly that one
                 commit. NOTE for c27/c35: the c09 classifier is already STATE-CAPABLE (when{} over any draw
                 column), so the state-first generic preset (D-10) is a preset not a rewrite; c35 removes the
-                zeroed passes.draws_by_class_* + slims passes (D-11a). GIT: still on branch v0.2-roadmap-c04
-                (off main; c07 + c08 + c09 + c10 + c16 + c16b-c16l UNPUSHED). Post-release nit
-                (non-blocking): bump CI actions off Node20 (checkout@v5/setup-python@v6 before 2026-06-16).
+                zeroed passes.draws_by_class_* + slims passes (D-11a). GIT: on branch plan/v0.2.5 (off main;
+                c16q + c16r + the v0.2.5 scope/grammar commits UNPUSHED). UNRECONCILED: c16p's release
+                bookkeeping (tag v0.2.0 / OIDC PyPI publish / GH Release / FULL real-Perf re-ingest), separate
+                from the spine. Post-release nit (non-blocking): bump CI actions off Node20
+                (checkout@v5/setup-python@v6 before 2026-06-16).
 DONE-2026-05-31: c19 — bobframes 0.1.0 PUBLISHED. tag v0.1.0 -> CI publish job green (OIDC trusted
                 publishing, ubuntu). Live on PyPI (wheel + sdist) + GitHub Release with both assets.
                 Post-install verify from a clean PyPI install: version (0.1.0 schema 3 pyarrow 21.0.0),
@@ -796,6 +796,13 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-04 — c16r DONE (head_assets seam; ADR-41; ZERO-output refactor). Uniform `HeadAssets(head, body_js)`
+  + per-family asset MANIFEST `AssetFile(name, kind, content)` (chrome.REPORT_ASSETS / template.CATALOG_ASSETS)
+  as the SINGLE source of the (filename->content) pairing; `head_assets(REF)` links FROM it via
+  `AssetFile.ref_link` + `assets_prefix(depth)`, c16t writes files FROM it. INLINE = today's exact bytes ->
+  all goldens byte-UNCHANGED, NO refresh; 229 -> 237 green (+8 test_head_assets); git scope = 4 source + 1 test.
+  paths.ASSETS_DIR='_assets'. As-built refines the doc's terse string/tuple (recorded in c16r doc; rides ADR-41,
+  no new ADR). §21.1r holds. current -> c16s.
 - 2026-06-04 — SCOPE: added c16x (component system) to v0.2.5 + ADR-42 + FINDINGS G-30. c16q's one-pager
   CSS shipped brute-forced (page-scoped inline `<style>` + bespoke `_kpi`/`_trendline`; a typo'd
   `var(--sp-5)` silently zeroed padding) - c16x introduces server-side `chrome` components + ONE owned

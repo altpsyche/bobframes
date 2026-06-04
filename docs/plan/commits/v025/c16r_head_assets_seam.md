@@ -40,5 +40,26 @@ c16q. Touches `reports/chrome.py` (`page_open`) and `html/template.py` (its `_CS
 - `pytest tests/test_head_assets.py` green: INLINE == prior bytes; REF depth-correct, both families.
 - QUALITY_GATES §21.1r added.
 
+## Built (refinement, recorded per ADR-23 - rides ADR-41, no new ADR)
+The terse "returns a single string / tuple" above under-described ADR-41's one-source-of-truth intent;
+the as-built seam (user-approved) is shaped to fulfil it literally (precedent: c16j's
+`_data/`->`_pagedata/` doc-refinement):
+- A uniform frozen **`HeadAssets(head, body_js)`** return for BOTH families (in `chrome.py`,
+  re-exported via `base`): `head` -> `<head>`, `body_js` -> body end. The report family
+  (`page_open`) keeps CSS+JS adjacent in the head so its `body_js` is `''`; the catalog/drill family
+  keeps the engine `<script>` at body-end in `body_js`. INLINE bytes are unchanged either way.
+- A per-family **asset manifest** `AssetFile(name, kind, content)` - `chrome.REPORT_ASSETS`
+  (`report.{css,js}` -> `_compose_css`/`_compose_js`) and `template.CATALOG_ASSETS`
+  (`catalog.{css,js}` -> `_CSS`/`rdc_table_js`). `head_assets(REF)` builds links FROM the manifest
+  via `AssetFile.ref_link(prefix)` (the shared css->`<link>` / js->`<script defer src>` contract) and
+  `chrome.assets_prefix(depth)` (the shared `'../'*depth + _assets/` math); c16t writes each file from
+  the SAME manifest's `content()`. The `(filename -> content)` pairing lives once - the `report.css`
+  literal is never duplicated between the link and the writer (the drift ADR-41 designs out).
+- `paths.ASSETS_DIR = '_assets'`. Recommended REF anchor (c16t's final call): one `<root>/_assets/`
+  holding all 4 distinct files, `depth` = page->root levels.
+
+Done: 237 green (+8 `tests/test_head_assets.py`); `test_parity` green with NO golden refresh; git
+scope = 4 source files + the new test (no golden/`_pagedata`/preview/parquet touched). §21.1r holds.
+
 ## Closes
 (none) - enables c16t. Next: c16s (the `package` verb + the friendly bundle).

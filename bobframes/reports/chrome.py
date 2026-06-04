@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import base64 as _base64
+import enum as _enum
 import html as _html
 import string as _string
+from dataclasses import dataclass as _dataclass
 from importlib.resources import files as _files
+from typing import Callable as _Callable
 
 from . import formatters as _f
 from . import _tokens
+from .. import paths as _paths
 from ..derives import classifier as _classifier
 
 
@@ -1076,6 +1080,90 @@ def components_js() -> str:
 
 
 # ---------------------------------------------------------------------------
+# The head-asset seam (c16r, ADR-41). ONE source of truth for the page's chrome CSS/JS boundary so
+# `bobframes package --shared-assets` (c16t) can emit `_assets/`-linked assets BY CONSTRUCTION rather
+# than scraping rendered HTML. Two sinks: INLINE (the render default - byte-identical to today; ADR-37
+# single-file default stands) and REF (depth-relative `<link>`/`<script defer src>` into `_assets/`).
+#
+# The (filename -> content) pairing lives ONCE, in the per-family manifest (REPORT_ASSETS here; the
+# catalog/drill family's CATALOG_ASSETS in html/template.py). head_assets(REF) builds links FROM the
+# manifest and c16t writes each `_assets/*` file FROM the same manifest - zero-drift by construction,
+# no duplicated `report.css` literal a later rename could split (the property ADR-41 demands).
+# ---------------------------------------------------------------------------
+
+
+class AssetSink(_enum.Enum):
+    """Where a page's chrome CSS/JS goes (c16r, ADR-41)."""
+    INLINE = 'inline'   # rendered inline; the render default - byte-identical to pre-c16r output
+    REF = 'ref'         # depth-relative links into `_assets/` (consumed at c16t)
+
+
+@_dataclass(frozen=True)
+class AssetFile:
+    """One extractable chrome asset: its `_assets/` filename, kind, and a lazy content producer.
+
+    `content()` is called once by c16t to write the file; head_assets(REF) only needs `name`+`kind`.
+    Keeping the producer here makes the manifest the single source of the filename->content pairing.
+    """
+    name: str                     # e.g. 'report.css'
+    kind: str                     # 'css' | 'js'
+    content: _Callable[[], str]   # e.g. _compose_css
+
+    def ref_link(self, prefix: str) -> str:
+        """The REF-sink `<link>`/`<script defer src>` for this asset (ASCII, file://-safe). Shared
+        by both page families so the link contract (css->stylesheet link, js->DEFERRED external
+        script) lives once. `defer` is required: an external script in `<head>` must run AFTER body
+        parse (the components are DOM-ready-safe; mirrors the `_pagedata` defer pattern)."""
+        href = f'{prefix}{self.name}'
+        if self.kind == 'css':
+            return f'<link rel="stylesheet" href="{href}">'
+        return f'<script defer src="{href}"></script>'
+
+
+@_dataclass(frozen=True)
+class HeadAssets:
+    """The chrome-asset markup for one page, split by where it is placed in the document.
+
+    `head` is spliced into `<head>`; `body_js` at the end of `<body>`. The report family (page_open)
+    puts CSS+JS adjacent in the head, so its `body_js` is '' and both pieces ride in `head`. The
+    catalog/drill family (template.py) keeps the engine `<script>` at body-end, so it fills `body_js`.
+    """
+    head: str
+    body_js: str
+
+
+# The report family's asset manifest (page_open: reports, dashboard, A/B, per-run, summary, preview).
+REPORT_ASSETS = (
+    AssetFile('report.css', 'css', _compose_css),
+    AssetFile('report.js', 'js', _compose_js),
+)
+
+
+def assets_prefix(depth: int) -> str:
+    """Depth-relative `_assets/` href prefix, e.g. `../../_assets/` at depth 2 (c16r, ADR-41).
+    Shared by both page families' REF sinks so the depth->prefix math lives once."""
+    return ('../' * depth) + _paths.ASSETS_DIR + '/'
+
+
+def head_assets(sink: 'AssetSink', depth: int = 0) -> 'HeadAssets':
+    """The report family's head-asset markup for `sink` (c16r, ADR-41).
+
+    INLINE reproduces today's exact `page_open` bytes: `<style>{_compose_css()}</style>` immediately
+    followed by `<script>{_compose_js()}</script>` (the JS tag omitted iff the composed JS is empty -
+    today's guard, preserved so the refactor is provably byte-faithful). REF emits depth-relative
+    `_assets/report.{css,js}` links built from REPORT_ASSETS. `body_js` is always '' for this family
+    (the JS rides in the head, adjacent to the CSS).
+    """
+    if sink is AssetSink.INLINE:
+        js = _compose_js()
+        script = f'<script>{js}</script>' if js else ''
+        return HeadAssets(head=f'<style>{_compose_css()}</style>{script}', body_js='')
+    prefix = assets_prefix(depth)
+    head = ''.join(a.ref_link(prefix) for a in REPORT_ASSETS)
+    return HeadAssets(head=head, body_js='')
+
+
+# ---------------------------------------------------------------------------
 # rdc-table: the ONE bespoke table engine (c16k build + c16l rollout, ADR-38). It SUBSUMED both the
 # old catalog/drill VTable and the reports' rdc-sortable-table (now deleted - G-23 fully resolved).
 # Progressive-enhancement, two data-delivery modes picked by data-mode:
@@ -1998,8 +2086,9 @@ def page_open(title: str, *, hdr_offset_px: int | None = None,
     The rdc-table engine CSS+JS ship in the shared bundle (_compose_css/_compose_js) for EVERY page
     (c16l, ADR-38 — every report now hosts a STATIC <rdc-table>); the c16k opt-in is gone.
     """
-    js = _compose_js()
-    script = f'<script>{js}</script>' if js else ''
+    # Chrome CSS/JS routed through the c16r head_assets seam (ADR-41); INLINE is byte-identical to the
+    # pre-c16r `<style>{_compose_css()}</style>{script}` pair (body_js is '' for the report family).
+    ha = head_assets(AssetSink.INLINE)
     attrs: list[str] = []
     if hdr_offset_px is not None:
         attrs.append(f'style="--hdr-offset: {int(hdr_offset_px)}px"')
@@ -2009,8 +2098,7 @@ def page_open(title: str, *, hdr_offset_px: int | None = None,
     return (f'<!doctype html><html lang="en"><head><meta charset="utf-8">'
             f'<title>{_html.escape(title)}</title>'
             f'<link rel="icon" href="{_FAVICON_HREF}">'
-            f'<style>{_compose_css()}</style>'
-            f'{script}</head><body{body_attr_str}>'
+            f'{ha.head}{ha.body_js}</head><body{body_attr_str}>'
             f'{_ICON_SPRITE}')
 
 

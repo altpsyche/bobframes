@@ -295,6 +295,36 @@ def _compose_css() -> str:
 
 _CSS = _compose_css()
 
+
+# The catalog/drill family's asset manifest + head-asset seam (c16r, ADR-41). Distinct from the report
+# family's REPORT_ASSETS (chrome.py): catalog.css is `_CSS` served UN-minified (the c16i substring
+# guards parse it raw) and the engine JS sits at body-end, not in `<head>`. The (filename -> content)
+# pairing lives ONCE here; head_assets(REF) links from it and c16t writes the files from it.
+CATALOG_ASSETS = (
+    reports_base.AssetFile('catalog.css', 'css', lambda: _CSS),
+    reports_base.AssetFile('catalog.js', 'js', reports_base.rdc_table_js),
+)
+
+
+def head_assets(sink: reports_base.AssetSink, depth: int = 0) -> reports_base.HeadAssets:
+    """The catalog/drill family's head-asset markup for `sink` (c16r, ADR-41).
+
+    INLINE reproduces today's exact bytes: `<style>{_CSS}</style>` in the head and the engine
+    `<script>{rdc_table_js()}</script>` at body-end (so `head` + `body_js` are placed at their two
+    distinct document positions by the caller). REF emits depth-relative `_assets/catalog.{css,js}`
+    built from CATALOG_ASSETS (the css `<link>` in the head, the deferred js script at body-end).
+    """
+    if sink is reports_base.AssetSink.INLINE:
+        return reports_base.HeadAssets(
+            head=f'<style>{_CSS}</style>',
+            body_js=f'<script>{reports_base.rdc_table_js()}</script>',
+        )
+    prefix = reports_base.assets_prefix(depth)
+    css = next(a for a in CATALOG_ASSETS if a.kind == 'css')
+    js = next(a for a in CATALOG_ASSETS if a.kind == 'js')
+    return reports_base.HeadAssets(head=css.ref_link(prefix), body_js=js.ref_link(prefix))
+
+
 # The virtual-scroll table engine moved to reports/chrome.py as the unified `rdc-table` (c16k,
 # ADR-38): one bespoke engine serves BOTH the catalog/drill virtual mode (windowed, data from
 # _pagedata/*.js) and the reports' static mode (server-baked rows, JS enhances in place). Catalog
@@ -549,10 +579,14 @@ def render_drop(drill_dir: str, *, data_dir: str,
         {'label': 'tables',      'value': reports_base.fmt_int(len(table_specs))},
     ]
 
+    # Chrome CSS/JS routed through the c16r head_assets seam (ADR-41); INLINE is byte-identical to the
+    # pre-c16r inline `<style>` (head) + body-end engine `<script>` (the two are spliced at their own
+    # document positions: ha.head here, ha.body_js just before </body>).
+    ha = head_assets(reports_base.AssetSink.INLINE)
     parts = ['<!doctype html><html lang="en"><head><meta charset="utf-8">']
     parts.append(f'<title>{_h(area)} {_h(drop_date)}</title>')
     parts.append(f'<link rel="icon" href="{reports_base._FAVICON_HREF}">')
-    parts.append(f'<style>{_CSS}</style></head>'
+    parts.append(f'{ha.head}</head>'
                  f'<body data-page-kind="drop-browser" style="--hdr-offset: 120px">')
 
     parts.append(f'<h1>{_h(area)} / {_h(drop_key)}</h1>')
@@ -614,7 +648,7 @@ def render_drop(drill_dir: str, *, data_dir: str,
 
     parts.append(f'<script>window.__labels={labels_json};</script>')
     parts.extend(data_refs)
-    parts.append(f'<script>{reports_base.rdc_table_js()}</script>')
+    parts.append(ha.body_js)
     parts.append('</body></html>')
 
     out_path = os.path.join(drill_dir, 'index.html')
@@ -662,10 +696,13 @@ def render_root(root: str) -> str:
 
     payload = {'cols': cols, 'rows': rows, 'labelCols': {}}
 
+    # Chrome CSS/JS via the c16r head_assets seam (ADR-41); INLINE byte-identical (ha.head in the
+    # head, ha.body_js at body-end before </body>).
+    ha = head_assets(reports_base.AssetSink.INLINE)
     parts = ['<!doctype html><html lang="en"><head><meta charset="utf-8">']
     parts.append('<title>capture analysis catalog</title>')
     parts.append(f'<link rel="icon" href="{reports_base._FAVICON_HREF}">')
-    parts.append(f'<style>{_CSS}</style></head><body style="--hdr-offset: 120px">')
+    parts.append(f'{ha.head}</head><body style="--hdr-offset: 120px">')
     parts.append('<header class="strip">')
     parts.append(f'<span>built <strong>{_h(summary.get("build_timestamp", ""))}</strong></span>')
     parts.append(f'<span>drops <strong>{summary.get("drop_count", 0)}</strong></span>')
@@ -773,7 +810,7 @@ def render_root(root: str) -> str:
     parts.append('<script>window.__colgroups_catalog='
                  f'{json.dumps(_catalog_col_groups(cols), separators=(",", ":"))};</script>')
     parts.append(f'<script>window.__labels={{}};</script>')
-    parts.append(f'<script>{reports_base.rdc_table_js()}</script>')
+    parts.append(ha.body_js)
     parts.append('</body></html>')
 
     out_path = root_index
