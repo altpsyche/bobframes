@@ -62,7 +62,9 @@ def _drop_dir_for(drops: list, drop_date, drop_label, area) -> str:
 
 
 def build(root: str, *, drops: list | None = None, ab=None,
-          run_label=None, run_date=None) -> str:
+          run_label=None, run_date=None,
+          sink: base.AssetSink = base.AssetSink.INLINE,
+          build_ts: str | None = None) -> str:
     if drops is None:
         drops = base.discover_drops(root)
     # Run model (ADR-35): live candidates are meshes drawn in the CURRENT run; prior runs supply the
@@ -345,8 +347,8 @@ def build(root: str, *, drops: list | None = None, ab=None,
     return base.write_report(out_path, [base.report_page(
         'instancing opportunities', parts,
         drops=len(drops), captures=sum(d.n_captures for d in drops),
-        build_ts=base.now_iso(), crumb_depth=base.crumb_depth(ab, run=rc),
-        ab=ab, root=root, report_key='instancing_opportunities',
+        build_ts=build_ts or base.now_iso(), crumb_depth=base.crumb_depth(ab, run=rc),
+        ab=ab, root=root, report_key='instancing_opportunities', sink=sink,
         kpis=kpis, run=rc,
         device=base.provenance_strip(*base.newest_drop_provenance(root, [cur] if cur else [])))])
 

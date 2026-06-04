@@ -8,9 +8,14 @@ that tree, two friendly artifacts:
   * ``<project>-<rundate>-summary.html`` -- a standalone, self-contained copy of the exec one-pager
     (c16q) you can email / double-click / print to PDF with no unzip.
 
-c16s delivery is INLINE (each page self-contained -- exactly today's render bytes, so the HTML transform
-is an identity copy). ``--shared-assets`` (the deduped ``_assets/`` bundle) lands at c16t and ``--redact``
-at c16u; their flags arrive WITH their implementations. No new dependency -- stdlib ``zipfile`` only; the
+Delivery is **shared-assets by default** (c16t, ADR-41): the ~95 KB of chrome (font + CSS + JS) lives once
+per page-family under ``_assets/`` and every page links it depth-relative, collapsing the cross-page
+duplication a zip's per-entry DEFLATE cannot. The REF form is produced BY THE RENDER SEAM (``head_assets``)
+-- `package` re-renders the tree with ``sink=REF`` into a temp staging dir, READING source data (parquet,
+the existing per-drop cache, manifests) from ``<root>`` and WRITING only the staging HTML/``_pagedata`` (so
+``<root>`` is never touched; ``_data`` is streamed raw into the zip). ``--inline`` opts out and reproduces
+the c16s self-contained-per-page bundle (a fast identity copy). The standalone summary stays INLINE in both
+modes. ``--redact`` lands at c16u. No new dependency -- stdlib ``zipfile``/``tempfile``/``shutil`` only; the
 zip is reproducible (fixed entry timestamps + pinned DEFLATE), so the gate reads the tree back out rather
 than byte-comparing zip bytes (zlib/Python variance, ADR-40).
 """
@@ -18,6 +23,8 @@ from __future__ import annotations
 
 import logging
 import os
+import shutil
+import tempfile
 import zipfile
 
 from . import paths as _paths
@@ -48,7 +55,7 @@ class PackageError(BobFramesError):
 
 
 def build(root: str, *, out: str | None = None, light: bool = False,
-          summary_file: bool = True, stage: bool = False,
+          inline: bool = False, summary_file: bool = True, stage: bool = False,
           run: str | None = None) -> tuple[str, str]:
     """Package an already-rendered ``<root>`` into ``(zip_path, summary_path)``, both OUTSIDE ``<root>``.
 
@@ -57,6 +64,11 @@ def build(root: str, *, out: str | None = None, light: bool = False,
     bundles only ``index.html`` + the top-level ``_reports/*.html`` (no drill / ``_pagedata`` / ``_data``).
     ``summary_file=False`` skips the standalone one-pager (``summary_path`` is then ``''``). ``stage=True``
     also materializes the bundle tree to a sibling ``.stage`` dir for inspection.
+
+    Delivery (c16t, ADR-41): the DEFAULT is the deduped shared-asset bundle -- the tree is re-rendered
+    with the REF sink into a temp staging dir, ``_assets/`` written once per family, ``_data`` streamed
+    raw from ``<root>``. ``inline=True`` (and ``light``, which is inherently self-contained) take the
+    c16s identity-copy path instead. The standalone summary is INLINE (a verbatim source copy) regardless.
     """
     root = os.path.abspath(root)
     from .reports import discovery
@@ -109,23 +121,38 @@ def build(root: str, *, out: str | None = None, light: bool = False,
                 f'no rendered summary at {src_summary}; run `bobframes render` first '
                 f'(or pass --no-summary-file)')
 
-    entries = _collect(root, light=light)
+    # Bundle entries as (rel, abspath). Default = shared-assets: re-render the REF form into a temp
+    # staging dir (reading <root>, writing staging) and stream _data raw from <root>; `--inline`/`--light`
+    # keep the c16s identity copy of the live <root>. Staging lives only long enough to read its files
+    # into the zip, then is removed (the zip is the artifact; `--stage` extracts the zip, not staging).
+    shared = not inline and not light
+    staging: str | None = None
+    try:
+        if shared:
+            staging = tempfile.mkdtemp(prefix=f'{topdir}.', dir=out_dir)
+            _render_shared(root, staging, build_ts=rundate)
+            entries = _collect_shared(root, staging)
+        else:
+            entries = _collect(root, light=light)
 
-    # Reproducible zip: fixed arcname order, fixed entry timestamps, pinned DEFLATE, per-entry writestr;
-    # one file read into memory at a time (memory stays O(largest file), not O(tree)).
-    items: list[tuple[str, str | None, bytes | None]] = [
-        (f'{topdir}/{README_NAME}', None, README_TEXT.encode('ascii'))]
-    items += [(f'{topdir}/{rel}', src, None) for rel, src in entries]
-    file_count = 0
-    with zipfile.ZipFile(zip_path, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
-        for arc, src, data in sorted(items, key=lambda t: t[0]):
-            if data is None:
-                with open(src, 'rb') as f:
-                    data = f.read()
-            zi = zipfile.ZipInfo(arc, date_time=_ZIP_DATE)
-            zi.compress_type = zipfile.ZIP_DEFLATED
-            zf.writestr(zi, data)
-            file_count += 1
+        # Reproducible zip: fixed arcname order, fixed entry timestamps, pinned DEFLATE, per-entry
+        # writestr; one file read into memory at a time (memory stays O(largest file), not O(tree)).
+        items: list[tuple[str, str | None, bytes | None]] = [
+            (f'{topdir}/{README_NAME}', None, README_TEXT.encode('ascii'))]
+        items += [(f'{topdir}/{rel}', src, None) for rel, src in entries]
+        file_count = 0
+        with zipfile.ZipFile(zip_path, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
+            for arc, src, data in sorted(items, key=lambda t: t[0]):
+                if data is None:
+                    with open(src, 'rb') as f:
+                        data = f.read()
+                zi = zipfile.ZipInfo(arc, date_time=_ZIP_DATE)
+                zi.compress_type = zipfile.ZIP_DEFLATED
+                zf.writestr(zi, data)
+                file_count += 1
+    finally:
+        if staging is not None:
+            shutil.rmtree(staging, ignore_errors=True)
 
     if summary_file:
         with open(src_summary, 'rb') as f:
@@ -142,9 +169,10 @@ def build(root: str, *, out: str | None = None, light: bool = False,
 
     dup = _duplicated_chrome_bytes(entries)
     bundle_bytes = os.path.getsize(zip_path)
+    chrome_note = (f'{dup} duplicated-chrome bytes reclaimed by shared-assets (default)' if shared
+                   else f'{dup} duplicated-chrome bytes inlined (the default shared bundle dedupes these)')
     log.info(
-        f'packaged {file_count} files, {bundle_bytes} bytes; '
-        f'{dup} duplicated-chrome bytes (deduped by shared-assets, c16t); '
+        f'packaged {file_count} files, {bundle_bytes} bytes; {chrome_note}; '
         f'summary {summary_path or "(skipped)"}; zip {zip_path}')
 
     return zip_path, summary_path
@@ -221,6 +249,130 @@ def _duplicated_chrome_bytes(entries: list[tuple[str, str]]) -> int:
         else:
             n_rep += 1
     return max(0, n_rep - 1) * rep + max(0, n_cat - 1) * cat
+
+
+def _render_shared(root: str, staging: str, *, build_ts: str) -> None:
+    """Re-render the tree in REF (shared-asset) form into ``staging`` (c16t, ADR-41).
+
+    ``_data`` is copied RAW into ``staging`` (no derive -> parquet bytes verbatim -> digests match the
+    source) so the re-render reads AND links within ONE tree: the relative drill / CSV / parquet links
+    resolve INSIDE the bundle (a decoupled out-dir would make them escape into the source tree). The
+    whole tree is then rendered with ``sink=REF``; ``build_ts`` pins a deterministic "built" stamp on
+    the report family so two packages are byte-identical (the standalone summary + the ``--inline`` copy
+    keep the source wall-clock stamp -- ADR-23 records the divergence). ``<root>`` is only ever READ.
+    """
+    from .reports import ab as _ab, base as _rbase, discovery as _disc, orchestrator as _orch
+    from .html import template as _template
+    from . import manifest as _manifest
+    REF = _rbase.AssetSink.REF
+
+    src_data = _paths.data_root(root)
+    if os.path.isdir(src_data):
+        shutil.copytree(src_data, _paths.data_root(staging))
+
+    def _silent(_msg: str) -> None:
+        pass
+
+    rc = _orch.render_all_reports(staging, _silent, sink=REF, build_ts=build_ts)
+    if rc != 0:
+        raise PackageError(
+            f'shared re-render of {root!r} failed; cannot build a deduped bundle (try --inline)')
+
+    # Drill pages: mirror the existing per-(area, drop) set so the bundle reproduces EXACTLY the source
+    # set (orchestrator renders reports/dashboard/per-run/root, never drill). render_drop reads + links
+    # within staging; every kwarg comes from the drop's manifest, so the bytes match the source render.
+    for area, drop, rel in _drill_index_rels(root):
+        data_dir = _paths.drop_data_dir(staging, area, drop)
+        if not os.path.isfile(os.path.join(data_dir, _paths.MANIFEST_NAME)):
+            continue
+        m = _manifest.read_manifest(data_dir)
+        drill_dir = _paths.drop_drill_dir(staging, area, drop)
+        os.makedirs(drill_dir, exist_ok=True)
+        _template.render_drop(
+            drill_dir, data_dir=data_dir,
+            area=m.get('area', area), drop_date=m.get('drop_date', ''),
+            drop_label=m.get('drop_label', ''),
+            captures=m.get('captures') or [], schema_version=m.get('schema_version', 0),
+            build_timestamp=m.get('build_timestamp', ''), row_counts=m.get('row_counts') or {},
+            sink=REF, depth=rel.count('/'))
+
+    # A/B pairs: render-only never emits ab/, so this is usually a no-op. When present, resolve each
+    # <baselineKey>_vs_<compareKey> dir back to its DropSets and re-render REF; an unresolvable pair is
+    # logged + omitted (never silently mislabeled -- ADR-23), so use --inline to bundle it verbatim.
+    ab_root = os.path.join(_paths.reports_dir(root), _paths.AB_DIR)
+    if os.path.isdir(ab_root):
+        by_key = {d.key: d for d in _disc.discover_drops(staging)}
+        for pair in sorted(os.listdir(ab_root)):
+            if not os.path.isdir(os.path.join(ab_root, pair)):
+                continue
+            bkey, _sep, ckey = pair.partition('_vs_')
+            baseline, compare = by_key.get(bkey), by_key.get(ckey)
+            if not baseline or not compare:
+                log.warning(
+                    f'package: A/B pair {pair!r} could not be resolved; its pages are omitted from the '
+                    f'shared bundle (use --inline to bundle them verbatim)')
+                continue
+            _ab.render_pair(staging, baseline, compare, sink=REF, build_ts=build_ts)
+
+    _write_assets(staging)
+
+
+def _write_assets(staging: str) -> None:
+    """Write the per-family shared chrome assets under ``staging/_assets/`` from the manifests (c16t).
+
+    Each file's bytes ARE the composer output the REF heads link to (``AssetFile.content()``), so the
+    asset boundary is one source of truth -- zero drift, no scrape (ADR-41). Two families, distinct
+    files: ``report.{css,js}`` (page_open family) + ``catalog.{css,js}`` (template family).
+    """
+    from .reports import chrome as _chrome
+    from .html import template as _template
+    assets_dir = os.path.join(staging, _paths.ASSETS_DIR)
+    os.makedirs(assets_dir, exist_ok=True)
+    for a in (*_chrome.REPORT_ASSETS, *_template.CATALOG_ASSETS):
+        with open(os.path.join(assets_dir, a.name), 'w', encoding='utf-8') as f:
+            f.write(a.content())
+
+
+def _drill_index_rels(root: str) -> list[tuple[str, str, str]]:
+    """Existing per-drop browser pages as ``(area, drop, rel)`` (``rel`` relative to ``<root>``).
+
+    Mirrors ``<root>/_reports/drill/<area>/<drop>/index.html`` so the shared re-render reproduces the
+    EXACT drill set in the source tree (robust to a ``_data``-only tree / cleaned raw ``.rdc`` inputs).
+    """
+    out: list[tuple[str, str, str]] = []
+    drill_root = os.path.join(_paths.reports_dir(root), _paths.DRILL_DIR)
+    if not os.path.isdir(drill_root):
+        return out
+    for dirpath, _dirs, files in os.walk(drill_root):
+        if _paths.INDEX_HTML not in files:
+            continue
+        rel = os.path.relpath(os.path.join(dirpath, _paths.INDEX_HTML), root).replace('\\', '/')
+        parts = rel.split('/')  # _reports / drill / <area> / <drop> / index.html
+        if len(parts) == 5:
+            out.append((parts[2], parts[3], rel))
+    return out
+
+
+def _collect_shared(root: str, staging: str) -> list[tuple[str, str]]:
+    """The shared bundle's source files as ``(rel, abspath)``.
+
+    The whole tree (REF HTML + ``_pagedata`` + the raw ``_data`` copy) was rendered into ``staging``,
+    so reuse ``_collect`` over it; then add the shared ``_assets/*`` (which ``_collect``'s
+    html/_pagedata/_data filter does not match) and the optional ``_reports/_chrome_preview.html`` (the
+    preview gallery is produced by `bobframes preview`, not the orchestrator -> copy it raw from ``<root>``
+    so the shared file-set matches ``--inline``).
+    """
+    out = _collect(staging, light=False)
+    assets_dir = os.path.join(staging, _paths.ASSETS_DIR)
+    if os.path.isdir(assets_dir):
+        for fn in sorted(os.listdir(assets_dir)):
+            ap = os.path.join(assets_dir, fn)
+            if os.path.isfile(ap):
+                out.append((f'{_paths.ASSETS_DIR}/{fn}', ap))
+    preview = os.path.join(_paths.reports_dir(root), '_chrome_preview.html')
+    if os.path.isfile(preview):
+        out.append((f'{_paths.REPORTS_DIR}/_chrome_preview.html', preview))
+    return out
 
 
 def _ensure_outside(out_dir: str, root: str) -> None:

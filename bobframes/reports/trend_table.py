@@ -331,15 +331,17 @@ def _class_count_matrix(per_drop_area_class: list, areas: list,
             + '</rdc-sticky-h2>')
 
 
-def build(root: str, *, drops: list | None = None, ab=None) -> str:
+def build(root: str, *, drops: list | None = None, ab=None,
+          sink: base.AssetSink = base.AssetSink.INLINE,
+          build_ts: str | None = None) -> str:
     if drops is None:
         drops = base.discover_drops(root)
     if not drops:
         out_path = base.output_path(root, 'trend_table', ab)
         with open(out_path, 'w', encoding='utf-8') as f:
-            f.write(base.page_open('trend table'))
+            f.write(base.page_open('trend table', sink=sink, depth=base.crumb_depth(ab)))
             f.write(base.header('trend table', drops=0, captures=0,
-                                build_ts=base.now_iso()))
+                                build_ts=build_ts or base.now_iso()))
             f.write(base.empty_state('no drops found in catalog'))
             f.write(base.page_close())
         base._lint_or_raise(out_path)
@@ -483,8 +485,8 @@ def build(root: str, *, drops: list | None = None, ab=None) -> str:
     return base.write_report(out_path, [base.report_page(
         'trend table', parts,
         drops=len(drops), captures=sum(d.n_captures for d in drops),
-        build_ts=base.now_iso(), crumb_depth=base.crumb_depth(ab),
-        body_attrs=body_attrs, kpis=kpis,
+        build_ts=build_ts or base.now_iso(), crumb_depth=base.crumb_depth(ab),
+        body_attrs=body_attrs, kpis=kpis, sink=sink,
         device=base.provenance_strip(*base.newest_drop_provenance(root, drops)))])
 
 

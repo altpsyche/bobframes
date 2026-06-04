@@ -2076,7 +2076,8 @@ def class_color_var(cls: str) -> str:
 
 
 def page_open(title: str, *, hdr_offset_px: int | None = None,
-              body_attrs: dict | None = None) -> str:
+              body_attrs: dict | None = None,
+              sink: 'AssetSink' = AssetSink.INLINE, depth: int = 0) -> str:
     """Open a self-contained HTML page. hdr_offset_px sets --hdr-offset on <body>.
 
     Use 48 for dashboard / single-section reports, 84 for multi-section reports
@@ -2085,10 +2086,14 @@ def page_open(title: str, *, hdr_offset_px: int | None = None,
 
     The rdc-table engine CSS+JS ship in the shared bundle (_compose_css/_compose_js) for EVERY page
     (c16l, ADR-38 — every report now hosts a STATIC <rdc-table>); the c16k opt-in is gone.
+
+    ``sink``/``depth`` (c16t, ADR-41): INLINE (the render default) is BYTE-IDENTICAL to today and
+    ignores ``depth``; REF emits depth-relative ``_assets/report.{css,js}`` links so `package`'s
+    shared-asset bundle re-renders the page from this same seam (no scrape, no str.replace).
     """
     # Chrome CSS/JS routed through the c16r head_assets seam (ADR-41); INLINE is byte-identical to the
     # pre-c16r `<style>{_compose_css()}</style>{script}` pair (body_js is '' for the report family).
-    ha = head_assets(AssetSink.INLINE)
+    ha = head_assets(sink, depth)
     attrs: list[str] = []
     if hdr_offset_px is not None:
         attrs.append(f'style="--hdr-offset: {int(hdr_offset_px)}px"')
@@ -2324,7 +2329,8 @@ def report_page(title: str, body, *, drops: int = 0, captures: int = 0,
                 current_page: str | None = None, hdr_offset_px: int | None = 120,
                 body_attrs: dict | None = None, ab=None, root: str | None = None,
                 report_key: str | None = None, device: str = '', run=None,
-                run_nav_key: str | None = None) -> str:
+                run_nav_key: str | None = None,
+                sink: 'AssetSink' = AssetSink.INLINE) -> str:
     """Assemble a standard Layer-2 report page, deduping the open/header/strip/close shared by every
     report (Q-6). ``body`` is an HTML string or a list of fragments (the report's summary_bar +
     sections, in order). The fragments are '\\n'-joined exactly as write_report joins a parts list, so
@@ -2341,7 +2347,8 @@ def report_page(title: str, body, *, drops: int = 0, captures: int = 0,
     page's own file stem for the run-selector hrefs (defaults to ``report_key``; the dashboard passes
     'index' since it carries no report_key).
     """
-    parts = [page_open(title, hdr_offset_px=hdr_offset_px, body_attrs=body_attrs),
+    parts = [page_open(title, hdr_offset_px=hdr_offset_px, body_attrs=body_attrs,
+                       sink=sink, depth=crumb_depth),
              header(title, drops=drops, captures=captures, build_ts=build_ts,
                     kpis=kpis, crumb_depth=crumb_depth, current_page=current_page,
                     run=run)]

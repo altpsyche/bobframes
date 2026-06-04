@@ -8,41 +8,60 @@
 ```
 active_release: v0.2.5    (v0.1 COMPLETE - bobframes 0.1.0 live on PyPI 2026-05-31; v0.2.0 bump committed
                 867dcc5 on plan/v0.2.5)
-current:        c16t_shared_assets    (status: not-started. c16s DONE 2026-06-04 - the `package` verb +
-                shareable bundle; ADR-40 (rides ADR-41/37/35/23). NEW `bobframes/package.py`
-                build(root,*,out=None,light=False,summary_file=True,stage=False,run=None) -> (zip, summary):
-                a non-mutating STREAM transform of a rendered <root> into TWO artifacts OUTSIDE the tree -
-                `<project>-<rundate>-report.zip` (full viewable tree under ONE `<project>-<rundate>/` folder +
-                ASCII README "extract first") AND a standalone self-contained `<project>-<rundate>-summary.html`
-                (verbatim copy of `_reports/summary.html`, the c16q one-pager, already head_assets(INLINE)).
-                `_cmd_package` beside `serve`, NO --format ever (ADR-40 taxonomy). Delivery INLINE only (each
-                page = today's render bytes, identity copy); `--light` = index.html + top-level _reports/*.html
-                (drops drill/_pagedata/_data); `--out`/`--no-summary-file`/`--stage`/`--run KEY`. Reproducible
-                zip: sorted '/' arcnames, ZipInfo.date_time=(1980,1,1,0,0,0), pinned ZIP_DEFLATED, per-entry
-                writestr (gate the EXTRACTED tree, not zip bytes). Default out = PARENT of abspath(root)
-                (always outside; commonpath guard rejects --out inside <root> - fixes the cwd-`.`-inside-root
-                mutation trap). rundate = run-model drop_date (ADR-35); `--run` matched by DropSet.key, default
-                newest. ONE ASCII summary line (file count, bundle bytes, duplicated-chrome bytes, summary+zip
-                paths). AS-BUILT (rides ADR-40/41, NO new ADR; recorded in the c16s doc + §21.1s, per ADR-23):
-                (1) `--shared-assets` DEFERRED to c16t + `--redact` to c16u as WHOLE features (flags arrive WITH
-                impl, NOT accepted-then-error) - frozen ADR-41 forbids the cheap package-side head-swap
-                str.replace, so shared = c16t's render-layer REF-sink threading. (2) tests REUSE the render
-                golden (`golden/`) - the inline bundle HTML is an identity copy, so a stored golden_package/inline
-                would double-refresh forever; parquet by digest vs source; golden_package/ + make_package_golden.py
-                BORN at c16t. (3) zip NESTS under one top folder (not flat). (4) `--run` by DropSet.key. NO render
-                change -> test_parity + test_parquet_parity UNCHANGED, NO refresh. 237 -> 252 green (+15
-                tests/test_package.py). Eyeballed real Perf: 2725f/62MB full (2.86MB dup-chrome) + 10f/445KB
-                --light, both OUTSIDE the tree, source untouched, summary self-contained. NOW DO c16t
-                (commits/v025/c16t_shared_assets.md): make the deduped shared-asset bundle the DEFAULT via the
-                c16r seam - thread sink=INLINE default through page_open/report_page/every build()/render_root/
-                render_drop so `package` re-renders pages with REF (render's default stays byte-identical);
-                `--inline` reproduces the c16s inline bundle byte-for-byte; ADD golden_package/{shared,inline,
-                light}/ + make_package_golden.py + the size-win assertion. ADR-41. §21.1s.
+current:        c16u_redact    (status: not-started. c16t DONE 2026-06-04 - shared-assets is now the DEFAULT
+                `package` bundle (ADR-41, rides ADR-40/37/35/23). The ~95KB chrome (font+CSS+JS) lives ONCE per
+                family in `_assets/` and every page links it depth-relative; `--inline` opts out (self-contained
+                per page, byte-reproduces the c16s bundle); the standalone summary stays INLINE in BOTH modes.
+                MECHANISM: REF produced by the render SEAM, not a scrape - threaded `sink: AssetSink=INLINE`
+                through page_open/report_page/the 8 build()/render_root/render_drop/orchestrator/ab.render_pair
+                + `build_ts` through the 8 build()+orchestrator (all DEFAULTED -> render byte-identical).
+                `package` shared mode COPIES `_data` raw into a temp staging dir + re-renders the whole tree
+                with ONE root=staging (sink=REF) so relative drill/CSV links resolve IN the bundle, then zips
+                staging + the 4 `_assets/*` (written from REPORT_ASSETS/CATALOG_ASSETS .content()); <root> only
+                READ (non-mutation). PIVOT (recorded §21.1s + c16t doc, ADR-23): the c16t doc's decoupled
+                no-copy out_root was ABANDONED mid-build - a decoupled out-dir makes each report's relpath
+                drill/CSV links ESCAPE into the source tree (concrete failure); copy+single-root fixes it, so
+                out_root/rebuild_cache were NOT shipped. DETERMINISM: the report family stamps now_iso() -> the
+                re-render is given a pinned build_ts (run drop_date) so 2 packages are byte-identical;
+                consequence (recorded): a shared page's "built" line shows the run date, differing from the
+                --inline copy + the standalone summary (verbatim source). NEW make_package_golden.py +
+                golden_package/shared/ (HTML normalized + _pagedata/_assets/README raw, minus _data which is
+                digest-gated); inline/light REUSE golden/. NO render change -> test_parity + test_parquet_parity
+                UNCHANGED, NO refresh. 253 -> 262 green (+9 shared asserts: assets==composer, font absent every
+                page, head_assets(REF,depth) per family + all_reports() footgun guard, no fetch/module,
+                size-win, --inline==render golden, preview copied raw). Browser-VERIFIED offline file:// on real
+                Perf (catalog VTable + a report + a drill all enhance from shared _assets/; 0 unresolved
+                _assets links / 30 pages); real Perf 2.86MB dup-chrome reclaimed (4 shared assets ~206KB).
+                README "Sharing a report" added; ADR-41 already in DECISIONS (frozen, NOT re-appended); §21.1s
+                c16t as-built recorded. NOW DO c16u (commits/v025/c16u_redact.md): `--redact` scrubs provenance
+                at the DATA seam (give provenance_strip a redact mode + re-emit from the manifest), strips
+                abs-path tokens by default, fail-closed only in `--redact-paths=fail` CI mode (ADR-40). ADR-40.
                 NOTE: c16p (v0.2 close-out + release) is COMPLETE - VERIFIED 2026-06-04: PyPI `bobframes` 0.2.0
                 LIVE (wheel+sdist); GH Release v0.2.0 (2026-06-03, both assets, PR #1); tag v0.2.0 -> 765a4db on
                 main (main==origin/main); CHANGELOG [0.2.0]; CI green; FULL real-Perf re-ingest done; Node20
                 CI-actions bump (checkout@v5/setup-python@v6, both jobs) DONE 2026-06-04 - NO residuals.)
-last_session:   2026-06-04 — c16s DONE (the `package` verb + shareable bundle; ADR-40, rides ADR-41/37/35/23).
+last_session:   2026-06-04 — c16t DONE (shared-assets is the DEFAULT `package` bundle; ADR-41, rides
+                ADR-40/37/35/23). Deduped chrome lives ONCE per family in `_assets/`; every page links it
+                depth-relative; `--inline` opts out (self-contained per page = the c16s bundle byte-for-byte);
+                the standalone summary stays INLINE in BOTH modes. REF produced by the render SEAM (no scrape,
+                ADR-41): threaded `sink: AssetSink=INLINE` through page_open/report_page/8 build()/render_root/
+                render_drop/orchestrator/ab.render_pair + `build_ts` through 8 build()+orchestrator (all
+                DEFAULTED -> render byte-identical). `package` shared mode COPIES `_data` raw into a temp
+                staging dir + re-renders the whole tree with ONE root=staging (sink=REF), zips staging + the 4
+                `_assets/*` (from REPORT_ASSETS/CATALOG_ASSETS .content()); <root> only READ (non-mutation).
+                PIVOT (recorded, ADR-23): the c16t doc's decoupled no-copy out_root was ABANDONED mid-build - a
+                decoupled out-dir makes each report's relpath drill/CSV links ESCAPE into the source tree
+                (concrete test failure); copy+single-root fixes it, so out_root/rebuild_cache were NOT shipped.
+                DETERMINISM: pinned build_ts (run drop_date) -> 2 packages byte-identical (raw-byte gate);
+                recorded consequence: shared pages' "built" line = run date, differs from --inline + standalone
+                summary (verbatim source). NEW make_package_golden.py + golden_package/shared/ (HTML normalized;
+                _pagedata/_assets/README raw; minus _data, digest-gated); inline/light REUSE golden/. test_parity
+                + test_parquet_parity UNCHANGED, NO refresh. 253 -> 262 green (+9 shared asserts). Browser-
+                VERIFIED offline file:// real Perf (catalog VTable + report + drill enhance from shared _assets/;
+                0 unresolved _assets links / 30 pages); real Perf 2.86MB dup-chrome reclaimed (4 assets ~206KB).
+                README "Sharing a report" + §21.1s c16t as-built recorded; ADR-41 NOT re-appended (frozen).
+                Commits on plan/v0.2.5 (UNPUSHED). current -> c16u.
+former_last_c16s:   2026-06-04 — c16s DONE (the `package` verb + shareable bundle; ADR-40, rides ADR-41/37/35/23).
                 NEW `bobframes/package.py` build(root,*,out=None,light=False,summary_file=True,stage=False,
                 run=None) -> (zip_path, summary_path): a non-mutating STREAM transform of a rendered <root> into
                 TWO artifacts OUTSIDE the tree - `<project>-<rundate>-report.zip` (full viewable tree under ONE
@@ -703,20 +722,21 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    c16s DONE (2026-06-04) - the `package` verb (ADR-40): a non-mutating STREAM transform of a
-                rendered <root> -> `<project>-<rundate>-report.zip` (full tree under one folder + ASCII README)
-                + standalone self-contained `<project>-<rundate>-summary.html`; INLINE only, `--light`,
-                reproducible zip, default out = PARENT of <root> (guarded). NEW bobframes/package.py +
-                _cmd_package (no --format). NO render change -> test_parity/test_parquet_parity UNCHANGED, NO
-                refresh; 237 -> 252 green (+15 test_package.py). AS-BUILT: `--shared-assets`/`--redact` deferred
-                to c16t/c16u as WHOLE features (frozen ADR-41 forbids the package-side head-swap str.replace);
-                tests REUSE the render golden (golden_package/ + make_package_golden.py born at c16t). NOW DO
-                c16t (commits/v025/c16t_shared_assets.md): make the deduped shared-asset bundle the DEFAULT via
-                the c16r seam - thread sink=INLINE default through page_open/report_page/every build()/
-                render_root/render_drop so `package` re-renders pages with REF (render default stays
-                byte-identical); `--inline` reproduces the c16s inline bundle byte-for-byte; ADD
-                golden_package/{shared,inline,light}/ + make_package_golden.py + the size-win assertion. ADR-41.
-                §21.1s. Spine: c16s ✓ -> c16t -> c16u -> c16v -> c16x (component system, ADR-42) -> c16w close-out.
+next_action:    c16t DONE (2026-06-04) - shared-assets is the DEFAULT `package` bundle (ADR-41): chrome lives
+                ONCE per family in `_assets/`, every page links it depth-relative; `--inline` opts out
+                (byte-reproduces the c16s bundle); standalone summary stays INLINE both modes. REF via the render
+                SEAM (threaded sink=INLINE default + pinned build_ts through page_open/report_page/8 build()/
+                render_root/render_drop/orchestrator/ab.render_pair). `package` shared mode COPIES _data into a
+                temp staging dir + re-renders with ONE root=staging so links resolve in-bundle (the decoupled
+                no-copy out_root was ABANDONED - relpath drill/CSV links escaped into the source tree; recorded
+                §21.1s/ADR-23, so out_root/rebuild_cache NOT shipped). NEW make_package_golden.py +
+                golden_package/shared/; inline/light reuse golden/. NO render change ->
+                test_parity/test_parquet_parity UNCHANGED, NO refresh; 253 -> 262 green; browser-verified
+                offline file:// real Perf (2.86MB dup-chrome reclaimed). README + §21.1s updated. NOW DO c16u
+                (commits/v025/c16u_redact.md): `--redact` scrubs provenance at the DATA seam (provenance_strip
+                redact mode + re-emit from the manifest), strips abs-path tokens by default, fail-closed only in
+                --redact-paths=fail CI mode (ADR-40); ADD golden_package/redacted/. ADR-40. §21.1s.
+                Spine: c16s ✓ -> c16t ✓ -> c16u -> c16v -> c16x (component system, ADR-42) -> c16w close-out.
                 THEN c20 (--json output, v0.3): open commits/v03/c20_json_output.md and do exactly that one
                 commit. NOTE for c27/c35: the c09 classifier is already STATE-CAPABLE (when{} over any draw
                 column), so the state-first generic preset (D-10) is a preset not a rewrite; c35 removes the
@@ -833,6 +853,29 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-04 — c16t DONE (shared-assets is the DEFAULT `package` bundle; ADR-41, rides ADR-40/37/35/23).
+  Deduped chrome (font+CSS+JS) lives ONCE per family in `_assets/`; every page links it depth-relative;
+  `--inline` opts out (self-contained per page = the c16s bundle byte-for-byte); standalone summary stays
+  INLINE both modes. REF produced by the render SEAM, not a scrape (ADR-41): threaded `sink: AssetSink=INLINE`
+  through page_open/report_page/the 8 build()/render_root/render_drop/orchestrator/ab.render_pair + `build_ts`
+  through the 8 build()+orchestrator (all DEFAULTED -> render byte-identical). `package` shared mode COPIES
+  `_data` raw into a temp staging dir + re-renders the whole tree with ONE root=staging (sink=REF), zips
+  staging + the 4 `_assets/*` (from REPORT_ASSETS/CATALOG_ASSETS .content()); <root> only READ
+  (non-mutation). PIVOT (recorded §21.1s + c16t doc, ADR-23): the doc's decoupled no-copy out_root was
+  ABANDONED mid-build - a decoupled out-dir makes each report's relpath drill/CSV links ESCAPE into the source
+  tree (concrete test failure); copy+single-root fixes it, so out_root/rebuild_cache were NOT shipped.
+  DETERMINISM: the report family stamps now_iso() -> the re-render is given a pinned build_ts (run drop_date)
+  so 2 packages are byte-identical (raw-byte gate); recorded consequence: a shared page's "built" line shows
+  the run date, differing from the --inline copy + standalone summary (verbatim source). NEW
+  tests/make_package_golden.py + tests/data/golden_package/shared/ (HTML normalized; _pagedata/_assets/README
+  raw; minus _data which is digest-gated); inline/light REUSE golden/. NO render change -> test_parity +
+  test_parquet_parity UNCHANGED, NO refresh; 253 -> 262 green (+9 shared asserts: assets==composer, font
+  absent every page, head_assets(REF,depth) per family + all_reports() footgun guard, no fetch/module,
+  size-win, --inline==render golden, preview copied raw). Browser-VERIFIED offline file:// on real Perf
+  (catalog VTable + a report + a drill all enhance from the shared `_assets/`; 0 unresolved _assets links /
+  30 pages); real Perf 2.86MB dup-chrome reclaimed (4 shared assets ~206KB). README "Sharing a report" added;
+  ADR-41 already in DECISIONS (frozen, NOT re-appended); §21.1s c16t as-built recorded. Commits on
+  plan/v0.2.5 (UNPUSHED). current -> c16u.
 - 2026-06-04 — c16s DONE (the `package` verb + shareable bundle; ADR-40, rides ADR-41/37/35/23). NEW
   `bobframes/package.py` build() + `_cmd_package`: a non-mutating STREAM transform of a rendered <root> ->
   `<project>-<rundate>-report.zip` (full tree under one `<project>-<rundate>/` folder + ASCII README) + a

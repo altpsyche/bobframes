@@ -525,6 +525,32 @@ Render is untouched -> `test_parity` + `test_parquet_parity` stay green with NO 
 non-mutation / determinism / round-trip / inline+light-vs-render-golden / standalone-self-contained / README /
 naming / `--format`-rejected (252 green, +15 `tests/test_package.py`).
 
+**c16t as-built (rides ADR-41; recorded in the c16t doc, ADR-23).** Shared-assets is the DEFAULT bundle;
+`--inline` is the opt-out (a flag, not `--shared-assets`). The REF form is produced by the render seam, NOT
+a scrape: the render layer threads `sink: AssetSink = INLINE` (page_open -> report_page -> the 8 report
+`build()` -> render_root -> render_drop -> orchestrator/`ab.render_pair`) + `build_ts` (the 8 `build()` +
+orchestrator). **Mechanism pivot (recorded):** the doc's "decoupled read-root/write-root, no `_data` copy"
+was abandoned mid-build — a decoupled out-dir makes each report's relative drill/CSV links (computed as
+`relpath(target_under_<root>, out_dir_under_staging)`) ESCAPE the bundle into the source tree. The shipped
+mechanism COPIES `_data` raw into a temp staging dir and re-renders the whole tree with one `root=staging`
+(`sink=REF`), so every relative link resolves IN the bundle; `<root>` is only read (non-mutation holds);
+parquet is a raw copy -> digests match source. So `out_root`/`rebuild_cache` were NOT added (dead with the
+copy mechanism). **Determinism:** the report family stamps `now_iso()`, so the re-render is given a pinned
+`build_ts` (the target run's `drop_date`) -> two packages are byte-identical (the raw-byte determinism gate
+holds). Recorded consequence: a shared page's "built" line shows the run date, differing from the `--inline`
+copy + the standalone summary (verbatim source copies showing the original wall-clock); `render_root`/drill
+keep their catalog/manifest timestamps (already deterministic). The `shared/` golden (born here via
+`make_package_golden.py`) stores HTML (normalized) + `_pagedata`/`_assets`/README (raw), minus `_data`
+(digest-gated); `inline/`+`light/` still reuse `golden/`. Asserts added: `_assets/{report,catalog}.{css,js}`
+== composer output; the base64 font ABSENT from every page; every page carries `head_assets(REF, depth)` for
+its family (a generic `all_reports()` footgun guard); no `fetch(`/modules; the shared HTML is `>=
+(report_pages-1)*inline_head_bytes` smaller than `--inline`; `--inline` byte-reproduces the render golden;
+preview gallery (`_chrome_preview.html`) copied raw so the file-set matches `--inline`. Render UNTOUCHED ->
+`test_parity` + `test_parquet_parity` green with NO refresh; browser-verified offline from `file://` on the
+real Perf bundle (catalog VTable + a report + a drill all enhance from the shared `_assets/`; 0 unresolved
+`_assets` links across 30 pages). 253 -> 262 green (+9 shared asserts). Real Perf: 2.86 MB duplicated chrome
+reclaimed (4 shared assets ~206 KB vs ~30 inlined copies).
+
 ## 21.1t Multi-capture per-frame normalization (c16v, G-29) -- see [c16v](../commits/v025/c16v_multicapture_normalize.md)
 Latent-correctness fix: instancing repeat-count + shader cost/uses are normalized PER FRAME
 (`/ ok_captures`) in `instancing_opportunities` + `shader_hotlist` + `dashboard._top_meshes`/`_top_shaders`

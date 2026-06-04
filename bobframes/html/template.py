@@ -542,7 +542,9 @@ def _read_gl_renderer(out_dir: str) -> str:
 def render_drop(drill_dir: str, *, data_dir: str,
                 area: str, drop_date: str, drop_label: str,
                 captures: list[str], schema_version: int, build_timestamp: str,
-                row_counts: dict[str, int]) -> str:
+                row_counts: dict[str, int],
+                sink: reports_base.AssetSink = reports_base.AssetSink.INLINE,
+                depth: int = 0) -> str:
     """Render the per-drop browser HTML into drill_dir, reading data from data_dir.
 
     drill_dir: <root>/_reports/drill/<area>/<drop>/  (HTML output target)
@@ -582,7 +584,8 @@ def render_drop(drill_dir: str, *, data_dir: str,
     # Chrome CSS/JS routed through the c16r head_assets seam (ADR-41); INLINE is byte-identical to the
     # pre-c16r inline `<style>` (head) + body-end engine `<script>` (the two are spliced at their own
     # document positions: ha.head here, ha.body_js just before </body>).
-    ha = head_assets(reports_base.AssetSink.INLINE)
+    # c16t: sink=REF (depth-relative `_assets/`) is reachable for `package`; INLINE ignores depth.
+    ha = head_assets(sink, depth)
     parts = ['<!doctype html><html lang="en"><head><meta charset="utf-8">']
     parts.append(f'<title>{_h(area)} {_h(drop_date)}</title>')
     parts.append(f'<link rel="icon" href="{reports_base._FAVICON_HREF}">')
@@ -657,7 +660,10 @@ def render_drop(drill_dir: str, *, data_dir: str,
     return out_path
 
 
-def render_root(root: str) -> str:
+def render_root(root: str, *, sink: reports_base.AssetSink = reports_base.AssetSink.INLINE) -> str:
+    # c16t (ADR-41): ``sink=REF`` emits depth-relative ``_assets/`` links (the root page is at the
+    # bundle root, depth 0); `package` shared mode re-renders the whole tree (root included) with REF
+    # into a staging copy. INLINE (the default) is byte-identical to today.
     cat_pq = _paths.catalog_parquet(root)
     cat_json = _paths.catalog_json(root)
     root_index = _paths.root_index_html(root)
@@ -698,7 +704,7 @@ def render_root(root: str) -> str:
 
     # Chrome CSS/JS via the c16r head_assets seam (ADR-41); INLINE byte-identical (ha.head in the
     # head, ha.body_js at body-end before </body>).
-    ha = head_assets(reports_base.AssetSink.INLINE)
+    ha = head_assets(sink, 0)
     parts = ['<!doctype html><html lang="en"><head><meta charset="utf-8">']
     parts.append('<title>capture analysis catalog</title>')
     parts.append(f'<link rel="icon" href="{reports_base._FAVICON_HREF}">')

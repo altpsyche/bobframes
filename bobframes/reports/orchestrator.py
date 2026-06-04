@@ -15,12 +15,18 @@ from . import (
 )
 
 
-def render_all_reports(root: str, log) -> int:
+def render_all_reports(root: str, log, *,
+                       sink: reports_base.AssetSink = reports_base.AssetSink.INLINE,
+                       build_ts: str | None = None) -> int:
     """Build cache, every registered report, dashboard, root index. Returns 0 on success.
 
     Top-level pages report the newest run (the run model default, ADR-35). c16f then pre-renders a
     page set per OLDER run under _reports/run/<key>/ (the run selector links to them), bounded by
     [report] max_prerendered_runs so history does not explode the page count.
+
+    ``sink``/``build_ts`` (c16t, ADR-41): `package` re-renders the whole tree with ``sink=REF`` (the
+    shared-asset form) into a staging copy and pins ``build_ts`` (the run date) so two packages are
+    byte-identical. Both default to today's behavior -> the normal render path stays byte-identical.
     """
     t0 = time.monotonic()
     cache_out = reports_base.build_per_drop_cache(root)
@@ -28,14 +34,14 @@ def render_all_reports(root: str, log) -> int:
 
     for mod in all_reports():
         try:
-            rep = mod.build(root)
+            rep = mod.build(root, sink=sink, build_ts=build_ts)
             log(f'  built report: {rep}')
         except Exception as e:
             log(f'  {mod.__name__} FAILED: {e}')
             return 1
 
     try:
-        dash = report_dashboard.build(root)
+        dash = report_dashboard.build(root, sink=sink, build_ts=build_ts)
         log(f'  built dashboard: {dash}')
     except Exception as e:
         log(f'  dashboard FAILED: {e}')
@@ -56,12 +62,14 @@ def render_all_reports(root: str, log) -> int:
         for d in older:
             for mod in per_run_mods:
                 try:
-                    mod.build(root, run_label=d.label, run_date=d.date)
+                    mod.build(root, run_label=d.label, run_date=d.date,
+                              sink=sink, build_ts=build_ts)
                 except Exception as e:
                     log(f'  {mod.__name__} (run {d.key}) FAILED: {e}')
                     return 1
             try:
-                report_dashboard.build(root, run_label=d.label, run_date=d.date)
+                report_dashboard.build(root, run_label=d.label, run_date=d.date,
+                                       sink=sink, build_ts=build_ts)
             except Exception as e:
                 log(f'  dashboard (run {d.key}) FAILED: {e}')
                 return 1
@@ -69,7 +77,7 @@ def render_all_reports(root: str, log) -> int:
             log(f'  built per-run pages for {len(older)} older run(s)')
 
     log('rendering root index')
-    root_idx = template.render_root(root)
+    root_idx = template.render_root(root, sink=sink)
     root_hits = lint.lint_file(root_idx)
     if root_hits:
         for lineno, label, snip in root_hits:

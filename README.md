@@ -42,6 +42,7 @@ time to rebuild the HTML from existing Parquet without re-replaying captures.
 | `lint <file>...` | Check HTML or markdown against the banlist. |
 | `check` | Print resolved tool paths; non-zero when a tool is missing. |
 | `serve [root] [--port 8000] [--bind 127.0.0.1]` | Static preview via the stdlib HTTP server. |
+| `package [root] [--inline] [--light] [--out PATH] [--run KEY] [--no-summary-file] [--stage]` | Bundle a rendered tree into a shareable `<project>-<rundate>-report.zip` + a standalone `<project>-<rundate>-summary.html`, both written OUTSIDE `<root>` (non-mutating). |
 | `preview [root]` | Render the chrome gallery to `_reports/_chrome_preview.html`; no capture data needed. |
 | `export-tokens [--format toml\|json\|css]` | Print the design tokens to stdout in the chosen format. |
 | `smoke [--data DIR]` | End-to-end check; render-only against the bundled fixture when `--data` is omitted. |
@@ -49,6 +50,25 @@ time to rebuild the HTML from existing Parquet without re-replaying captures.
 
 `<root>` is positional and defaults to `.`. Flags are long-form only. Exit codes: `0` success,
 `1` pipeline or build failure, `2` usage error, `3` external tool missing, `4` interrupted.
+
+## Sharing a report
+
+`bobframes package <root>` turns a rendered tree into two friendly artifacts beside it (it only READS
+`<root>`):
+
+- `<project>-<rundate>-report.zip` — the full explorable tree. **Extract the whole folder before
+  opening** (`index.html`, then the Build Health Summary): the pages link each other and a shared
+  `_assets/` folder by relative path, so opening one file straight out of the zip breaks those links.
+- `<project>-<rundate>-summary.html` — a standalone, self-contained one-pager. Email it, double-click
+  it, or `Ctrl-P → Save as PDF`; no unzip needed. (Its deep links into the reports only resolve when
+  the zip is shipped alongside.)
+
+The zip DEFAULTS to **shared assets**: the ~95 KB of chrome (font + CSS + JS) lives once in `_assets/`
+and every page links it, so a multi-run bundle is markedly smaller. Because the pages share that
+folder, **no single page is portable on its own** — keep the extracted folder together, or send the
+standalone `summary.html` when you need just one file. `--inline` opts out and makes each page
+self-contained (larger, but any single report file is portable). `--light` bundles only `index.html`
++ the top-level reports (no drill pages or data) for a quick "read, don't drill" share.
 
 ## Customizing reports
 

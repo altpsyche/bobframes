@@ -111,7 +111,9 @@ def _compute_kpis(counts: dict, areas: list) -> list:
 
 
 def build(root: str, *, drops: list | None = None, ab=None,
-          run_label=None, run_date=None) -> str:
+          run_label=None, run_date=None,
+          sink: base.AssetSink = base.AssetSink.INLINE,
+          build_ts: str | None = None) -> str:
     if drops is None:
         drops = base.discover_drops(root)
     # Run model (ADR-35): the donut + headline KPIs reflect the CURRENT run only; the per-(area,drop)
@@ -192,8 +194,9 @@ def build(root: str, *, drops: list | None = None, ab=None,
     out_path = base.output_path(root, 'draws_by_class', ab, run=rc)
     return base.write_report(out_path, [base.report_page(
         'draws by class', parts,
-        drops=len(drops), captures=total_captures, build_ts=base.now_iso(),
+        drops=len(drops), captures=total_captures, build_ts=build_ts or base.now_iso(),
         crumb_depth=base.crumb_depth(ab, run=rc), ab=ab, root=root, report_key='draws_by_class',
+        sink=sink,
         kpis=_compute_kpis(cur_counts, cur_areas), run=rc,
         device=base.provenance_strip(*base.newest_drop_provenance(root, [cur] if cur else [])))])
 
