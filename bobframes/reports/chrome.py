@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64 as _base64
 import enum as _enum
 import html as _html
+import re as _re
 import string as _string
 from dataclasses import dataclass as _dataclass
 from importlib.resources import files as _files
@@ -159,6 +160,39 @@ def chrome_css() -> str:
 def components_js() -> str:
     """Return Web Components JS blob. Used by template.py."""
     return _COMPONENTS_JS
+
+
+# --- token-validity guard (c16x-3, ADR-42; closes the G-30 footgun class) --------------------------
+# A typo'd `var(--sp-5)` makes the property invalid -> it computes to nothing, silently zeroing (e.g.)
+# the padding until a human notices. This catches it: any referenced var(--NAME) whose NAME is neither
+# a declared design token NOR a custom property defined in the composed CSS is undefined. The declared
+# set is (TOML :root scale) UNION (every `--x:` definition scanned from the composed CSS), so in-body
+# props (--crumb-h, --hdr-offset, --clip-cap*, --th-bg*) are NOT false-flagged; programmatic chart
+# tokens (_tokens.chart()) are passed as values, never var()-referenced, so they never appear.
+_TOKEN_DEF_RE = _re.compile(r'--([a-zA-Z][a-zA-Z0-9-]*)\s*:')        # a custom-property DEFINITION
+_TOKEN_REF_RE = _re.compile(r'var\(\s*--([a-zA-Z][a-zA-Z0-9-]*)')    # a var(--NAME) REFERENCE
+
+
+def _undefined_token_refs(composed_css: str, *emitted: str) -> set:
+    """NAMEs referenced via var(--NAME) that are neither a TOML token nor a `--x:` def in composed_css.
+
+    `emitted` carries extra fragments to scan for references (the bundle JS, emitted `style=`/`<style>`),
+    so a `var(--typo)` set from JS or an inline style is caught too. Declarations are taken ONLY from
+    composed_css (the authoritative stylesheet); emitted fragments contribute references, not declarations.
+    """
+    declared = {k.replace('_', '-') for k in _tokens.token_subst()}
+    declared |= set(_TOKEN_DEF_RE.findall(composed_css))
+    referenced = set(_TOKEN_REF_RE.findall(composed_css))
+    for frag in emitted:
+        referenced |= set(_TOKEN_REF_RE.findall(frag))
+    return referenced - declared
+
+
+def undefined_tokens() -> set:
+    """Undefined var(--NAME) across the report bundle (CSS + JS). EMPTY on a healthy build; a non-empty
+    result is the G-30 footgun. CI hard-gates this (tests/test_token_guard.py); `bobframes preview`
+    warns on it (non-fatal) so a designer editing design_tokens.toml sees the typo in their own loop."""
+    return _undefined_token_refs(_compose_css(), _compose_js())
 
 
 # ---------------------------------------------------------------------------
