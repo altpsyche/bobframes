@@ -14,7 +14,11 @@ migrated off its inline `<style>`). That is invisible plumbing. **v0.2.6 is the 
 visual redesign.** Per ADR-43 there is **no standalone 0.2.5 release** — v0.2.6 is the next PyPI release and
 carries BOTH the foundation (c16q–c16x) AND the redesign; `_version` jumps `0.2.0 → 0.2.6`.
 
-The user chose **[ui.shadcn.com](https://ui.shadcn.com)** as the visual anchor.
+The user chose **[ui.shadcn.com](https://ui.shadcn.com)** as the visual anchor — specifically the blend
+**"shadcn for the SYSTEM + a dash of Grafana for the data-dashboard DENSITY."** shadcn supplies the visual
+language (palette, borders, radius, component shapes, states); Grafana informs how TIGHT it packs (our
+reports are dense tables + KPI grids + drill views — shadcn's airy marketing-gallery defaults would waste
+space). See **Density** below — it is a load-bearing part of the direction, not a footnote.
 
 ## Reconciliation: "bold" now means shadcn-clean, NOT loud
 
@@ -24,7 +28,9 @@ high-craft**: near-grayscale palette, a single near-black/near-white "primary," 
 separation (not heavy shadows), generous radius, tight readable type, color reserved for data (charts) and
 status. So the redesign is "bold" in the sense of *a genuine modern overhaul*, but the **target aesthetic is
 clean/quiet/neutral, not loud.** The new-chat planner should treat **shadcn as the definitive anchor** and
-DISCARD the earlier hero-numeral/accent-rail maximalism where it conflicts.
+DISCARD the earlier hero-numeral/accent-rail maximalism where it conflicts. **But clean/neutral is NOT
+loose:** pair shadcn's restraint with **Grafana density** (next section) — our data surfaces pack tight,
+they don't float in whitespace. The blend is *shadcn surfaces + Grafana density*.
 
 ## The shadcn design language (what defines the look)
 
@@ -70,6 +76,25 @@ DISCARD the earlier hero-numeral/accent-rail maximalism where it conflicts.
 --chart-5: oklch(0.645 0.246 16.439);
 ```
 
+## Density — the Grafana dash (the counterweight to shadcn's airiness)
+
+shadcn supplies the **system** (palette / borders / radius / component shapes / states). Grafana supplies
+the **density**: a perf dashboard packs information — tight rows, compact panels, data-first, high
+information-per-screen. shadcn's defaults are generous (airy padding, big gaps, 10px radius) and would
+**waste space on our dense tables / KPI grids / drill views**. So: adopt shadcn's LOOK, but pack it
+TIGHTER than shadcn's marketing-gallery spacing. Concretely (the planner tunes exact values):
+- **Tables (the densest surface).** Compact row height + cell padding (our `rdc-table` `--clip-cap` /
+  `ROW_H` / `td` padding stay tight — do NOT inflate to shadcn's roomy table). Tabular-nums. Hairline
+  row separation (shadcn `--border`), zebra optional. Drill/catalog optimize data-per-screen.
+- **KPI grid.** More cards per row + tighter gaps than a shadcn card grid (the dashboard reads like a
+  panel wall, not a landing page).
+- **Card / section padding.** A notch tighter than shadcn defaults; smaller radius on dense minis than on
+  hero cards (a radius SCALE, not one big 10px everywhere).
+- **Spacing scale.** Keep our 4px base; lean on the SMALLER steps (sp-2/sp-3) for dense contexts; reserve
+  the generous shadcn-like spacing for the summary one-pager (the one exec/airy surface).
+- **Net:** "shadcn surfaces, Grafana density." The summary one-pager may be the airy exception; the
+  dashboard / reports / drill are dense. Density is a per-surface dial, not one global value.
+
 ## Mapping shadcn → bobframes tokens (`reports/design_tokens.toml`)
 
 Our tokens are already oklch + `light-dark()` (one source, both themes) — so this is mostly a re-tuning of
@@ -103,6 +128,10 @@ see c16x). `light-dark(LIGHT, DARK)` packs shadcn's `:root`/`.dark` pair into on
 4. **Type scale.** shadcn documents no special scale (Geist/Inter, restrained). Keep vendored **Inter ≤600**;
    modest scale tune only (DROP the 2.75rem hero-numeral idea unless a KPI clearly benefits). Tabular-nums on numbers.
 5. **Chart palette retune** toward shadcn `chart-1..5` vibrancy while keeping draw-class semantics.
+6. **Density targets (the Grafana dash).** Exact `rdc-table` row height + cell padding, KPI grid columns +
+   gaps, card/section padding, and the radius SCALE (tight minis vs hero cards). Which surfaces are airy
+   (summary one-pager) vs dense (dashboard / reports / drill). **Recommend: pack tighter than shadcn
+   defaults everywhere except the summary one-pager.**
 
 ## Constraints (unchanged — ADR-37, hold throughout)
 
@@ -128,12 +157,12 @@ per intentional-visual commit, reviewed, on the canonical env; `_pagedata/*.js` 
    (palette, border-led surfaces, radius token, states, type tune). No body-markup change → every page lifts.
    (Review note: split into **1a** tokens/type/spacing — owns the pinned `test_design_tokens` byte updates —
    and **1b** flat-surfaces/radius/states/responsive/print, landed back-to-back.)
-2. **Summary one-pager** restructure (compose the promoted components).
-3. **Dashboard grid** (cards in the shadcn idiom).
-4. **6 detail reports.**
-5. **Catalog/drill** wide layout + **adopt the table component family** (c16x-4) across the reports here
-   (where the golden refresh absorbs the normalization the parity gate forbade) + roll remaining hand-concat
-   leaves onto `el`.
+2. **Summary one-pager** restructure (compose the promoted components) — the ONE airy/exec surface.
+3. **Dashboard grid** (cards in the shadcn idiom, **Grafana-dense**: more cards/row, tight gaps — a panel wall).
+4. **6 detail reports** (shadcn surfaces, **dense** tables/cards).
+5. **Catalog/drill** wide layout, **maximize data-per-screen (densest surface)** + **adopt the table component
+   family** (c16x-4) across the reports here (where the golden refresh absorbs the normalization the parity
+   gate forbade; keep the tight `rdc-table` row height) + roll remaining hand-concat leaves onto `el`.
 6. **Close-out:** `_version 0.2.0 → 0.2.6`, ONE CHANGELOG `[0.2.6]` covering c16q→redesign, full matrix,
    real-Perf eyeball, tag → PyPI (AUTHORIZE FIRST — outward/irreversible).
 
