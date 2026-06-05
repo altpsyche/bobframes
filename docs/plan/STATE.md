@@ -6,9 +6,22 @@
 > defer to this.
 
 ```
-active_release: v0.2.5    (v0.1 COMPLETE - bobframes 0.1.0 live on PyPI 2026-05-31; v0.2.0 bump committed
-                867dcc5 on plan/v0.2.5)
-current:        c16w_v025_closeout    (status: not-started. c16x DONE 2026-06-05 - component system, ADR-42,
+active_release: v0.2.6    (v0.1 COMPLETE - bobframes 0.1.0 live on PyPI 2026-05-31; v0.2.0 bump committed
+                867dcc5. v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing + a parity summary
+                migration, so there is no standalone 0.2.5 - the next PyPI release is 0.2.6, carrying the
+                foundation AND the visual redesign; _version jumps 0.2.0 -> 0.2.6. The c16x work + the CI
+                golden_env fix are on `main`; v0.2.6 work is on branch `plan/v0.2.6`.)
+current:        v026_visual_redesign    (status: REFERENCE LOCKED, IMPLEMENTATION PLANNED IN A NEW CHAT - per the
+                user. v0.2.6 = bold visual redesign anchored on shadcn/ui (ADR-43); the DIRECTION brief is
+                docs/plan/commits/v026/v026_visual_redesign_brief.md [reconciles "bold" -> shadcn-clean/neutral/
+                flat, NOT loud; verbatim shadcn oklch tokens + the shadcn->bobframes token map + open decisions:
+                flat-vs-ADR-34-depth, neutral-vs-hue-accent, radius token, type-tune, chart retune]. A NEW chat
+                does the commit-sequence planning (reuse the approved plan + the brief). NEXT: open a fresh chat,
+                read the brief + ADR-42/43 + the approved plan ~/.claude/plans/bobframes-v0-2-5-continue-staged-
+                octopus.md, plan v0.2.6-1..-6, start with the all-chrome token/CSS lift -> preview-gallery
+                screenshots -> sign-off. GOLDEN REFRESHES ONLY ON THE CANONICAL ENV py3.12/pyarrow21 (golden_env
+                marker, ADR-11). Prior c16w_v025_closeout is CANCELLED (folded into the v0.2.6 close-out).
+                c16x DONE 2026-06-05 - component system, ADR-42,
                 G-30 CLOSED - shipped as a 5-step sub-sequence on plan/v0.2.5, all green (319), committed
                 90bd874/cfa3e91/09d366e/01cb63d/ee9b7ff: x1 CSS/JS string literals -> reports/assets/*.{css,js,html}
                 via importlib.resources (zero-output) | x2 escape-by-construction el/raw/el_void/classes builder

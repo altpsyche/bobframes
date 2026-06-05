@@ -854,3 +854,33 @@ so the now-larger shared CSS is a single packaged asset (render still inlines it
 before the c16w close-out. **Consequence.** New surfaces compose tested, gallery-reviewed components;
 the inline-CSS / undefined-token failure class is gone; the preview gallery is the component catalog.
 Closes G-30. Reaffirms ADR-37/34/27 (design tokens), rides ADR-41 (where the component CSS lives).
+
+### ADR-43 — v0.2.6 bold visual redesign; deliberate parity->improvement; collapse the unreleased 0.2.5 into 0.2.6
+**Context.** c16x (ADR-42) landed the component system as a SAFE FOUNDATION at visual parity (CSS/JS
+extracted to files; the escape-by-construction `el` builder subsuming roadmap C6; the token-validity
+guard; the table component family built-but-not-adopted; summary migrated off its inline `<style>`).
+None of that is user-visible -- it is internal plumbing plus a pixel-identical summary migration. The
+user-facing value is the look-and-feel improvement, which c16x deliberately deferred. Two follow-on
+decisions: (a) the visual redesign should be BOLD (new type scale, spacing rhythm, palette/contrast,
+accent rails, component states, responsive/print/a11y), an intentional deviation from ADR-42's
+visual-parity clause; (b) there is no reason to cut a standalone 0.2.5 release for invisible plumbing.
+**Decision.** (1) The visual-parity clause of ADR-42 is SUPERSEDED for the v0.2.6 work (its MECHANISM --
+the owned bundle, `el`, the token guard, the gallery -- is reaffirmed and is what makes the redesign
+safe). (2) **Do not release 0.2.5.** `0.2.5` becomes an unreleased version gap (consistent with v0.1's
+c04-c10 gaps); the next PyPI release is **0.2.6**, carrying BOTH the component-system foundation
+(c16q-c16x) AND the redesign. `_version` jumps `0.2.0 -> 0.2.6`; ONE CHANGELOG `[0.2.6]` covers
+everything since 0.2.0; the c16w close-out is repurposed as the v0.2.6 close-out. (3) Because byte-parity
+is intentionally broken for the redesign, the binding gates become: data digest unchanged
+(`test_parquet_parity`, never refreshed); golden-INDEPENDENT structural + ARIA component tests; the
+token guard; a MANDATORY headless-Chrome browser matrix (light/dark/print, synthetic + real Perf at
+`c:/tmp/perf`) per changed surface; lint/ASCII/determinism. Golden refreshes run ONLY on the canonical
+env (py3.12 / pyarrow 21; ADR-11 / D-8 / the `golden_env` marker), never an out-of-range local pyarrow.
+(4) v0.2.6 also ADOPTS the table component family across the reports + rolls the remaining hand-concat
+leaves onto `el` (the work c16x deferred because byte-identical migration was infeasible). **Correction
+to ADR-42.** ADR-42 said the guard rejects a `var(--...)` "not in the declared design-token SCALE"; the
+as-built (and correct) declared set is (the TOML `:root` scale) UNION (every `--x:` custom-property
+DEFINITION scanned from the composed CSS), and programmatic chart/layout tokens (`_tokens.chart()`) are
+passed as values, never `var()`-referenced, so they need no allowlist. **Consequence.** One meaningful
+0.2.6 release (foundation + redesign); the ADR-37 invariants (static / JS-optional / printable /
+Ctrl-F-able / offline / ASCII / deterministic) hold throughout -- only the byte-parity gate is
+intentionally, and gate-replaced, relaxed. Reaffirms ADR-37/34/27/41/42; rides ADR-11/23.
