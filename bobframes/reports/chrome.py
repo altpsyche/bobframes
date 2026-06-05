@@ -470,6 +470,36 @@ def data_table(columns, rows, *, table_key: str, caption: str = '',
     return el('div', {'class': 'table-wrap'}, host) if wrap else host
 
 
+# --- build-health one-pager components (c16x-5, ADR-42; promoted from summary._* at visual parity) --
+
+def kpi_card(label, value, *, delta_html: str = '', trend: str = '', note: str = '',
+             tone: str = 'neutral') -> _Raw:
+    """Rich headline KPI card (promoted from summary._kpi): label + big value + a pre-built colored
+    vs-prior delta + scale note + a full-width trend strip at the chip bottom. `delta_html`/`trend` are
+    pre-built fragments (spliced raw); `label`/`value`/`note` are escaped. Distinct from kpi_chip, which
+    escapes its delta and has no note/trend. Tone in {pos, neg, neutral}."""
+    return el('div', {'class': 'kpi-chip tone-' + tone},
+              el('div', {'class': 'kpi-label'}, label),
+              el('div', {'class': 'kpi-value'}, value),
+              el('div', {'class': 'kpi-delta'}, raw(delta_html)),
+              el('div', {'class': 'kpi-note dim'}, note),
+              raw(trend))
+
+
+def status_badge(state_name: str, label: str) -> _Raw:
+    """Colored verdict badge (promoted from summary): `<span class="bh-status s-STATE">label</span>`.
+    STATE is the health.State name (OK/AT_RISK/ALARM/UNKNOWN); the .s-* component CSS drives the color."""
+    return el('span', {'class': 'bh-status s-' + state_name}, label)
+
+
+def movement(columns, *, rollup_html: str = '') -> _Raw:
+    """The build-health Movement layout (promoted from summary): a 2-column grid of (label, body) plus
+    an optional full-width rollup line. `columns` = list of (label, body_html); body_html / rollup_html
+    are pre-built (the caller's metric policy: the change-list <ul>s) and spliced raw."""
+    cols = [el('div', {'class': 'mv-col'}, el('h3', None, label), raw(body)) for label, body in columns]
+    return el('div', {'class': 'movement'}, *cols, raw(rollup_html))
+
+
 # c16m: per-tier char thresholds for emitting a title= on a truncating cell. A deterministic proxy for
 # "will visually clip" (matches the pass_gpu title-gating precedent); short values skip title= to avoid
 # screen-reader double-read. Tier '' = default (--clip-cap 320px), 'narrow' (200px), 'wide' (560px).

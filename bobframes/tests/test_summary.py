@@ -65,8 +65,8 @@ def test_four_headline_kpis(rendered):
         assert lbl in s
     assert s.count('class="kpi-chip') == 4
     assert 'delta-pill' in s                 # colored vs-prior deltas
-    assert '<svg class="bh-trend' in s       # per-KPI area trend strip (own row, not a scratch line)
-    assert 'bh-fill' in s                    # the filled area (not a bare polyline)
+    assert '<svg class="trendline' in s      # per-KPI area trend strip (c16x-5: chrome/delta component)
+    assert 'trendline-fill' in s             # the filled area (not a bare polyline)
     assert 'kpi-note' in s                   # grey total / scale line
 
 

@@ -123,45 +123,11 @@ def _per_run_series(root: str, rc) -> dict:
     return {'draws': draws, 'gpu': gpu, 'overdraw': overd, 'shader': shad}
 
 
-# Summary-SCOPED styling (keyed on body[data-page-kind="summary"]) so only summary.html changes - the
-# shared chrome CSS bundle (inlined on every page pre-c16r) stays byte-identical for the other goldens.
-# Lint skips <style> bodies; ASCII; deterministic. Restyles the KPI trend strip (a proper area
-# sparkline on its own row, not a scratch line crammed beside the delta) + the Movement two-column
-# layout + the change lists.
-_SUMMARY_CSS = (
-    '<style>'
-    '[data-page-kind="summary"] .kpi-strip{gap:var(--sp-4);margin-bottom:var(--sp-6)}'
-    '[data-page-kind="summary"] .kpi-chip{padding:var(--sp-4) var(--sp-6) var(--sp-6);'
-    'gap:var(--sp-1)}'
-    '[data-page-kind="summary"] .kpi-chip .kpi-delta{min-height:1.2em;display:flex;'
-    'align-items:baseline;gap:var(--sp-2)}'
-    '[data-page-kind="summary"] .kpi-chip .kpi-note{margin-top:1px}'
-    '[data-page-kind="summary"] .bh-trend{width:100%;height:auto;display:block;'
-    'margin-top:var(--sp-4);color:var(--text-3)}'
-    '[data-page-kind="summary"] .bh-trend.tone-pos{color:var(--pos)}'
-    '[data-page-kind="summary"] .bh-trend.tone-neg{color:var(--neg)}'
-    '[data-page-kind="summary"] .bh-line{fill:none;stroke:currentColor;stroke-width:1.6;'
-    'stroke-linejoin:round;stroke-linecap:round}'
-    '[data-page-kind="summary"] .bh-fill{fill:currentColor;opacity:.12;stroke:none}'
-    '[data-page-kind="summary"] .bh-dot{fill:currentColor}'
-    '[data-page-kind="summary"] .movement{display:grid;grid-template-columns:1fr 1fr;'
-    'gap:var(--sp-4) var(--sp-8)}'
-    '[data-page-kind="summary"] .mv-col h3{margin:0 0 var(--sp-2);'
-    'font:600 var(--fs-small) ui-monospace,monospace;text-transform:lowercase;'
-    'letter-spacing:.04em;color:var(--text-3)}'
-    '[data-page-kind="summary"] .mv-rollup{grid-column:1 / -1;margin-top:0}'
-    '[data-page-kind="summary"] .change-list{list-style:none;margin:0;padding:0;'
-    'display:flex;flex-direction:column;gap:var(--sp-2)}'
-    '[data-page-kind="summary"] .change-list li{display:flex;align-items:baseline;'
-    'gap:var(--sp-2)}'
-    '[data-page-kind="summary"] .change-list li .delta-pill{margin-left:auto}'
-    '[data-page-kind="summary"] .bh-status{font-weight:600}'
-    '[data-page-kind="summary"] .bh-status.s-ALARM{color:var(--status-alarm)}'
-    '[data-page-kind="summary"] .bh-status.s-AT_RISK{color:var(--status-warn)}'
-    '[data-page-kind="summary"] .bh-status.s-OK{color:var(--status-ok)}'
-    '[data-page-kind="summary"] .bh-status.s-UNKNOWN{color:var(--text-3)}'
-    '</style>'
-)
+# c16x-5 (ADR-42): the summary-scoped styling that was an inline <style> here now lives in the owned
+# component bundle (reports/assets/components.css, [data-page-kind="summary"]-scoped) and the bespoke
+# _kpi/_trendline/_change-list markup is composed from chrome.kpi_card / delta.trendline /
+# chrome.status_badge / chrome.movement. summary.py keeps only the metric POLICY helpers below
+# (_dir_tone / _pct_pill / _change_line / _change_list); the generic layout/markup is chrome's.
 
 
 def _dir_tone(cur, prev) -> str:
@@ -173,58 +139,6 @@ def _dir_tone(cur, prev) -> str:
     if cur > prev:
         return 'neg'
     return 'neutral'
-
-
-def _trendline(values: list, *, tone: str = 'neutral', w: int = 240, h: int = 40,
-               pad_x: int = 6, pad_y: int = 9) -> str:
-    """A small filled area sparkline (deterministic inline SVG): polygon fill + polyline + an endpoint
-    dot, uniformly scaled to the chip width (viewBox + width:100%, height:auto - no distortion). The
-    generous `pad_y` keeps the line + dot floating clear of the strip's top/bottom edges (so the dot
-    never hugs the card corner). Reads as a real trend strip even at 2 points, where the shared
-    `delta.sparkline_svg` scratch-line did not. None values are dropped (present points plotted in
-    order). '' for < 2 points (1-run)."""
-    pts = [(i, float(v)) for i, v in enumerate(values) if v is not None]
-    if len(pts) < 2:
-        return ''
-    n = len(values)
-    ys = [v for _, v in pts]
-    lo, hi = min(ys), max(ys)
-    flat = hi == lo
-    span = (hi - lo) or 1.0
-    span_x = (n - 1) or 1
-
-    def fx(i):
-        return pad_x + (i / span_x) * (w - 2 * pad_x)
-
-    def fy(v):
-        if flat:                      # no movement -> a centered flat line, not one hugging the floor
-            return h / 2
-        return h - pad_y - ((v - lo) / span) * (h - 2 * pad_y)
-
-    line = [(fx(i), fy(v)) for i, v in pts]
-    poly = ' '.join(f'{x:.2f},{y:.2f}' for x, y in line)
-    base_y = h - pad_y
-    area = f'{line[0][0]:.2f},{base_y:.2f} {poly} {line[-1][0]:.2f},{base_y:.2f}'
-    ex, ey = line[-1]
-    return (f'<svg class="bh-trend tone-{tone}" viewBox="0 0 {w} {h}" role="img" aria-label="trend">'
-            f'<polygon class="bh-fill" points="{area}"/>'
-            f'<polyline class="bh-line" points="{poly}"/>'
-            f'<circle class="bh-dot" cx="{ex:.2f}" cy="{ey:.2f}" r="2.5"/></svg>')
-
-
-def _kpi(label: str, value, *, delta_html: str = '', trend: str = '',
-         note: str = '', tone: str = 'neutral') -> str:
-    """One headline KPI chip: label + big value + a colored vs-prior delta + scale note, then the
-    trend strip on its own full-width row at the chip bottom (the chip's own padding gives it room -
-    no extra panel). `chrome.kpi_chip` escapes its delta, so the one-pager builds the chip itself,
-    reusing the styled `.kpi-*` classes + the summary-scoped rules. `trend` is '' on a 1-run page."""
-    return (f'<div class="kpi-chip tone-{base.h(tone)}">'
-            f'<div class="kpi-label">{base.h(label)}</div>'
-            f'<div class="kpi-value">{base.h(value)}</div>'
-            f'<div class="kpi-delta">{delta_html}</div>'
-            f'<div class="kpi-note dim">{base.h(note)}</div>'
-            f'{trend}'
-            f'</div>')
 
 
 def _change_line(c) -> str:
@@ -275,8 +189,6 @@ def build(root: str, *, drops: list | None = None, ab=None,
             ab=ab, root=root, report_key='summary', run=rc, run_nav_key='summary', sink=sink,
             device=base.provenance_strip(*base.newest_drop_provenance(root, cur_drops), redact=redact))])
 
-    parts.append(_SUMMARY_CSS)
-
     # --- verdict bar + scope + direction ------------------------------------------------------
     n_areas = len(v.area_verdicts)
     n_attention = sum(1 for s in v.area_verdicts.values() if s in (State.AT_RISK, State.ALARM))
@@ -317,21 +229,21 @@ def build(root: str, *, drops: list | None = None, ab=None,
     b_sh = max((r[2] for r in _dash._top_shaders_by_area(root, bl, 999)), default=None) if bl else None
 
     kpis = [
-        _kpi('avg draws / frame', base.fmt_int(round(avg_draws)),
+        base.kpi_card('avg draws / frame', base.fmt_int(round(avg_draws)),
              delta_html=_pct_pill(avg_draws, b_avg_draws) if bl else '',
-             trend=_trendline(series['draws'], tone=_dir_tone(avg_draws, b_avg_draws)),
+             trend=base.trendline(series['draws'], tone=_dir_tone(avg_draws, b_avg_draws)),
              note=f'{n_areas} area{"" if n_areas == 1 else "s"} - {base.fmt_int(td)} total'),
-        _kpi('avg gpu / frame', base.fmt_float(avg_gpu, 4),
+        base.kpi_card('avg gpu / frame', base.fmt_float(avg_gpu, 4),
              delta_html=_pct_pill(avg_gpu, b_avg_gpu) if bl else '',
-             trend=_trendline(series['gpu'], tone=_dir_tone(avg_gpu, b_avg_gpu)),
+             trend=base.trendline(series['gpu'], tone=_dir_tone(avg_gpu, b_avg_gpu)),
              note=f'{base.fmt_float(tg, 3)} s total'),
-        _kpi('worst overdraw', base.fmt_pct(ov_val) if ov_val is not None else '-',
+        base.kpi_card('worst overdraw', base.fmt_pct(ov_val) if ov_val is not None else '-',
              delta_html=_pct_pill(ov_val, b_ov) if bl else '',
-             trend=_trendline(series['overdraw'], tone=_dir_tone(ov_val, b_ov)),
+             trend=base.trendline(series['overdraw'], tone=_dir_tone(ov_val, b_ov)),
              note=ov_area),
-        _kpi('worst shader', base.fmt_int(round(sh_cplx)) if sh_cplx is not None else '-',
+        base.kpi_card('worst shader', base.fmt_int(round(sh_cplx)) if sh_cplx is not None else '-',
              delta_html=_pct_pill(sh_cplx, b_sh) if bl else '',
-             trend=_trendline(series['shader'], tone=_dir_tone(sh_cplx, b_sh)),
+             trend=base.trendline(series['shader'], tone=_dir_tone(sh_cplx, b_sh)),
              note=(f'{sh_area} - over the complexity budget'
                    if (sh_cplx is not None and sh_cplx >= rcfg.shader_complexity_high)
                    else sh_area)),
@@ -342,11 +254,11 @@ def build(root: str, *, drops: list | None = None, ab=None,
     if bl:
         n_resolved = sum(1 for c in tr.improvements if c.kind == 'resolved')
         n_new = sum(1 for c in tr.regressions if c.kind == 'new')
-        body = (f'<div class="movement">'
-                f'<div class="mv-col"><h3>Improvements</h3>{_change_list(tr.improvements, "none")}</div>'
-                f'<div class="mv-col"><h3>Regressions</h3>{_change_list(tr.regressions, "none")}</div>'
-                f'<p class="note dim mv-rollup">{n_resolved} resolved / {n_new} newly un-instanced</p>'
-                f'</div>')
+        rollup = f'<p class="note dim mv-rollup">{n_resolved} resolved / {n_new} newly un-instanced</p>'
+        body = base.movement(
+            [('Improvements', _change_list(tr.improvements, 'none')),
+             ('Regressions', _change_list(tr.regressions, 'none'))],
+            rollup_html=rollup)
         parts.append(base.section_card('movement', f'Movement since {bl.key}', body))
 
     # --- By area (ALL areas, worst-first) ------------------------------------------------------
@@ -373,8 +285,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
             f'<td class="num">{base.fmt_int(round(am.avg_draws_per_frame))} {d_draws}</td>'
             f'<td class="num">{base.fmt_float(am.avg_gpu_per_frame, 4)} {d_gpu}</td>'
             f'<td class="num">{ov}</td>'
-            f'<td><span class="bh-status s-{v.area_verdicts[a].name}">'
-            f'{base.h(_STATE_LABEL[v.area_verdicts[a]])}</span></td></tr>')
+            f'<td>{base.status_badge(v.area_verdicts[a].name, _STATE_LABEL[v.area_verdicts[a]])}</td></tr>')
     rows.append('</tbody></table>')
     parts.append(base.section_card('by_area', 'By area', ''.join(rows), count=n_areas))
 

@@ -114,6 +114,54 @@ def _links_block() -> str:
             + '</div>')
 
 
+# c16x-5: the build-health one-pager components (kpi_card / trendline / status_badge / movement) are
+# [data-page-kind="summary"]-scoped, so each demo is wrapped in a matching <div> for the gallery.
+
+def _kpi_cards_block() -> str:
+    cards = [
+        base.kpi_card('avg draws / frame', base.fmt_int(28410),
+                      delta_html='<span class="delta-pill neg">+4%</span>',
+                      trend=base.trendline([3, 5, 4, 8, 6, 9, 7], tone='neg'),
+                      note='5 areas - 142,050 total', tone='neg'),
+        base.kpi_card('avg gpu / frame', base.fmt_float(12.8, 4),
+                      delta_html='<span class="delta-pill pos">-1%</span>',
+                      trend=base.trendline([9, 7, 8, 6, 6, 5, 5], tone='pos'),
+                      note='0.064 s total', tone='pos'),
+    ]
+    return ('<div data-page-kind="summary"><div class="kpi-strip">'
+            + ''.join(cards) + '</div></div>')
+
+
+def _trendline_block() -> str:
+    return ('<div data-page-kind="summary">'
+            + base.trendline([3, 5, 4, 8, 6, 9, 7], tone='neg') + '</div>')
+
+
+def _status_badges_block() -> str:
+    badges = ''.join(base.status_badge(s, s.replace('_', ' '))
+                     for s in ('OK', 'AT_RISK', 'ALARM', 'UNKNOWN'))
+    return f'<div data-page-kind="summary" class="chip-cluster">{badges}</div>'
+
+
+def _movement_block() -> str:
+    imp = '<ul class="change-list"><li>draw calls <span class="delta-pill pos">-12%</span></li></ul>'
+    reg = '<ul class="change-list"><li>worst shader <span class="delta-pill neg">+30%</span></li></ul>'
+    body = base.movement(
+        [('Improvements', imp), ('Regressions', reg)],
+        rollup_html='<p class="note dim mv-rollup">1 resolved / 1 newly un-instanced</p>')
+    return f'<div data-page-kind="summary">{body}</div>'
+
+
+def _callouts_block() -> str:
+    return ''.join(base.callout(sev, f'{sev} callout',
+                                'one-line detail for the callout primitive.')
+                   for sev in ('ok', 'warn', 'alarm', 'info'))
+
+
+def _empty_state_block() -> str:
+    return base.empty_state('no rendered run data yet')
+
+
 def build(root: str) -> str:
     """Write the chrome preview gallery to <root>/_reports/_chrome_preview.html; return the path."""
     out_dir = _paths.reports_dir(root)
@@ -145,6 +193,12 @@ def build(root: str) -> str:
         base.section_card('spark', 'sparklines', _sparkline_block()),
         base.section_card('table', 'table rows', _table_block()),
         base.section_card('links', 'link kinds', _links_block()),
+        base.section_card('kpi_cards', 'kpi cards', _kpi_cards_block()),
+        base.section_card('trendline', 'trendline', _trendline_block()),
+        base.section_card('status', 'status badges', _status_badges_block()),
+        base.section_card('movement', 'movement', _movement_block()),
+        base.section_card('callouts', 'callouts', _callouts_block()),
+        base.section_card('empty', 'empty state', _empty_state_block()),
         base.page_close(),
     ]
     html = '\n'.join(parts)
