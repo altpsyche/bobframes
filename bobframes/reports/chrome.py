@@ -143,13 +143,33 @@ def _compose_css() -> str:
     return _minify_css(_TOKENS_CSS + _PRIMITIVES_CSS + _COMPONENTS_CSS + _RDC_TABLE_CSS)
 
 
+def _tokens_css_for(theme: dict | None) -> str:
+    """The :root tokens block. ``theme`` is an allowlisted COLOR-override map (config.THEME_KEYS,
+    v0.2.6-1c/ADR-45): re-substitute the design-tokens template with ``token_subst() | theme`` so the
+    overrides win for those keys only. ``theme`` falsy -> the cached default constant byte-for-byte
+    (the DEFAULT render stays golden-identical). Only the :root values are theme-dependent; every other
+    asset is pure var() refs, so nothing else recomposes."""
+    if not theme:
+        return _TOKENS_CSS
+    return _string.Template(_DESIGN_TOKENS_TMPL).substitute(_tokens.token_subst() | theme)
+
+
+def compose_css(theme: dict | None = None) -> str:
+    """The full report CSS bundle, theme-aware (v0.2.6-1c). ``theme=None`` returns ``_compose_css()``
+    byte-for-byte; a color-override theme re-hues ONLY the :root tokens block."""
+    if not theme:
+        return _compose_css()
+    return _minify_css(_tokens_css_for(theme) + _PRIMITIVES_CSS + _COMPONENTS_CSS + _RDC_TABLE_CSS)
+
+
 def _compose_js() -> str:
     return _minify_js(_COMPONENTS_JS + _RDC_TABLE_JS)
 
 
-def design_tokens_css() -> str:
-    """Return :root tokens CSS for reuse in template.py."""
-    return _TOKENS_CSS
+def design_tokens_css(theme: dict | None = None) -> str:
+    """Return :root tokens CSS for reuse in template.py. ``theme=None`` returns the cached default
+    byte-for-byte; a color-override theme (config.THEME_KEYS) re-hues the accent/status/draw-class vars."""
+    return _tokens_css_for(theme)
 
 
 def chrome_css() -> str:
@@ -193,6 +213,17 @@ def undefined_tokens() -> set:
     result is the G-30 footgun. CI hard-gates this (tests/test_token_guard.py); `bobframes preview`
     warns on it (non-fatal) so a designer editing design_tokens.toml sees the typo in their own loop."""
     return _undefined_token_refs(_compose_css(), _compose_js())
+
+
+def theme_undefined_tokens(theme: dict | None) -> set:
+    """Undefined var(--NAME) in the bundle composed WITH a color-override ``theme`` (v0.2.6-1c/ADR-45).
+    A user value like ``accent_primary = 'var(--typo)'`` passes the config ASCII/allowlist gate yet
+    introduces an undefined ref; this is the render-time safety net. EMPTY for a healthy override (and
+    for ``theme=None``, since compose_css(None) is the default bundle). render/preview warn (non-fatal);
+    tests/test_theme hard-asserts it catches a planted bad override."""
+    if not theme:
+        return set()
+    return _undefined_token_refs(compose_css(theme), _compose_js())
 
 
 # ---------------------------------------------------------------------------
@@ -261,19 +292,21 @@ def assets_prefix(depth: int) -> str:
     return ('../' * depth) + _paths.ASSETS_DIR + '/'
 
 
-def head_assets(sink: 'AssetSink', depth: int = 0) -> 'HeadAssets':
+def head_assets(sink: 'AssetSink', depth: int = 0, theme: dict | None = None) -> 'HeadAssets':
     """The report family's head-asset markup for `sink` (c16r, ADR-41).
 
-    INLINE reproduces today's exact `page_open` bytes: `<style>{_compose_css()}</style>` immediately
+    INLINE reproduces today's exact `page_open` bytes: `<style>{compose_css(theme)}</style>` immediately
     followed by `<script>{_compose_js()}</script>` (the JS tag omitted iff the composed JS is empty -
-    today's guard, preserved so the refactor is provably byte-faithful). REF emits depth-relative
-    `_assets/report.{css,js}` links built from REPORT_ASSETS. `body_js` is always '' for this family
-    (the JS rides in the head, adjacent to the CSS).
+    today's guard, preserved so the refactor is provably byte-faithful). `theme=None` -> byte-identical
+    to pre-1c (the DEFAULT render). A color-override `theme` (v0.2.6-1c) re-hues the inlined :root tokens;
+    it does NOT affect the REF link (the externalized `_assets/report.css` carries the bytes, written by
+    `package` from the same `compose_css`). REF emits depth-relative `_assets/report.{css,js}` links built
+    from REPORT_ASSETS. `body_js` is always '' for this family (the JS rides in the head, adjacent to CSS).
     """
     if sink is AssetSink.INLINE:
         js = _compose_js()
         script = f'<script>{js}</script>' if js else ''
-        return HeadAssets(head=f'<style>{_compose_css()}</style>{script}', body_js='')
+        return HeadAssets(head=f'<style>{compose_css(theme)}</style>{script}', body_js='')
     prefix = assets_prefix(depth)
     head = ''.join(a.ref_link(prefix) for a in REPORT_ASSETS)
     return HeadAssets(head=head, body_js='')
@@ -544,7 +577,8 @@ def class_color_var(cls: str) -> str:
 
 def page_open(title: str, *, hdr_offset_px: int | None = None,
               body_attrs: dict | None = None,
-              sink: 'AssetSink' = AssetSink.INLINE, depth: int = 0) -> str:
+              sink: 'AssetSink' = AssetSink.INLINE, depth: int = 0,
+              theme: dict | None = None) -> str:
     """Open a self-contained HTML page. hdr_offset_px sets --hdr-offset on <body>.
 
     Use 48 for dashboard / single-section reports, 84 for multi-section reports
@@ -560,7 +594,8 @@ def page_open(title: str, *, hdr_offset_px: int | None = None,
     """
     # Chrome CSS/JS routed through the c16r head_assets seam (ADR-41); INLINE is byte-identical to the
     # pre-c16r `<style>{_compose_css()}</style>{script}` pair (body_js is '' for the report family).
-    ha = head_assets(sink, depth)
+    # `theme` (v0.2.6-1c): None -> byte-identical; a color-override re-hues the inlined :root tokens.
+    ha = head_assets(sink, depth, theme)
     attrs: list[str] = []
     if hdr_offset_px is not None:
         attrs.append(f'style="--hdr-offset: {int(hdr_offset_px)}px"')
@@ -806,7 +841,7 @@ def report_page(title: str, body, *, drops: int = 0, captures: int = 0,
                 body_attrs: dict | None = None, ab=None, root: str | None = None,
                 report_key: str | None = None, device: str = '', run=None,
                 run_nav_key: str | None = None,
-                sink: 'AssetSink' = AssetSink.INLINE) -> str:
+                sink: 'AssetSink' = AssetSink.INLINE, theme: dict | None = None) -> str:
     """Assemble a standard Layer-2 report page, deduping the open/header/strip/close shared by every
     report (Q-6). ``body`` is an HTML string or a list of fragments (the report's summary_bar +
     sections, in order). The fragments are '\\n'-joined exactly as write_report joins a parts list, so
@@ -824,7 +859,7 @@ def report_page(title: str, body, *, drops: int = 0, captures: int = 0,
     'index' since it carries no report_key).
     """
     parts = [page_open(title, hdr_offset_px=hdr_offset_px, body_attrs=body_attrs,
-                       sink=sink, depth=crumb_depth),
+                       sink=sink, depth=crumb_depth, theme=theme),
              header(title, drops=drops, captures=captures, build_ts=build_ts,
                     kpis=kpis, crumb_depth=crumb_depth, current_page=current_page,
                     run=run)]

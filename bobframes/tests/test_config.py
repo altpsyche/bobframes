@@ -187,6 +187,60 @@ def test_write_config_stub(tmp_path):
     assert (tmp_path / '.bobframes.toml').read_text(encoding='utf-8') == body  # untouched
 
 
+# --- c1c: [theme] user color override parse (ADR-45) -------------------------
+
+def test_theme_parse_allowlisted(tmp_path):
+    """A [theme] with an allowlisted color key lands in Config.theme (deep-merged via the §6 cascade)."""
+    (tmp_path / '.bobframes.toml').write_text(
+        "[theme]\naccent_primary = 'light-dark(oklch(55% 0.15 264), oklch(72% 0.13 264))'\n",
+        encoding='utf-8')
+    cfg = config.load_config(str(tmp_path))
+    assert cfg.theme is not None
+    assert cfg.theme.as_dict()['accent_primary'] == \
+        'light-dark(oklch(55% 0.15 264), oklch(72% 0.13 264))'
+
+
+def test_theme_rejects_non_color_key(tmp_path, caplog):
+    """A non-color key (layout/spacing/radius/type) is OUTSIDE the allowlist -> warned + dropped, so a
+    user can never desync density / parity machinery via [theme]."""
+    (tmp_path / '.bobframes.toml').write_text(
+        "[theme]\nradius = '999px'\naccent_primary = 'oklch(50% 0 0)'\n", encoding='utf-8')
+    with caplog.at_level(logging.WARNING, logger='bobframes'):
+        cfg = config.load_config(str(tmp_path))
+    d = cfg.theme.as_dict()
+    assert 'radius' not in d and d.get('accent_primary') == 'oklch(50% 0 0)'
+    assert any('radius' in r.getMessage() for r in caplog.records)
+
+
+def test_theme_rejects_bad_value(tmp_path, caplog):
+    """Values must be ASCII + free of ;{} (CSS-injection guard); a bad value is warned + dropped (here
+    the only key, so Config.theme collapses to None -> the byte-identical default path)."""
+    (tmp_path / '.bobframes.toml').write_text(
+        "[theme]\naccent_primary = 'red; } body{display:none}'\n", encoding='utf-8')
+    with caplog.at_level(logging.WARNING, logger='bobframes'):
+        cfg = config.load_config(str(tmp_path))
+    assert cfg.theme is None
+
+
+def test_theme_none_when_absent(tmp_path):
+    """No [theme] -> Config.theme is None (the default render path stays byte-identical)."""
+    (tmp_path / '.bobframes.toml').write_text(
+        '[pipeline]\nreplay_timeout_s = 1.0\n', encoding='utf-8')
+    assert config.load_config(str(tmp_path)).theme is None
+
+
+def test_theme_for_render_cli_beats_config(tmp_path):
+    """--accent (CLI) overrides [theme].accent_primary (config) -- the §6 precedence holds for theme."""
+    (tmp_path / '.bobframes.toml').write_text(
+        "[theme]\naccent_primary = 'oklch(50% 0 0)'\naccent_data = 'oklch(60% 0.1 200)'\n",
+        encoding='utf-8')
+    cfg = config.load_config(str(tmp_path))
+    merged = config.theme_for_render(cfg, accent='oklch(30% 0 0)')
+    assert merged['accent_primary'] == 'oklch(30% 0 0)'    # CLI wins
+    assert merged['accent_data'] == 'oklch(60% 0.1 200)'   # config sibling kept
+    assert config.theme_for_render(config.Config()) is None  # nothing to override -> default path
+
+
 def test_env_beats_known_paths(monkeypatch, tmp_path):
     # An Arm install is present, but the BOBFRAMES_* env var must still win (step 1 > step 4).
     env_exe = _mk_exe(tmp_path / 'env' / 'renderdoccmd.exe')

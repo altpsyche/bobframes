@@ -134,6 +134,69 @@ class ReportCfg:                      # c16 — report-presentation thresholds (
     max_prerendered_runs: int = 10    # c16f — cap on pre-rendered older-run pages (per-run UX)
 
 
+# --- user theme override (v0.2.6-1c, ADR-45) --------------------------------
+# The chrome is NEUTRAL by default (ADR-44). A pip user re-hues the accent/status/draw-class COLORS via a
+# `[theme]` section in .bobframes.toml (deep-merged through the §6 cascade, NO source edit) or the
+# `--accent`/`--accent-data` CLI flags. The overridable surface is COLOR HUES ONLY -- a locked allowlist,
+# so a `[theme]` key cannot desync layout/spacing/radius/type/density/parity machinery. The 15 keys mirror
+# the design_tokens.toml "ACCENT KNOBS" comment: the two accents, the four status colors, and the nine
+# draw-class palette colors. Values are validated ASCII token strings free of `;{}` (CSS-injection guard).
+THEME_KEYS = frozenset({
+    'accent_primary', 'accent_data',
+    'status_alarm', 'status_warn', 'status_ok', 'status_info',
+    'c_opaque', 'c_prepass', 'c_translucent', 'c_additive', 'c_decal',
+    'c_shadow', 'c_ui', 'c_postprocess', 'c_other',
+})
+
+
+def _valid_theme_value(v: object) -> bool:
+    """A theme override value must be an ASCII string with no CSS-breaking ``;{}`` (injection guard).
+    Real token values use only oklch()/light-dark()/var()/commas/percent/spaces, all of which pass."""
+    return isinstance(v, str) and v.isascii() and not any(c in v for c in ';{}')
+
+
+def clean_theme_overrides(raw: dict) -> dict[str, str]:
+    """Filter ``raw`` to the THEME_KEYS allowlist with valid values (warn + drop the rest); order kept.
+
+    Shared by the `[theme]` config parse and the CLI ``--accent`` merge so both reject the same way.
+    """
+    log = logging.getLogger('bobframes')
+    out: dict[str, str] = {}
+    for k, v in raw.items():
+        if k not in THEME_KEYS:
+            log.warning('[theme] ignores %r: overridable keys are color hues only (%s)',
+                        k, ', '.join(sorted(THEME_KEYS)))
+            continue
+        if not _valid_theme_value(v):
+            log.warning('[theme] ignores %r: value must be an ASCII token string with no ; { }', k)
+            continue
+        out[k] = v
+    return out
+
+
+@dataclass(frozen=True)
+class ThemeCfg:                       # c1c — user accent/status/draw-class color overrides (ADR-45)
+    tokens: tuple[tuple[str, str], ...] = ()   # allowlisted (key, value) pairs, order-stable
+
+    def as_dict(self) -> dict[str, str]:
+        return dict(self.tokens)
+
+
+def theme_for_render(cfg: 'Config', accent: str | None = None,
+                     accent_data: str | None = None) -> dict[str, str] | None:
+    """The effective color-override map for one render: the config `[theme]` with the CLI
+    ``--accent``/``--accent-data`` overlaid on top (CLI > config, the §6 precedence). Re-cleaned so
+    a CLI value is allowlist/ASCII-validated like a config one. Returns None when there is nothing to
+    override (so the render takes the byte-identical default path). Shared by `render` + `preview`."""
+    raw = cfg.theme.as_dict() if cfg.theme else {}
+    if accent:
+        raw['accent_primary'] = accent
+    if accent_data:
+        raw['accent_data'] = accent_data
+    cleaned = clean_theme_overrides(raw)
+    return cleaned or None
+
+
 @dataclass(frozen=True)
 class Config:
     schema_version: int = 1
@@ -146,6 +209,7 @@ class Config:
     lint: LintCfg = LintCfg()
     classifier: ClassifierCfg = ClassifierCfg()
     report: ReportCfg = ReportCfg()
+    theme: ThemeCfg | None = None     # c1c — None unless [theme] supplies >=1 valid override
 
 
 class ConfigError(BobFramesError):
@@ -223,6 +287,7 @@ def _build_config(root: str | None) -> Config:
     lint = merged.get('lint', {})
     cls = merged.get('classifier', {})
     rpt = merged.get('report', {})
+    theme_tokens = clean_theme_overrides(merged.get('theme', {}))
 
     return Config(
         schema_version=merged.get('schema_version', 1),
@@ -264,6 +329,7 @@ def _build_config(root: str | None) -> Config:
             gpu_regression_pct=rpt.get('gpu_regression_pct', 10.0),
             max_prerendered_runs=rpt.get('max_prerendered_runs', 10),
         ),
+        theme=ThemeCfg(tokens=tuple(theme_tokens.items())) if theme_tokens else None,
     )
 
 

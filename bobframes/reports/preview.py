@@ -162,11 +162,20 @@ def _empty_state_block() -> str:
     return base.empty_state('no rendered run data yet')
 
 
-def build(root: str) -> str:
-    """Write the chrome preview gallery to <root>/_reports/_chrome_preview.html; return the path."""
+def build(root: str, *, theme: dict | None = None) -> str:
+    """Write the chrome preview gallery to <root>/_reports/_chrome_preview.html; return the path.
+
+    ``theme`` (v0.2.6-1c/ADR-45): an allowlisted color-override map (`--accent`/`[theme]`) so a designer
+    previews their accent without rendered data. None -> byte-identical to the golden preview gallery."""
     out_dir = _paths.reports_dir(root)
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, _PREVIEW_NAME)
+
+    bad = base.theme_undefined_tokens(theme)
+    if bad:
+        import logging
+        logging.getLogger('bobframes').warning(
+            'theme override introduces undefined token ref(s): %s', sorted(bad))
 
     kpis = [
         {'label': 'total draws', 'value': base.fmt_int(28410), 'delta': '+4.2%', 'tone': 'neg'},
@@ -177,7 +186,7 @@ def build(root: str) -> str:
     # Self-contained gallery: page_open/page_close directly (no header crumb or build strip), so the
     # page is deterministic and has no link dependency on the catalog/dashboard pages.
     parts = [
-        base.page_open('chrome preview', hdr_offset_px=120),
+        base.page_open('chrome preview', hdr_offset_px=120, theme=theme),
         '<h1>chrome preview</h1>',
         '<p class="note">every primitive from design_tokens.toml + chrome, no data needed. '
         'edit reports/design_tokens.toml and rerun to see your changes.</p>',

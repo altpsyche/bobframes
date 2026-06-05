@@ -289,7 +289,8 @@ class DropResult:
 
 def process_drop(drop: discovery.Drop, *, force: bool, workers: int,
                  project_root: str,
-                 replay_timeout: float = 600.0, convert_timeout: float = 120.0) -> DropResult:
+                 replay_timeout: float = 600.0, convert_timeout: float = 120.0,
+                 theme: dict | None = None) -> DropResult:
     _log(f'== drop: {drop.area} / {drop.drop_date}_{drop.drop_label} ({len(drop.captures)} captures) ==')
     skip, rotated_from = _preflight(drop, force, project_root)
     if skip:
@@ -401,6 +402,7 @@ def process_drop(drop: discovery.Drop, *, force: bool, workers: int,
         captures=list(drop.captures), schema_version=schemas.SCHEMA_VERSION,
         build_timestamp=manifest.now_iso(),
         row_counts=row_counts,
+        theme=theme,
     )
 
     hits = lint.lint_file(os.path.join(drill_dir, paths.INDEX_HTML))
@@ -435,6 +437,11 @@ def main(argv: list[str]) -> int:
         help='per-capture qrenderdoc replay budget (s); overrides [pipeline] replay_timeout_s')
     ap.add_argument('--convert-timeout', type=float, default=None,
         help='per-file renderdoccmd convert budget (s); overrides [pipeline] convert_timeout_s')
+    ap.add_argument('--accent', default=None,
+        help='one-shot accent-color override (oklch token, e.g. '
+             "'light-dark(oklch(55%% 0.15 264), oklch(72%% 0.13 264))'); overrides [theme].accent_primary")
+    ap.add_argument('--accent-data', default=None,
+        help='one-shot primary data-series / heatmap color override; overrides [theme].accent_data')
     args = ap.parse_args(argv)
 
     # process_drop has no pixel_grid param; carry --pixel-grid to it via the environment.
@@ -447,6 +454,9 @@ def main(argv: list[str]) -> int:
     # Value precedence: CLI flag > config (which already folds env/file/default).
     replay_timeout = args.replay_timeout if args.replay_timeout is not None else cfg.pipeline.replay_timeout_s
     convert_timeout = args.convert_timeout if args.convert_timeout is not None else cfg.pipeline.convert_timeout_s
+    # c1c (ADR-45): the effective color theme = config [theme] + CLI --accent overlay (CLI wins).
+    # None -> the render takes the byte-identical default path.
+    theme = config.theme_for_render(cfg, args.accent, args.accent_data)
 
     if args.positional:
         drops = [discovery.parse_single_drop_arg(args.positional, root)]
@@ -491,6 +501,7 @@ def main(argv: list[str]) -> int:
                     schema_version=m.get('schema_version', schemas.SCHEMA_VERSION),
                     build_timestamp=m.get('build_timestamp', ''),
                     row_counts=m.get('row_counts') or {},
+                    theme=theme,
                 )
                 hits = lint.lint_file(os.path.join(drill_dir, paths.INDEX_HTML))
                 if hits:
@@ -509,7 +520,7 @@ def main(argv: list[str]) -> int:
         query_examples.write_query_examples(root)
         _log('  wrote _query_examples.md')
 
-        rc = reports_orchestrator.render_all_reports(root, _log)
+        rc = reports_orchestrator.render_all_reports(root, _log, theme=theme)
         if rc != 0:
             return rc
         _log('render-only done')
@@ -520,7 +531,8 @@ def main(argv: list[str]) -> int:
         try:
             r = process_drop(drop, force=args.force, workers=args.workers,
                              project_root=project_root,
-                             replay_timeout=replay_timeout, convert_timeout=convert_timeout)
+                             replay_timeout=replay_timeout, convert_timeout=convert_timeout,
+                             theme=theme)
             results.append(r)
         except Exception as e:
             _log(f'  drop FAILED: {e}')
@@ -537,7 +549,7 @@ def main(argv: list[str]) -> int:
     query_examples.write_query_examples(root)
     _log('  wrote _query_examples.md')
 
-    rc = reports_orchestrator.render_all_reports(root, _log)
+    rc = reports_orchestrator.render_all_reports(root, _log, theme=theme)
     if rc != 0:
         return rc
 

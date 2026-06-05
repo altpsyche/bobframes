@@ -33,6 +33,7 @@ from .chrome import (
     clip_attrs,
     clip_span,
     components_js,
+    compose_css,
     data_table,
     design_tokens_css,
     el,
@@ -63,6 +64,7 @@ from .chrome import (
     run_picker_for,
     section_card,
     summary_bar,
+    theme_undefined_tokens,
     undefined_tokens,
 )
 from .formatters import (
@@ -143,7 +145,8 @@ __all__ = [
     # chrome
     'DRAW_CLASSES', 'ab_picker', 'ab_picker_for', 'ab_strip', 'callout',
     'chrome_css', 'class_color_var', 'clip_attrs', 'clip_span',
-    'components_js', 'design_tokens_css', 'empty_state', 'h', 'header', 'heatmap_cell',
+    'components_js', 'compose_css', 'design_tokens_css', 'empty_state', 'h', 'header', 'heatmap_cell',
+    'theme_undefined_tokens',
     'head_assets', 'assets_prefix', 'AssetSink', 'AssetFile', 'HeadAssets', 'REPORT_ASSETS',
     'icon', 'kpi_chip', 'kpi_strip', 'legend', 'link',
     'page_close', 'page_open', 'provenance_strip',
