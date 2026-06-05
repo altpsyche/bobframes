@@ -296,6 +296,75 @@ def h(s) -> str:
     return _html.escape(str(s if s is not None else ''))
 
 
+# --- escape-by-construction element builder (c16x-2, ADR-42; subsumes roadmap C6) ------------------
+# A component built through el() cannot emit an unescaped attribute value or text child -- escaping is
+# structural, not a per-call h() the author can forget. A _Raw child (any component's own output) is
+# spliced verbatim (no double-escape); a plain str/number child is HTML-escaped. Plain server-rendered
+# strings, no dependency / build step, deterministic, ASCII-clean for ASCII input (ADR-37).
+
+class _Raw(str):
+    """Already-safe HTML markup. el() emits a _Raw child verbatim; a plain str child is escaped."""
+    __slots__ = ()
+
+
+def raw(s) -> _Raw:
+    """Mark a pre-built HTML fragment as safe (no escaping) -- nested component output, or markup
+    assembled elsewhere (e.g. a `_f.safe_chrome_text(...)` result the caller wants spliced raw)."""
+    return _Raw('' if s is None else str(s))
+
+
+# Attribute NAMES are never data; restrict them so a name can never break out of the tag.
+_ATTR_NAME_CHARS = frozenset(
+    'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_:')
+
+
+def _el_attrs(attrs: dict | None) -> str:
+    if not attrs:
+        return ''
+    out = []
+    for name, value in attrs.items():
+        if not name or any(ch not in _ATTR_NAME_CHARS for ch in name):
+            raise ValueError(f'unsafe attribute name: {name!r}')
+        if value is None or value is False:
+            continue                                          # omit absent / false attributes
+        if value is True:
+            out.append(f' {name}')                            # boolean attribute
+        else:
+            out.append(f' {name}="{_html.escape(str(value), quote=True)}"')
+    return ''.join(out)
+
+
+def _el_children(children) -> str:
+    out = []
+    for c in children:
+        if c is None or c is False:
+            continue                                          # skip so `cond and frag` composes
+        out.append(str(c) if isinstance(c, _Raw) else h(c))   # _Raw verbatim; else escape
+    return ''.join(out)
+
+
+def el(tag: str, attrs: dict | None = None, *children) -> _Raw:
+    """Build `<tag ...>children</tag>` with attribute values + text children escaped BY CONSTRUCTION.
+
+    attrs value: None/False omits the attribute, True emits a bare boolean attribute, else
+    name="escaped". children: a _Raw passes verbatim (no double-escape), None/False is skipped, anything
+    else is HTML-escaped via h(). Returns _Raw so nesting composes. Quotes match the chrome house style
+    (double-quoted attrs + html.escape(quote=True)), so an el() rebuild of an existing double-quoted
+    leaf is byte-identical (the parity contract for c16x leaf migrations)."""
+    return _Raw(f'<{tag}{_el_attrs(attrs)}>{_el_children(children)}</{tag}>')
+
+
+def el_void(tag: str, attrs: dict | None = None, *, self_close: bool = False) -> _Raw:
+    """A childless element: `<tag ...>` (HTML void: link/img/input/meta) or `<tag .../>` when
+    self_close (XML/SVG: use/rect/...). Same attribute escaping as el()."""
+    return _Raw(f'<{tag}{_el_attrs(attrs)}{"/" if self_close else ""}>')
+
+
+def classes(*names) -> str:
+    """Join truthy class names with single spaces (skips '' / None) for an el() `class=` value."""
+    return ' '.join(str(n) for n in names if n)
+
+
 # c16m: per-tier char thresholds for emitting a title= on a truncating cell. A deterministic proxy for
 # "will visually clip" (matches the pass_gpu title-gating precedent); short values skip title= to avoid
 # screen-reader double-read. Tier '' = default (--clip-cap 320px), 'narrow' (200px), 'wide' (560px).
@@ -371,8 +440,9 @@ def page_open(title: str, *, hdr_offset_px: int | None = None,
 
 
 def icon(name: str) -> str:
-    """Return inline SVG referencing the icon sprite."""
-    return f'<svg class="icon" aria-hidden="true"><use href="#icon-{_html.escape(name)}"/></svg>'
+    """Return inline SVG referencing the icon sprite (c16x-2: composed via el, byte-identical)."""
+    return el('svg', {'class': 'icon', 'aria-hidden': 'true'},
+              el_void('use', {'href': f'#icon-{name}'}, self_close=True))
 
 
 def summary_bar(label: str, headline: str, *,
@@ -711,14 +781,11 @@ def legend(classes: list[str] | None = None) -> str:
 
 def kpi_chip(label: str, value, *, delta: str | None = None,
              tone: str = 'neutral') -> str:
-    """Render one KPI chip. tone in {pos, neg, neutral}."""
-    parts = [f'<div class="kpi-chip tone-{h(tone)}">']
-    parts.append(f'<div class="kpi-label">{h(label)}</div>')
-    parts.append(f'<div class="kpi-value">{h(value)}</div>')
-    if delta:
-        parts.append(f'<div class="kpi-delta">{h(delta)}</div>')
-    parts.append('</div>')
-    return ''.join(parts)
+    """Render one KPI chip. tone in {pos, neg, neutral} (c16x-2: composed via el, byte-identical)."""
+    return el('div', {'class': 'kpi-chip tone-' + tone},
+              el('div', {'class': 'kpi-label'}, label),
+              el('div', {'class': 'kpi-value'}, value),
+              el('div', {'class': 'kpi-delta'}, delta) if delta else None)
 
 
 def kpi_strip(kpis: list) -> str:
