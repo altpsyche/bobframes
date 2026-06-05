@@ -399,6 +399,77 @@ def classes(*names) -> str:
     return ' '.join(str(n) for n in names if n)
 
 
+# --- the table component family (c16x-4, ADR-42; the C9 declarative-report on-ramp) ----------------
+# The rdc-table ENGINE (CSS+JS, c16k/c16l) is single-source, but its HOST markup was hand-written in
+# every report (~117 sites), with inconsistent attribute order / per-report cells / inline col-groups
+# -- so a byte-identical migration is impossible (it would normalize bytes). This is the NORMALIZED
+# component the reports adopt in v0.2.6 (where the golden refresh absorbs the normalization). Built
+# through el(), so cells escape by construction. data_table = the interactive static rdc-table host;
+# static_table = the bare <table class="data"> (dashboard minis / summary by-area, intentionally
+# un-wrapped per c16l -- a sortable header inside a card-link <a> would fight nav).
+
+@_dataclass(frozen=True)
+class Column:
+    """A table column: its header AND its per-cell renderer live together, so a table is described by
+    data, not hand-written markup. `render(value, row) -> str|_Raw` produces the cell's inner HTML and
+    is TRUSTED to be safe (build it with el()/chrome helpers); without it the value is escaped (or, with
+    `clip`, wrapped in a truncating .clip span). `numeric`/`mono` set the th/td cell class; `group` names
+    the collapsible col-group."""
+    key: str
+    header: str = ''
+    numeric: bool = False
+    mono: bool = False
+    title: str | None = None
+    clip: str = ''                              # '' | 'narrow' | 'wide'
+    group: str | None = None
+    render: '_Callable | None' = None
+
+
+def _table_th(col: 'Column') -> _Raw:
+    return el('th', {'class': 'num' if col.numeric else None, 'scope': 'col', 'title': col.title},
+              col.header)
+
+
+def _table_td(col: 'Column', row: dict) -> _Raw:
+    value = row.get(col.key)
+    if col.render is not None:
+        inner = raw(col.render(value, row))     # trusted safe HTML (built via el/helpers)
+    elif col.clip:
+        inner = raw(clip_span(value, tier=col.clip))
+    else:
+        inner = value                           # el escapes a plain value
+    return el('td', {'class': classes('num' if col.numeric else '', 'mono' if col.mono else '') or None},
+              inner)
+
+
+def static_table(columns, rows, *, caption: str = '') -> _Raw:
+    """A bare `<table class="data">` (NO rdc-table host): dashboard minis + summary by-area."""
+    cap = el('caption', None, caption) if caption else None
+    head = el('thead', None, el('tr', None, *[_table_th(c) for c in columns]))
+    body = el('tbody', None, *[el('tr', None, *[_table_td(c, r) for c in columns]) for r in rows])
+    return el('table', {'class': 'data'}, cap, head, body)
+
+
+def data_table(columns, rows, *, table_key: str, caption: str = '',
+               default_sort: str | None = None, default_dir: str | None = None,
+               colgroups=None, wrap: bool = True) -> _Raw:
+    """An interactive static rdc-table (sort / heatmap / col-groups via the always-on engine, ADR-38).
+
+    Normalized host markup with a CONSISTENT attribute order -- the target shape reports adopt in
+    v0.2.6. `colgroups` (a list of {name, open, cols}) emits the inline `window.__colgroups_<key>` spec
+    the engine reads to build the collapsible group bar."""
+    cgroup = None
+    if colgroups:
+        import json as _json
+        cgroup = raw(f'<script>window.__colgroups_{table_key}='
+                     f'{_json.dumps(colgroups, separators=(",", ":"))};</script>')
+    host = el('rdc-table',
+              {'data-mode': 'static', 'data-table': table_key,
+               'data-default-sort': default_sort, 'data-default-dir': default_dir},
+              cgroup, static_table(columns, rows, caption=caption))
+    return el('div', {'class': 'table-wrap'}, host) if wrap else host
+
+
 # c16m: per-tier char thresholds for emitting a title= on a truncating cell. A deterministic proxy for
 # "will visually clip" (matches the pass_gpu title-gating precedent); short values skip title= to avoid
 # screen-reader double-read. Tier '' = default (--clip-cap 320px), 'narrow' (200px), 'wide' (560px).
