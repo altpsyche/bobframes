@@ -13,39 +13,30 @@ from collections import Counter, defaultdict
 import pyarrow.parquet as papq
 
 from . import base
+from .. import aggregates as _agg
 from .. import paths as _paths
 
 
 def _top_meshes(root: str, current, n: int = 3) -> list:
     """Return [(label, repeat, indices_med)] where label is a human-readable synthetic.
 
-    Scoped to the CURRENT run (ADR-35): the global cache carries drop_date/drop_label per row,
-    so we filter to the current run's (date, label) rather than counting repeats across all runs.
+    Scoped to the CURRENT run (ADR-35). The mesh repeat-count atom is the single-source
+    `aggregates.draw_aggregates` (G-26) collapsed across areas, so this card, the instancing report,
+    and the verdict can never disagree. c16v normalizes `repeat` per frame; here it is the raw
+    per-run occurrence count (the helper's contract is unchanged).
     """
     if current is None:
         return []
-    t = base.load_cached(root, 'draws_summary', columns=[
-        'drop_date', 'drop_label', 'mesh_hash', 'num_indices', 'program_id',
-        'draw_class', 'parent_pass_path_norm'])  # sha256-validated; None -> warn + [] (R-13)
-    if t is None:
-        return []
-    cols = base._to_dict_of_lists(t)
+    da = _agg.draw_aggregates(root, [current])
     counts: Counter = Counter()
     indices: dict = defaultdict(list)
     cls_by_mesh: dict = {}
     pass_by_mesh: dict = {}
-    for i in range(t.num_rows):
-        if (cols['drop_date'][i], cols['drop_label'][i]) != (current.date, current.label):
-            continue
-        mh = cols['mesh_hash'][i]
-        prog = cols['program_id'][i] or 0
-        n_idx = cols['num_indices'][i] or 0
-        if not mh or n_idx <= 0 or prog == 0:
-            continue
-        counts[mh] += 1
-        indices[mh].append(n_idx)
-        cls_by_mesh.setdefault(mh, cols['draw_class'][i] or 'other')
-        pass_by_mesh.setdefault(mh, cols['parent_pass_path_norm'][i] or '')
+    for (dk, area, mh), c in da.count.items():
+        counts[mh] += c
+        indices[mh].extend(da.num_indices[(dk, area, mh)])
+        cls_by_mesh.setdefault(mh, da.draw_class[(dk, area, mh)])
+        pass_by_mesh.setdefault(mh, da.pass_norm[(dk, area, mh)])
     out = []
     for mh, c in counts.most_common(n):
         try:
@@ -88,28 +79,14 @@ def _top_shaders(root: str, current, n: int = 3) -> list:
     """
     if current is None:
         return []
-    t = base.load_cached(root, 'shader_summary',
-        columns=['drop_date', 'drop_label', 'stable_key', 'shader_type',
-                 'complexity_score', 'used_by_draw_count'])  # sha256-validated; None -> warn + [] (R-13)
-    if t is None:
-        return []
-    cols = base._to_dict_of_lists(t)
+    sa = _agg.shader_aggregates(root, [current], stage='fragment')
     cost: dict = defaultdict(float)
     cplx: dict = {}
     stype: dict = {}
-    for i in range(t.num_rows):
-        if (cols['drop_date'][i], cols['drop_label'][i]) != (current.date, current.label):
-            continue
-        if cols['shader_type'][i] != 'fragment':
-            continue
-        sk = cols['stable_key'][i] or ''
-        if not sk:
-            continue
-        c_val = float(cols['complexity_score'][i] or 0)
-        uses = int(cols['used_by_draw_count'][i] or 0)
-        cost[sk] += c_val * uses
-        cplx[sk] = max(cplx.get(sk, 0), c_val)
-        stype[sk] = cols['shader_type'][i]
+    for (dk, area, sk), cs in sa.cost_sum.items():
+        cost[sk] += cs
+        cplx[sk] = max(cplx.get(sk, 0), sa.cplx[(dk, area, sk)])
+        stype[sk] = sa.stype[(dk, area, sk)]
     ranked = sorted(cost.items(), key=lambda kv: kv[1], reverse=True)[:n]
     out = []
     for sk, c in ranked:
@@ -130,29 +107,15 @@ def _top_shaders_by_area(root: str, current, n: int = 999) -> list:
     `build()`."""
     if current is None:
         return []
-    t = base.load_cached(root, 'shader_summary',
-        columns=['area', 'drop_date', 'drop_label', 'stable_key', 'shader_type',
-                 'complexity_score', 'used_by_draw_count'])  # sha256-validated; None -> warn + [] (R-13)
-    if t is None:
-        return []
-    cols = base._to_dict_of_lists(t)
+    sa = _agg.shader_aggregates(root, [current], stage='fragment')
     cost: dict = defaultdict(float)
     cplx: dict = {}
     stype: dict = {}
-    for i in range(t.num_rows):
-        if (cols['drop_date'][i], cols['drop_label'][i]) != (current.date, current.label):
-            continue
-        if cols['shader_type'][i] != 'fragment':
-            continue
-        sk = cols['stable_key'][i] or ''
-        if not sk:
-            continue
-        key = (cols['area'][i], sk)
-        c_val = float(cols['complexity_score'][i] or 0)
-        uses = int(cols['used_by_draw_count'][i] or 0)
-        cost[key] += c_val * uses
-        cplx[key] = max(cplx.get(key, 0.0), c_val)
-        stype[key] = cols['shader_type'][i]
+    for (dk, area, sk), cs in sa.cost_sum.items():
+        key = (area, sk)
+        cost[key] += cs
+        cplx[key] = max(cplx.get(key, 0.0), sa.cplx[(dk, area, sk)])
+        stype[key] = sa.stype[(dk, area, sk)]
     rows = [(area, f'{stype[(area, sk)][:4]}-cplx-{int(cval)}', cval, cost[(area, sk)])
             for (area, sk), cval in cplx.items()]
     rows.sort(key=lambda x: x[2], reverse=True)
@@ -224,44 +187,27 @@ def _top_meshes_by_area(root: str, current, n: int = 999) -> list:
     """Return [(area, label, repeat, indices_med)] for the CURRENT run, keyed per (area, mesh_hash),
     ordered by repeat desc.
 
-    The area-resolved sibling of `_top_meshes` (which collapses across areas). Reuses the same
-    sha256-validated draws_summary cache + run filter (+ the `area` column); used by the c16q health
+    The area-resolved sibling of `_top_meshes` (which collapses across areas). Sources the repeat-count
+    atom from `aggregates.draw_aggregates` (G-26), keyed per (area, mesh_hash); used by the c16q health
     verdict (summary.py) to derive each area's worst mesh repeat-count. NOT called by `build()`.
-    (c16v per-frame-normalizes the repeat count; here it is summed across the run's frames, mirroring
-    instancing_opportunities so the verdict cannot disagree.)"""
+    c16v per-frame-normalizes the repeat count at the aggregates seam, so the verdict and the
+    instancing report read the SAME per-frame number."""
     if current is None:
         return []
-    t = base.load_cached(root, 'draws_summary', columns=[
-        'area', 'drop_date', 'drop_label', 'mesh_hash', 'num_indices', 'program_id',
-        'draw_class', 'parent_pass_path_norm'])  # sha256-validated; None -> warn + [] (R-13)
-    if t is None:
-        return []
-    cols = base._to_dict_of_lists(t)
+    da = _agg.draw_aggregates(root, [current])
     counts: Counter = Counter()
-    indices: dict = defaultdict(list)
-    cls_by: dict = {}
-    pass_by: dict = {}
-    for i in range(t.num_rows):
-        if (cols['drop_date'][i], cols['drop_label'][i]) != (current.date, current.label):
-            continue
-        mh = cols['mesh_hash'][i]
-        prog = cols['program_id'][i] or 0
-        n_idx = cols['num_indices'][i] or 0
-        if not mh or n_idx <= 0 or prog == 0:
-            continue
-        key = (cols['area'][i], mh)
-        counts[key] += 1
-        indices[key].append(n_idx)
-        cls_by.setdefault(key, cols['draw_class'][i] or 'other')
-        pass_by.setdefault(key, cols['parent_pass_path_norm'][i] or '')
+    for (dk, area, mh), c in da.count.items():
+        counts[(area, mh)] += c
     out = []
     for (area, mh), c in counts.most_common(n):
+        k = (current.key, area, mh)
+        idx = da.num_indices.get(k, [])
         try:
-            med = int(statistics.median(indices[(area, mh)])) if indices[(area, mh)] else 0
+            med = int(statistics.median(idx)) if idx else 0
         except statistics.StatisticsError:
             med = 0
-        cls = cls_by.get((area, mh), 'other')
-        suffix = base.pass_suffix(pass_by.get((area, mh), '')) or '?'
+        cls = da.draw_class.get(k, 'other')
+        suffix = base.pass_suffix(da.pass_norm.get(k, '')) or '?'
         hash_tag = str(mh)[-4:] if mh else ''
         label = f'{cls}/{suffix}/{med}v#{hash_tag}'
         out.append((area, label, c, med))

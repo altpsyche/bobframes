@@ -14,6 +14,7 @@ from collections import Counter, defaultdict
 import pyarrow.parquet as papq
 
 from . import base
+from .. import aggregates as _agg
 from ..config import get_config
 
 
@@ -105,9 +106,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
         sk = row.get('stable_key') or ''
         if not sk:
             continue
-        drop_key = f"{row['drop_date']}_{row['drop_label']}"
         p = per_key[sk]
-        p['uses_by_drop'][drop_key] += int(row.get('used_by_draw_count') or 0)
         p['complexity'] = max(p['complexity'], float(row.get('complexity_score') or 0))
         p['branches'] = max(p['branches'], int(row.get('total_branches') or 0))
         p['loops'] = max(p['loops'], int(row.get('total_loops') or 0))
@@ -126,6 +125,18 @@ def build(root: str, *, drops: list | None = None, ab=None,
             p['rep_shader_id'] = row.get('shader_id') or 0
             p['rep_src_path'] = row.get('src_file_path') or ''
             p['rep_capture'] = row.get('capture') or ''
+
+    # Single-source the uses atom (G-26, aggregates): used_by_draw_count summed per (drop, area, sk),
+    # collapsed across areas into the cross-area per-(sk, drop) Counter this report displays. Same stage
+    # filter + cache as the metadata loop, so byte-for-byte the old inline `uses_by_drop` - including the
+    # presence semantics (a 0-uses row still seeds its drop_key via Counter += 0). c16v normalizes uses
+    # per frame here (cost = complexity x per-frame-uses; complexity stays a per-shader max).
+    _sa = _agg.shader_aggregates(root, drops, stage=stage)
+    _uses_by_key: dict = defaultdict(Counter)
+    for (dk, area, sk2), u in _sa.uses.items():
+        _uses_by_key[sk2][dk] += u
+    for sk, p in per_key.items():
+        p['uses_by_drop'] = _uses_by_key.get(sk, Counter())
 
     # Run model (ADR-35): rank the shaders PRESENT in the current run (a shader appears in a drop iff
     # ck is a key in its uses_by_drop), ordered by current-run cost proxy. Presence - not uses>0 - is

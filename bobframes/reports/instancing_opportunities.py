@@ -14,6 +14,7 @@ from collections import Counter, defaultdict
 import pyarrow.parquet as papq
 
 from . import base
+from .. import aggregates as _agg
 from ..config import get_config
 
 
@@ -102,7 +103,6 @@ def build(root: str, *, drops: list | None = None, ab=None,
             continue
         drop_key = f"{row['drop_date']}_{row['drop_label']}"
         m = per_mesh[mh]
-        m['repeat_by_drop'][drop_key] += 1
         pass_norm = row.get('parent_pass_path_norm') or ''
         cls = row.get('draw_class') or 'other'
         m['pass_paths'][pass_norm] += 1
@@ -124,6 +124,17 @@ def build(root: str, *, drops: list | None = None, ab=None,
             batching_groups[key] += 1
             batching_meshes[key].add(mh)
             batching_drops[key].add(drop_key)
+
+    # Single-source the repeat-count atom (G-26, aggregates): occurrences per (drop, area, mesh),
+    # summed across areas into the cross-area per-(mesh, drop) count this report displays. Identical
+    # filter + cache as the metadata loop above, so byte-for-byte the old inline `repeat_by_drop`; c16v
+    # normalizes it per frame here so the report and the verdict read the same number.
+    _da = _agg.draw_aggregates(root, drops)
+    _repeat_by_mesh: dict = defaultdict(Counter)
+    for (dk, area, mh2), c in _da.count.items():
+        _repeat_by_mesh[mh2][dk] += c
+    for mh, m in per_mesh.items():
+        m['repeat_by_drop'] = _repeat_by_mesh.get(mh, Counter())
 
     def _cur_repeat(m) -> int:
         return m['repeat_by_drop'].get(ck, 0)
