@@ -7,7 +7,7 @@ rdc-copy-button {
   /* resting affordance (c16d): a faint tint so it reads as clickable before hover */
   background: color-mix(in oklch, var(--accent-primary) 7%, transparent);
   border: 1px solid transparent;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   font: var(--fs-small) ui-monospace, monospace;
   margin-left: 4px;
   transition: color var(--motion-hover), background var(--motion-hover), border-color var(--motion-hover);
@@ -25,7 +25,7 @@ rdc-copy-button.copied::before { content: 'ok'; }
 rdc-heatmap-cell {
   display: inline-block;
   padding: 1px 4px;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   font-variant-numeric: tabular-nums;
 }
 
@@ -36,7 +36,7 @@ rdc-sticky-h2 { display: contents; }
 rdc-sticky-h2 h2[aria-current="section"]::before {
   content: ''; position: absolute;
   left: calc(-1 * var(--sp-3)); top: 0.2em; bottom: 0.2em;
-  width: 3px; border-radius: 2px; background: var(--accent-data);
+  width: 3px; border-radius: var(--radius-sm); background: var(--accent-data);
 }
 
 rdc-row-drill { display: contents; }
@@ -54,7 +54,7 @@ rdc-search-cards input[type="search"] {
   border: 1px solid var(--border-1);
   background: var(--surface-0);
   color: var(--text-1);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   min-width: 280px;
 }
 rdc-search-cards input[type="search"]:focus {
@@ -78,7 +78,7 @@ rdc-ab-picker select {
   border: 1px solid var(--border-1);
   background: var(--surface-0);
   color: var(--text-1);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
 }
 
 rdc-alarm-banner { display: contents; }
@@ -92,7 +92,7 @@ rdc-alarm-banner { display: contents; }
 
 /* Pair list: grouped variant chips per A/B pair */
 .pair-list { display: flex; flex-direction: column; gap: var(--sp-4); margin: 0 0 var(--sp-6); }
-.pair-group { box-shadow: var(--elev-1); border-radius: 4px; padding: var(--sp-3) var(--sp-4); background: var(--surface-1); }
+.pair-group { border: 1px solid var(--border); border-radius: var(--radius); padding: var(--sp-3) var(--sp-4); background: var(--surface-1); }
 .pair-group > h3 {
   margin: 0 0 var(--sp-3); padding: 0;
   font: var(--fs-mono) ui-monospace, monospace;

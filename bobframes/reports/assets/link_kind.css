@@ -50,7 +50,7 @@ a[data-link-kind="copy"] {
   width: 24px; height: 24px;
   color: var(--text-2);
   text-decoration: none;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   transition: color var(--motion-hover), background var(--motion-hover);
 }
 a[data-link-kind="copy"]:hover {

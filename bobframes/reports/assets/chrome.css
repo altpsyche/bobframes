@@ -56,7 +56,7 @@ nav.crumb a, nav.crumb a[data-link-kind] {
   text-decoration: none;
   padding: 2px 8px;
   border: 1px solid var(--border-1);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   background: var(--surface-1);
   transition: border-color var(--motion-hover), background var(--motion-hover);
 }
@@ -75,17 +75,16 @@ nav.crumb a + a::before { content: ''; }
 }
 .kpi-chip {
   background: var(--surface-1);
-  box-shadow: var(--elev-1);
-  border-radius: 4px;
+  border: 1px solid var(--border); border-radius: var(--radius);
   padding: var(--sp-3) var(--sp-4);
   display: flex; flex-direction: column; gap: var(--sp-1);
   min-height: ${kpi_min_height};
 }
 .kpi-chip .kpi-label {
-  font: var(--fs-small) ui-monospace, monospace;
+  font: var(--fs-micro) ui-monospace, monospace;
   color: var(--text-3);
-  text-transform: lowercase;
-  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 .kpi-chip .kpi-value {
   font: 600 var(--fs-display)/1.05 'Inter', 'Segoe UI', system-ui, sans-serif;
@@ -142,19 +141,20 @@ figure.chart figcaption { font-size: var(--fs-small); color: var(--text-2);
                           margin: 0 0 var(--sp-2); }
 .chart-svg { display: block; width: 100%; height: auto;
              background: var(--surface-1);
-             border-radius: 4px; }
+             border-radius: var(--radius); }
 .chart-svg text { font: var(--fs-small) ui-monospace, monospace; fill: var(--text-2); }
 details.secondary-metrics { margin: var(--sp-2) 0 var(--sp-4); }
 details.secondary-metrics > summary { cursor: pointer; color: var(--text-2);
                                       font-size: var(--fs-small); padding: var(--sp-1) 0; }
 
-/* Section cards (c16c/c16d): each report section is ONE card raised off the page by surface +
-   elevation shadow (depth over borders, ADR-34). The card is the SINGLE frame - inner table-wraps
-   go borderless/flush so we never stack box-in-box. The leading h2 no longer carries an --accent
-   left-rule; the sticky-h2 in-view highlight is now a ::before marker (see _COMPONENTS_CSS_BASE). */
+/* Section cards (c16c/c16d; v0.2.6-1b FLAT, reverses ADR-34): each report section is ONE card,
+   separated from the page by a 1px --border + --radius (border-led, no elevation shadow). The card
+   is the SINGLE frame - inner table-wraps go borderless/flush so we never stack box-in-box. The
+   leading h2 carries no --accent left-rule; the sticky-h2 in-view highlight is a ::before marker
+   (see _COMPONENTS_CSS_BASE). */
 section.card {
   background: var(--surface-1);
-  box-shadow: var(--elev-1); border-radius: 4px;
+  border: 1px solid var(--border); border-radius: var(--radius);
   padding: var(--sp-6); margin: 0 0 var(--sp-6);
 }
 section.card > header {
@@ -166,7 +166,7 @@ section.card > :last-child { margin-bottom: 0; }
 section.card .table-wrap { border: 0; border-radius: 0; margin: 0; }
 .card-count {
   font: 600 var(--fs-small) ui-monospace, monospace; color: var(--text-2);
-  background: var(--surface-2); padding: 1px 8px; border-radius: 3px;
+  background: var(--surface-2); padding: 1px 8px; border-radius: var(--radius-sm);
 }
 .card-subtitle { margin: 0 0 var(--sp-4); color: var(--text-2); font-size: var(--fs-small); }
 
@@ -180,7 +180,7 @@ section.card .table-wrap { border: 0; border-radius: 0; margin: 0; }
 .delta { font-variant-numeric: tabular-nums; padding: 2px var(--sp-2);
          text-align: right; }
 .delta-pill {
-  display: inline-block; padding: 1px 6px; border-radius: 2px;
+  display: inline-block; padding: 1px 6px; border-radius: var(--radius-sm);
   background: var(--surface-2);
   font: 600 var(--fs-small) ui-monospace, monospace;
 }
@@ -189,7 +189,7 @@ section.card .table-wrap { border: 0; border-radius: 0; margin: 0; }
 .delta.flat, .delta-pill.flat { color: var(--text-3); }
 .delta.new, .delta-pill.new { color: var(--text-3); font-style: italic; }
 .delta.alarm { background: color-mix(in oklch, var(--status-alarm) 14%, transparent);
-               border-radius: 2px; }
+               border-radius: var(--radius-sm); }
 .delta-latest { border-left: 2px solid var(--border-2); }
 
 .legend { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4);
@@ -197,7 +197,7 @@ section.card .table-wrap { border: 0; border-radius: 0; margin: 0; }
           font-size: var(--fs-small); color: var(--text-2); }
 .legend .chip { display: inline-flex; align-items: center; gap: 6px; }
 .legend .swatch { display: inline-block; width: 12px; height: 12px;
-                  border-radius: 2px; }
+                  border-radius: var(--radius-sm); }
 
 .device-strip {
   font: var(--fs-small) ui-monospace, monospace;
@@ -229,7 +229,7 @@ section.card .table-wrap { border: 0; border-radius: 0; margin: 0; }
 details.matrix, details.category {
   margin: 0 0 var(--sp-4);
   background: var(--surface-1);
-  box-shadow: var(--elev-1); border-radius: 4px;
+  border: 1px solid var(--border); border-radius: var(--radius);
 }
 details.matrix > summary, details.category > summary {
   cursor: pointer; list-style: none; user-select: none;
@@ -266,7 +266,7 @@ details.matrix > .matrix-body, details.category > .cat-body {
 .callout {
   display: flex; align-items: flex-start; gap: var(--sp-2);
   padding: var(--sp-3) var(--sp-4); margin: 0 0 var(--sp-4);
-  background: var(--surface-1); border-radius: 4px;
+  background: var(--surface-1); border-radius: var(--radius);
   font-size: var(--fs-small);
 }
 .callout .icon { flex: 0 0 auto; margin-top: 2px; color: var(--text-3); }
@@ -295,12 +295,12 @@ details.matrix > .matrix-body, details.category > .cat-body {
   gap: var(--sp-6);
   margin: 0 0 var(--sp-6);
 }
-a.dash-card { background: var(--surface-1); box-shadow: var(--elev-2); border-radius: 4px;
+a.dash-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-lg);
               padding: var(--sp-4); display: flex; flex-direction: column;
               gap: var(--sp-3); text-decoration: none; color: inherit;
-              transition: box-shadow var(--motion-hover), background var(--motion-hover),
-                          transform var(--motion-spring); }
-a.dash-card:hover { background: var(--surface-2); box-shadow: var(--elev-3);
+              transition: box-shadow var(--motion-hover), border-color var(--motion-hover),
+                          background var(--motion-hover), transform var(--motion-spring); }
+a.dash-card:hover { background: var(--surface-2); border-color: var(--border-strong); box-shadow: var(--elev-2);
                     transform: scale(var(--hover-scale)); text-decoration: none; }
 a.dash-card:visited { color: inherit; }
 a.dash-card h3 { margin: 0; color: var(--accent); font-size: var(--fs-h2); }
@@ -321,3 +321,24 @@ a.dash-card .dash-sub { margin: 0; color: var(--text-2); font-size: var(--fs-sma
    no box-in-box against the borderless summary table below it) - c16c. */
 a.dash-card figure.chart { margin: 0; max-width: none; }
 a.dash-card .chart-svg { background: transparent; border: 0; border-radius: 0; }
+
+/* Interactive states (v0.2.6-1b): one consistent focus-visible ring on every keyboard-operable
+   control, driven off the neutral --accent-primary (a [theme] override re-hues it in v0.2.6-1c; the
+   token comment ties links/interactive/focus-ring to accent_primary by design). A reduced-motion-SAFE
+   :active press lives ONLY inside `prefers-reduced-motion: no-preference`, so reduced-motion users
+   never get a transform. Selectors reach controls defined in components.css / rdc_table.css - one
+   stylesheet, so the cross-file references resolve. */
+a.dash-card:focus-visible,
+details.matrix > summary:focus-visible,
+details.category > summary:focus-visible,
+.col-groups .col-group-toggle:focus-visible,
+.rdc-controls .rdc-expand-toggle:focus-visible,
+rdc-ab-picker select:focus-visible {
+  outline: 2px solid var(--accent-primary); outline-offset: 2px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  a.dash-card:active,
+  .col-groups .col-group-toggle:active,
+  .rdc-controls .rdc-expand-toggle:active,
+  rdc-copy-button:active { transform: scale(0.985); }
+}
