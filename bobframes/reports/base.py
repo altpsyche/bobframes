@@ -64,6 +64,7 @@ from .formatters import (
     mesh_hash_short,
     pass_short,
     pass_suffix,
+    per_frame,
     safe_chrome_text,
     trunc_left,
     trunc_mid,
@@ -140,7 +141,7 @@ __all__ = [
     'newest_drop_provenance',
     # formatters
     'fmt_bytes', 'fmt_float', 'fmt_id_short', 'fmt_int', 'fmt_pct',
-    'mesh_hash_short', 'pass_short', 'pass_suffix', 'safe_chrome_text',
+    'mesh_hash_short', 'pass_short', 'pass_suffix', 'per_frame', 'safe_chrome_text',
     'trunc_left', 'trunc_mid',
     # delta
     'class_segments_bar', 'delta_cell', 'delta_pill', 'inline_bar',
