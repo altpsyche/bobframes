@@ -17,7 +17,8 @@ from . import (
 
 def render_all_reports(root: str, log, *,
                        sink: reports_base.AssetSink = reports_base.AssetSink.INLINE,
-                       build_ts: str | None = None, redact: bool = False) -> int:
+                       build_ts: str | None = None, redact: bool = False,
+                       theme: dict | None = None) -> int:
     """Build cache, every registered report, dashboard, root index. Returns 0 on success.
 
     Top-level pages report the newest run (the run model default, ADR-35). c16f then pre-renders a
@@ -27,23 +28,31 @@ def render_all_reports(root: str, log, *,
     ``sink``/``build_ts`` (c16t, ADR-41): `package` re-renders the whole tree with ``sink=REF`` (the
     shared-asset form) into a staging copy and pins ``build_ts`` (the run date) so two packages are
     byte-identical. ``redact`` (c16u, ADR-40): `package --redact` re-emits every page's device/host
-    provenance strip as ``redacted`` from the manifest. All three default to today's behavior -> the
-    normal render path stays byte-identical.
+    provenance strip as ``redacted`` from the manifest. ``theme`` (c1c, ADR-45): an allowlisted
+    color-override map (config `[theme]` + ``--accent``); None -> the default render is byte-identical.
+    All four default to today's behavior -> the normal render path stays byte-identical.
     """
+    # c1c (ADR-45): a color override that smuggles in an undefined var(--ref) passes the config
+    # ASCII/allowlist gate but breaks the bundle -> warn non-fatally (the designer loop, matching the
+    # `preview` token-guard warn; CI hard-asserts via test_theme). theme=None -> no-op.
+    bad = reports_base.theme_undefined_tokens(theme)
+    if bad:
+        log(f'  WARNING: theme override introduces undefined token ref(s): {sorted(bad)}')
+
     t0 = time.monotonic()
     cache_out = reports_base.build_per_drop_cache(root)
     log(f'  built per-drop cache: {cache_out} ({time.monotonic()-t0:.1f}s)')
 
     for mod in all_reports():
         try:
-            rep = mod.build(root, sink=sink, build_ts=build_ts, redact=redact)
+            rep = mod.build(root, sink=sink, build_ts=build_ts, redact=redact, theme=theme)
             log(f'  built report: {rep}')
         except Exception as e:
             log(f'  {mod.__name__} FAILED: {e}')
             return 1
 
     try:
-        dash = report_dashboard.build(root, sink=sink, build_ts=build_ts, redact=redact)
+        dash = report_dashboard.build(root, sink=sink, build_ts=build_ts, redact=redact, theme=theme)
         log(f'  built dashboard: {dash}')
     except Exception as e:
         log(f'  dashboard FAILED: {e}')
@@ -65,13 +74,13 @@ def render_all_reports(root: str, log, *,
             for mod in per_run_mods:
                 try:
                     mod.build(root, run_label=d.label, run_date=d.date,
-                              sink=sink, build_ts=build_ts, redact=redact)
+                              sink=sink, build_ts=build_ts, redact=redact, theme=theme)
                 except Exception as e:
                     log(f'  {mod.__name__} (run {d.key}) FAILED: {e}')
                     return 1
             try:
                 report_dashboard.build(root, run_label=d.label, run_date=d.date,
-                                       sink=sink, build_ts=build_ts, redact=redact)
+                                       sink=sink, build_ts=build_ts, redact=redact, theme=theme)
             except Exception as e:
                 log(f'  dashboard (run {d.key}) FAILED: {e}')
                 return 1
@@ -79,7 +88,7 @@ def render_all_reports(root: str, log, *,
             log(f'  built per-run pages for {len(older)} older run(s)')
 
     log('rendering root index')
-    root_idx = template.render_root(root, sink=sink)
+    root_idx = template.render_root(root, sink=sink, theme=theme)
     root_hits = lint.lint_file(root_idx)
     if root_hits:
         for lineno, label, snip in root_hits:

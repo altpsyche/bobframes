@@ -24,7 +24,8 @@ from .. import manifest
 
 def render_pair(root: str, baseline, compare, *,
                 sink: base.AssetSink = base.AssetSink.INLINE,
-                build_ts: str | None = None, redact: bool = False) -> list[str]:
+                build_ts: str | None = None, redact: bool = False,
+                theme: dict | None = None) -> list[str]:
     """Render every report for one ``(baseline, compare)`` pair; return the written paths.
 
     Reused by `package` shared-asset re-render (c16t, ADR-41): ``sink=REF`` re-emits the pair's pages
@@ -35,7 +36,7 @@ def render_pair(root: str, baseline, compare, *,
     """
     drops = [baseline, compare]
     ab = (baseline, compare)
-    return [mod.build(root, drops=drops, ab=ab, sink=sink, build_ts=build_ts, redact=redact)
+    return [mod.build(root, drops=drops, ab=ab, sink=sink, build_ts=build_ts, redact=redact, theme=theme)
             for mod in all_reports()]
 
 

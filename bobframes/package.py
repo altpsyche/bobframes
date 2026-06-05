@@ -162,8 +162,14 @@ def build(root: str, *, out: str | None = None, light: bool = False,
     summary_bytes: bytes | None = None
     try:
         if restage:
+            # c1c (ADR-45): a shared/redact bundle RE-renders, so it must carry the packaged root's
+            # `[theme]` (the source INLINE pages baked it, but the REF re-render + `_assets/` are
+            # composed fresh). package REJECTS the --accent flags (a presentation verb); it inherits
+            # only the config [theme]. theme=None -> byte-identical to the c16t/c16u shared golden.
+            from . import config as _config
+            theme = _config.theme_for_render(_config.get_config())
             staging = tempfile.mkdtemp(prefix=f'{topdir}.', dir=out_dir)
-            _render_tree(root, staging, sink=sink_for_render, build_ts=rundate, redact=redact)
+            _render_tree(root, staging, sink=sink_for_render, build_ts=rundate, redact=redact, theme=theme)
             if shared:
                 entries = _collect_shared(root, staging)
             else:
@@ -320,7 +326,8 @@ def _duplicated_chrome_bytes(entries: list[tuple[str, str]]) -> int:
     return max(0, n_rep - 1) * rep + max(0, n_cat - 1) * cat
 
 
-def _render_tree(root: str, staging: str, *, sink, build_ts: str, redact: bool = False) -> None:
+def _render_tree(root: str, staging: str, *, sink, build_ts: str, redact: bool = False,
+                 theme: dict | None = None) -> None:
     """Re-render the tree into ``staging`` (c16t shared-assets; c16u redaction).
 
     ``_data`` is copied RAW into ``staging`` (no derive -> parquet bytes verbatim -> digests match the
@@ -347,7 +354,7 @@ def _render_tree(root: str, staging: str, *, sink, build_ts: str, redact: bool =
     def _silent(_msg: str) -> None:
         pass
 
-    rc = _orch.render_all_reports(staging, _silent, sink=sink, build_ts=build_ts, redact=redact)
+    rc = _orch.render_all_reports(staging, _silent, sink=sink, build_ts=build_ts, redact=redact, theme=theme)
     if rc != 0:
         raise PackageError(
             f're-render of {root!r} failed; cannot build the bundle (try --inline without --redact)')
@@ -368,7 +375,7 @@ def _render_tree(root: str, staging: str, *, sink, build_ts: str, redact: bool =
             drop_label=m.get('drop_label', ''),
             captures=m.get('captures') or [], schema_version=m.get('schema_version', 0),
             build_timestamp=m.get('build_timestamp', ''), row_counts=m.get('row_counts') or {},
-            sink=sink, depth=rel.count('/'), redact=redact)
+            sink=sink, depth=rel.count('/'), redact=redact, theme=theme)
 
     # A/B pairs: render-only never emits ab/, so this is usually a no-op. When present, resolve each
     # <baselineKey>_vs_<compareKey> dir back to its DropSets and re-render; an unresolvable pair is
@@ -386,26 +393,36 @@ def _render_tree(root: str, staging: str, *, sink, build_ts: str, redact: bool =
                     f'package: A/B pair {pair!r} could not be resolved; its pages are omitted from the '
                     f'bundle (use --inline to bundle them verbatim)')
                 continue
-            _ab.render_pair(staging, baseline, compare, sink=sink, build_ts=build_ts, redact=redact)
+            _ab.render_pair(staging, baseline, compare, sink=sink, build_ts=build_ts, redact=redact,
+                            theme=theme)
 
     if is_ref:
-        _write_assets(staging)
+        _write_assets(staging, theme=theme)
 
 
-def _write_assets(staging: str) -> None:
+def _write_assets(staging: str, theme: dict | None = None) -> None:
     """Write the per-family shared chrome assets under ``staging/_assets/`` from the manifests (c16t).
 
     Each file's bytes ARE the composer output the REF heads link to (``AssetFile.content()``), so the
     asset boundary is one source of truth -- zero drift, no scrape (ADR-41). Two families, distinct
     files: ``report.{css,js}`` (page_open family) + ``catalog.{css,js}`` (template family).
+
+    ``theme`` (c1c, ADR-45): the css assets are recomposed with the color override so a shared bundle
+    matches the INLINE pages' accent (the JS is theme-independent). theme=None -> ``a.content()``
+    byte-for-byte (the shared/redacted goldens are unthemed, so they stay identical).
     """
     from .reports import chrome as _chrome
     from .html import template as _template
+    overrides = {}
+    if theme:
+        overrides['report.css'] = lambda: _chrome.compose_css(theme)
+        overrides['catalog.css'] = lambda: _template._css_for(theme)
     assets_dir = os.path.join(staging, _paths.ASSETS_DIR)
     os.makedirs(assets_dir, exist_ok=True)
     for a in (*_chrome.REPORT_ASSETS, *_template.CATALOG_ASSETS):
+        produce = overrides.get(a.name, a.content)
         with open(os.path.join(assets_dir, a.name), 'w', encoding='utf-8') as f:
-            f.write(a.content())
+            f.write(produce())
 
 
 # --- redaction helpers (c16u) ---------------------------------------------------------------------

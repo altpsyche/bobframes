@@ -129,7 +129,7 @@ def _rejection_bar(b: dict) -> str:
 def build(root: str, *, drops: list | None = None, ab=None,
           run_label=None, run_date=None,
           sink: base.AssetSink = base.AssetSink.INLINE,
-          build_ts: str | None = None, redact: bool = False) -> str:
+          build_ts: str | None = None, redact: bool = False, theme: dict | None = None) -> str:
     if drops is None:
         drops = base.discover_drops(root)
     # Run model (ADR-35): live render targets = those sampled in the CURRENT run; per-drop sample
@@ -352,7 +352,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
         'overdraw', parts,
         drops=len(drops), captures=sum(d.n_captures for d in drops),
         build_ts=build_ts or base.now_iso(), crumb_depth=base.crumb_depth(ab, run=rc),
-        ab=ab, root=root, report_key='overdraw', sink=sink,
+        ab=ab, root=root, report_key='overdraw', sink=sink, theme=theme,
         kpis=kpis, run=rc,
         device=base.provenance_strip(*base.newest_drop_provenance(root, [cur] if cur else []), redact=redact))])
 

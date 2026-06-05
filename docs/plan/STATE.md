@@ -11,7 +11,7 @@ active_release: v0.2.6    (v0.1 COMPLETE - bobframes 0.1.0 live on PyPI 2026-05-
                 migration, so there is no standalone 0.2.5 - the next PyPI release is 0.2.6, carrying the
                 foundation AND the visual redesign; _version jumps 0.2.0 -> 0.2.6. The c16x work + the CI
                 golden_env fix are on `main`; v0.2.6 work is on branch `plan/v0.2.6`.)
-current:        v0.2.6-1b (flat surfaces/radius/states/print)    (status: IN PROGRESS on plan/v0.2.6. The epic was
+current:        v0.2.6-2 (summary one-pager: restrained type + hero numerals, summary-scoped)    (status: PLANNED on plan/v0.2.6. The epic was
                 PLANNED + APPROVED 2026-06-05 -> ~/.claude/plans/bobframes-v0-2-6-visual-enumerated-bachman.md. 4 LOCKED
                 decisions (AskUserQuestion): FLAT/border-led [reverse ADR-34]; NEUTRAL chrome + a user-overridable accent
                 via a .bobframes.toml [theme] section + --accent CLI [NO source edit, reuses the ADR-25 config cascade];
@@ -25,9 +25,38 @@ current:        v0.2.6-1b (flat surfaces/radius/states/print)    (status: IN PRO
                 sp_5/sp_10 + fs_micro tokens DEFINED [applied in 1b], h1/h2/h3 tune, kpi_strip_min 170; pinned-byte tests
                 updated IN-COMMIT [exact_color_lines bg+accent-primary, layout 150->170, contrast xfail->pass, guard
                 sp-5->sp-7]; ADR-44 appended; goldens refreshed on .venv [palette only; _pagedata+digests BYTE-UNCHANGED];
-                327 green; gallery light/dark/print signed off; landed WITH v0.2.6-0 in ONE commit). NEXT: v0.2.6-1b
-                (flat surfaces + APPLY --radius + focus/active states + responsive + the PRINT-PADDING fix flagged at the
-                1a sign-off [content hugs the paper edge; pre-existing print.css]). CANONICAL ENV = the repo .venv
+                327 green; gallery light/dark/print signed off; landed WITH v0.2.6-0 in ONE commit). v0.2.6-1b DONE
+                2026-06-05 (flat surfaces/radius/states/print): elev tokens RE-TUNED flat [elev-1 = hairline ring alone,
+                elev-2/3 a whisper of drop for the dash-card hover only; reverses ADR-34/c16d]; section.card/kpi-chip/
+                details/callout/pair-group/summary-bar/per-drop table-section switched box-shadow->1px --border + the
+                --radius scale; ~21 hardcoded 2/3/4px radius literals -> var(--radius-sm) [pills/inputs/toggles/swatches]
+                /var(--radius) [cards] /var(--radius-lg) [dashboard cards]; UPPERCASE --fs-micro eyebrows [kpi-label/
+                sb-label]; shared :focus-visible ring [off --accent-primary] + reduced-motion-SAFE :active micro-scale
+                [only inside prefers-reduced-motion: no-preference]; @container page (max-width:600px) -> kpi-strip 2x2 +
+                sidecar 2-col; PRINT FIX = body padding restored [sp-6 sp-8] so the print-MEDIA screenshot no longer hugs
+                the paper edge [the 1a regression; @page is ignored by the shoot.py capture]. Pinned test_c16d_shadow +
+                test_c16d_depth_over_borders updated IN-COMMIT. Scope = 8 asset CSS + design_tokens.toml + test_design_tokens.py;
+                goldens refreshed [HTML/preview/package]; _pagedata/digests/golden_parquet BYTE-UNCHANGED [0 drift]; browser
+                matrix light/dark/print synthetic + real Perf SIGNED OFF before bake; 327 green; smoke lint-clean. No new ADR
+                [rides ADR-44, which already declared the ADR-34 reversal]. v0.2.6-1c DONE 2026-06-05 (user theme
+                override; ADR-45): pip users re-hue the accent WITHOUT a source edit via a .bobframes.toml [theme] section
+                (deep-merged through the ADR-25 cascade) or render/preview --accent/--accent-data (CLI > config). NEW
+                config.ThemeCfg + THEME_KEYS allowlist (15 COLOR keys only: accent_primary/accent_data/4x status_*/9x c_*;
+                a non-color key or a non-ASCII / ;{}-bearing value is warned+dropped) + theme_for_render (CLI overlay).
+                Parameterized chrome.compose_css(theme=None)/design_tokens_css(theme)/head_assets(theme) - theme=None
+                returns the cached constant BYTE-FOR-BYTE (default render unchanged); only the :root tokens block
+                recomposes (everything else is var() refs). theme threaded as a 4th optional param on the established
+                sink/build_ts/redact seam: orchestrator->8 builders->report_page->page_open->head_assets, ab.render_pair,
+                template.render_root/render_drop, preview.build, run.process_drop; package RE-renders themed _assets +
+                REJECTS --accent (ADR-40 presentation verb). export-tokens --theme-template emits a paste-ready [theme]
+                starter; render --watch also polls .bobframes.toml. Render-time guard (chrome.theme_undefined_tokens):
+                non-fatal warn in render/preview, hard CI assert in test_theme. NO new --ring token (focus follows
+                --accent-primary by design). NEW tests/test_theme.py (8) + test_config [theme] (5): 327->340 green;
+                test_parity/test_parquet_parity/test_package/test_preview ALL byte-unchanged, NO golden refresh (0 drift);
+                ADR-45 (present) + DESIGNER.md theme-override section + commit doc as-built. Browser: blue --accent
+                re-hues links/headings/data-bars/heatmap/summary-rail light+dark, neutral KPI numerals + draw-class
+                palette untouched. NEXT: v0.2.6-2 (summary one-pager: restrained type + hero numerals, summary-scoped).
+                CANONICAL ENV = the repo .venv
                 (py3.12.13/pyarrow21) - goldens bake there via .venv\Scripts\python.exe; the py3.14 system Python must NOT
                 (ADR-11). c16w (standalone v0.2.5 release) is CANCELLED per ADR-43 - folded into the v0.2.6 close-out.
                 v0.2.6 = bold visual redesign anchored on shadcn/ui (ADR-43); the DIRECTION brief is
@@ -89,21 +118,63 @@ current:        v0.2.6-1b (flat surfaces/radius/states/print)    (status: IN PRO
                 token-validity guard + preview gallery; migrate summary.py off its inline <style> (visual parity).
                 NOTE: c16p (v0.2 release) COMPLETE - PyPI bobframes 0.2.0 LIVE; tag v0.2.0 -> 765a4db on main.
                 GIT: c16y + c16v are in the WORKING TREE, NOT yet committed (user hasn't asked to commit).)
-last_session:   2026-06-05 — v0.2.6 epic PLANNED/APPROVED + v0.2.6-0 DONE. Planned via 2 read-only verification
-                workflows (5 Explore agents verified the brief's load-bearing claims + the token/CLI/config machinery -
-                key find: bobframes ALREADY has a .bobframes.toml config cascade w/ deep-merge [ADR-25], so the accent
-                override rides it, NOT a source edit). Reconciled the brief's 6 open decisions via AskUserQuestion -> 4
-                locks (FLAT/reverse-ADR-34; NEUTRAL chrome + user-overridable accent via [theme]+--accent; restrained
-                type + summary-only hero numerals; Grafana-dense + --radius 6/8/10). Wrote + got approval on
-                ~/.claude/plans/bobframes-v0-2-6-visual-enumerated-bachman.md (NEW commit -1c for the theme override).
-                v0.2.6-0 (dev-only, ZERO production change, NO golden refresh): tools/shoot.py stdlib CDP screenshot
-                harness (validated on real Perf [9 captures] + a -m browser smoke proving light!=dark), test_contrast.py
-                (oklch->WCAG; converter==21.0 ref; --text-3 AA STRICT-xfail flips green at 1a), test_js_coupled_classes.py
-                (rdc-table class<->_compose_js rename guard), `browser` pytest marker. 319->326 passed +1 xfail.
-                THEN v0.2.6-1a (token lift, landed WITH -0 in ONE commit): neutral shadcn palette (chroma-0), WCAG-AA
-                --text-3 (3.0->4.85:1), --radius/sp_5/sp_10/fs_micro tokens DEFINED, type tune, kpi_strip_min 170; ADR-44;
-                pinned-byte tests updated in-commit; goldens refreshed (palette only, _pagedata+digests byte-unchanged);
-                327 green; gallery signed off ("nice"; print-padding flagged -> 1b). current -> v0.2.6-1b.
+last_session:   2026-06-05 — v0.2.6-1b + v0.2.6-1c DONE (same session, continued). v0.2.6-1c (user theme override,
+                ADR-45) lets a pip user re-hue the accent WITHOUT editing the packaged design_tokens.toml. The seam: only
+                chrome._DESIGN_TOKENS (the :root block) is theme-dependent (token_subst flattens spacing/type/radius/
+                motion/color/shadow; everything else is var() refs), so an override re-substitutes ONLY that block.
+                NEW config.ThemeCfg + THEME_KEYS (15 COLOR-hue keys: accent_primary/accent_data/4x status_*/9x c_*) +
+                clean_theme_overrides (warn+drop non-color keys AND non-ASCII / ;{}-bearing values; CSS-injection guard)
+                + theme_for_render (config [theme] + CLI --accent overlay, CLI wins). NEW chrome.compose_css(theme=None)
+                [theme=None == _compose_css() byte-for-byte] + design_tokens_css(theme) + head_assets(theme) +
+                theme_undefined_tokens(theme) guard. theme threaded as a 4th optional param mirroring sink/build_ts/redact:
+                orchestrator.render_all_reports -> 8 builders (build sig + report_page call) -> report_page -> page_open
+                -> head_assets; ab.render_pair; template.render_root + render_drop (+ _css_for(theme)); preview.build;
+                run.main builds theme + threads to render_all_reports/render_drop/process_drop; package reads the packaged
+                root's [theme], RE-renders themed _assets (compose_css(theme)/_css_for(theme)), and REJECTS --accent
+                (ADR-40). cli: --accent/--accent-data on render+preview, export-tokens --theme-template (paste-ready
+                [theme] starter, ASCII), --watch now polls .bobframes.toml. Guard: non-fatal warn in render(orchestrator)/
+                preview, hard assert in test_theme. NO --ring token (focus follows --accent-primary by design, per the
+                toml comment). NEW tests/test_theme.py (8: compose byte-id, rehue, guard, render-with-[theme] e2e,
+                preview --accent CLI, export --theme-template ASCII, package rejects) + test_config [theme] (5: allowlist,
+                bad-value drop, CLI>config precedence). 327 -> 340 green. test_parity/test_parquet_parity/test_package/
+                test_preview/test_design_tokens BYTE-UNCHANGED, NO golden refresh (theme=None path identical; 0 drift -
+                proven by the suite passing against the 1b goldens with NO re-bake). ADR-45 was already authored at plan
+                time (accurate to the as-built); DESIGNER.md gained a "Theme override" section; commit doc
+                v026_1c_theme_override.md written + as-built appended. Browser: a blue --accent re-hues links/headings/
+                data-bars/heatmap/summary-rail in light+dark; KPI numerals + draw-class donut palette stay (only the 2
+                accents were set). smoke render-only 17 pages lint-clean. current -> v0.2.6-2.
+                [earlier this session] v0.2.6-1b DONE (flat surfaces + radius + states + responsive + print; the VISUAL half
+                of the all-chrome lift). 1a re-tuned token VALUES; 1b APPLIED them in the CSS-rule bodies. Edits (8 asset
+                CSS + design_tokens.toml): elev tokens RE-TUNED flat in [shadow] (elev-1 = hairline contact ring ALONE,
+                ambient blur dropped; elev-2/3 keep only a whisper of drop, reserved for the dash-card HOVER lift only -
+                reverses ADR-34/c16d); section.card/kpi-chip/details/callout/pair-group/summary-bar/per-drop table-section
+                switched box-shadow:var(--elev-*) -> 1px var(--border) + the --radius scale; the ~21 hardcoded 2/3/4px
+                border-radius literals -> var(--radius-sm) (crumb/card-count/delta-pill/swatch/copy-button/heatmap/inputs/
+                toggles), var(--radius) (cards/sections/chart-svg/summary-bar), var(--radius-lg) (a.dash-card); UPPERCASE
+                --fs-micro eyebrows (kpi-label + sb-label, was lowercase fs-small); a shared :focus-visible ring off
+                --accent-primary on dash-card/details summary/toggles/select + a reduced-motion-SAFE :active scale(0.985)
+                (lives ONLY inside prefers-reduced-motion: no-preference, so reduced-motion users get NO transform);
+                @container page (max-width:600px) -> kpi-strip 1fr 1fr (2x2) + sidecar columns:2; PRINT FIX = body padding
+                restored (sp-6 sp-8) because the shoot.py capture emulates print MEDIA + screenshots the body (ignores
+                @page), so the zeroed body padding made content hug the paper edge at the 1a sign-off; @page margin:12mm
+                KEPT for real paged PDF. NO new --ring token (the toml ties links/interactive/focus-ring to accent_primary
+                by design, so focus follows --accent-primary; -1c re-hues it). Pinned test_c16d_shadow_and_motion_tokens +
+                test_c16d_depth_over_borders rewritten IN-COMMIT (flat elev bytes + border-led asserts); test_c16d_micro,
+                token guard, contrast, js-coupled, components all held. Browser matrix: re-rendered synthetic (c:/tmp/bf-synth)
+                + real Perf (c:/tmp/perf re-rendered render-only) -> shoot.py 30+27 PNGs light/dark/print -> SIGNED OFF
+                ("Signed off - bake goldens") BEFORE bake. Goldens refreshed on .venv (make_golden 17 pages+27 _pagedata,
+                make_preview_golden, make_package_golden 49/45/49) - HTML/preview/package only; _pagedata/digests.json/
+                golden_parquet BYTE-UNCHANGED (git scope: 0 pagedata/digest/parquet drift; source = 8 CSS + toml + 1 test;
+                39 golden files). 327 green; ASCII-clean; smoke render-only 17 pages lint-clean. No new ADR (rides ADR-44,
+                which already declared the ADR-34 reversal). §21.1v gets the 1b as-built. current -> v0.2.6-1c.
+                [prior session] v0.2.6 epic PLANNED/APPROVED + v0.2.6-0 + v0.2.6-1a DONE. v0.2.6-0 (dev-only, ZERO production
+                change): tools/shoot.py stdlib CDP screenshot harness, test_contrast.py (oklch->WCAG), test_js_coupled_classes.py
+                (rename guard), `browser` marker. v0.2.6-1a (token lift, landed WITH -0): neutral shadcn palette (chroma-0),
+                WCAG-AA --text-3 (3.0->4.85:1), --radius/sp_5/sp_10/fs_micro tokens DEFINED, type tune, kpi_strip_min 170;
+                ADR-44; pinned-byte tests updated; goldens refreshed (palette only); 327 green; gallery signed off
+                (print-padding flagged -> fixed in 1b). 4 LOCKED decisions: FLAT/reverse-ADR-34; NEUTRAL+overridable accent
+                via [theme]+--accent (ADR-25 cascade, NO source edit); summary-only hero numerals; Grafana-dense + --radius
+                6/8/10. Plan ~/.claude/plans/bobframes-v0-2-6-visual-enumerated-bachman.md.
                 [prior session] c16x DONE (component system; ADR-42; G-30 CLOSED). 5-step sub-sequence on plan/v0.2.5,
                 319 green, UNPUSHED (90bd874..ee9b7ff): CSS/JS extracted to reports/assets/ files; escape-by-construction
                 el builder (subsumes C6); token-validity guard (CI test + `preview` warn); table component family built
@@ -976,6 +1047,26 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-05 — v0.2.6-1c DONE (commits/v026/v026_1c_theme_override.md, plan/v0.2.6; ADR-45). User theme override:
+  pip users re-hue the accent/status/draw-class COLORS via a .bobframes.toml [theme] section (ADR-25 deep-merge) or
+  render/preview --accent/--accent-data (CLI>config), NO source edit. NEW config.ThemeCfg + THEME_KEYS (15 color-only
+  allowlist) + theme_for_render; chrome.compose_css(theme=None) re-substitutes ONLY the :root block (theme=None ==
+  default byte-for-byte); theme threaded as a 4th optional param on the sink/build_ts/redact seam through orchestrator/
+  8 builders/report_page/page_open/head_assets/ab/template(render_root+render_drop)/preview/run/package. package
+  re-renders themed _assets + REJECTS --accent (ADR-40). export-tokens --theme-template; --watch polls .bobframes.toml;
+  render-time token guard (warn / hard assert). test_theme.py (8) + test_config [theme] (5): 327->340 green; goldens
+  byte-unchanged, NO refresh (0 drift). DESIGNER.md theme section. Browser: blue --accent re-hues light+dark. current
+  -> v0.2.6-2. NOT committed (1a/1b/1c all in the working tree; user hasn't asked).
+- 2026-06-05 — v0.2.6-1b DONE (commits/v026/v026_1b_flat_surfaces.md, plan/v0.2.6). The VISUAL half of the all-chrome
+  lift: applied the 1a tokens in the CSS-rule bodies. Flat/border-led (reverses ADR-34/c16d) - elev tokens re-tuned flat
+  (elev-1 = hairline ring alone; elev-2/3 a whisper for the dash-card hover only) + section.card/kpi-chip/details/callout/
+  pair-group/summary-bar/table-section switched box-shadow->1px --border; ~21 hardcoded 2/3/4px radius literals -> the
+  --radius-sm/--radius/--radius-lg scale; uppercase --fs-micro eyebrows; shared :focus-visible ring (off --accent-primary)
+  + reduced-motion-SAFE :active micro-scale (no-preference only); @container 600px -> kpi-strip 2x2 + sidecar 2-col; PRINT
+  FIX (body padding restored - the print-MEDIA screenshot ignores @page, so the 1a edge-hug is closed). Pinned test_c16d_*
+  (shadow + depth_over_borders) updated in-commit. Browser matrix light/dark/print synthetic + real Perf SIGNED OFF before
+  bake; goldens refreshed (HTML/preview/package); _pagedata/digests/golden_parquet byte-unchanged (0 drift); 327 green;
+  smoke lint-clean. No new ADR (rides ADR-44). current -> v0.2.6-1c.
 - 2026-06-05 — v0.2.6-1a DONE (commits/v026/v026_1a_token_lift.md; the first pixel-moving commit, landed WITH v0.2.6-0
   in ONE commit on plan/v0.2.6). Token VALUES only -> shadcn NEUTRAL palette (chroma-0 grayscale chrome; semantic
   status/draw-class/data-accent hues kept), WCAG-AA --text-3 fix (3.0->4.85:1, proven by test_contrast; the -0 strict-xfail

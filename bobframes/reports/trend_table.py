@@ -333,13 +333,13 @@ def _class_count_matrix(per_drop_area_class: list, areas: list,
 
 def build(root: str, *, drops: list | None = None, ab=None,
           sink: base.AssetSink = base.AssetSink.INLINE,
-          build_ts: str | None = None, redact: bool = False) -> str:
+          build_ts: str | None = None, redact: bool = False, theme: dict | None = None) -> str:
     if drops is None:
         drops = base.discover_drops(root)
     if not drops:
         out_path = base.output_path(root, 'trend_table', ab)
         with open(out_path, 'w', encoding='utf-8') as f:
-            f.write(base.page_open('trend table', sink=sink, depth=base.crumb_depth(ab)))
+            f.write(base.page_open('trend table', sink=sink, depth=base.crumb_depth(ab), theme=theme))
             f.write(base.header('trend table', drops=0, captures=0,
                                 build_ts=build_ts or base.now_iso()))
             f.write(base.empty_state('no drops found in catalog'))
@@ -490,7 +490,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
         'trend table', parts,
         drops=len(drops), captures=sum(d.n_captures for d in drops),
         build_ts=build_ts or base.now_iso(), crumb_depth=base.crumb_depth(ab),
-        body_attrs=body_attrs, kpis=kpis, sink=sink,
+        body_attrs=body_attrs, kpis=kpis, sink=sink, theme=theme,
         device=base.provenance_strip(*base.newest_drop_provenance(root, drops), redact=redact))])
 
 

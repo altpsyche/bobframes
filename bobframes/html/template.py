@@ -209,6 +209,18 @@ def _compose_css() -> str:
 _CSS = _compose_css()
 
 
+def _css_for(theme: dict | None) -> str:
+    """The catalog/drill UN-minified CSS bundle. ``theme`` (v0.2.6-1c/ADR-45) is an allowlisted
+    color-override map: re-substitute ONLY the :root tokens block (the rest is var() refs). Falsy ->
+    the cached ``_CSS`` constant byte-for-byte (the DEFAULT render stays golden-identical)."""
+    if not theme:
+        return _CSS
+    return (reports_base.design_tokens_css(theme)
+            + reports_base.chrome_css()
+            + reports_base.rdc_table_css()
+            + _PER_DROP_CSS)
+
+
 # The catalog/drill family's asset manifest + head-asset seam (c16r, ADR-41). Distinct from the report
 # family's REPORT_ASSETS (chrome.py): catalog.css is `_CSS` served UN-minified (the c16i substring
 # guards parse it raw) and the engine JS sits at body-end, not in `<head>`. The (filename -> content)
@@ -219,17 +231,19 @@ CATALOG_ASSETS = (
 )
 
 
-def head_assets(sink: reports_base.AssetSink, depth: int = 0) -> reports_base.HeadAssets:
+def head_assets(sink: reports_base.AssetSink, depth: int = 0,
+                theme: dict | None = None) -> reports_base.HeadAssets:
     """The catalog/drill family's head-asset markup for `sink` (c16r, ADR-41).
 
     INLINE reproduces today's exact bytes: `<style>{_CSS}</style>` in the head and the engine
     `<script>{rdc_table_js()}</script>` at body-end (so `head` + `body_js` are placed at their two
-    distinct document positions by the caller). REF emits depth-relative `_assets/catalog.{css,js}`
+    distinct document positions by the caller). `theme=None` (v0.2.6-1c) -> byte-identical; a
+    color-override re-hues the inlined :root tokens. REF emits depth-relative `_assets/catalog.{css,js}`
     built from CATALOG_ASSETS (the css `<link>` in the head, the deferred js script at body-end).
     """
     if sink is reports_base.AssetSink.INLINE:
         return reports_base.HeadAssets(
-            head=f'<style>{_CSS}</style>',
+            head=f'<style>{_css_for(theme)}</style>',
             body_js=f'<script>{reports_base.rdc_table_js()}</script>',
         )
     prefix = reports_base.assets_prefix(depth)
@@ -457,7 +471,7 @@ def render_drop(drill_dir: str, *, data_dir: str,
                 captures: list[str], schema_version: int, build_timestamp: str,
                 row_counts: dict[str, int],
                 sink: reports_base.AssetSink = reports_base.AssetSink.INLINE,
-                depth: int = 0, redact: bool = False) -> str:
+                depth: int = 0, redact: bool = False, theme: dict | None = None) -> str:
     """Render the per-drop browser HTML into drill_dir, reading data from data_dir.
 
     drill_dir: <root>/_reports/drill/<area>/<drop>/  (HTML output target)
@@ -498,7 +512,8 @@ def render_drop(drill_dir: str, *, data_dir: str,
     # pre-c16r inline `<style>` (head) + body-end engine `<script>` (the two are spliced at their own
     # document positions: ha.head here, ha.body_js just before </body>).
     # c16t: sink=REF (depth-relative `_assets/`) is reachable for `package`; INLINE ignores depth.
-    ha = head_assets(sink, depth)
+    # theme=None -> default bytes (v0.2.6-1c); a color-override re-hues the inlined :root tokens.
+    ha = head_assets(sink, depth, theme)
     parts = ['<!doctype html><html lang="en"><head><meta charset="utf-8">']
     parts.append(f'<title>{_h(area)} {_h(drop_date)}</title>')
     parts.append(f'<link rel="icon" href="{reports_base._FAVICON_HREF}">')
@@ -575,7 +590,8 @@ def render_drop(drill_dir: str, *, data_dir: str,
     return out_path
 
 
-def render_root(root: str, *, sink: reports_base.AssetSink = reports_base.AssetSink.INLINE) -> str:
+def render_root(root: str, *, sink: reports_base.AssetSink = reports_base.AssetSink.INLINE,
+                theme: dict | None = None) -> str:
     # c16t (ADR-41): ``sink=REF`` emits depth-relative ``_assets/`` links (the root page is at the
     # bundle root, depth 0); `package` shared mode re-renders the whole tree (root included) with REF
     # into a staging copy. INLINE (the default) is byte-identical to today.
@@ -618,8 +634,8 @@ def render_root(root: str, *, sink: reports_base.AssetSink = reports_base.AssetS
     payload = {'cols': cols, 'rows': rows, 'labelCols': {}}
 
     # Chrome CSS/JS via the c16r head_assets seam (ADR-41); INLINE byte-identical (ha.head in the
-    # head, ha.body_js at body-end before </body>).
-    ha = head_assets(sink, 0)
+    # head, ha.body_js at body-end before </body>). theme=None -> default bytes (v0.2.6-1c).
+    ha = head_assets(sink, 0, theme)
     parts = ['<!doctype html><html lang="en"><head><meta charset="utf-8">']
     parts.append('<title>capture analysis catalog</title>')
     parts.append(f'<link rel="icon" href="{reports_base._FAVICON_HREF}">')

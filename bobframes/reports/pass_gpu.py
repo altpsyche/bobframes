@@ -64,7 +64,7 @@ def _drop_dir_for_area(drops: list, drop_key: str, area: str) -> str:
 def build(root: str, *, drops: list | None = None, ab=None,
           run_label=None, run_date=None,
           sink: base.AssetSink = base.AssetSink.INLINE,
-          build_ts: str | None = None, redact: bool = False) -> str:
+          build_ts: str | None = None, redact: bool = False, theme: dict | None = None) -> str:
     if drops is None:
         drops = base.discover_drops(root)
     # Run model (ADR-35): GPU headline + treemap + per-area ranking reflect the CURRENT run; the
@@ -236,7 +236,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
         'pass gpu', parts,
         drops=len(drops), captures=sum(d.n_captures for d in drops),
         build_ts=build_ts or base.now_iso(), crumb_depth=base.crumb_depth(ab, run=rc),
-        ab=ab, root=root, report_key='pass_gpu', sink=sink,
+        ab=ab, root=root, report_key='pass_gpu', sink=sink, theme=theme,
         kpis=kpis, run=rc,
         device=base.provenance_strip(*base.newest_drop_provenance(root, [cur] if cur else []), redact=redact))])
 

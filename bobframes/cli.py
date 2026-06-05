@@ -86,25 +86,35 @@ def _cmd_render(args: argparse.Namespace) -> int:
         rargv += ['--area', args.area]
     if args.label:
         rargv += ['--label', args.label]
+    # c1c (ADR-45): forward the one-shot theme flags to the render engine (and into the watch
+    # subprocess, so an --accent preview hot-reloads on token/.bobframes.toml edits too).
+    if getattr(args, 'accent', None):
+        rargv += ['--accent', args.accent]
+    if getattr(args, 'accent_data', None):
+        rargv += ['--accent-data', args.accent_data]
     if getattr(args, 'watch', False):
-        return _render_watch(rargv)
+        return _render_watch(rargv, root)
     return run.main(rargv)
 
 
-def _watch_paths() -> list[str]:
-    """Files the render --watch loop polls: the design tokens + the modules that emit chrome."""
+def _watch_paths(root: str | None = None) -> list[str]:
+    """Files the render --watch loop polls: the design tokens + the modules that emit chrome + the
+    project ``.bobframes.toml`` (so a `[theme]` edit hot-reloads like a token edit; c1c/ADR-45)."""
     from .reports import chrome as _c, delta as _d, formatters as _fm
     tokens = os.path.join(os.path.dirname(_c.__file__), 'design_tokens.toml')
-    return [tokens, _c.__file__, _fm.__file__, _d.__file__]
+    paths = [tokens, _c.__file__, _fm.__file__, _d.__file__]
+    if root:
+        paths.append(os.path.join(root, '.bobframes.toml'))
+    return paths
 
 
-def _render_watch(rargv: list[str]) -> int:
+def _render_watch(rargv: list[str], root: str | None = None) -> int:
     """Alpha hot-reload (DESIGNER Track A): 500ms mtime poll on the token/chrome files; re-render in a
     fresh subprocess on change so edited modules/TOML are reloaded. No watchdog dependency."""
     import subprocess
     import time
     log = logging.getLogger('bobframes')
-    watched = _watch_paths()
+    watched = _watch_paths(root)
 
     def snapshot() -> dict:
         return {p: (os.stat(p).st_mtime if os.path.exists(p) else 0.0) for p in watched}
@@ -127,15 +137,41 @@ def _render_watch(rargv: list[str]) -> int:
 
 
 def _cmd_preview(args: argparse.Namespace) -> int:
+    from . import config
     from .reports import preview
-    out = preview.build(os.path.abspath(args.root))
+    # c1c (ADR-45): preview a color override without rendered data; config [theme] + --accent overlay.
+    theme = config.theme_for_render(config.get_config(),
+                                    getattr(args, 'accent', None), getattr(args, 'accent_data', None))
+    out = preview.build(os.path.abspath(args.root), theme=theme)
     print(f'wrote {out}')
     return 0
+
+
+def _theme_template_text() -> str:
+    """A ready-to-paste ``[theme]`` starter: the overridable color knobs (config.THEME_KEYS) with their
+    current bundled defaults, commented out so an untouched paste is a no-op (c1c/ADR-45)."""
+    from . import config
+    from .reports import _tokens
+    colors = _tokens.load_tokens().get('color', {})
+    lines = [
+        '# bobframes [theme] override -- paste into your .bobframes.toml and uncomment any line to',
+        '# re-hue the chrome. Omitted keys inherit the bundled neutral default (so you never lose a',
+        '# future default). Values are oklch()/light-dark() token strings: ASCII, no ; { }. Only these',
+        '# COLOR keys are overridable; layout/spacing/type/radius stay bundled. See DESIGNER.md / ADR-45.',
+        '[theme]',
+    ]
+    for k in sorted(config.THEME_KEYS):
+        v = colors.get(k, '')
+        lines.append(f'# {k} = {v!r}' if v else f'# {k} =')
+    return '\n'.join(lines) + '\n'
 
 
 def _cmd_export_tokens(args: argparse.Namespace) -> int:
     import json
     from .reports import _tokens, chrome
+    if getattr(args, 'theme_template', False):
+        sys.stdout.write(_theme_template_text())
+        return 0
     if args.format == 'toml':
         sys.stdout.write(_tokens.tokens_toml_text())
     elif args.format == 'json':
@@ -285,7 +321,11 @@ def _build_parser() -> argparse.ArgumentParser:
     sp.add_argument('--area')
     sp.add_argument('--label')
     sp.add_argument('--watch', action='store_true',
-                    help='re-render on design_tokens.toml / chrome edits (alpha, 500ms mtime poll)')
+                    help='re-render on design_tokens.toml / .bobframes.toml / chrome edits (alpha, 500ms poll)')
+    sp.add_argument('--accent', help='one-shot accent color override (oklch token); '
+                                     'overrides [theme].accent_primary (ADR-45)')
+    sp.add_argument('--accent-data', help='one-shot data-series / heatmap color override; '
+                                          'overrides [theme].accent_data')
     sp.set_defaults(func=_cmd_render)
 
     sp = sub.add_parser('ab', parents=[common], help='all reports for one drop pair')
@@ -320,11 +360,18 @@ def _build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser('preview', parents=[common],
                         help='render the chrome preview gallery (_reports/_chrome_preview.html; no data)')
     sp.add_argument('root', nargs='?', default='.')
+    sp.add_argument('--accent', help='preview an accent color override (oklch token); '
+                                     'overrides [theme].accent_primary (ADR-45)')
+    sp.add_argument('--accent-data', help='preview a data-series / heatmap color override; '
+                                          'overrides [theme].accent_data')
     sp.set_defaults(func=_cmd_preview)
 
     sp = sub.add_parser('export-tokens', parents=[common],
                         help='print design tokens to stdout as toml|json|css')
     sp.add_argument('--format', choices=['toml', 'json', 'css'], default='toml')
+    sp.add_argument('--theme-template', action='store_true',
+                    help='print a ready-to-paste [theme] starter block (the overridable color knobs '
+                         'with current defaults commented) for .bobframes.toml (ADR-45)')
     sp.set_defaults(func=_cmd_export_tokens)
 
     sp = sub.add_parser('serve', parents=[common], help='static preview server')
@@ -354,7 +401,9 @@ def _build_parser() -> argparse.ArgumentParser:
                     help="abs-path handling under --redact: 'strip' -> <path redacted> (default); "
                          "'fail' exits nonzero if a path remains in any rendered page (CI check)")
     sp.set_defaults(func=_cmd_package)
-    # NOTE: no --format, ever (ADR-40 taxonomy invariant -- `package` is a PRESENTATION verb).
+    # NOTE: no --format and no --accent/--accent-data, ever (ADR-40/45 invariant -- `package` is a
+    # PRESENTATION verb: it bundles whatever the render produced. Theme is a RENDER-time concern, so
+    # the theme flags belong to `render`/`preview`; argparse rejects them here as unrecognized.)
 
     sp = sub.add_parser('smoke', parents=[common], help='end-to-end smoke test')
     sp.add_argument('--data', help='capture dir (default: bundled synthetic; c15)')

@@ -26,6 +26,36 @@
 > **Parity caveat (ADR-6):** routing tokens (floats, regex) through TOML must stay byte-identical —
 > the c08 parity gate asserts the emitted CSS is unchanged against the golden.
 
+## Theme override — pip users re-hue the accent WITHOUT editing source (v0.2.6-1c, ADR-45)
+
+The chrome is **neutral** by default (ADR-44: near-black/near-white, chroma 0). A `pip install`-ed user
+cannot edit the packaged `design_tokens.toml` (it lives in site-packages, lost on upgrade), so the accent
+is overridden through the **existing config cascade** (ADR-25) — no source edit:
+
+- **Durable — a `[theme]` section in your `.bobframes.toml`** (deep-merged over the bundled defaults, so
+  omit anything you don't change and you still inherit future defaults):
+  ```toml
+  [theme]
+  # links / interactive / focus ring:
+  accent_primary = 'light-dark(oklch(55% 0.15 264), oklch(72% 0.13 264))'
+  # primary data series + heatmap tint:
+  accent_data    = 'light-dark(oklch(55% 0.155 230), oklch(75% 0.115 230))'
+  ```
+  Start from a ready-to-paste block: **`bobframes export-tokens --theme-template`** prints every
+  overridable knob with its current default (commented out).
+- **One-shot — CLI flags** (top precedence, CLI > config): `bobframes render <root> --accent '<oklch>'`
+  (and `--accent-data '<oklch>'`). Also on `bobframes preview --accent '<oklch>'` (no data needed).
+- **Overridable surface = COLOR HUES ONLY** (an allowlist): `accent_primary`, `accent_data`, the four
+  `status_*`, and the nine `c_*` draw-class palette colors. Layout / spacing / type / radius stay
+  bundled — a `[theme]` key outside the allowlist (or a value that isn't an ASCII token string free of
+  `;{}`) is **warned + ignored**, so you can never desync density / parity machinery.
+- **Hot-reload:** `bobframes render --watch` also polls `.bobframes.toml`, so a `[theme]` edit re-renders
+  like a token edit.
+- **`package` rejects `--accent`** (it is a presentation verb that bundles whatever the render produced;
+  a shared/redacted bundle inherits the packaged root's `[theme]`).
+
+The default render (no `[theme]`, no `--accent`) is **byte-identical** to the bundled output.
+
 ## Track B — deferred (roadmap)
 
 | Item | Why deferred |
@@ -33,7 +63,7 @@
 | Figma Token Studio export | verify schema vs current Token Studio; not urgent |
 | Bidirectional Figma → TOML sync | needs Figma API auth + plugin/webhook |
 | Custom report plugins (`~/.bobframes/reports/*.py`) | plugin security surface; wait for M-1/M-2 |
-| Per-area / per-project token overrides | precedence complexity; wait for real request |
+| Per-area / per-project token overrides | precedence complexity; wait for real request (the accent/status/draw-class slice landed in v0.2.6-1c via `[theme]` + `--accent`, ADR-45) |
 | Theme variants (dark/light/high-contrast) | `[color.dark]`/`[color.light]`; defer schema choice |
 | `bobframes report --watch` (per-report) | global `--watch` is enough |
 | Inline edit UI in `serve` | scope creep; serve stays static in v1 |
