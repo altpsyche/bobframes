@@ -1,0 +1,75 @@
+
+a[data-link-kind="primary"] {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 6px 12px;
+  background: var(--surface-1);
+  border: 1px solid var(--border-2);
+  color: var(--accent-primary);
+  text-decoration: none;
+  transition: background var(--motion-hover), border-color var(--motion-hover);
+}
+a[data-link-kind="primary"]:hover {
+  background: var(--row-hover);
+  border-color: var(--accent-primary);
+  text-decoration: none;
+}
+a[data-link-kind="primary"]:visited { color: var(--accent-primary); }
+
+a[data-link-kind="inline"] {
+  color: var(--accent-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+a[data-link-kind="inline"]:hover { text-decoration-thickness: 2px; }
+a[data-link-kind="inline"] .icon {
+  margin-left: 3px;
+  color: var(--text-2);
+}
+
+a[data-link-kind="drill"] {
+  color: var(--text-1);
+  text-decoration: underline;
+  text-decoration-color: var(--border-2);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+a[data-link-kind="drill"]:hover {
+  color: var(--accent-primary);
+  text-decoration-color: var(--accent-primary);
+  text-decoration-thickness: 2px;
+}
+tr:has(a[data-link-kind="drill"]):hover td { background: var(--row-hover); }
+
+a[data-link-kind="copy"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px; height: 24px;
+  color: var(--text-2);
+  text-decoration: none;
+  border-radius: 2px;
+  transition: color var(--motion-hover), background var(--motion-hover);
+}
+a[data-link-kind="copy"]:hover {
+  color: var(--accent-primary);
+  background: var(--row-hover);
+}
+
+a[data-link-kind="crumb"] {
+  color: var(--text-2);
+  text-decoration: none;
+}
+a[data-link-kind="crumb"]:hover {
+  color: var(--accent-primary);
+  text-decoration: underline;
+}
+
+.icon {
+  width: 11px; height: 11px;
+  display: inline-block;
+  vertical-align: -1px;
+  fill: currentColor;
+}

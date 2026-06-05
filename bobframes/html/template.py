@@ -17,6 +17,7 @@ import csv
 import html as _html
 import json
 import os
+from importlib.resources import files as _files
 from typing import Iterable
 
 import pyarrow.parquet as papq
@@ -24,6 +25,16 @@ import pyarrow.parquet as papq
 from .. import paths as _paths
 from .. import schemas
 from ..reports import base as reports_base
+
+
+def _read_asset(name: str) -> str:
+    """Read a bundled CSS asset from reports/assets/ (c16x-1; see chrome._read_asset).
+
+    The catalog/drill family's own CSS segment (_PER_DROP_CSS) lives as a real `.css` file alongside
+    the report-family assets; it stays COMPOSED by this module's _compose_css (composition isolation,
+    ADR-23) -- only its source moved out of a Python string literal.
+    """
+    return _files('bobframes.reports').joinpath('assets', name).read_text(encoding='utf-8')
 
 
 # Category ASSIGNMENT now lives on schemas.TABLES[*].category (H-11). What stays here is the
@@ -185,105 +196,7 @@ _LABEL_COLS: dict[str, dict[str, str]] = {
 # remainder, so their goldens stay byte-stable). What stays here is catalog/drill page chrome: the
 # wide-body width, the toc/controls, the .table-scroll virtual container + loading hint, the sidecar
 # list, and the per-drop visual hierarchy (category label/rail + table-section cards).
-_PER_DROP_CSS = """
-body { max-width: 1800px; }
-
-nav.toc a { display: flex; justify-content: space-between; padding: 2px 0; gap: 1rem; }
-nav.toc a .ct { color: var(--text-3); font-variant-numeric: tabular-nums; }
-
-.controls {
-  display: flex; gap: var(--sp-3); align-items: center;
-  font-size: var(--fs-small); flex-wrap: wrap;
-  margin: var(--sp-2) 0 var(--sp-2);
-}
-.controls input[type=search] {
-  font: inherit; padding: 4px 8px;
-  border: 1px solid var(--border-2); background: var(--surface-0); color: var(--text-1);
-  border-radius: 2px; min-width: 22rem;
-}
-.controls input[type=search]:focus { outline: 1px solid var(--accent); }
-.controls .ct { color: var(--text-2); font-variant-numeric: tabular-nums; }
-.controls .dl { font-size: var(--fs-small); color: var(--accent); }
-
-.table-scroll {
-  /* c16i: size to content, capped at 60vh. A 1-row table is now ~1 row tall instead of a big empty
-     box; tables past the cap scroll (the virtual-scroll spacers reserve the full height regardless,
-     so clientHeight settles at 60vh and the windowing is unchanged). Was a fixed height: 60vh with
-     a never-applied .table-scroll.short variant - this folds that intent into the default. */
-  height: auto; max-height: 60vh; overflow: auto;
-  border: 1px solid var(--border-1);
-  background: var(--surface-0);
-  position: relative;
-}
-.table-scroll:empty::before {
-  /* c16j: heavy rows stream from _pagedata/<table>.js via <script defer>, so the shell paints first.
-     This hint shows while the container is empty and auto-clears the instant the VTable injects rows
-     (no longer :empty) - pure CSS, no JS, deterministic. ASCII dots (never the banned ellipsis). */
-  content: 'loading...';
-  display: block; padding: 12px; opacity: 0.6;
-}
-.sidecar-list a { font-family: ui-monospace, monospace; font-size: var(--fs-small); }
-ul.sidecar-list { list-style: none; padding: 0; margin: var(--sp-2) 0;
-                  columns: 5; column-gap: var(--sp-6); column-rule: 1px solid var(--border-1); }
-ul.sidecar-list li { padding: 1px 0; break-inside: avoid; }
-
-/* c16i: per-drop drill visual hierarchy.
-   category (a dominant group LABEL + nesting rail, no box)  >  table-section (the CARD)  >  column
-   headers  >  cells. These OVERRIDE the shared chrome `details.category` card so the category reads
-   as a labelled group and each table is the card; scoped to _PER_DROP_CSS, so the reports/dashboard
-   goldens (which never load this block) stay byte-unchanged. */
-
-/* Category = the top level: a left-anchored bold-accent label with a rail bracketing its tables. */
-details.category {
-  background: transparent; box-shadow: none; border: 0; border-radius: 0;
-  margin: 0 0 var(--sp-8);                 /* generous gap BEFORE the next category */
-}
-details.category > summary {
-  justify-content: flex-start;             /* override chrome space-between: stop centring the name */
-  gap: var(--sp-2);
-  padding: var(--sp-2) 0;
-  font-size: var(--fs-h2);                 /* parent dominates: h2 > the table-section h3 */
-  border-bottom: 0;
-}
-details.category[open] > summary { border-bottom: 0; }
-details.category > summary .cat-meta { margin-left: auto; }  /* push the count to the far right */
-details.category > .cat-body {
-  background: transparent;
-  padding: var(--sp-3) 0 0 var(--sp-4);    /* indent the tables under the category label */
-  margin-left: var(--sp-2);
-  border-left: 2px solid var(--border-1);  /* nesting rail: visually brackets the group */
-}
-
-/* Table section = the card. The card is the single frame, so its header sheds the left-accent bar. */
-section.table-section {
-  background: var(--surface-1);
-  border: 1px solid var(--border-1);
-  border-radius: 4px;
-  box-shadow: var(--elev-1);
-  padding: var(--sp-4);
-  margin: 0 0 var(--sp-4);                 /* gap between sibling cards (< the category gap) */
-}
-section.table-section:last-child { margin-bottom: 0; }
-section.table-section > header.table-header {
-  display: flex; align-items: baseline; justify-content: space-between;
-  gap: var(--sp-3); margin: 0 0 var(--sp-2);
-  padding: 0; border-left: 0;              /* the card frames it now */
-}
-section.table-section > header.table-header h2 {
-  margin: 0; padding: 0; border: 0;
-  font-size: var(--fs-h3); color: var(--text-1);   /* one tier below the category */
-}
-section.table-section .table-meta {
-  font: var(--fs-small) ui-monospace, monospace;
-  color: var(--text-3);
-}
-
-@media print {
-  /* shadows vanish on paper; re-assert a thin frame + drop elevation (c16d print discipline). */
-  section.table-section { box-shadow: none; border: 1px solid #888; }
-  details.category > .cat-body { border-left-color: #888; }
-}
-"""
+_PER_DROP_CSS = _read_asset('per_drop.css')
 
 
 def _compose_css() -> str:

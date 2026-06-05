@@ -1,0 +1,69 @@
+
+@media print {
+  @page { size: A4; margin: 12mm; }
+  :root { color-scheme: light; }
+  html, body { background: #fff; color: #000; }
+  body { max-width: none; padding: 0; }
+
+  nav.crumb, .device-strip, .ab-strip,
+  rdc-copy-button, rdc-search-cards, rdc-ab-picker { display: none; }
+
+  .summary-bar {
+    position: static;
+    background: #fff;
+    border: 1px solid #888;
+    border-top-width: 3px;
+    break-inside: avoid;
+    break-after: avoid;
+    print-color-adjust: exact;
+  }
+  .summary-bar .sb-headline { color: #000; }
+  .summary-bar .sb-link { display: none; }
+
+  /* Depth -> paper (c16d): screen depth is shadow-only and borderless; on white paper that is
+     invisible, so re-add a thin rule and kill shadows for every carded element. */
+  section.card, .callout, .kpi-chip, .pair-group,
+  details.matrix, details.category, a.dash-card { border: 1px solid #888; }
+  section.card, .callout, .kpi-chip, .pair-group, details.matrix, details.category,
+  a.dash-card, .summary-bar, .chart-svg { box-shadow: none; }
+
+  h1, h2 { color: #000; }
+  h2[id] { position: static; background: transparent; break-after: avoid; }
+
+  .kpi-strip { break-inside: avoid; grid-template-columns: repeat(4, 1fr); }
+  .kpi-chip { background: #fff; }
+  .kpi-chip .kpi-value { color: #000; }
+
+  .dash-grid { grid-template-columns: repeat(2, 1fr); }
+  a.dash-card { break-inside: avoid; }
+
+  .bar, .bar .seg, .ibar, .ibar > div,
+  .legend .swatch, .delta.pos, .delta.neg, .delta-pill {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  details, details > summary { display: block; }
+  details > .matrix-body, details > .cat-body { display: block; }
+
+  a[data-link-kind="primary"] {
+    background: transparent;
+    border: 1px solid #888;
+    color: #000;
+  }
+  a[data-link-kind="inline"] { color: #000; }
+  a[data-link-kind="inline"] .icon { display: none; }
+
+  /* Multi-section trend_table: page break before each h2 section after the first */
+  body[data-multi-section="true"] h2[id] ~ h2[id] { break-before: page; }
+
+  /* Per-drop browser: too large for print; show fallback message */
+  body[data-page-kind="drop-browser"] > * { display: none; }
+  body[data-page-kind="drop-browser"]::before {
+    content: "Per-drop browser is not designed for print. See the cumulative reports.";
+    display: block;
+    padding: 20mm;
+    font: bold 1.2rem system-ui, sans-serif;
+    color: #000;
+  }
+}

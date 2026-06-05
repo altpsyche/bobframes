@@ -1,0 +1,75 @@
+
+:root {
+  color-scheme: light dark;
+
+  --sp-1: ${sp_1};  --sp-2: ${sp_2};  --sp-3: ${sp_3}; --sp-4: ${sp_4};
+  --sp-6: ${sp_6}; --sp-8: ${sp_8}; --sp-12: ${sp_12};
+
+  --fs-display: ${fs_display};
+  --fs-h1: ${fs_h1};  --fs-h2: ${fs_h2};  --fs-h3: ${fs_h3};
+  --fs-body: ${fs_body};  --fs-mono: ${fs_mono};  --fs-small: ${fs_small};
+
+  --motion-hover: ${motion_hover};
+  --motion-focus: ${motion_focus};
+  --motion-vt: ${motion_vt};
+  --motion-disclosure: ${motion_disclosure};
+  --motion-spring: ${motion_spring};
+  --hover-scale: ${hover_scale};
+
+  --elev-1: ${elev_1};
+  --elev-2: ${elev_2};
+  --elev-3: ${elev_3};
+
+  --bg:            ${bg};
+  --surface-0:     ${surface_0};
+  --surface-1:     ${surface_1};
+  --surface-2:     ${surface_2};
+  --code-bg:       ${code_bg};
+
+  --fg:            ${fg};
+  --text-1:        ${text_1};
+  --muted:         ${muted};
+  --text-2:        ${text_2};
+  --text-3:        ${text_3};
+
+  --border:        ${border};
+  --border-1:      ${border_1};
+  --border-strong: ${border_strong};
+  --border-2:      ${border_2};
+
+  --row-alt:       ${row_alt};
+  --row-hover:     ${row_hover};
+
+  --accent-primary: ${accent_primary};
+  --accent-data:    ${accent_data};
+  --accent:         ${accent};
+
+  --status-alarm: ${status_alarm};
+  --status-warn:  ${status_warn};
+  --status-ok:    ${status_ok};
+  --status-info:  ${status_info};
+
+  --c-opaque:      ${c_opaque};
+  --c-prepass:     ${c_prepass};
+  --c-translucent: ${c_translucent};
+  --c-additive:    ${c_additive};
+  --c-decal:       ${c_decal};
+  --c-shadow:      ${c_shadow};
+  --c-ui:          ${c_ui};
+  --c-postprocess: ${c_postprocess};
+  --c-other:       ${c_other};
+
+  --pos:     ${pos};
+  --neg:     ${neg};
+  --neutral: ${neutral};
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-hover: 0s;
+    --motion-focus: 0s;
+    --motion-vt: 0s;
+    --motion-disclosure: 0s;
+    --motion-spring: 0s;
+    --hover-scale: 1;
+  }
+}

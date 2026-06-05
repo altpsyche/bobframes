@@ -1,0 +1,48 @@
+
+/* Sticky stack: crumb (top:0) -> summary-bar (top:crumb-h) -> thead (top:hdr-offset).
+   --hdr-offset is the combined height of crumb + summary-bar (pages set per page).
+   --crumb-h is the crumb height alone. Defaults work for most pages.
+   h2 is NOT sticky: the cascading sticky h2 + thead + summary-bar over-stacks
+   on long multi-section pages. Sticky thead is sufficient for table reading. */
+body { --hdr-offset: ${hdr_offset}; --crumb-h: ${crumb_height}; }
+nav.crumb {
+  position: sticky; top: 0; z-index: 3;
+  background: var(--bg);
+  padding-top: var(--sp-1); padding-bottom: var(--sp-1);
+}
+.summary-bar {
+  position: sticky; top: var(--crumb-h); z-index: 3;
+  display: grid;
+  grid-template-columns: ${summary_bar_cols};
+  gap: var(--sp-2) var(--sp-6);
+  align-items: center;
+  background: var(--surface-1);
+  box-shadow: var(--elev-2);
+  border-top: 2px solid var(--accent-data);
+  border-radius: 4px;
+  padding: var(--sp-3) var(--sp-4);
+  margin: 0 0 var(--sp-4);
+}
+.summary-bar .sb-label {
+  font: var(--fs-small) ui-monospace, monospace;
+  color: var(--text-2);
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+}
+.summary-bar .sb-headline {
+  font: 600 var(--fs-h1)/1.15 'Inter', 'Segoe UI', system-ui, sans-serif;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.summary-bar .sb-sub {
+  font: var(--fs-small) ui-monospace, monospace;
+  color: var(--text-2);
+  grid-column: 2;
+  font-variant-numeric: tabular-nums;
+}
+.summary-bar .sb-link { align-self: center; grid-row: 1 / span 2; grid-column: 3; }
+.summary-bar.tone-alarm { border-top-color: var(--status-alarm); }
+.summary-bar.tone-ok { border-top-color: var(--status-ok); }
+.summary-bar.tone-warn { border-top-color: var(--status-warn); }
+.summary-bar.tone-info { border-top-color: var(--status-info); }

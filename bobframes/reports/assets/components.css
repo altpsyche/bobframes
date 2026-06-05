@@ -1,0 +1,112 @@
+
+rdc-copy-button {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 28px; padding: 0 6px; height: 22px;
+  color: var(--text-2);
+  cursor: pointer;
+  /* resting affordance (c16d): a faint tint so it reads as clickable before hover */
+  background: color-mix(in oklch, var(--accent-primary) 7%, transparent);
+  border: 1px solid transparent;
+  border-radius: 2px;
+  font: var(--fs-small) ui-monospace, monospace;
+  margin-left: 4px;
+  transition: color var(--motion-hover), background var(--motion-hover), border-color var(--motion-hover);
+}
+rdc-copy-button:hover {
+  color: var(--accent-primary);
+  background: var(--row-hover);
+  border-color: var(--border-1);
+}
+rdc-copy-button:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 1px; }
+rdc-copy-button::before { content: 'copy'; }
+rdc-copy-button.copied { color: var(--status-ok); border-color: var(--status-ok); }
+rdc-copy-button.copied::before { content: 'ok'; }
+
+rdc-heatmap-cell {
+  display: inline-block;
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+rdc-sticky-h2 { display: contents; }
+/* In-view cue (c16d): the h2 lost its --accent left-rule, so the active section is marked by a
+   leading accent bar that appears only while the section's h2 sits in the viewport mid-band. The JS
+   (RdcStickyH2) toggles aria-current="section"; content:'' is ASCII (lint-safe). */
+rdc-sticky-h2 h2[aria-current="section"]::before {
+  content: ''; position: absolute;
+  left: calc(-1 * var(--sp-3)); top: 0.2em; bottom: 0.2em;
+  width: 3px; border-radius: 2px; background: var(--accent-data);
+}
+
+rdc-row-drill { display: contents; }
+rdc-row-drill > tr { cursor: pointer; }
+rdc-row-drill > tr:hover td { background: var(--row-hover); }
+
+rdc-search-cards {
+  display: flex; align-items: center; gap: var(--sp-3);
+  margin: 0 0 var(--sp-4);
+  font: var(--fs-small) ui-monospace, monospace;
+}
+rdc-search-cards input[type="search"] {
+  font: inherit;
+  padding: 6px 10px;
+  border: 1px solid var(--border-1);
+  background: var(--surface-0);
+  color: var(--text-1);
+  border-radius: 2px;
+  min-width: 280px;
+}
+rdc-search-cards input[type="search"]:focus {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+rdc-search-cards .rdc-count {
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+rdc-ab-picker {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  margin: 0 0 var(--sp-4);
+  font: var(--fs-small) ui-monospace, monospace;
+}
+rdc-ab-picker label { color: var(--text-2); }
+rdc-ab-picker select {
+  font: inherit;
+  padding: 4px 8px;
+  border: 1px solid var(--border-1);
+  background: var(--surface-0);
+  color: var(--text-1);
+  border-radius: 2px;
+}
+
+rdc-alarm-banner { display: contents; }
+
+/* Chip cluster: wrap N primary chips in flex row, no table abuse */
+.chip-cluster {
+  display: flex; flex-wrap: wrap; gap: var(--sp-2);
+  margin: 0 0 var(--sp-4);
+}
+.chip-cluster a[data-link-kind="primary"] { padding: 4px 10px; font-size: var(--fs-small); }
+
+/* Pair list: grouped variant chips per A/B pair */
+.pair-list { display: flex; flex-direction: column; gap: var(--sp-4); margin: 0 0 var(--sp-6); }
+.pair-group { box-shadow: var(--elev-1); border-radius: 4px; padding: var(--sp-3) var(--sp-4); background: var(--surface-1); }
+.pair-group > h3 {
+  margin: 0 0 var(--sp-3); padding: 0;
+  font: var(--fs-mono) ui-monospace, monospace;
+  color: var(--text-2);
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Catalog grid: flex-wrap chip area for report shortcuts */
+.catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-6);
+}
+.catalog-grid a[data-link-kind="primary"] { justify-content: flex-start; }
