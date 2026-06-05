@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import os
 
+import pytest
+
 from . import _render_util as u
 
 
+@pytest.mark.golden_env  # ADR-11: byte parity only on the canonical env (py3.12 / pyarrow 21)
 def test_render_matches_golden(tmp_path):
     dest = u.render_fresh(str(tmp_path / "root"))
 

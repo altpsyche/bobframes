@@ -98,6 +98,7 @@ def env(tmp_path_factory):
 
 # --- inline (--inline) bundle == render golden (byte-identical copy) ------------------------------
 
+@pytest.mark.golden_env  # ADR-11: byte parity only on the canonical env (py3.12 / pyarrow 21)
 def test_inline_html_matches_render_golden(env):
     root = _top(env.inline_tree)
     for rel in u.rendered_html_files(u.GOLDEN_DIR):
@@ -138,6 +139,7 @@ def test_inline_parquet_digests_match_source(env):
 
 # --- shared-asset bundle (DEFAULT, c16t) ----------------------------------------------------------
 
+@pytest.mark.golden_env  # ADR-11: byte parity only on the canonical env (py3.12 / pyarrow 21)
 def test_shared_tree_matches_golden(env):
     root = _top(env.shared_tree)
     golden_files = set(u.tree_files(SHARED_GOLDEN))
@@ -243,6 +245,7 @@ def test_shared_non_mutation(tmp_path):
 
 # --- light bundle --------------------------------------------------------------------------------
 
+@pytest.mark.golden_env  # ADR-11: byte parity only on the canonical env (py3.12 / pyarrow 21)
 def test_light_tree(env):
     root = _top(env.light_tree)
     got = set(u.tree_files(root))
@@ -357,6 +360,7 @@ def _red_trees(env):
     return [(_top(env.red_tree), REDACTED_GOLDEN), (_top(env.sred_tree), SHARED_REDACTED_GOLDEN)]
 
 
+@pytest.mark.golden_env  # ADR-11: byte parity only on the canonical env (py3.12 / pyarrow 21)
 def test_redacted_tree_matches_golden(env):
     for root, golden in _red_trees(env):
         golden_files = set(u.tree_files(golden))

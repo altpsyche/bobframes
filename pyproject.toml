@@ -57,3 +57,12 @@ packages = ["bobframes"]
 [tool.hatch.build.targets.sdist]
 include = ["bobframes/", "README.md", "CHANGELOG.md", "LICENSE", "pyproject.toml"]
 exclude = ["**/__pycache__", "**/*.pyc"]
+
+[tool.pytest.ini_options]
+markers = [
+  # Byte-for-byte HTML golden comparisons. The rendered HTML embeds environment-dependent computed
+  # bytes (float formatting differs across Python versions; parquet sizes across pyarrow writers), so
+  # the snapshot is byte-identical ONLY on the canonical CI env (py3.12 / pyarrow 21; ADR-11, D-8).
+  # CI runs `-m golden_env` on that one cell and `-m "not golden_env"` on every other cell.
+  "golden_env: byte-identical HTML golden comparison; canonical-env-only (ADR-11).",
+]
