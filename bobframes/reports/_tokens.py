@@ -18,8 +18,8 @@ except ModuleNotFoundError:  # pragma: no cover - py3.10 (qrenderdoc embed) via 
 _TOKENS_FILE = 'design_tokens.toml'
 
 # Substitution sections merged into one flat {key: value} map for string.Template (color/spacing/
-# type/motion/shadow). Order is irrelevant for substitution; keys are globally unique.
-_SUBST_SECTIONS = ('spacing', 'type', 'motion', 'color', 'shadow')
+# type/radius/motion/shadow). Order is irrelevant for substitution; keys are globally unique.
+_SUBST_SECTIONS = ('spacing', 'type', 'radius', 'motion', 'color', 'shadow')
 
 _CACHE: dict | None = None
 

@@ -32,8 +32,10 @@ def test_in_css_defined_props_not_false_flagged():
 
 
 def test_planted_undefined_in_css_is_caught():
+    # --sp-5 was legitimized in v0.2.6-1a (the deliberate G-30 fix), so plant --sp-7 (still absent from
+    # the 1/2/3/4/5/6/8/10/12 scale) -- the guard must still catch the NEXT typo.
     css = chrome._compose_css()
-    assert chrome._undefined_token_refs(css + '\n.x { color: var(--sp-5); }') == {'sp-5'}
+    assert chrome._undefined_token_refs(css + '\n.x { color: var(--sp-7); }') == {'sp-7'}
 
 
 def test_planted_undefined_in_emitted_style_is_caught():
