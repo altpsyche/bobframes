@@ -20,6 +20,25 @@ language (palette, borders, radius, component shapes, states); Grafana informs h
 reports are dense tables + KPI grids + drill views — shadcn's airy marketing-gallery defaults would waste
 space). See **Density** below — it is a load-bearing part of the direction, not a footnote.
 
+## Quality bar (NON-NEGOTIABLE — this is a big quality overhaul, not a reskin)
+
+The user's mandate: **clean, components, no bespoke stuff.** v0.2.6 is where the "everything is a component"
+goal is fully realized (c16x built the machinery; v0.2.6 adopts it everywhere).
+- **No bespoke markup or CSS.** By the end, EVERY visual element is a named, single-source component built
+  through `chrome.el` (escape-by-construction) + the owned token/CSS bundle. Target: zero per-call
+  hand-concat `h()`, zero one-off `<style>`/inline `style=` beyond intrinsically data-driven values (a
+  bar's `width:%`), zero page that hand-writes a `<table>`/card/badge/section.
+- **Adopt, don't add.** Migrate the ~117 hand-written table sites onto `data_table`/`static_table`; roll the
+  remaining chrome / delta / charts / dashboard / template leaves onto `el`. **Epic-wide, not one commit** —
+  track the long tail as a checklist so nothing stays bespoke. The redesign goldens change anyway, so this
+  is the moment the byte-parity barrier (which blocked it in c16x) is gone.
+- **Every component in the gallery.** The preview gallery renders one instance of every component (incl. the
+  catalog/drill hierarchy) — the living catalog + the review surface.
+- **Guards stay green.** Token guard = 0 undefined refs; a structural/ARIA test per component; data path
+  frozen (`test_parquet_parity`, never `make_parquet_golden`); all ADR-37 invariants hold.
+- **Taste gated by screenshots.** Preview-gallery then per-surface headless-Chrome screenshots
+  (light/dark/print, synthetic + real Perf) signed off BEFORE goldens land.
+
 ## Reconciliation: "bold" now means shadcn-clean, NOT loud
 
 An earlier decision said "bold redesign," and the approved plan sketched a maximalist take (2.75rem hero
