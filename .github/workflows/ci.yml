@@ -63,12 +63,16 @@ jobs:
       # (Filenames are test_*.py — no pytest `python_files` override — so §21.6's `tests/unit_*.py`
       # maps to test_stable_keys / test_schemas_unit / test_discovery, `tests/parity.py` ->
       # test_parity.py, etc.)
-      - name: pytest (all gates except golden parity)
-        run: python -m pytest bobframes/tests --ignore=bobframes/tests/test_parity.py -v
+      - name: pytest (all gates except golden-env byte comparisons)
+        run: python -m pytest bobframes/tests -m "not golden_env" -v
 
       - name: golden byte-parity (canonical env only)
+        # The `golden_env` byte-for-byte HTML comparisons (test_parity + the test_package inline/
+        # shared/light/redacted tree-vs-golden checks) embed environment-dependent computed bytes
+        # (float formatting across Python versions; parquet sizes across pyarrow writers), so the
+        # snapshot is byte-identical only on this canonical cell (ADR-11, D-8).
         if: matrix.python == '3.12' && matrix.pyarrow == '21'
-        run: python -m pytest bobframes/tests/test_parity.py -v
+        run: python -m pytest bobframes/tests -m "golden_env" -v
 
       - name: smoke (render-only against bundled synthetic)
         run: bobframes smoke
