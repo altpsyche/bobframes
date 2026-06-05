@@ -110,3 +110,43 @@ rdc-alarm-banner { display: contents; }
   margin: 0 0 var(--sp-6);
 }
 .catalog-grid a[data-link-kind="primary"] { justify-content: flex-start; }
+
+/* Build-health one-pager components (c16x-5, ADR-42; relocated from summary._SUMMARY_CSS into the
+   owned bundle, .bh-trend* renamed -> .trendline* to match the promoted chrome/delta components).
+   Scoped to [data-page-kind="summary"] so they are inert on every other page (which now carry these
+   bytes inline, dedup'd in package mode). Restyles the KPI trend strip, the Movement 2-col layout,
+   the change lists, and the verdict status badge. */
+[data-page-kind="summary"] .kpi-strip { gap: var(--sp-4); margin-bottom: var(--sp-6); }
+[data-page-kind="summary"] .kpi-chip { padding: var(--sp-4) var(--sp-6) var(--sp-6); gap: var(--sp-1); }
+[data-page-kind="summary"] .kpi-chip .kpi-delta {
+  min-height: 1.2em; display: flex; align-items: baseline; gap: var(--sp-2);
+}
+[data-page-kind="summary"] .kpi-chip .kpi-note { margin-top: 1px; }
+[data-page-kind="summary"] .trendline {
+  width: 100%; height: auto; display: block; margin-top: var(--sp-4); color: var(--text-3);
+}
+[data-page-kind="summary"] .trendline.tone-pos { color: var(--pos); }
+[data-page-kind="summary"] .trendline.tone-neg { color: var(--neg); }
+[data-page-kind="summary"] .trendline-line {
+  fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round;
+}
+[data-page-kind="summary"] .trendline-fill { fill: currentColor; opacity: .12; stroke: none; }
+[data-page-kind="summary"] .trendline-dot { fill: currentColor; }
+[data-page-kind="summary"] .movement {
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4) var(--sp-8);
+}
+[data-page-kind="summary"] .mv-col h3 {
+  margin: 0 0 var(--sp-2); font: 600 var(--fs-small) ui-monospace, monospace;
+  text-transform: lowercase; letter-spacing: .04em; color: var(--text-3);
+}
+[data-page-kind="summary"] .mv-rollup { grid-column: 1 / -1; margin-top: 0; }
+[data-page-kind="summary"] .change-list {
+  list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2);
+}
+[data-page-kind="summary"] .change-list li { display: flex; align-items: baseline; gap: var(--sp-2); }
+[data-page-kind="summary"] .change-list li .delta-pill { margin-left: auto; }
+[data-page-kind="summary"] .bh-status { font-weight: 600; }
+[data-page-kind="summary"] .bh-status.s-ALARM { color: var(--status-alarm); }
+[data-page-kind="summary"] .bh-status.s-AT_RISK { color: var(--status-warn); }
+[data-page-kind="summary"] .bh-status.s-OK { color: var(--status-ok); }
+[data-page-kind="summary"] .bh-status.s-UNKNOWN { color: var(--text-3); }

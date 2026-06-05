@@ -39,8 +39,11 @@ from .chrome import (
     el_void,
     empty_state,
     h,
+    kpi_card,
+    movement,
     raw,
     static_table,
+    status_badge,
     head_assets,
     header,
     heatmap_cell,
@@ -84,6 +87,7 @@ from .delta import (
     inline_bar,
     rank_pill,
     sparkline_svg,
+    trendline,
 )
 from .charts import (
     bar_chart,

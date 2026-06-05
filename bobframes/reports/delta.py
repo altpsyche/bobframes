@@ -177,3 +177,42 @@ def sparkline_svg(values: list, w: int = _LAYOUT['sparkline_w'], h_: int = _LAYO
             parts.append(f'<polyline points="{pts}" stroke="currentColor" stroke-width="1.25" fill="none"/>')
     parts.append('</svg>')
     return ''.join(parts)
+
+
+def trendline(values: list, *, tone: str = 'neutral', w: int = 240, h: int = 40,
+              pad_x: int = 6, pad_y: int = 9) -> str:
+    """Filled-area mini sparkline (polygon fill + polyline + endpoint dot), uniformly scaled to the chip
+    width (viewBox + width:100%, height:auto - no distortion). Reads as a real trend strip even at 2
+    points, where sparkline_svg's scratch line did not. None values are dropped; '' for < 2 points.
+
+    c16x-5 (ADR-42): promoted verbatim from summary._trendline, with the classes renamed
+    .bh-trend/.bh-line/.bh-fill/.bh-dot -> .trendline/.trendline-line/.trendline-fill/.trendline-dot so
+    the styling lives in the owned component CSS instead of summary's inline <style>. Numeric-only
+    output (no escaping needed); deterministic fixed-precision coords."""
+    pts = [(i, float(v)) for i, v in enumerate(values) if v is not None]
+    if len(pts) < 2:
+        return ''
+    n = len(values)
+    ys = [v for _, v in pts]
+    lo, hi = min(ys), max(ys)
+    flat = hi == lo
+    span = (hi - lo) or 1.0
+    span_x = (n - 1) or 1
+
+    def fx(i):
+        return pad_x + (i / span_x) * (w - 2 * pad_x)
+
+    def fy(v):
+        if flat:                      # no movement -> a centered flat line, not one hugging the floor
+            return h / 2
+        return h - pad_y - ((v - lo) / span) * (h - 2 * pad_y)
+
+    line = [(fx(i), fy(v)) for i, v in pts]
+    poly = ' '.join(f'{x:.2f},{y:.2f}' for x, y in line)
+    base_y = h - pad_y
+    area = f'{line[0][0]:.2f},{base_y:.2f} {poly} {line[-1][0]:.2f},{base_y:.2f}'
+    ex, ey = line[-1]
+    return (f'<svg class="trendline tone-{tone}" viewBox="0 0 {w} {h}" role="img" aria-label="trend">'
+            f'<polygon class="trendline-fill" points="{area}"/>'
+            f'<polyline class="trendline-line" points="{poly}"/>'
+            f'<circle class="trendline-dot" cx="{ex:.2f}" cy="{ey:.2f}" r="2.5"/></svg>')
