@@ -8,7 +8,18 @@
 ```
 active_release: v0.2.5    (v0.1 COMPLETE - bobframes 0.1.0 live on PyPI 2026-05-31; v0.2.0 bump committed
                 867dcc5 on plan/v0.2.5)
-current:        c16x_component_system    (status: not-started. c16y + c16v DONE 2026-06-05 - G-26 + G-29 closed,
+current:        c16x_component_system    (status: IN PROGRESS - c16x-1 DONE 2026-06-05 (CSS/JS string literals
+                extracted to reports/assets/*.{css,js,html}, loaded via importlib.resources [the design_tokens.toml
+                precedent] - chrome.py + html/template.py rewired to _read_asset(); ${token}/__ROW_H__ substitution
+                preserved; ZERO-OUTPUT: 285->289 green incl. NEW tests/test_assets.py, test_parity + test_design_tokens
+                + test_parquet_parity BYTE-UNCHANGED, NO golden refresh; assets not gitignored, ship via the woff2
+                precedent, full clean-install wheel smoke deferred to c16w CI per plan risk #11). EXPANDED per the
+                approved plan ~/.claude/plans/bobframes-v0-2-5-continue-staged-octopus.md: c16x = 5-step sub-sequence
+                (x1 extract DONE / x2 element builder el/raw/classes [subsumes roadmap C6] / x3 token-validity guard /
+                x4 table component family [Column/table/static_table, migrate ~117 hand-written table sites, zero-output] /
+                x5 summary migration off _SUMMARY_CSS + promote kpi_card/trendline/status_badge/movement + gallery,
+                G-30 closes there); then c16w ships v0.2.5, then v0.2.6 = the BOLD VISUAL epic (ADR-43, own mini-release).
+                WORKING TREE (uncommitted; user hasn't asked to commit). Prior: c16y + c16v DONE 2026-06-05 - G-26 + G-29 closed,
                 the report-correctness spine. A code-review of the c16v blast radius produced a SEQUENCED
                 review-fix roadmap (user-approved): G-26 FIRST (so normalization lands once), then c16v, then a
                 v0.3 quality track [C3 reliability / C4 arrow-cache / C5 config-ify / C6 element-builder] + a
@@ -892,6 +903,19 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-05 — c16x EXPANDED + c16x-1 DONE. Planning (2 background workflows: 4 Explore agents mapped every
+  component/inline-CSS/token; 3 Plan agents + a synthesis judge designed the system) -> approved plan
+  ~/.claude/plans/bobframes-v0-2-5-continue-staged-octopus.md. User decisions: BOLD redesign; v0.2.5 = safe
+  foundation at parity then v0.2.6 = bold visual epic (own ADR-43); all-chrome-first; CSS+JS extracted to real
+  files (no hard-to-dig CSS); the unified TABLE becomes a component (host emission was hand-written ~117 sites).
+  c16x is a 5-step sub-seq (x1 extract / x2 element builder [subsumes C6] / x3 token guard / x4 table component
+  family / x5 summary migration+gallery, G-30 there). c16x-1 DONE (ZERO-OUTPUT): chrome.py + html/template.py
+  CSS/JS string literals -> reports/assets/*.{css,js,html} via importlib.resources (design_tokens.toml precedent),
+  _read_asset() in both modules, ${token}/__ROW_H__ substitution preserved; NEW tests/test_assets.py (files exist,
+  CSS ASCII [rdc_table.js exempt: sort-arrow glyph in a <script> body], constants==file contents, substitution
+  complete). 285->289 green; test_parity + test_design_tokens + test_parquet_parity BYTE-UNCHANGED, NO golden
+  refresh; git scope = chrome.py + template.py + 12 new assets + test_assets.py. Wheel smoke deferred to c16w CI
+  (assets not gitignored; ship via the woff2 precedent). WORKING TREE, uncommitted. NEXT: c16x-2 element builder.
 - 2026-06-05 — c16y + c16v DONE (G-26 + G-29; report-correctness spine). A code-review of the c16v blast radius
   produced a user-approved SEQUENCED review-fix roadmap (G-26 first so normalization lands once; then c16v; then
   v0.3 quality C3-C6 + designer-tooling epic C7-C10 — in the approved plan file). c16y (ZERO-OUTPUT): NEW

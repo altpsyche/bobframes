@@ -1,0 +1,154 @@
+
+:root { --th-bg: var(--surface-2); --th-bg-active: var(--row-hover); --label: #4a6a3a; }
+@media (prefers-color-scheme: dark) { :root { --label: #a3d39c; } }
+rdc-table { display: block; }
+/* Collapsible column groups (c16i). Real <button> toggles; no transition -> reduced-motion safe. */
+.col-groups { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin: 0 0 var(--sp-2); }
+.col-groups .col-group-toggle {
+  font: var(--fs-small) 'Inter', 'Segoe UI', system-ui, sans-serif;
+  padding: 4px 10px; cursor: pointer; color: var(--text-2);
+  background: var(--surface-1); border: 1px solid var(--border-2); border-radius: 2px;
+}
+.col-groups .col-group-toggle[aria-pressed="true"] {
+  color: var(--accent); border-color: var(--accent); background: var(--surface-2);
+}
+.col-groups .col-group-toggle:hover { background: var(--row-hover); }
+table.data {
+  border-collapse: separate; border-spacing: 0;
+  font: var(--fs-body)/1.3 'Inter', 'Segoe UI', system-ui, sans-serif;
+  width: max-content; min-width: 100%; table-layout: auto;
+}
+table.data thead th {
+  position: sticky; top: 0; z-index: 2;
+  background: var(--th-bg);
+  text-align: left; cursor: pointer; user-select: none;
+  color: var(--accent); font-weight: 600;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border-2);
+  white-space: nowrap;
+}
+table.data thead th:hover { background: var(--th-bg-active); }
+table.data thead th .sort-arrow { display: inline-block; width: 10px; color: var(--text-3); }
+table.data thead th.numeric, table.data tbody td.numeric {
+  text-align: right; font-variant-numeric: tabular-nums;
+}
+/* Type split (c16i): mono+tabular only for numeric/mono BODY cells; headers stay Inter sans.
+   Longhands (not the `font` shorthand) so the inherited line-height 1.3 is preserved. */
+table.data tbody td.numeric, table.data tbody td.mono {
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: var(--fs-mono);
+}
+table.data tbody td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border-1);
+  vertical-align: top; white-space: nowrap;
+  max-width: 380px; overflow: hidden; text-overflow: ellipsis;
+  background: var(--surface-0);
+}
+/* Cell truncation (c16m). DEFAULT: every table.data <td> clips at 380px - this is what the un-enhanced
+   bare dashboard/preview minis rely on (they have NO rdc-table host + NO inner .clip, so the td-level
+   clip is their only truncation; without it a long mesh/marker name overflows the card). rdc-table cells
+   OPT OUT below and truncate via an INNER element instead (an in-cell <a> or a <span class="clip">), so a
+   trailing copy-button / sparkline / heatmap-cell / .lbl label rides OUTSIDE the clip and stays visible +
+   clickable. Three width tiers; the full value is recoverable via a server-set title= (static) / JS-set
+   title (virtual) + the real DOM text (Ctrl-F / selection-copy). ASCII ellipsis via the CSS keyword (no
+   literal U+2026). One inner-clip contract, both rdc-table modes - VTable.cellNode wraps client cells,
+   the report builders wrap server cells. */
+rdc-table table.data tbody td { max-width: none; overflow: visible; text-overflow: clip; }
+table.data { --clip-cap: 320px; --clip-cap-narrow: 200px; --clip-cap-wide: 560px; }
+table.data .clip {
+  display: inline-block; max-width: var(--clip-cap);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: top;
+}
+table.data .clip-narrow { max-width: var(--clip-cap-narrow); }
+table.data .clip-wide { max-width: var(--clip-cap-wide); }
+table.data tbody tr.alt td { background: var(--surface-1); }
+table.data tbody tr:hover td { background: var(--row-hover); }
+table.data tbody td .lbl {
+  color: var(--label); margin-left: 6px;
+  font-style: italic; opacity: .85;
+}
+table.data tbody td a {
+  color: inherit; text-decoration: none;
+  border-bottom: 1px dotted var(--accent);
+}
+table.data tbody td a:hover { color: var(--accent); border-bottom-style: solid; }
+.spacer td { padding: 0; border: 0; background: var(--surface-0); }
+/* Report markup bakes class="num" on numeric cells (the old report-table convention) while the
+   VTable adds class="numeric"; alias .num to the table.data numeric treatment so a STATIC report
+   styles correctly JS-off WITHOUT re-classing every cell (and without touching the shared delta/
+   heatmap/sparkline cell helpers). Inert on catalog/drill (they never use .num). Kept as its own rule
+   so the c16i type-split guard's exact `.numeric, ...td.mono` substrings stay intact. */
+table.data thead th.num, table.data tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.data tbody td.num { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-size: var(--fs-mono); }
+/* Static mode has no .alt class (rows are server-baked) so zebra rides nth-child, which follows the
+   visible row position after an in-place sort reorder. Scoped to static so virtual (windowed, where
+   nth-child is unreliable) keeps using .alt above. */
+rdc-table[data-mode="static"] table.data tbody tr:nth-child(even) td { background: var(--surface-1); }
+/* Sticky-in-card guard: table.data thead is position:sticky;top:0, which inside a report section.card
+   (no scroll container) would detach and float over the card (the c16c bug). Pin it static there;
+   catalog tables live in their own <section> / drill in section.table-section, so this matches only
+   the report context. */
+section.card table.data thead th, a.dash-card table.data thead th { position: static; }
+/* c16l (ADR-38): a STATIC report table replaces the retired table.report. Restore the report-table
+   semantics table.data didn't carry - styled <caption>, an emphasized label (first) column - and OPT
+   OUT of the 380px cell clip (report cells hold copy-buttons / sparklines / links that must stay
+   visible + clickable; c16m owns controllable truncation). Scoped to static so the catalog/drill
+   virtual tables stay byte-stable. Also re-home the table.report print + narrow-viewport rules here. */
+/* caption: global (not static-scoped) so the bare dashboard/preview minis - table.data WITHOUT an
+   rdc-table host - also get it. Catalog/drill build rows at runtime and emit no <caption>, so this is
+   inert there + golden-safe. */
+table.data > caption {
+  caption-side: top; text-align: left; color: var(--text-2);
+  font-size: var(--fs-small); padding: 0 0 var(--sp-2);
+}
+rdc-table[data-mode="static"] table.data tbody td:first-child { font-weight: 600; color: var(--text-1); }
+/* Expand/wrap toggle (c16m): flip data-expand on the host -> release the clip. SINGLE line in both modes
+   (max-width:none, still nowrap) so the VTable's fixed ROW_H stays valid; static ALSO wraps to multi-line
+   (static rows auto-size - virtual must NOT, windowing locks row height). The toggle button + the
+   .rdc-controls bar are built in JS (enhancement); JS-off keeps clip + title= + Ctrl-F, nothing hidden. */
+rdc-table[data-expand="true"] table.data .clip { max-width: none; overflow: visible; text-overflow: clip; }
+rdc-table[data-mode="static"][data-expand="true"] table.data .clip,
+rdc-table[data-mode="static"][data-expand="true"] table.data tbody td { white-space: normal; overflow-wrap: anywhere; }
+.rdc-controls { display: flex; gap: var(--sp-2); align-items: center; margin: 0 0 var(--sp-2); }
+.rdc-controls .rdc-expand-toggle {
+  font: var(--fs-small) 'Inter', 'Segoe UI', system-ui, sans-serif;
+  padding: 4px 10px; cursor: pointer; color: var(--text-2);
+  background: var(--surface-1); border: 1px solid var(--border-2); border-radius: 2px;
+}
+.rdc-controls .rdc-expand-toggle[aria-pressed="true"] {
+  color: var(--accent); border-color: var(--accent); background: var(--surface-2);
+}
+.rdc-controls .rdc-expand-toggle:hover { background: var(--row-hover); }
+@media (max-width: 720px) {
+  rdc-table[data-mode="static"] table.data thead th,
+  rdc-table[data-mode="static"] table.data tbody td { padding: var(--sp-1) var(--sp-2); }
+}
+@media print {
+  rdc-table[data-mode="static"] table.data thead th {
+    position: static; background: #f0f0f0; color: #000; print-color-adjust: exact;
+  }
+  rdc-table[data-mode="static"] table.data thead { display: table-header-group; }
+  rdc-table[data-mode="static"] table.data tbody tr { break-inside: avoid; }
+  /* c16m: full-wrap on paper - nothing hidden (no title= tooltips in print). Static only; virtual pages
+     are windowed and never print-complete (ADR-37). Constrain the table to the page (it is width:
+     max-content on screen, which would overflow + clip the paper edge) and let every clip cell flow
+     inline so long unbroken paths wrap instead of running off the page. */
+  rdc-table[data-mode="static"] table.data { width: 100%; max-width: 100%; }
+  rdc-table[data-mode="static"] table.data .clip,
+  rdc-table[data-mode="static"] table.data .clip-narrow,
+  rdc-table[data-mode="static"] table.data .clip-wide {
+    display: inline; max-width: none; overflow: visible; white-space: normal; text-overflow: clip; overflow-wrap: anywhere;
+  }
+  /* c16n: the bare dashboard/preview minis (table.data with NO rdc-table host) are clipped by the global
+     380px td-clip + (dashboard) table-layout:fixed overflow:hidden, with no title= hover in print, so on
+     PAPER they print CLIPPED. Release them to wrap in full - the mini analogue of the static rdc-table
+     rule above (which is rdc-table[data-mode=static]-scoped, so it cannot reach the bare minis). Covers
+     cells AND headers. Keep table-layout:fixed (the 2-up print grid bounds each card; auto could overflow
+     it) - white-space:normal + overflow-wrap:anywhere is enough that nothing stays hidden. The preview
+     mini is a DIRECT child of .table-wrap; report tables interpose <rdc-table>, so they are excluded. */
+  a.dash-card table.data th, a.dash-card table.data td,
+  .table-wrap > table.data th, .table-wrap > table.data td {
+    max-width: none; overflow: visible; white-space: normal; overflow-wrap: anywhere;
+  }
+}
