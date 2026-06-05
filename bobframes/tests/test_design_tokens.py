@@ -65,6 +65,17 @@ def test_layout_literals_preserved():
     assert 'grid-template-columns: minmax(140px, max-content) 1fr auto;' in s
 
 
+def test_v026_2_summary_hero_numeral():
+    """v0.2.6-2 (rides ADR-44): the summary one-pager's 4 KPI values render at a NEW --fs-hero size,
+    scoped to [data-page-kind="summary"] so dashboard/reports (no .kpi-chip there today) stay normal.
+    Only font-size is overridden -- weight stays <=600 (test_fonts holds; the .kpi-value `font:`
+    shorthand at chrome.css is untouched)."""
+    assert '  --fs-hero: 2.75rem;' in chrome._DESIGN_TOKENS          # NEW :root token
+    assert _tokens.token_subst().get('fs_hero') == '2.75rem'         # flows via [type] -> token_subst
+    base_css = chrome._COMPONENTS_CSS_BASE
+    assert '[data-page-kind="summary"] .kpi-chip .kpi-value { font-size: var(--fs-hero); }' in base_css
+
+
 def test_c16_polish_css_present():
     """c16 adds the insight-callout + empty-state primitives + a token-only ruleset (no $ left)."""
     c = chrome._CHROME_CSS

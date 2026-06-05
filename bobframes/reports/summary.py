@@ -62,9 +62,9 @@ def _pct_pill(cur, prev, *, lower_is_better: bool = True) -> str:
         return base.delta_pill(cur, prev, lower_is_better=lower_is_better)
     pct = (float(cur) - float(prev)) / float(prev) * 100.0
     if abs(pct) < 0.5:
-        return '<span class="delta-pill flat">0%</span>'
+        return base.el('span', {'class': 'delta-pill flat'}, '0%')
     cls = 'pos' if (pct < 0) == lower_is_better else 'neg'
-    return f'<span class="delta-pill {cls}">{pct:+.0f}%</span>'
+    return base.el('span', {'class': 'delta-pill ' + cls}, f'{pct:+.0f}%')
 
 
 def _collect_metrics(root: str, run, baseline) -> health.HealthMetrics:
@@ -144,17 +144,17 @@ def _dir_tone(cur, prev) -> str:
 def _change_line(c) -> str:
     lbl = _METRIC_LABEL.get(c.metric, c.metric)
     if c.delta_pct is None:
-        pill = f'<span class="delta-pill flat">{base.h(c.kind)}</span>'
+        pill = base.el('span', {'class': 'delta-pill flat'}, c.kind)
     else:
         cls = 'pos' if c.delta_pct < 0 else 'neg'
-        pill = f'<span class="delta-pill {cls}">{c.delta_pct:+.0f}%</span>'
-    return f'<li>{base.h(lbl)} {base.h(c.area or "")} {pill}</li>'
+        pill = base.el('span', {'class': 'delta-pill ' + cls}, f'{c.delta_pct:+.0f}%')
+    return base.el('li', None, lbl, ' ', c.area or '', ' ', pill)
 
 
 def _change_list(changes: list, empty: str) -> str:
     if not changes:
-        return f'<p class="note dim">{base.h(empty)}</p>'
-    return '<ul class="change-list">' + ''.join(_change_line(c) for c in changes[:3]) + '</ul>'
+        return base.el('p', {'class': 'note dim'}, empty)
+    return base.el('ul', {'class': 'change-list'}, *[_change_line(c) for c in changes[:3]])
 
 
 def build(root: str, *, drops: list | None = None, ab=None,
@@ -248,7 +248,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
                    if (sh_cplx is not None and sh_cplx >= rcfg.shader_complexity_high)
                    else sh_area)),
     ]
-    parts.append('<div class="kpi-strip">' + ''.join(kpis) + '</div>')
+    parts.append(base.el('div', {'class': 'kpi-strip'}, *kpis))
 
     # --- Movement since <baseline> (baseline-gated; the tech-lead glance) ----------------------
     if bl:
@@ -265,13 +265,12 @@ def build(root: str, *, drops: list | None = None, ab=None,
     order = sorted(cur_hm.per_area,
                    key=lambda a: (v.area_verdicts[a].value, cur_hm.per_area[a].avg_gpu_per_frame),
                    reverse=True)
-    rows = ['<table class="data"><caption>By area</caption><thead><tr>'
-            '<th scope="col">area</th>'
-            '<th class="num" scope="col">avg draws / frame</th>'
-            '<th class="num" scope="col">avg gpu / frame</th>'
-            '<th class="num" scope="col">overdraw</th>'
-            '<th scope="col">status</th>'
-            '</tr></thead><tbody>']
+    cols = [base.Column('area', 'area'),
+            base.Column('draws', 'avg draws / frame', numeric=True),
+            base.Column('gpu', 'avg gpu / frame', numeric=True),
+            base.Column('overdraw', 'overdraw', numeric=True),
+            base.Column('status', 'status')]
+    trows = []
     for a in order:
         am = cur_hm.per_area[a]
         bam = bl_hm.per_area.get(a) if bl_hm else None
@@ -280,14 +279,15 @@ def build(root: str, *, drops: list | None = None, ab=None,
         d_gpu = _pct_pill(am.avg_gpu_per_frame,
                           bam.avg_gpu_per_frame if bam else None) if bl else ''
         ov = base.fmt_pct(am.overdraw_pct) if am.overdraw_pct is not None else '-'
-        rows.append(
-            f'<tr><td>{base.h(a)}</td>'
-            f'<td class="num">{base.fmt_int(round(am.avg_draws_per_frame))} {d_draws}</td>'
-            f'<td class="num">{base.fmt_float(am.avg_gpu_per_frame, 4)} {d_gpu}</td>'
-            f'<td class="num">{ov}</td>'
-            f'<td>{base.status_badge(v.area_verdicts[a].name, _STATE_LABEL[v.area_verdicts[a]])}</td></tr>')
-    rows.append('</tbody></table>')
-    parts.append(base.section_card('by_area', 'By area', ''.join(rows), count=n_areas))
+        trows.append({
+            'area': a,
+            'draws': base.raw(f'{base.fmt_int(round(am.avg_draws_per_frame))} {d_draws}'),
+            'gpu': base.raw(f'{base.fmt_float(am.avg_gpu_per_frame, 4)} {d_gpu}'),
+            'overdraw': ov,
+            'status': base.status_badge(v.area_verdicts[a].name, _STATE_LABEL[v.area_verdicts[a]]),
+        })
+    table = base.static_table(cols, trows, caption='By area')
+    parts.append(base.section_card('by_area', 'By area', table, count=n_areas))
 
     return base.write_report(out_path, [base.report_page(
         'build health summary', parts,

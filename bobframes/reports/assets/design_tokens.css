@@ -8,6 +8,7 @@
   --radius-sm: ${radius_sm};  --radius: ${radius};  --radius-lg: ${radius_lg};
 
   --fs-display: ${fs_display};
+  --fs-hero: ${fs_hero};
   --fs-h1: ${fs_h1};  --fs-h2: ${fs_h2};  --fs-h3: ${fs_h3};
   --fs-body: ${fs_body};  --fs-mono: ${fs_mono};  --fs-small: ${fs_small};
   --fs-micro: ${fs_micro};

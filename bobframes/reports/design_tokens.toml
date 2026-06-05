@@ -26,7 +26,8 @@ sp_10 = '40px'
 sp_12 = '48px'
 
 [type]
-fs_display = '2.25rem'                                # KPI hero numeral is summary-scoped (v0.2.6-2)
+fs_display = '2.25rem'                                # default KPI numeral (no .kpi-chip on dashboard/reports today)
+fs_hero = '2.75rem'                                   # v0.2.6-2: summary-only hero numeral, scoped [data-page-kind=summary]
 fs_h1 = '1.625rem'                                    # v0.2.6: modest shadcn-restrained heading tune
 fs_h2 = '1.1875rem'
 fs_h3 = '0.9375rem'
