@@ -11,7 +11,28 @@ active_release: v0.2.6    (v0.1 COMPLETE - bobframes 0.1.0 live on PyPI 2026-05-
                 migration, so there is no standalone 0.2.5 - the next PyPI release is 0.2.6, carrying the
                 foundation AND the visual redesign; _version jumps 0.2.0 -> 0.2.6. The c16x work + the CI
                 golden_env fix are on `main`; v0.2.6 work is on branch `plan/v0.2.6`.)
-current:        v0.2.6-3 (dashboard grid: shadcn-flat Grafana-dense cards + static_table minis)    (status: PLANNED on plan/v0.2.6.
+current:        v0.2.6-4 (6 detail reports: adopt the Column+data_table family)    (status: PLANNED on plan/v0.2.6.
+                v0.2.6-3 DONE 2026-06-06 (dashboard grid: shadcn-flat Grafana-dense cards + static_table minis): the SECOND
+                surface commit, the first DENSE one. CSS density block is the SOLE output change: [layout] dash_grid_min
+                360->300px (real Perf 4-up at 1600 vs 3-up), .dash-grid gap sp-6->sp-4, a.dash-card padding sp-4->sp-3 +
+                inner gap sp-3->sp-2. The 2px left accent rail is a SUBTLE always-on 30% tint (box-shadow: inset 2px 0 0
+                color-mix(in oklch, var(--accent-primary) 30%, transparent)) -- full-strength read too high-contrast in
+                review (a light bar on a dark card); a hover-only variant was tried but the user preferred the lighter
+                always-on rail; hover keeps the rail + adds --elev-2; print drops it, cards keep the #888 frame.
+                Componentization BYTE-NEUTRAL on the golden: _card_table -> chrome.static_table (via NEW Column.cell_title
+                -- the mini's always-on hover-reveal <td title>, sourced PLAIN so el escapes once; the would-be
+                double-escape was review finding R1, fixed by NEW formatters.scrub_chrome_text feeding the marker plain),
+                _card + both chip_cluster strips (cross-report <nav> + A/B <div>) -> el. PROVEN: fresh render byte-identical
+                to the pre-bake golden on all 17 pages OUTSIDE <style>; the only delta is the CSS. Package: redacted (inline)
+                HTML refreshed, shared/shared_redacted changed ONLY in _assets/{report,catalog}.css (bodies byte-unchanged).
+                _pagedata/digests.json/golden_parquet BYTE-UNCHANGED (NO make_parquet_golden). NEW
+                test_v026_3_dashboard_grafana_dense + test_table_component.cell_title (R1 single-escape guard); test_c16d
+                hover pin updated in-commit; test_report_structure chip-cluster + 6x dash-card held under el. 342 green
+                (-m "not browser"); token guard 0 undefined; browser matrix light/dark/print synthetic + real Perf SIGNED
+                OFF before bake (resting flat confirmed). Scope = 6 source (chrome.css/chrome.py/dashboard.py/
+                design_tokens.toml/formatters.py/base.py) + 2 tests + goldens. No new ADR (rides ADR-44/42); §21.1v gets
+                the -3 as-built; FINDINGS G-32 chip_cluster ticked; commit doc v026_3_dashboard_grid.md + as-built. NEXT:
+                v0.2.6-4.
                 v0.2.6-2 DONE 2026-06-05 (summary one-pager: hero numerals + componentization, the FIRST surface commit): the 4
                 summary KPI values render at a NEW [type] fs_hero='2.75rem' token, scoped [data-page-kind=summary] .kpi-chip
                 .kpi-value (dashboard/reports carry NO .kpi-chip -> unaffected; weight stays <=600, test_fonts + its pinned font:
@@ -134,7 +155,23 @@ current:        v0.2.6-3 (dashboard grid: shadcn-flat Grafana-dense cards + stat
                 token-validity guard + preview gallery; migrate summary.py off its inline <style> (visual parity).
                 NOTE: c16p (v0.2 release) COMPLETE - PyPI bobframes 0.2.0 LIVE; tag v0.2.0 -> 765a4db on main.
                 GIT: c16y + c16v are in the WORKING TREE, NOT yet committed (user hasn't asked to commit).)
-last_session:   2026-06-05 — v0.2.6-2 DONE (summary one-pager: hero numerals + summary componentization, the FIRST surface
+last_session:   2026-06-06 — v0.2.6-3 DONE (dashboard grid: shadcn-flat Grafana-dense cards + static_table minis). The SECOND
+                surface commit, first DENSE one. CSS density block is the SOLE golden delta: dash_grid_min 360->300px (real
+                Perf 4-up at 1600 vs 3-up), .dash-grid gap sp-6->sp-4, a.dash-card padding sp-4->sp-3 + inner gap sp-3->sp-2.
+                Accent rail is a SUBTLE always-on 30% tint (box-shadow: inset 2px 0 0 color-mix(in oklch,
+                var(--accent-primary) 30%, transparent)) -- full-strength read too high-contrast (a light bar on a dark
+                card); a hover-only variant was tried but the user preferred the lighter always-on rail; hover keeps the
+                rail + adds --elev-2; print drops it, cards keep the #888 frame. Componentization
+                BYTE-NEUTRAL: _card_table -> chrome.static_table (NEW Column.cell_title for the mini's always-on hover-reveal
+                <td title>, sourced PLAIN so el escapes once -- the would-be double-escape was review finding R1, fixed via
+                NEW formatters.scrub_chrome_text feeding the marker plain); _card + both chip_cluster strips (cross-report
+                <nav> + A/B <div>) -> el. PROVEN byte-identical to the pre-bake golden on all 17 pages OUTSIDE <style>.
+                _pagedata/digests.json/golden_parquet BYTE-UNCHANGED (NO make_parquet_golden). 342 green (-m "not browser");
+                token guard 0 undefined; browser matrix light/dark/print synthetic + real Perf SIGNED OFF before bake (resting
+                flat confirmed). Goldens refreshed on .venv (17 HTML + preview + package; shared/shared_redacted changed only
+                in _assets css). §21.1v gets the -3 as-built; FINDINGS G-32 chip_cluster ticked; commit doc
+                v026_3_dashboard_grid.md + as-built. No new ADR (rides ADR-44/42). current -> v0.2.6-4.
+                [prior session] 2026-06-05 — v0.2.6-2 DONE (summary one-pager: hero numerals + summary componentization, the FIRST surface
                 commit). The 4 summary KPI values render at a NEW [type] fs_hero='2.75rem' token via a [data-page-kind=summary]
                 .kpi-chip .kpi-value scoped rule (dashboard/reports carry NO .kpi-chip; weight stays <=600, test_fonts holds). The
                 by-area table adopted chrome.static_table + the summary-local leaves (_change_list/_change_line/_pct_pill/kpi-strip
@@ -1074,6 +1111,15 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-06 — v0.2.6-3 DONE (commits/v026/v026_3_dashboard_grid.md, plan/v0.2.6). Dashboard grid, the SECOND surface commit
+  (first DENSE): CSS density block is the SOLE golden delta -- dash_grid_min 360->300px (real Perf 4-up at 1600), .dash-grid
+  gap sp-6->sp-4, a.dash-card padding sp-4->sp-3 + inner gap sp-3->sp-2; the 2px left accent rail is a SUBTLE always-on 30%
+  tint (full-strength read too high-contrast; user preferred the lighter always-on rail over a hover-only variant). Componentization
+  BYTE-NEUTRAL: _card_table -> chrome.static_table (NEW Column.cell_title for the mini's always-on hover-reveal title,
+  sourced PLAIN so el escapes once -- the would-be double-escape was review finding R1, fixed via NEW
+  formatters.scrub_chrome_text); _card + both chip_cluster strips -> el. PROVEN byte-identical to the pre-bake golden on all
+  17 pages OUTSIDE <style>; _pagedata/digests/golden_parquet BYTE-UNCHANGED. 342 green (-m "not browser"); token guard 0
+  undefined; browser matrix SIGNED OFF before bake. §21.1v -3 as-built; FINDINGS G-32 chip_cluster ticked. NEXT: v0.2.6-4.
 - 2026-06-05 — v0.2.6-2 DONE (commits/v026/v026_2_summary_one_pager.md, plan/v0.2.6). Summary one-pager, the FIRST surface
   commit: the 4 KPI values render at a NEW [type] fs_hero='2.75rem' token via a [data-page-kind=summary] .kpi-chip .kpi-value
   scoped rule (dashboard/reports have NO .kpi-chip -> unaffected; weight <=600, test_fonts holds). By-area table adopted

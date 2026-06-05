@@ -373,18 +373,27 @@ details.matrix > .matrix-body, details.category > .cat-body {
 }
 .empty-state .icon { flex: 0 0 auto; color: var(--text-3); }
 
+/* v0.2.6-3 (Grafana density, decision #4): denser grid (dash_grid_min 360->300, tighter gap/padding) so
+   more small-multiple cards sit per row; each card is a flat shadcn surface (1px --border hairline +
+   --radius-lg) with a SUBTLE always-on 2px left ACCENT RAIL (box-shadow: inset, follows the radius, no
+   pseudo/markup): a 30% tint of --accent-primary -- full-strength near-black/near-white was too high-
+   contrast, the tint keeps it a soft edge in both themes while a [theme]/--accent override still re-hues
+   it (v0.2.6-1c). Hover keeps the rail + adds the --elev-2 lift. Print drops it via print.css (cards keep
+   the #888 frame). */
 .dash-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-  gap: var(--sp-6);
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--sp-4);
   margin: 0 0 var(--sp-6);
 }
 a.dash-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-lg);
-              padding: var(--sp-4); display: flex; flex-direction: column;
-              gap: var(--sp-3); text-decoration: none; color: inherit;
+              padding: var(--sp-3); display: flex; flex-direction: column;
+              gap: var(--sp-2); text-decoration: none; color: inherit;
+              box-shadow: inset 2px 0 0 color-mix(in oklch, var(--accent-primary) 30%, transparent);
               transition: box-shadow var(--motion-hover), border-color var(--motion-hover),
                           background var(--motion-hover), transform var(--motion-spring); }
-a.dash-card:hover { background: var(--surface-2); border-color: var(--border-strong); box-shadow: var(--elev-2);
+a.dash-card:hover { background: var(--surface-2); border-color: var(--border-strong);
+                    box-shadow: var(--elev-2), inset 2px 0 0 color-mix(in oklch, var(--accent-primary) 30%, transparent);
                     transform: scale(var(--hover-scale)); text-decoration: none; }
 a.dash-card:visited { color: inherit; }
 a.dash-card h3 { margin: 0; color: var(--accent); font-size: var(--fs-h2); }

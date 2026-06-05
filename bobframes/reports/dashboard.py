@@ -313,43 +313,29 @@ def _card_table(rows: list, columns: list, *, caption: str = '') -> str:
     # c16l (ADR-38): a dashboard mini is a 3-row preview INSIDE the card-link <a>. It uses the unified
     # `table.data` styling for visual consistency but is deliberately NOT wrapped in <rdc-table>: a
     # sortable header inside a nav-card would both sort and navigate, and cursor:pointer would mis-signal.
-    # So it stays a plain server-baked table (no sort/heatmap enhancement) - the right call for a preview.
+    # So it stays a bare static_table (no sort/heatmap host) - the right call for a preview.
+    # v0.2.6-3: adopt the c16x chrome.static_table component. `cell_title` carries the always-on
+    # hover-reveal a responsive table-layout:fixed mini needs (no deterministic clip point; c16m/c16n) -
+    # full header in the th title= (Column.title) AND full text-cell value in the td title=. Each
+    # `fn(row)` returns a PLAIN value (text raw, numeric fmt_*, marker scrub_chrome_text), so el escapes
+    # it exactly once for both the cell and its title (byte-identical to the prior base.h/safe_chrome_text
+    # output, single-escaped for arbitrary input).
     if not rows:
         return base.empty_state('no data yet')
-    parts = ['<table class="data">']
-    if caption:
-        parts.append(f'<caption>{base.h(caption)}</caption>')
-    parts.append('<thead><tr>')
-    for col_name, _, num in columns:
-        cls = ' class="num"' if num else ''
-        # c16m: the mini uses table-layout:fixed (so it never overflows the card), which can clip a long
-        # HEADER too (e.g. "avg draws / frame"). Carry the full header in title= so it also reveals on hover.
-        parts.append(f'<th{cls} scope="col" title="{base.h(col_name)}">{base.h(col_name)}</th>')
-    parts.append('</tr></thead><tbody>')
-    for row in rows:
-        parts.append('<tr>')
-        for col_name, fn, num in columns:
-            cls = ' class="num"' if num else ''
-            val = fn(row)
-            # c16m: a bare mini is not engine-hosted, so it carries no inner `.clip` + JS title. Set a
-            # server-side title= on the (clippable) text cells so the FULL value is revealed on hover -
-            # the cell text stays inline, so the td-level ellipsis still renders + Ctrl-F still matches.
-            # val is already escaped plain text (base.h / safe_chrome_text), so it is attribute-safe.
-            title = f' title="{val}"' if (not num and val) else ''
-            parts.append(f'<td{cls}{title}>{val}</td>')
-        parts.append('</tr>')
-    parts.append('</tbody></table>')
-    return ''.join(parts)
+    cols = [base.Column(key=str(i), header=name, numeric=num, title=name, cell_title=not num)
+            for i, (name, _fn, num) in enumerate(columns)]
+    trows = [{str(i): fn(row) for i, (_name, fn, _num) in enumerate(columns)} for row in rows]
+    return base.static_table(cols, trows, caption=caption)
 
 
 def _card(href: str, title: str, subtitle: str, chart: str, table: str) -> str:
     """One dashboard small-multiple card: title + insight subtitle + mini chart + summary table.
 
     The card itself is the drill link to the full report (c16c)."""
-    sub = (f'<p class="dash-sub">{base.safe_chrome_text(subtitle)}</p>'
-           if subtitle else '')
-    return (f'<a class="dash-card" href="{base.h(href)}">'
-            f'<h3>{base.h(title)}</h3>{sub}{chart}{table}</a>')
+    sub = (base.el('p', {'class': 'dash-sub'}, base.raw(base.safe_chrome_text(subtitle)))
+           if subtitle else None)
+    return base.el('a', {'class': 'dash-card', 'href': href},
+                   base.el('h3', None, title), sub, base.raw(chart), base.raw(table))
 
 
 def build(root: str, *, drops: list | None = None, ab=None,
@@ -408,10 +394,9 @@ def build(root: str, *, drops: list | None = None, ab=None,
         ))
 
     # Cross-report nav strip.
-    parts.append('<nav class="chip-cluster" aria-label="reports">'
-                 + ''.join(f'<a href="{href}" data-link-kind="primary">{base.h(lbl)}</a>'
-                           for href, lbl in _NAV)
-                 + '</nav>')
+    parts.append(base.el('nav', {'class': 'chip-cluster', 'aria-label': 'reports'},
+                         *[base.el('a', {'href': href, 'data-link-kind': 'primary'}, lbl)
+                           for href, lbl in _NAV]))
 
     # Card: trend table - GPU time per area (mini bars matching the trend flagship).
     top_a = top_a[:3]
@@ -421,7 +406,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
     body_tt = _card_table(
         top_a,
         [
-            ('area', lambda r: base.h(r[0]), False),
+            ('area', lambda r: r[0], False),
             ('gpu (s)', lambda r: base.fmt_float(r[1], 3), True),
             ('draws', lambda r: base.fmt_int(r[2]), True),
             ('avg draws / frame', lambda r: base.fmt_int(round(r[3])), True),
@@ -439,7 +424,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
     body_im = _card_table(
         top_m,
         [
-            ('mesh', lambda r: base.h(r[0]), False),
+            ('mesh', lambda r: r[0], False),
             ('repeat', lambda r: base.fmt_int(r[1]), True),
             ('indices typ', lambda r: base.fmt_int(r[2]), True),
         ],
@@ -457,11 +442,11 @@ def build(root: str, *, drops: list | None = None, ab=None,
     body_pg = _card_table(
         top_p,
         [
-            ('area', lambda r: base.h(r[0]), False),
+            ('area', lambda r: r[0], False),
             # c16m: emit the FULL marker (was builder-truncated via trunc_left, which discarded the value
             # so hover could never reveal it). The CSS clip now truncates the display + the td title=
             # reveals the full value on hover - consistent with every other mini text column.
-            ('marker', lambda r: base.safe_chrome_text(r[1]), False),
+            ('marker', lambda r: base.scrub_chrome_text(r[1]), False),
             ('gpu (s)', lambda r: base.fmt_float(r[2], 3), True),
         ],
         caption='heaviest passes by GPU time')
@@ -478,7 +463,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
     body_sh = _card_table(
         top_s,
         [
-            ('shader', lambda r: base.h(r[0]), False),
+            ('shader', lambda r: r[0], False),
             ('complexity', lambda r: base.fmt_float(r[1], 2), True),
             ('cost proxy', lambda r: base.fmt_float(r[2], 1), True),
         ],
@@ -496,8 +481,8 @@ def build(root: str, *, drops: list | None = None, ab=None,
     body_od = _card_table(
         wo,
         [
-            ('area', lambda r: base.h(r[0]), False),
-            ('rt', lambda r: base.h(r[1]), False),
+            ('area', lambda r: r[0], False),
+            ('rt', lambda r: r[1], False),
             ('rejected %', lambda r: base.fmt_pct(r[2]), True),
         ],
         caption='worst render targets by rejection')
@@ -517,9 +502,9 @@ def build(root: str, *, drops: list | None = None, ab=None,
     body_dc = _card_table(
         pa_rows,
         [
-            ('area', lambda r: base.h(r[0]), False),
+            ('area', lambda r: r[0], False),
             ('draws', lambda r: base.fmt_int(r[1]['n_draws']), True),
-            ('dominant', lambda r: base.h(r[1]['dominant_class']), False),
+            ('dominant', lambda r: r[1]['dominant_class'], False),
         ],
         caption='top areas by draw count')
     dom = class_totals.most_common(1)[0] if class_totals else None
@@ -548,14 +533,14 @@ def build(root: str, *, drops: list | None = None, ab=None,
             for pair in ab_pairs:
                 files = sorted(f for f in os.listdir(os.path.join(ab_root, pair))
                                if f.endswith('.html'))
-                chips = ''.join(
-                    f'<a href="ab/{base.h(pair)}/{base.h(f)}" data-link-kind="primary">{base.h(f[:-5])}</a>'
-                    for f in files
-                )
+                chip_cluster = base.el('div', {'class': 'chip-cluster'},
+                                       *[base.el('a', {'href': f'ab/{pair}/{f}',
+                                                       'data-link-kind': 'primary'}, f[:-5])
+                                         for f in files])
                 ab_body.append(
                     f'<div class="pair-group">'
                     f'<h3>{base.h(pair)}</h3>'
-                    f'<div class="chip-cluster">{chips}</div>'
+                    f'{chip_cluster}'
                     f'</div>'
                 )
             ab_body.append('</div>')

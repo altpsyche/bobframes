@@ -80,12 +80,18 @@ def mesh_hash_short(hsh, n: int | None = None) -> str:
     return fmt_id_short(hsh, n)
 
 
-def safe_chrome_text(s) -> str:
-    """Escape + scrub banned chrome chars. Apply to all chrome strings outside <table>."""
+def scrub_chrome_text(s) -> str:
+    """Scrub banned chrome chars (H-16), NO HTML-escape. For a value an escaping component (el) will
+    escape itself, so it is not double-escaped -- e.g. a dashboard-mini cell whose `title=` AND text are
+    both escaped once by `el`. `safe_chrome_text` is `_html.escape(scrub_chrome_text(s))`."""
     if s is None:
         return ''
-    scrubbed = _chrome_scrub().sub('_', str(s))
-    return _html.escape(scrubbed)
+    return _chrome_scrub().sub('_', str(s))
+
+
+def safe_chrome_text(s) -> str:
+    """Escape + scrub banned chrome chars. Apply to all chrome strings outside <table>."""
+    return _html.escape(scrub_chrome_text(s))
 
 
 def trunc_mid(s: str | None, max_len: int | None = None) -> str:

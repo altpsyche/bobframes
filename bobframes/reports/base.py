@@ -5,7 +5,8 @@ Existing reports keep `from . import base` working unchanged.
 
 Topic modules:
 - chrome: CSS tokens, page open/close, header, KPI strip, section card, legend, footer, ab_strip
-- formatters: fmt_int/float/pct/bytes/id_short, mesh_hash_short, trunc_mid/left, safe_chrome_text
+- formatters: fmt_int/float/pct/bytes/id_short, mesh_hash_short, trunc_mid/left, safe_chrome_text,
+  scrub_chrome_text
 - delta: delta_cell, delta_pill, rank_pill, inline_bar, class_segments_bar, sparkline_svg
 - discovery: DropRow, DropSet, discover_drops, resolve_drop_set, ok_capture_set
 - cache: load_global_entities, load_labels, label_for, cache_dir, cache_path, build_per_drop_cache
@@ -79,6 +80,7 @@ from .formatters import (
     pass_suffix,
     per_frame,
     safe_chrome_text,
+    scrub_chrome_text,
     trunc_left,
     trunc_mid,
 )
@@ -157,7 +159,7 @@ __all__ = [
     # formatters
     'fmt_bytes', 'fmt_float', 'fmt_id_short', 'fmt_int', 'fmt_pct',
     'mesh_hash_short', 'pass_short', 'pass_suffix', 'per_frame', 'safe_chrome_text',
-    'trunc_left', 'trunc_mid',
+    'scrub_chrome_text', 'trunc_left', 'trunc_mid',
     # delta
     'class_segments_bar', 'delta_cell', 'delta_pill', 'inline_bar',
     'rank_pill', 'sparkline_svg',

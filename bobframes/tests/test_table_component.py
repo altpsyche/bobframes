@@ -68,3 +68,16 @@ def test_column_render_and_clip_and_colgroups():
 def test_mono_cell_class():
     out = static_table([Column('hash', 'hash', mono=True)], [{'hash': 'ab12'}])
     assert '<td class="mono">ab12</td>' in out
+
+
+def test_cell_title_unconditional_and_single_escaped():
+    """v0.2.6-3: Column.cell_title sets an always-on per-cell title= from the PLAIN value -- the
+    dashboard-mini hover-reveal (a responsive fixed-layout mini can't length-gate like clip). Sourced from
+    the plain value so el escapes it ONCE; a pre-escaped value would double-escape the title (R1)."""
+    out = static_table([Column('area', 'area', cell_title=True)], [{'area': 'ui & hud'}])
+    assert '<td title="ui &amp; hud">ui &amp; hud</td>' in out      # always-on, single-escaped
+    assert '&amp;amp;' not in out                                   # NOT double-escaped (the R1 guard)
+    # cell_title defaults False -> no title= (every summary / -4 report table site stays byte-unchanged)
+    assert static_table([Column('a', 'a')], [{'a': 'x'}]) == (
+        '<table class="data"><thead><tr><th scope="col">a</th></tr></thead>'
+        '<tbody><tr><td>x</td></tr></tbody></table>')
