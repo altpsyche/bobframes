@@ -65,3 +65,65 @@ refresh spans the chrome-family pages (visual parity). c16q (the primitives bein
 
 ## Closes
 G-30 (brute-forced per-page CSS + the undefined-token footgun). Next: c16w (v0.2.5 close-out).
+
+---
+
+## As-built (c16x-1..-5, 2026-06-05; EXPANDED per the approved plan `bobframes-v0-2-5-continue-staged-octopus`)
+
+The scope was expanded (user decisions): *everything is a component* (escape-by-construction, subsumes the
+roadmap's C6), *look & feel must improve* (a deliberate deviation from ADR-42's visual parity — split into a
+**v0.2.5 safe foundation at parity** [this commit] and a **v0.2.6 bold visual epic, ADR-43, own mini-release**),
+*all-chrome-first* ordering for v0.2.6, *no hard-to-dig CSS* (extract CSS/JS to real files), and *make the unified
+table a component*. c16x shipped as a 5-step sub-sequence on `plan/v0.2.5` (all green, 285→319, commits
+`90bd874`/`cfa3e91`/`09d366e`/`01cb63d`/`ee9b7ff`):
+
+- **c16x-1 — CSS/JS extraction (zero-output).** The ~1,800 lines of CSS/JS string literals moved to real files
+  under `reports/assets/` (`design_tokens.css`, `chrome.css`, `sticky.css`, `link_kind.css`, `container.css`,
+  `print.css`, `components.css`, `rdc_table.css`, `per_drop.css`, `components.js`, `rdc_table.js`,
+  `icon_sprite.html`), loaded via `importlib.resources` (the `design_tokens.toml` precedent) through
+  `chrome._read_asset` / `template._read_asset`; `${token}` + `__ROW_H__` substitution preserved. Byte-identical
+  output → `test_parity`/`test_design_tokens`/`test_parquet_parity` unchanged, NO refresh. NEW `tests/test_assets.py`
+  (files exist; CSS ASCII — `rdc_table.js` exempt, its sort-arrow glyph in a `<script>` body is lint-exempt;
+  constants == file contents; substitution complete). Wheel-inclusion verified by the woff2 precedent (assets not
+  gitignored); the full clean-install smoke runs in CI at c16w.
+- **c16x-2 — element builder (subsumes C6).** `chrome.el` / `el_void` / `raw` / `classes` (+ the `_Raw` marker):
+  text children + attribute values escape by construction; `_Raw` children splice verbatim; `None`/`False` skip;
+  unsafe attribute names raise. Double-quoted, `html.escape(quote=True)` — matches the chrome house style, so an
+  `el` rebuild of a double-quoted leaf is byte-identical. `icon` + `kpi_chip` migrated as the byte-identical
+  demonstration; the remaining hand-concat leaves adopt `el` opportunistically (v0.2.6). NEW `test_element_builder.py`.
+- **c16x-3 — token-validity guard (closes the G-30 footgun class).** `chrome._undefined_token_refs` /
+  `undefined_tokens`: declared = (TOML `:root` scale) ∪ (every `--x:` definition scanned from the composed CSS, so
+  in-body props `--crumb-h`/`--hdr-offset`/`--clip-cap*` are not false-flagged); referenced = `var(--NAME)` across
+  the composed CSS **+ the bundle JS** (the rdc-heatmap tint reads `var(--accent-data)` from JS) **+ emitted
+  `style=`** fragments. Kept as a CI test (not an import-time raise — would crash `version` on a styling typo);
+  `bobframes preview` warns non-fatally so a designer sees the typo in their own loop. Both live bundles clean. NEW
+  `test_token_guard.py`.
+- **c16x-4 — table component family (built, adopted in v0.2.6).** `Column` + `data_table` (the static rdc-table
+  host) + `static_table` (the bare `<table class="data">`), NORMALIZED + built through `el`. **Finding (recorded,
+  user-confirmed):** a byte-identical migration of the existing ~117 hand-written table sites is **infeasible** — the
+  current markup is inconsistent (attribute order differs across reports, per-report cells, inline col-groups), so
+  one normalized component necessarily normalizes bytes, which only fits a golden-refreshing commit. The reports
+  therefore **adopt** the component in v0.2.6 (the bold-visual epic, where the refresh absorbs the normalization);
+  c16x-4 lands it as ready foundation with ZERO production migration (parity green). NEW `test_table_component.py`.
+- **c16x-5 — summary migration + gallery (closes G-30).** `summary._kpi`→`chrome.kpi_card`,
+  `summary._trendline`→`delta.trendline`, the verdict span→`chrome.status_badge`, the Movement layout→`chrome.movement`
+  (all via `el`). `summary._SUMMARY_CSS` (a mid-body `<style>`) relocated into the owned bundle
+  (`reports/assets/components.css`), renamed `.bh-trend*`→`.trendline*`, kept `[data-page-kind="summary"]`-scoped
+  (inert elsewhere). `summary.py` is now pure composition + the metric-policy helpers (`_pct_pill`/`_dir_tone`/
+  `_change_*`). The by-area + dashboard mini tables keep their inline markup (they adopt `static_table`/`data_table`
+  in v0.2.6 with the rest). Gallery extended (kpi_card / trendline / status_badge / movement + the
+  previously-ungalleried callout / empty_state). NEW `test_components.py`; `test_summary` class asserts updated in-commit.
+
+**Golden delta (c16x-5 only; x1-x4 are zero-output).** A BOUNDED reviewed refresh, VISUAL PARITY: summary.html (the
+trend SVG class rename + the mid-body `<style>` removed) + every page's inlined bundle grows by the inert scoped
+summary rules (minified on report pages, verbatim on catalog/drill) + the preview gallery + `golden_package`
+`report.css`/`catalog.css`. `_pagedata/*.js` + `golden_parquet/digests.json` **BYTE-UNCHANGED**
+(`test_parquet_parity` green, NO refresh). The `.trendline` CSS == the old `.bh-trend` CSS, so rendering is
+pixel-identical.
+
+**Deviations from the original doc (above), recorded per ADR-23:** (1) CSS/JS source extraction (c16x-1) was added
+(the "no hard-to-dig CSS" decision); (2) the token guard is a CI test + `preview` warning, not an import-time raise,
+and its declared set is TOML-scale ∪ in-CSS `--x:` defs (ADR-42's "declared SCALE" wording is too narrow — to be
+reconciled in ADR-43); (3) the table became its own component (c16x-4), **built but adopted in v0.2.6** (byte-identical
+migration infeasible); (4) the LOOK-AND-FEEL improvement is intentionally **deferred to v0.2.6** (ADR-43) — this
+commit is the parity-preserving foundation. QUALITY_GATES §21.1u added.

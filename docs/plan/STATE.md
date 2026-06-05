@@ -8,18 +8,26 @@
 ```
 active_release: v0.2.5    (v0.1 COMPLETE - bobframes 0.1.0 live on PyPI 2026-05-31; v0.2.0 bump committed
                 867dcc5 on plan/v0.2.5)
-current:        c16x_component_system    (status: IN PROGRESS - c16x-1 DONE 2026-06-05 (CSS/JS string literals
-                extracted to reports/assets/*.{css,js,html}, loaded via importlib.resources [the design_tokens.toml
-                precedent] - chrome.py + html/template.py rewired to _read_asset(); ${token}/__ROW_H__ substitution
-                preserved; ZERO-OUTPUT: 285->289 green incl. NEW tests/test_assets.py, test_parity + test_design_tokens
-                + test_parquet_parity BYTE-UNCHANGED, NO golden refresh; assets not gitignored, ship via the woff2
-                precedent, full clean-install wheel smoke deferred to c16w CI per plan risk #11). EXPANDED per the
-                approved plan ~/.claude/plans/bobframes-v0-2-5-continue-staged-octopus.md: c16x = 5-step sub-sequence
-                (x1 extract DONE / x2 element builder el/raw/classes [subsumes roadmap C6] / x3 token-validity guard /
-                x4 table component family [Column/table/static_table, migrate ~117 hand-written table sites, zero-output] /
-                x5 summary migration off _SUMMARY_CSS + promote kpi_card/trendline/status_badge/movement + gallery,
-                G-30 closes there); then c16w ships v0.2.5, then v0.2.6 = the BOLD VISUAL epic (ADR-43, own mini-release).
-                WORKING TREE (uncommitted; user hasn't asked to commit). Prior: c16y + c16v DONE 2026-06-05 - G-26 + G-29 closed,
+current:        c16w_v025_closeout    (status: not-started. c16x DONE 2026-06-05 - component system, ADR-42,
+                G-30 CLOSED - shipped as a 5-step sub-sequence on plan/v0.2.5, all green (319), committed
+                90bd874/cfa3e91/09d366e/01cb63d/ee9b7ff: x1 CSS/JS string literals -> reports/assets/*.{css,js,html}
+                via importlib.resources (zero-output) | x2 escape-by-construction el/raw/el_void/classes builder
+                [subsumes roadmap C6], icon+kpi_chip migrated byte-identical | x3 token-validity guard
+                (_undefined_token_refs/undefined_tokens: declared = TOML scale UNION in-CSS --x: defs; scans CSS+JS+
+                emitted style=; CI test + non-fatal warn in `preview`; both bundles clean today) | x4 table component
+                family (Column/data_table/static_table, NORMALIZED, BUILT-NOT-ADOPTED: byte-identical migration of the
+                ~117 existing sites is INFEASIBLE [attr-order/cell/colgroup inconsistency], so reports ADOPT it in
+                v0.2.6 - user-confirmed, recorded) | x5 summary migrated off its inline _SUMMARY_CSS to chrome.kpi_card/
+                delta.trendline/chrome.status_badge/chrome.movement + the rules relocated to the owned bundle
+                (.bh-trend* -> .trendline*, [data-page-kind=summary]-scoped/inert), gallery extended (+callout/empty_state),
+                G-30 CLOSED. VISUAL PARITY: x1-x4 zero-output (NO golden refresh); x5 a BOUNDED reviewed refresh (summary
+                trend rename + removed mid-body <style> + the inert scoped bundle growth on every page + preview +
+                package report.css/catalog.css), _pagedata/*.js + golden_parquet/digests.json BYTE-UNCHANGED. NEW tests:
+                test_assets / test_element_builder / test_token_guard / test_table_component / test_components (285->319).
+                NOW DO c16w (v0.2.5 close-out + release; commits/v025/c16w_v025_closeout.md), then v0.2.6 = the BOLD
+                VISUAL epic (ADR-43, own mini-release: adopt the table component + everything-a-component redesign; see
+                ~/.claude/plans/bobframes-v0-2-5-continue-staged-octopus.md). Commits on plan/v0.2.5, UNPUSHED.
+                Prior: c16y + c16v DONE 2026-06-05 - G-26 + G-29 closed,
                 the report-correctness spine. A code-review of the c16v blast radius produced a SEQUENCED
                 review-fix roadmap (user-approved): G-26 FIRST (so normalization lands once), then c16v, then a
                 v0.3 quality track [C3 reliability / C4 arrow-cache / C5 config-ify / C6 element-builder] + a
@@ -50,7 +58,14 @@ current:        c16x_component_system    (status: IN PROGRESS - c16x-1 DONE 2026
                 token-validity guard + preview gallery; migrate summary.py off its inline <style> (visual parity).
                 NOTE: c16p (v0.2 release) COMPLETE - PyPI bobframes 0.2.0 LIVE; tag v0.2.0 -> 765a4db on main.
                 GIT: c16y + c16v are in the WORKING TREE, NOT yet committed (user hasn't asked to commit).)
-last_session:   2026-06-05 — c16y + c16v DONE (G-26 + G-29; the report-correctness spine). A code-review of the
+last_session:   2026-06-05 — c16x DONE (component system; ADR-42; G-30 CLOSED). 5-step sub-sequence on plan/v0.2.5,
+                319 green, UNPUSHED (90bd874..ee9b7ff): CSS/JS extracted to reports/assets/ files; escape-by-construction
+                el builder (subsumes C6); token-validity guard (CI test + `preview` warn); table component family built
+                (adopted v0.2.6 - byte-identical migration of ~117 sites infeasible); summary migrated off inline
+                _SUMMARY_CSS to chrome.kpi_card/delta.trendline/chrome.status_badge/chrome.movement + rules to the owned
+                bundle, gallery extended. x1-x4 zero-output, x5 bounded reviewed refresh (visual parity); _pagedata +
+                parquet byte-unchanged. current -> c16w. See `current:` + session log for full detail.
+                [prior session] c16y + c16v DONE (G-26 + G-29; the report-correctness spine). A code-review of the
                 c16v blast radius produced a user-approved SEQUENCED review-fix roadmap (G-26 first; then c16v;
                 then a v0.3 quality track C3-C6 + a v0.3.x designer-tooling epic C7-C10 - see the approved plan
                 file). c16y (ZERO-OUTPUT, G-26): NEW bobframes/aggregates.py (pure, peer of health.py) is the
@@ -770,7 +785,10 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    c16y + c16v DONE (2026-06-05) - G-26 + G-29 closed. c16y (ZERO-OUTPUT): NEW
+next_action:    DO c16w (v0.2.5 close-out + release; commits/v025/c16w_v025_closeout.md), then v0.2.6 = the BOLD
+                VISUAL epic (ADR-43, own mini-release; adopt the table component + the everything-a-component redesign).
+                c16x DONE 2026-06-05 (component system, ADR-42, G-30 CLOSED, 319 green) - see `current:` + session log.
+                [prior] c16y + c16v DONE (2026-06-05) - G-26 + G-29 closed. c16y (ZERO-OUTPUT): NEW
                 bobframes/aggregates.py is the single source of the per-(drop,area,entity) mesh-repeat + shader
                 uses/cost atoms + per-(drop,area) frame count; dashboard._top_* + instancing + shader_hotlist
                 consume it, byte-identical. c16v: instancing repeat + shader cost PER FRAME via NEW base.per_frame
@@ -903,19 +921,24 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
-- 2026-06-05 — c16x EXPANDED + c16x-1 DONE. Planning (2 background workflows: 4 Explore agents mapped every
-  component/inline-CSS/token; 3 Plan agents + a synthesis judge designed the system) -> approved plan
+- 2026-06-05 — c16x DONE (component system; ADR-42; G-30 CLOSED). EXPANDED via 2 planning workflows (4 Explore
+  agents mapped every component/inline-CSS/token; 3 Plan agents + a synthesis judge designed it) -> approved plan
   ~/.claude/plans/bobframes-v0-2-5-continue-staged-octopus.md. User decisions: BOLD redesign; v0.2.5 = safe
   foundation at parity then v0.2.6 = bold visual epic (own ADR-43); all-chrome-first; CSS+JS extracted to real
-  files (no hard-to-dig CSS); the unified TABLE becomes a component (host emission was hand-written ~117 sites).
-  c16x is a 5-step sub-seq (x1 extract / x2 element builder [subsumes C6] / x3 token guard / x4 table component
-  family / x5 summary migration+gallery, G-30 there). c16x-1 DONE (ZERO-OUTPUT): chrome.py + html/template.py
-  CSS/JS string literals -> reports/assets/*.{css,js,html} via importlib.resources (design_tokens.toml precedent),
-  _read_asset() in both modules, ${token}/__ROW_H__ substitution preserved; NEW tests/test_assets.py (files exist,
-  CSS ASCII [rdc_table.js exempt: sort-arrow glyph in a <script> body], constants==file contents, substitution
-  complete). 285->289 green; test_parity + test_design_tokens + test_parquet_parity BYTE-UNCHANGED, NO golden
-  refresh; git scope = chrome.py + template.py + 12 new assets + test_assets.py. Wheel smoke deferred to c16w CI
-  (assets not gitignored; ship via the woff2 precedent). WORKING TREE, uncommitted. NEXT: c16x-2 element builder.
+  files; the unified TABLE becomes a component. Shipped as a 5-step sub-sequence, all green (319),
+  90bd874/cfa3e91/09d366e/01cb63d/ee9b7ff: x1 CSS/JS literals -> reports/assets/*.{css,js,html} via
+  importlib.resources (zero-output, _read_asset, ${token}/__ROW_H__ preserved; NEW test_assets) | x2
+  escape-by-construction el/raw/el_void/classes [subsumes roadmap C6], icon+kpi_chip migrated byte-identical (NEW
+  test_element_builder) | x3 token-validity guard (declared = TOML scale UNION in-CSS --x: defs; scans CSS+JS+
+  style=; CI test + non-fatal warn in `preview`; both bundles clean; NEW test_token_guard) | x4 table component
+  family (Column/data_table/static_table, NORMALIZED, BUILT-NOT-ADOPTED -- byte-identical migration of the ~117
+  hand-written sites INFEASIBLE [attr-order/cell/colgroup inconsistency], reports adopt it in v0.2.6, user-confirmed;
+  NEW test_table_component) | x5 summary migrated off inline _SUMMARY_CSS to chrome.kpi_card/delta.trendline/
+  chrome.status_badge/chrome.movement + rules relocated to the owned bundle (.bh-trend* -> .trendline*, scoped/inert),
+  gallery extended (+callout/empty_state), G-30 CLOSED (NEW test_components). VISUAL PARITY: x1-x4 zero-output (NO
+  refresh); x5 bounded reviewed refresh (summary rename + removed mid-body <style> + inert scoped bundle growth on
+  every page + preview + package), _pagedata/*.js + golden_parquet/digests.json BYTE-UNCHANGED. Commits on
+  plan/v0.2.5, UNPUSHED. current -> c16w (v0.2.5 close-out), then v0.2.6 bold visual epic (ADR-43).
 - 2026-06-05 — c16y + c16v DONE (G-26 + G-29; report-correctness spine). A code-review of the c16v blast radius
   produced a user-approved SEQUENCED review-fix roadmap (G-26 first so normalization lands once; then c16v; then
   v0.3 quality C3-C6 + designer-tooling epic C7-C10 — in the approved plan file). c16y (ZERO-OUTPUT): NEW
