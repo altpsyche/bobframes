@@ -17,17 +17,17 @@ nav.crumb {
   gap: var(--sp-2) var(--sp-6);
   align-items: center;
   background: var(--surface-1);
-  box-shadow: var(--elev-2);
+  border: 1px solid var(--border);
   border-top: 2px solid var(--accent-data);
-  border-radius: 4px;
+  border-radius: var(--radius);
   padding: var(--sp-3) var(--sp-4);
   margin: 0 0 var(--sp-4);
 }
 .summary-bar .sb-label {
-  font: var(--fs-small) ui-monospace, monospace;
+  font: var(--fs-micro) ui-monospace, monospace;
   color: var(--text-2);
-  text-transform: lowercase;
-  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 .summary-bar .sb-headline {
   font: 600 var(--fs-h1)/1.15 'Inter', 'Segoe UI', system-ui, sans-serif;

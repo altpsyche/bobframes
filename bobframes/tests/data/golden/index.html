@@ -22,9 +22,9 @@
   --motion-spring: 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
   --hover-scale: 1.01;
 
-  --elev-1: 0 0 0 1px oklch(0% 0 0 / 0.05), 0 1px 3px oklch(0% 0 0 / 0.12);
-  --elev-2: 0 0 0 1px oklch(0% 0 0 / 0.05), 0 4px 14px oklch(0% 0 0 / 0.16);
-  --elev-3: 0 0 0 1px oklch(0% 0 0 / 0.06), 0 12px 30px oklch(0% 0 0 / 0.22);
+  --elev-1: 0 0 0 1px oklch(0% 0 0 / 0.04);
+  --elev-2: 0 0 0 1px oklch(0% 0 0 / 0.04), 0 1px 2px oklch(0% 0 0 / 0.08);
+  --elev-3: 0 0 0 1px oklch(0% 0 0 / 0.05), 0 2px 6px oklch(0% 0 0 / 0.12);
 
   --bg:            light-dark(oklch(100% 0 0), oklch(14.5% 0 0));
   --surface-0:     var(--bg);
@@ -139,7 +139,7 @@ nav.crumb a, nav.crumb a[data-link-kind] {
   text-decoration: none;
   padding: 2px 8px;
   border: 1px solid var(--border-1);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   background: var(--surface-1);
   transition: border-color var(--motion-hover), background var(--motion-hover);
 }
@@ -158,17 +158,16 @@ nav.crumb a + a::before { content: ''; }
 }
 .kpi-chip {
   background: var(--surface-1);
-  box-shadow: var(--elev-1);
-  border-radius: 4px;
+  border: 1px solid var(--border); border-radius: var(--radius);
   padding: var(--sp-3) var(--sp-4);
   display: flex; flex-direction: column; gap: var(--sp-1);
   min-height: 88px;
 }
 .kpi-chip .kpi-label {
-  font: var(--fs-small) ui-monospace, monospace;
+  font: var(--fs-micro) ui-monospace, monospace;
   color: var(--text-3);
-  text-transform: lowercase;
-  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 .kpi-chip .kpi-value {
   font: 600 var(--fs-display)/1.05 'Inter', 'Segoe UI', system-ui, sans-serif;
@@ -225,19 +224,20 @@ figure.chart figcaption { font-size: var(--fs-small); color: var(--text-2);
                           margin: 0 0 var(--sp-2); }
 .chart-svg { display: block; width: 100%; height: auto;
              background: var(--surface-1);
-             border-radius: 4px; }
+             border-radius: var(--radius); }
 .chart-svg text { font: var(--fs-small) ui-monospace, monospace; fill: var(--text-2); }
 details.secondary-metrics { margin: var(--sp-2) 0 var(--sp-4); }
 details.secondary-metrics > summary { cursor: pointer; color: var(--text-2);
                                       font-size: var(--fs-small); padding: var(--sp-1) 0; }
 
-/* Section cards (c16c/c16d): each report section is ONE card raised off the page by surface +
-   elevation shadow (depth over borders, ADR-34). The card is the SINGLE frame - inner table-wraps
-   go borderless/flush so we never stack box-in-box. The leading h2 no longer carries an --accent
-   left-rule; the sticky-h2 in-view highlight is now a ::before marker (see _COMPONENTS_CSS_BASE). */
+/* Section cards (c16c/c16d; v0.2.6-1b FLAT, reverses ADR-34): each report section is ONE card,
+   separated from the page by a 1px --border + --radius (border-led, no elevation shadow). The card
+   is the SINGLE frame - inner table-wraps go borderless/flush so we never stack box-in-box. The
+   leading h2 carries no --accent left-rule; the sticky-h2 in-view highlight is a ::before marker
+   (see _COMPONENTS_CSS_BASE). */
 section.card {
   background: var(--surface-1);
-  box-shadow: var(--elev-1); border-radius: 4px;
+  border: 1px solid var(--border); border-radius: var(--radius);
   padding: var(--sp-6); margin: 0 0 var(--sp-6);
 }
 section.card > header {
@@ -249,7 +249,7 @@ section.card > :last-child { margin-bottom: 0; }
 section.card .table-wrap { border: 0; border-radius: 0; margin: 0; }
 .card-count {
   font: 600 var(--fs-small) ui-monospace, monospace; color: var(--text-2);
-  background: var(--surface-2); padding: 1px 8px; border-radius: 3px;
+  background: var(--surface-2); padding: 1px 8px; border-radius: var(--radius-sm);
 }
 .card-subtitle { margin: 0 0 var(--sp-4); color: var(--text-2); font-size: var(--fs-small); }
 
@@ -263,7 +263,7 @@ section.card .table-wrap { border: 0; border-radius: 0; margin: 0; }
 .delta { font-variant-numeric: tabular-nums; padding: 2px var(--sp-2);
          text-align: right; }
 .delta-pill {
-  display: inline-block; padding: 1px 6px; border-radius: 2px;
+  display: inline-block; padding: 1px 6px; border-radius: var(--radius-sm);
   background: var(--surface-2);
   font: 600 var(--fs-small) ui-monospace, monospace;
 }
@@ -272,7 +272,7 @@ section.card .table-wrap { border: 0; border-radius: 0; margin: 0; }
 .delta.flat, .delta-pill.flat { color: var(--text-3); }
 .delta.new, .delta-pill.new { color: var(--text-3); font-style: italic; }
 .delta.alarm { background: color-mix(in oklch, var(--status-alarm) 14%, transparent);
-               border-radius: 2px; }
+               border-radius: var(--radius-sm); }
 .delta-latest { border-left: 2px solid var(--border-2); }
 
 .legend { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4);
@@ -280,7 +280,7 @@ section.card .table-wrap { border: 0; border-radius: 0; margin: 0; }
           font-size: var(--fs-small); color: var(--text-2); }
 .legend .chip { display: inline-flex; align-items: center; gap: 6px; }
 .legend .swatch { display: inline-block; width: 12px; height: 12px;
-                  border-radius: 2px; }
+                  border-radius: var(--radius-sm); }
 
 .device-strip {
   font: var(--fs-small) ui-monospace, monospace;
@@ -312,7 +312,7 @@ section.card .table-wrap { border: 0; border-radius: 0; margin: 0; }
 details.matrix, details.category {
   margin: 0 0 var(--sp-4);
   background: var(--surface-1);
-  box-shadow: var(--elev-1); border-radius: 4px;
+  border: 1px solid var(--border); border-radius: var(--radius);
 }
 details.matrix > summary, details.category > summary {
   cursor: pointer; list-style: none; user-select: none;
@@ -349,7 +349,7 @@ details.matrix > .matrix-body, details.category > .cat-body {
 .callout {
   display: flex; align-items: flex-start; gap: var(--sp-2);
   padding: var(--sp-3) var(--sp-4); margin: 0 0 var(--sp-4);
-  background: var(--surface-1); border-radius: 4px;
+  background: var(--surface-1); border-radius: var(--radius);
   font-size: var(--fs-small);
 }
 .callout .icon { flex: 0 0 auto; margin-top: 2px; color: var(--text-3); }
@@ -378,12 +378,12 @@ details.matrix > .matrix-body, details.category > .cat-body {
   gap: var(--sp-6);
   margin: 0 0 var(--sp-6);
 }
-a.dash-card { background: var(--surface-1); box-shadow: var(--elev-2); border-radius: 4px;
+a.dash-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-lg);
               padding: var(--sp-4); display: flex; flex-direction: column;
               gap: var(--sp-3); text-decoration: none; color: inherit;
-              transition: box-shadow var(--motion-hover), background var(--motion-hover),
-                          transform var(--motion-spring); }
-a.dash-card:hover { background: var(--surface-2); box-shadow: var(--elev-3);
+              transition: box-shadow var(--motion-hover), border-color var(--motion-hover),
+                          background var(--motion-hover), transform var(--motion-spring); }
+a.dash-card:hover { background: var(--surface-2); border-color: var(--border-strong); box-shadow: var(--elev-2);
                     transform: scale(var(--hover-scale)); text-decoration: none; }
 a.dash-card:visited { color: inherit; }
 a.dash-card h3 { margin: 0; color: var(--accent); font-size: var(--fs-h2); }
@@ -404,6 +404,27 @@ a.dash-card .dash-sub { margin: 0; color: var(--text-2); font-size: var(--fs-sma
    no box-in-box against the borderless summary table below it) - c16c. */
 a.dash-card figure.chart { margin: 0; max-width: none; }
 a.dash-card .chart-svg { background: transparent; border: 0; border-radius: 0; }
+
+/* Interactive states (v0.2.6-1b): one consistent focus-visible ring on every keyboard-operable
+   control, driven off the neutral --accent-primary (a [theme] override re-hues it in v0.2.6-1c; the
+   token comment ties links/interactive/focus-ring to accent_primary by design). A reduced-motion-SAFE
+   :active press lives ONLY inside `prefers-reduced-motion: no-preference`, so reduced-motion users
+   never get a transform. Selectors reach controls defined in components.css / rdc_table.css - one
+   stylesheet, so the cross-file references resolve. */
+a.dash-card:focus-visible,
+details.matrix > summary:focus-visible,
+details.category > summary:focus-visible,
+.col-groups .col-group-toggle:focus-visible,
+.rdc-controls .rdc-expand-toggle:focus-visible,
+rdc-ab-picker select:focus-visible {
+  outline: 2px solid var(--accent-primary); outline-offset: 2px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  a.dash-card:active,
+  .col-groups .col-group-toggle:active,
+  .rdc-controls .rdc-expand-toggle:active,
+  rdc-copy-button:active { transform: scale(0.985); }
+}
 
 a[data-link-kind="primary"] {
   display: inline-flex;
@@ -456,7 +477,7 @@ a[data-link-kind="copy"] {
   width: 24px; height: 24px;
   color: var(--text-2);
   text-decoration: none;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   transition: color var(--motion-hover), background var(--motion-hover);
 }
 a[data-link-kind="copy"]:hover {
@@ -498,17 +519,17 @@ nav.crumb {
   gap: var(--sp-2) var(--sp-6);
   align-items: center;
   background: var(--surface-1);
-  box-shadow: var(--elev-2);
+  border: 1px solid var(--border);
   border-top: 2px solid var(--accent-data);
-  border-radius: 4px;
+  border-radius: var(--radius);
   padding: var(--sp-3) var(--sp-4);
   margin: 0 0 var(--sp-4);
 }
 .summary-bar .sb-label {
-  font: var(--fs-small) ui-monospace, monospace;
+  font: var(--fs-micro) ui-monospace, monospace;
   color: var(--text-2);
-  text-transform: lowercase;
-  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 .summary-bar .sb-headline {
   font: 600 var(--fs-h1)/1.15 'Inter', 'Segoe UI', system-ui, sans-serif;
@@ -555,11 +576,22 @@ body { container-type: inline-size; container-name: page; }
   .summary-bar .sb-headline { font-size: var(--fs-h2); }
 }
 
+@container page (max-width: 600px) {
+  /* Phone width: KPI strip to a firm 2x2 (auto-fit can leave an odd 3+1), and the per-drop sidecar
+     wall down from 5 columns so its file links stay legible. */
+  .kpi-strip { grid-template-columns: 1fr 1fr; }
+  ul.sidecar-list { columns: 2; }
+}
+
 @media print {
+  /* @page margin governs the per-page margin of a REAL paged print/PDF. The screenshot harness
+     (tools/shoot.py) emulates print MEDIA + captures the rendered body, which ignores @page, so the
+     body's own padding is what shows there. The 1a print capture hugged the paper edge because body
+     padding was zeroed; restore a sane inset so content never sits flush to x=0 in either output. */
   @page { size: A4; margin: 12mm; }
   :root { color-scheme: light; }
   html, body { background: #fff; color: #000; }
-  body { max-width: none; padding: 0; }
+  body { max-width: none; padding: var(--sp-6) var(--sp-8); }
 
   nav.crumb, .device-strip, .ab-strip,
   rdc-copy-button, rdc-search-cards, rdc-ab-picker { display: none; }
@@ -632,7 +664,7 @@ rdc-copy-button {
   /* resting affordance (c16d): a faint tint so it reads as clickable before hover */
   background: color-mix(in oklch, var(--accent-primary) 7%, transparent);
   border: 1px solid transparent;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   font: var(--fs-small) ui-monospace, monospace;
   margin-left: 4px;
   transition: color var(--motion-hover), background var(--motion-hover), border-color var(--motion-hover);
@@ -650,7 +682,7 @@ rdc-copy-button.copied::before { content: 'ok'; }
 rdc-heatmap-cell {
   display: inline-block;
   padding: 1px 4px;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   font-variant-numeric: tabular-nums;
 }
 
@@ -661,7 +693,7 @@ rdc-sticky-h2 { display: contents; }
 rdc-sticky-h2 h2[aria-current="section"]::before {
   content: ''; position: absolute;
   left: calc(-1 * var(--sp-3)); top: 0.2em; bottom: 0.2em;
-  width: 3px; border-radius: 2px; background: var(--accent-data);
+  width: 3px; border-radius: var(--radius-sm); background: var(--accent-data);
 }
 
 rdc-row-drill { display: contents; }
@@ -679,7 +711,7 @@ rdc-search-cards input[type="search"] {
   border: 1px solid var(--border-1);
   background: var(--surface-0);
   color: var(--text-1);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   min-width: 280px;
 }
 rdc-search-cards input[type="search"]:focus {
@@ -703,7 +735,7 @@ rdc-ab-picker select {
   border: 1px solid var(--border-1);
   background: var(--surface-0);
   color: var(--text-1);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
 }
 
 rdc-alarm-banner { display: contents; }
@@ -717,7 +749,7 @@ rdc-alarm-banner { display: contents; }
 
 /* Pair list: grouped variant chips per A/B pair */
 .pair-list { display: flex; flex-direction: column; gap: var(--sp-4); margin: 0 0 var(--sp-6); }
-.pair-group { box-shadow: var(--elev-1); border-radius: 4px; padding: var(--sp-3) var(--sp-4); background: var(--surface-1); }
+.pair-group { border: 1px solid var(--border); border-radius: var(--radius); padding: var(--sp-3) var(--sp-4); background: var(--surface-1); }
 .pair-group > h3 {
   margin: 0 0 var(--sp-3); padding: 0;
   font: var(--fs-mono) ui-monospace, monospace;
@@ -784,7 +816,7 @@ rdc-table { display: block; }
 .col-groups .col-group-toggle {
   font: var(--fs-small) 'Inter', 'Segoe UI', system-ui, sans-serif;
   padding: 4px 10px; cursor: pointer; color: var(--text-2);
-  background: var(--surface-1); border: 1px solid var(--border-2); border-radius: 2px;
+  background: var(--surface-1); border: 1px solid var(--border-2); border-radius: var(--radius-sm);
 }
 .col-groups .col-group-toggle[aria-pressed="true"] {
   color: var(--accent); border-color: var(--accent); background: var(--surface-2);
@@ -891,7 +923,7 @@ rdc-table[data-mode="static"][data-expand="true"] table.data tbody td { white-sp
 .rdc-controls .rdc-expand-toggle {
   font: var(--fs-small) 'Inter', 'Segoe UI', system-ui, sans-serif;
   padding: 4px 10px; cursor: pointer; color: var(--text-2);
-  background: var(--surface-1); border: 1px solid var(--border-2); border-radius: 2px;
+  background: var(--surface-1); border: 1px solid var(--border-2); border-radius: var(--radius-sm);
 }
 .rdc-controls .rdc-expand-toggle[aria-pressed="true"] {
   color: var(--accent); border-color: var(--accent); background: var(--surface-2);
@@ -943,9 +975,9 @@ nav.toc a .ct { color: var(--text-3); font-variant-numeric: tabular-nums; }
 .controls input[type=search] {
   font: inherit; padding: 4px 8px;
   border: 1px solid var(--border-2); background: var(--surface-0); color: var(--text-1);
-  border-radius: 2px; min-width: 22rem;
+  border-radius: var(--radius-sm); min-width: 22rem;
 }
-.controls input[type=search]:focus { outline: 1px solid var(--accent); }
+.controls input[type=search]:focus { outline: 2px solid var(--accent-primary); outline-offset: 1px; }
 .controls .ct { color: var(--text-2); font-variant-numeric: tabular-nums; }
 .controls .dl { font-size: var(--fs-small); color: var(--accent); }
 
@@ -998,12 +1030,12 @@ details.category > .cat-body {
   border-left: 2px solid var(--border-1);  /* nesting rail: visually brackets the group */
 }
 
-/* Table section = the card. The card is the single frame, so its header sheds the left-accent bar. */
+/* Table section = the card. Border-led (v0.2.6-1b, flat): a 1px --border + --radius, no elevation
+   shadow. The card is the single frame, so its header sheds the left-accent bar. */
 section.table-section {
   background: var(--surface-1);
   border: 1px solid var(--border-1);
-  border-radius: 4px;
-  box-shadow: var(--elev-1);
+  border-radius: var(--radius);
   padding: var(--sp-4);
   margin: 0 0 var(--sp-4);                 /* gap between sibling cards (< the category gap) */
 }

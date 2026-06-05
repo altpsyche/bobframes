@@ -1,9 +1,13 @@
 
 @media print {
+  /* @page margin governs the per-page margin of a REAL paged print/PDF. The screenshot harness
+     (tools/shoot.py) emulates print MEDIA + captures the rendered body, which ignores @page, so the
+     body's own padding is what shows there. The 1a print capture hugged the paper edge because body
+     padding was zeroed; restore a sane inset so content never sits flush to x=0 in either output. */
   @page { size: A4; margin: 12mm; }
   :root { color-scheme: light; }
   html, body { background: #fff; color: #000; }
-  body { max-width: none; padding: 0; }
+  body { max-width: none; padding: var(--sp-6) var(--sp-8); }
 
   nav.crumb, .device-strip, .ab-strip,
   rdc-copy-button, rdc-search-cards, rdc-ab-picker { display: none; }

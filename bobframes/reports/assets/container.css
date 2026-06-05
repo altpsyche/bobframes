@@ -25,3 +25,10 @@ body { container-type: inline-size; container-name: page; }
   body { padding: var(--sp-3); }
   .summary-bar .sb-headline { font-size: var(--fs-h2); }
 }
+
+@container page (max-width: 600px) {
+  /* Phone width: KPI strip to a firm 2x2 (auto-fit can leave an odd 3+1), and the per-drop sidecar
+     wall down from 5 columns so its file links stay legible. */
+  .kpi-strip { grid-template-columns: 1fr 1fr; }
+  ul.sidecar-list { columns: 2; }
+}

@@ -688,6 +688,21 @@ zero production change, NO refresh. **v0.2.6-1a** (token lift): neutral shadcn p
 + `--radius`/`--sp-5`/`--sp-10`/`--fs-micro` tokens + type tune; pinned-byte tests (`test_exact_color_lines`,
 `test_layout_literals`) updated in-commit; the `--text-3` strict-xfail flipped to a pass; goldens refreshed
 (palette only; `_pagedata`/`digests.json` byte-unchanged); 327 green.
+**v0.2.6-1b** (flat surfaces + radius + states + print): elevation tokens RE-TUNED flat (reverses
+ADR-34/c16d -- elev-1 = hairline ring alone, elev-2/3 keep only a whisper of drop for the dash-card
+hover); `section.card`/`kpi-chip`/`details`/`callout`/`pair-group`/`summary-bar`/per-drop `table-section`
+switched `box-shadow: var(--elev-*)` -> `1px var(--border)` + the `--radius` scale; the ~21 hardcoded
+`2/3/4px` `border-radius` literals replaced with `var(--radius-sm)` (pills/inputs/toggles/swatches),
+`var(--radius)` (cards/sections), `var(--radius-lg)` (dashboard cards); uppercase `--fs-micro` eyebrows
+(kpi-label/sb-label); a shared `:focus-visible` ring (off `--accent-primary`) + a reduced-motion-SAFE
+`:active` micro-scale (lives only in `prefers-reduced-motion: no-preference`); `@container page
+(max-width:600px)` -> `.kpi-strip` 2x2 + sidecar 2-col; **print FIX** -- `body { padding: var(--sp-6)
+var(--sp-8) }` restored so the screenshot harness (print MEDIA emulation, which ignores `@page`) no longer
+hugs the paper edge (the 1a regression). Pinned `test_c16d_shadow_and_motion_tokens_emitted` +
+`test_c16d_depth_over_borders_css` updated in-commit. Scope = 8 asset CSS + `design_tokens.toml` +
+`test_design_tokens.py`; goldens refreshed (HTML/preview/package); `_pagedata`/`digests.json`/`golden_parquet`
+byte-unchanged (0 drift); browser matrix light/dark/print synthetic + real Perf signed off BEFORE bake;
+327 green; smoke lint-clean. No new ADR (rides ADR-44, which already declared the ADR-34 reversal).
 
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,

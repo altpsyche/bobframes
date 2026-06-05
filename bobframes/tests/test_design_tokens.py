@@ -152,13 +152,15 @@ def test_c16n_dashboard_mini_print_fullwrap():
 
 def test_c16d_shadow_and_motion_tokens_emitted():
     """c16d adds the [shadow] elevation block + spring/hover-scale motion tokens; they emit :root
-    vars (light/dark-aware shadows) and are wired through token_subst (ADR-27/34)."""
+    vars and are wired through token_subst (ADR-27/34). v0.2.6-1b RE-TUNES the elevations FLAT
+    (reverses ADR-34): surfaces are now border-led, so elev-1 is the hairline contact ring ALONE
+    (ambient blur dropped) and elev-2/3 keep only a whisper of drop for the dash-card hover lift."""
     css = chrome._DESIGN_TOKENS
-    # exact emitted bytes (drill/root embed this UN-minified, so spacing is parity-significant); each
-    # elevation is a 2-layer shadow (contact ring + ambient drop), all-neutral-black for both themes
-    assert '  --elev-1: 0 0 0 1px oklch(0% 0 0 / 0.05), 0 1px 3px oklch(0% 0 0 / 0.12);' in css
-    assert '  --elev-2: 0 0 0 1px oklch(0% 0 0 / 0.05), 0 4px 14px oklch(0% 0 0 / 0.16);' in css
-    assert '  --elev-3: 0 0 0 1px oklch(0% 0 0 / 0.06), 0 12px 30px oklch(0% 0 0 / 0.22);' in css
+    # exact emitted bytes (drill/root embed this UN-minified, so spacing is parity-significant); the
+    # elevations are all-neutral-black for both themes, flat (ring + at most a whisper of drop)
+    assert '  --elev-1: 0 0 0 1px oklch(0% 0 0 / 0.04);' in css
+    assert '  --elev-2: 0 0 0 1px oklch(0% 0 0 / 0.04), 0 1px 2px oklch(0% 0 0 / 0.08);' in css
+    assert '  --elev-3: 0 0 0 1px oklch(0% 0 0 / 0.05), 0 2px 6px oklch(0% 0 0 / 0.12);' in css
     assert '  --motion-spring: 220ms cubic-bezier(0.2, 0.8, 0.2, 1);' in css
     assert '  --hover-scale: 1.01;' in css
     # reduced-motion no-ops the lift: spring -> 0s, hover-scale -> 1 (static jump cannot survive)
@@ -170,14 +172,19 @@ def test_c16d_shadow_and_motion_tokens_emitted():
 
 
 def test_c16d_depth_over_borders_css():
-    """c16d: cards/chrome read by surface + elevation shadow, not 1px outlines; the sticky-h2 in-view
-    cue is a ::before marker (the h2 left-accent is gone); print re-adds a paper border + kills shadow."""
+    """v0.2.6-1b (REVERSES ADR-34/c16d): cards/chrome read by a 1px --border + the --radius scale, NOT
+    an elevation shadow. The dash-card is flat at rest and keeps only a whisper of elev on HOVER; the
+    elev-1/elev-3 rest+heavy shadows are gone from the chrome bundle. The sticky-h2 ::before marker +
+    the callout severity tint are unchanged; print still re-adds a paper border + kills shadow."""
     c = chrome._CHROME_CSS
-    assert 'box-shadow: var(--elev-1)' in c          # section.card / kpi-chip / details / pair-group
-    assert 'box-shadow: var(--elev-2)' in c          # dash-card
-    assert 'box-shadow: var(--elev-3)' in c          # dash-card hover
-    assert 'border: 1px solid var(--border-1);\n  border-radius: 4px;' not in c  # table-wrap outline gone
-    # severity now tints the whole callout box (no border-left rule), keeping the icon accent
+    # border-led surfaces on the default radius (section.card / details), no rest elevation shadow
+    assert 'border: 1px solid var(--border); border-radius: var(--radius);' in c
+    assert 'box-shadow: var(--elev-1)' not in c      # the flat rest shadow is gone (border-led)
+    assert 'box-shadow: var(--elev-3)' not in c      # the heavy hover shadow is gone
+    # dash-card: flat at rest (border + the largest radius), a subtle elev lift only on :hover
+    assert 'border: 1px solid var(--border); border-radius: var(--radius-lg);' in c
+    assert 'box-shadow: var(--elev-2);' in c         # dash-card:hover keeps a whisper lift
+    # severity tints the whole callout box (no border-left rule), keeping the icon accent
     assert 'color-mix(in oklch, var(--status-alarm) 11%, var(--surface-1))' in c
     assert 'border-left-color: var(--status-alarm)' not in c
     base = chrome._COMPONENTS_CSS_BASE

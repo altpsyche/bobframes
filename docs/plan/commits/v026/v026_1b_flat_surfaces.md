@@ -39,5 +39,37 @@ Cards/minis render flat with hairline borders + the radius scale; focus rings + 
 present; the print capture has a sane outer margin (no edge-hugging); pinned `test_c16d_*` updated
 in-commit; full suite green; screenshots signed off.
 
+## As-built (DONE 2026-06-05)
+- **Flat elev** (`design_tokens.toml [shadow]`): `--elev-1` = the hairline contact ring alone (ambient
+  blur dropped); `--elev-2/3` keep the ring + a whisper of drop, reserved for the `a.dash-card` HOVER
+  lift only. Reverses ADR-34/c16d.
+- **Border-led** (chrome/components/sticky/per_drop CSS): `section.card`, `.kpi-chip`, `details.matrix/
+  category`, `.callout`, `.pair-group`, `.summary-bar`, per-drop `section.table-section` switched
+  `box-shadow: var(--elev-*)` -> `1px solid var(--border)` + `var(--radius)`. `a.dash-card` is flat at
+  rest (border + `--radius-lg`) and keeps a subtle `var(--elev-2)` + `scale(var(--hover-scale))` on hover.
+- **Radius scale**: the ~21 hardcoded `2/3/4px` literals -> `var(--radius-sm)` (crumb pill / card-count /
+  delta-pill / swatch / copy-button / heatmap-cell / sticky-h2 marker / search inputs / col-group &
+  expand toggles / link-kind copy), `var(--radius)` (kpi-chip / chart-svg / section.card / details /
+  callout / pair-group / summary-bar / table-section), `var(--radius-lg)` (`a.dash-card`).
+- **States**: uppercase `--fs-micro` eyebrows (`.kpi-label` + `.sb-label`); a shared `:focus-visible`
+  ring off `--accent-primary` (dash-card / details summary / toggles / ab-picker select; per_drop search
+  bumped 1px->2px to match); a reduced-motion-SAFE `:active { transform: scale(0.985) }` living ONLY in
+  `@media (prefers-reduced-motion: no-preference)`. NO new `--ring` token -- the toml ties links/
+  interactive/focus-ring to `accent_primary` by design, so the focus ring already follows `--accent-primary`
+  (and is re-hued by the v0.2.6-1c `[theme]` override).
+- **Responsive**: `@container page (max-width:600px)` -> `.kpi-strip` `1fr 1fr` (firm 2x2) + `ul.sidecar-list
+  { columns: 2 }`.
+- **Print FIX**: `body { padding: var(--sp-6) var(--sp-8) }` restored in `@media print`. The screenshot
+  harness emulates print MEDIA + screenshots the body, which ignores `@page`, so the zeroed body padding
+  was what made content hug the paper edge at the 1a sign-off. `@page { margin: 12mm }` is KEPT for a real
+  paged PDF (per-page margins). Severity rails + the `#888` paper border + tints unchanged.
+- **Tests**: `test_c16d_shadow_and_motion_tokens_emitted` + `test_c16d_depth_over_borders_css` rewritten
+  in-commit (flat elev bytes; border-led asserts). `test_c16d_micro_interactions`, token guard, contrast,
+  js-coupled, components all held unchanged.
+- **Gate**: browser matrix light/dark/print on synthetic + real Perf SIGNED OFF before bake; goldens
+  refreshed (HTML/preview/package) on the `.venv`; `_pagedata`/`digests.json`/`golden_parquet` byte-unchanged
+  (0 drift); source scope = 8 asset CSS + `design_tokens.toml` + `test_design_tokens.py`; 327 green; ASCII +
+  smoke lint clean. No new ADR (rides ADR-44). §21.1v carries the as-built.
+
 ## Next
 v0.2.6-1c (user theme override: `[theme]` + `--accent`, ADR-45).

@@ -12,9 +12,9 @@ nav.toc a .ct { color: var(--text-3); font-variant-numeric: tabular-nums; }
 .controls input[type=search] {
   font: inherit; padding: 4px 8px;
   border: 1px solid var(--border-2); background: var(--surface-0); color: var(--text-1);
-  border-radius: 2px; min-width: 22rem;
+  border-radius: var(--radius-sm); min-width: 22rem;
 }
-.controls input[type=search]:focus { outline: 1px solid var(--accent); }
+.controls input[type=search]:focus { outline: 2px solid var(--accent-primary); outline-offset: 1px; }
 .controls .ct { color: var(--text-2); font-variant-numeric: tabular-nums; }
 .controls .dl { font-size: var(--fs-small); color: var(--accent); }
 
@@ -67,12 +67,12 @@ details.category > .cat-body {
   border-left: 2px solid var(--border-1);  /* nesting rail: visually brackets the group */
 }
 
-/* Table section = the card. The card is the single frame, so its header sheds the left-accent bar. */
+/* Table section = the card. Border-led (v0.2.6-1b, flat): a 1px --border + --radius, no elevation
+   shadow. The card is the single frame, so its header sheds the left-accent bar. */
 section.table-section {
   background: var(--surface-1);
   border: 1px solid var(--border-1);
-  border-radius: 4px;
-  box-shadow: var(--elev-1);
+  border-radius: var(--radius);
   padding: var(--sp-4);
   margin: 0 0 var(--sp-4);                 /* gap between sibling cards (< the category gap) */
 }
