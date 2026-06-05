@@ -725,6 +725,32 @@ only in `_assets/{report,catalog}.css` (HTML links external CSS -> bodies byte-u
 preview + package); 340 green (`-m "not browser"`); browser matrix light/dark/print synthetic + real Perf
 SIGNED OFF before bake. No new ADR (rides ADR-44 + ADR-42); FINDINGS G-32 (el long-tail) opened.
 
+**v0.2.6-3** (dashboard grid: shadcn-flat Grafana-dense cards + static_table minis): the SECOND surface
+commit, the first DENSE one. CSS density block (the SOLE output change): `[layout] dash_grid_min 360->300px`
+(more cards/row -- real Perf 4-up at 1600 vs 3-up), `.dash-grid` gap `sp-6->sp-4`, `a.dash-card` padding
+`sp-4->sp-3` + inner gap `sp-3->sp-2`. The 2px left ACCENT RAIL is a SUBTLE always-on
+`box-shadow: inset 2px 0 0 color-mix(in oklch, var(--accent-primary) 30%, transparent)` (a 30% tint --
+full-strength near-black/near-white read too high-contrast in review; the tint is a soft edge in both
+themes + still re-hues under `[theme]`/`--accent`; a hover-only variant was tried but the user preferred
+the always-on rail; user-confirmed); hover keeps the rail + adds `--elev-2`; print drops it (cards keep
+the #888 frame). Radius-lg + the 1px hairline kept. **Componentization byte-NEUTRAL on the
+golden:** `_card_table` -> `chrome.static_table` (via a NEW `Column.cell_title` -- the dashboard mini's
+always-on hover-reveal `<td title>`, sourced from the PLAIN value so `el` escapes once: the would-be
+double-escape was a review finding [R1], fixed by a NEW `formatters.scrub_chrome_text` feeding the marker
+plain); `_card` + both `chip_cluster` strips (cross-report `<nav>` + A/B `<div>`) -> `el`. PROVEN: a fresh
+render was byte-identical to the pre-bake golden on all 17 pages OUTSIDE `<style>`; the only delta is the
+CSS. Package shape corroborates -- `redacted` (inline) HTML refreshed, `shared`/`shared_redacted` changed
+only in `_assets/{report,catalog}.css` (HTML links external CSS -> bodies byte-unchanged).
+`_pagedata`/`digests.json`/`golden_parquet` BYTE-UNCHANGED (NO `make_parquet_golden`). NEW
+`test_design_tokens.test_v026_3_dashboard_grafana_dense` (300px, sp-4 gap, sp-3 padding, the 30%-tint rail
+on both rest + hover -- count==2) + `test_table_component` `cell_title` (single-escape R1 guard); `test_c16d` hover
+pin updated in-commit; `test_report_structure` chip-cluster + 6x dash-card hold under `el` (no edit). 342
+green (`-m "not browser"`); token guard 0 undefined; browser matrix light/dark/print synthetic + real Perf
+SIGNED OFF before bake (resting flat confirmed). Scope = 6 source (chrome.css/chrome.py/dashboard.py/
+design_tokens.toml/formatters.py/base.py) + 2 tests + goldens (17 HTML + preview + package redacted HTML +
+shared/shared_redacted `_assets/{report,catalog}.css`). No new ADR (rides ADR-44 + ADR-42); FINDINGS G-32
+`chip_cluster` ticked.
+
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,
 dropped column, dtype slip). Skip `_`-prefixed (`_catalog`, `_global_entities`). Runs on synthetic +

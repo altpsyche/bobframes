@@ -447,12 +447,18 @@ class Column:
     data, not hand-written markup. `render(value, row) -> str|_Raw` produces the cell's inner HTML and
     is TRUSTED to be safe (build it with el()/chrome helpers); without it the value is escaped (or, with
     `clip`, wrapped in a truncating .clip span). `numeric`/`mono` set the th/td cell class; `group` names
-    the collapsible col-group."""
+    the collapsible col-group. `title` sets the header's `title=` hover-reveal.
+
+    `cell_title` sets an UNCONDITIONAL per-cell `title=` from the cell value -- the dashboard-mini's
+    always-on hover-reveal (a responsive `table-layout:fixed` mini has no deterministic pixel clip point,
+    so it can't length-gate like `clip`; c16m/c16n). NOT a general truncation knob -- use `clip` for that.
+    The value MUST be a plain str (never a pre-escaped `_Raw`) so it is escaped exactly once."""
     key: str
     header: str = ''
     numeric: bool = False
     mono: bool = False
     title: str | None = None
+    cell_title: bool = False
     clip: str = ''                              # '' | 'narrow' | 'wide'
     group: str | None = None
     render: '_Callable | None' = None
@@ -471,7 +477,10 @@ def _table_td(col: 'Column', row: dict) -> _Raw:
         inner = raw(clip_span(value, tier=col.clip))
     else:
         inner = value                           # el escapes a plain value
-    return el('td', {'class': classes('num' if col.numeric else '', 'mono' if col.mono else '') or None},
+    # cell_title: an always-on hover-reveal from the (plain) value, escaped once by el (dashboard mini).
+    cell_title = value if (col.cell_title and value) else None
+    return el('td', {'class': classes('num' if col.numeric else '', 'mono' if col.mono else '') or None,
+                     'title': cell_title},
               inner)
 
 

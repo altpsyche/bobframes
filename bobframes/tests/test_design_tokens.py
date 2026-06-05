@@ -59,7 +59,7 @@ def test_layout_literals_preserved():
     assert 'minmax(170px, 1fr)' in c  # v0.2.6-1a: kpi_strip_min 150 -> 170 (hero numeral headroom)
     assert 'minmax(180px, 1fr)' in c
     assert 'grid-template-columns: minmax(240px, 1fr) 2fr 90px;' in c
-    assert 'minmax(360px, 1fr)' in c
+    assert 'minmax(300px, 1fr)' in c  # v0.2.6-3: dash_grid_min 360 -> 300 (Grafana-dense, more cards/row)
     s = chrome._STICKY_CSS
     assert 'body { --hdr-offset: 120px; --crumb-h: 36px; }' in s
     assert 'grid-template-columns: minmax(140px, max-content) 1fr auto;' in s
@@ -184,17 +184,19 @@ def test_c16d_shadow_and_motion_tokens_emitted():
 
 def test_c16d_depth_over_borders_css():
     """v0.2.6-1b (REVERSES ADR-34/c16d): cards/chrome read by a 1px --border + the --radius scale, NOT
-    an elevation shadow. The dash-card is flat at rest and keeps only a whisper of elev on HOVER; the
-    elev-1/elev-3 rest+heavy shadows are gone from the chrome bundle. The sticky-h2 ::before marker +
-    the callout severity tint are unchanged; print still re-adds a paper border + kills shadow."""
+    an elevation shadow. The dash-card carries only the v0.2.6-3 2px accent rail at rest (a subtle inset
+    tint, NOT an elevation shadow) and adds a whisper of elev (alongside the rail) on HOVER; the elev-1/
+    elev-3 rest+heavy shadows are gone from the chrome bundle. The sticky-h2 ::before marker + the callout
+    severity tint are unchanged; print still re-adds a paper border + kills shadow."""
     c = chrome._CHROME_CSS
     # border-led surfaces on the default radius (section.card / details), no rest elevation shadow
     assert 'border: 1px solid var(--border); border-radius: var(--radius);' in c
     assert 'box-shadow: var(--elev-1)' not in c      # the flat rest shadow is gone (border-led)
     assert 'box-shadow: var(--elev-3)' not in c      # the heavy hover shadow is gone
-    # dash-card: flat at rest (border + the largest radius), a subtle elev lift only on :hover
+    # dash-card: border-led at rest (+ the subtle accent rail), a whisper of elev ON TOP of the rail on :hover
     assert 'border: 1px solid var(--border); border-radius: var(--radius-lg);' in c
-    assert 'box-shadow: var(--elev-2);' in c         # dash-card:hover keeps a whisper lift
+    assert ('box-shadow: var(--elev-2), inset 2px 0 0 '
+            'color-mix(in oklch, var(--accent-primary) 30%, transparent);') in c   # hover = lift + rail
     # severity tints the whole callout box (no border-left rule), keeping the icon accent
     assert 'color-mix(in oklch, var(--status-alarm) 11%, var(--surface-1))' in c
     assert 'border-left-color: var(--status-alarm)' not in c
@@ -204,6 +206,23 @@ def test_c16d_depth_over_borders_css():
     # print: borderless+shadowless cards would vanish on paper -> thin rule re-added, shadows killed
     assert 'a.dash-card { border: 1px solid #888; }' in chrome._PRINT_CSS
     assert 'box-shadow: none;' in chrome._PRINT_CSS
+
+
+def test_v026_3_dashboard_grafana_dense():
+    """v0.2.6-3 (decision #4): the dashboard grid is Grafana-dense -- dash_grid_min 360->300 (more cards
+    per row), tighter grid gap (sp-4) + card padding (sp-3) + inner gap (sp-2). Cards are flat shadcn
+    surfaces (1px --border hairline + radius-lg) with a SUBTLE always-on 2px left accent rail: a 30% tint
+    of --accent-primary (full-strength was too high-contrast). Hover keeps the rail + adds the elev lift, so
+    the inset rail appears on BOTH the rest + hover rules."""
+    c = chrome._CHROME_CSS
+    assert 'minmax(300px, 1fr)' in c                                  # denser grid floor
+    assert '.dash-grid {' in c and 'gap: var(--sp-4);' in c           # tighter grid gap
+    assert 'padding: var(--sp-3); display: flex; flex-direction: column;' in c   # tighter card padding
+    assert 'gap: var(--sp-2); text-decoration: none; color: inherit;' in c       # tighter inner gap
+    assert 'border: 1px solid var(--border); border-radius: var(--radius-lg);' in c  # flat hairline kept
+    # subtle always-on rail = a 30% tint of the overridable accent, on BOTH rest + hover (hover adds elev)
+    assert 'box-shadow: inset 2px 0 0 color-mix(in oklch, var(--accent-primary) 30%, transparent);' in c
+    assert c.count('inset 2px 0 0 color-mix(in oklch, var(--accent-primary) 30%, transparent)') == 2
 
 
 def test_c16d_micro_interactions_pacing_dimming():
