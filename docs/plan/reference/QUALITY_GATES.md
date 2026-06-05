@@ -626,6 +626,44 @@ repeat `== 3` (divided by the 1 data-frame, NOT `ok_captures=5`). `instancing_re
 now carry PER-FRAME semantics (config comment + module docstrings; rendered tooltips unchanged to keep
 the golden, accurate for 1-capture display). Runs on the full matrix (no golden dependency).
 
+## 21.1u Component system: CSS/JS extraction + element builder + token guard + table component + summary migration (c16x, ADR-42, G-30) -- see [c16x](../commits/v025/c16x_component_system.md)
+c16x is a 5-step sub-sequence; x1-x4 are **zero-output** (`test_parity` + `test_design_tokens` +
+`test_parquet_parity` green, NO golden refresh) and x5 is a **bounded reviewed refresh** at visual parity.
+- **x1 CSS/JS extraction.** The chrome/template CSS+JS string literals live as real files under
+  `reports/assets/*.{css,js,html}`, loaded via `importlib.resources` (`_read_asset`), `${token}`/`__ROW_H__`
+  substitution preserved -> byte-identical composed output. `tests/test_assets.py` pins: each asset exists +
+  loads, every `.css` is ASCII (`rdc_table.js` exempt: a sort-arrow glyph in a `<script>` body, which the
+  whole-page lint banlist already exempts), the module constants == the file contents verbatim, and the composed
+  bundles carry no leftover `$` / `__ROW_H__`. Packaging: the assets are not gitignored and ship via the
+  `inter-subset.woff2` precedent (`packages=["bobframes"]`); the clean-install wheel smoke runs in CI at c16w.
+- **x2 element builder.** `chrome.el`/`el_void`/`raw`/`classes` escape attribute values + text children BY
+  CONSTRUCTION (subsumes roadmap C6); `_Raw` children splice verbatim, `None`/`False` skip, unsafe attr names
+  raise. `tests/test_element_builder.py` (13 cases) + the byte-identical `icon`/`kpi_chip` migrations gated
+  end-to-end by `test_parity`.
+- **x3 token guard.** `chrome._undefined_token_refs`/`undefined_tokens`: declared = (TOML `:root` scale) UNION
+  (every `--x:` definition scanned from the COMPOSED CSS, so in-body props `--crumb-h`/`--hdr-offset`/`--clip-cap*`
+  are NOT false-flagged); referenced = `var(--NAME)` across the composed CSS + the bundle JS + emitted `style=`
+  fragments. `tests/test_token_guard.py`: both live bundles clean; a planted `var(--sp-5)` (CSS) / `var(--nope)`
+  (style=) / `var(--ghost)` (JS) is caught. A CI test (NOT an import-time raise, which would crash `version` on a
+  styling typo); `bobframes preview` warns non-fatally (the designer loop). This is the structural fix for the G-30
+  failure class.
+- **x4 table component family.** `chrome.Column`/`data_table`/`static_table`, NORMALIZED + built through `el`,
+  gated by `tests/test_table_component.py`. **BUILT-NOT-ADOPTED:** a byte-identical migration of the ~117
+  hand-written table sites is infeasible (attribute-order / per-report-cell / inline-col-group inconsistency), so
+  the reports adopt the component in v0.2.6 where the golden refresh absorbs the normalization (recorded, ADR-23).
+  Zero production migration here -> parity green.
+- **x5 summary migration + gallery.** `summary._kpi`→`chrome.kpi_card`, `_trendline`→`delta.trendline`, the verdict
+  span→`chrome.status_badge`, the Movement layout→`chrome.movement`; `summary._SUMMARY_CSS` (a mid-body `<style>`)
+  relocated into `reports/assets/components.css`, renamed `.bh-trend*`→`.trendline*`, kept
+  `[data-page-kind="summary"]`-scoped (inert elsewhere). The golden delta is summary.html (the trend SVG class
+  rename + the removed mid-body `<style>`) + every page's inlined bundle growing by the inert scoped rules
+  (minified on report pages, verbatim on catalog/drill) + the preview gallery + `golden_package`
+  `report.css`/`catalog.css`. `_pagedata/*.js` + `golden_parquet/digests.json` **byte-unchanged** (presentation
+  only, §21.9). The `.trendline` CSS == the old `.bh-trend` CSS -> pixel-identical (visual parity).
+  `tests/test_components.py` + the renamed-class asserts in `test_summary` (updated in-commit). Closes G-30.
+The v0.2.6 bold-visual epic (ADR-43) is where the byte-parity gate is intentionally broken and the replacement
+gates (structural component tests + token guard + browser matrix on synthetic + real Perf) become the contract.
+
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,
 dropped column, dtype slip). Skip `_`-prefixed (`_catalog`, `_global_entities`). Runs on synthetic +
