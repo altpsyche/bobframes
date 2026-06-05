@@ -11,8 +11,26 @@ active_release: v0.2.6    (v0.1 COMPLETE - bobframes 0.1.0 live on PyPI 2026-05-
                 migration, so there is no standalone 0.2.5 - the next PyPI release is 0.2.6, carrying the
                 foundation AND the visual redesign; _version jumps 0.2.0 -> 0.2.6. The c16x work + the CI
                 golden_env fix are on `main`; v0.2.6 work is on branch `plan/v0.2.6`.)
-current:        v026_visual_redesign    (status: REFERENCE LOCKED, IMPLEMENTATION PLANNED IN A NEW CHAT - per the
-                user. v0.2.6 = bold visual redesign anchored on shadcn/ui (ADR-43); the DIRECTION brief is
+current:        v0.2.6-1b (flat surfaces/radius/states/print)    (status: IN PROGRESS on plan/v0.2.6. The epic was
+                PLANNED + APPROVED 2026-06-05 -> ~/.claude/plans/bobframes-v0-2-6-visual-enumerated-bachman.md. 4 LOCKED
+                decisions (AskUserQuestion): FLAT/border-led [reverse ADR-34]; NEUTRAL chrome + a user-overridable accent
+                via a .bobframes.toml [theme] section + --accent CLI [NO source edit, reuses the ADR-25 config cascade];
+                restrained type + hero numerals on the summary one-pager ONLY; Grafana-dense everywhere except summary +
+                a --radius 6/8/10 scale. Commit shape v0.2.6-0..-6 (commits/v026/; NEW -1c = the theme override).
+                v0.2.6-0 DONE 2026-06-05 (dev-only gate machinery, ZERO production change: tools/shoot.py stdlib CDP
+                screenshot harness [light/dark/print], tests/test_contrast.py [oklch->WCAG; --text-3 AA strict-xfail flips
+                at 1a], tests/test_js_coupled_classes.py [rdc-table class<->JS rename guard], `browser` pytest marker;
+                319->326 passed +1 xfail, NO golden refresh). v0.2.6-1a DONE 2026-06-05 (token lift: neutral shadcn
+                palette [chroma-0 grayscale], WCAG-AA --text-3 [3.0->4.85:1, proven by test_contrast], --radius 6/8/10 +
+                sp_5/sp_10 + fs_micro tokens DEFINED [applied in 1b], h1/h2/h3 tune, kpi_strip_min 170; pinned-byte tests
+                updated IN-COMMIT [exact_color_lines bg+accent-primary, layout 150->170, contrast xfail->pass, guard
+                sp-5->sp-7]; ADR-44 appended; goldens refreshed on .venv [palette only; _pagedata+digests BYTE-UNCHANGED];
+                327 green; gallery light/dark/print signed off; landed WITH v0.2.6-0 in ONE commit). NEXT: v0.2.6-1b
+                (flat surfaces + APPLY --radius + focus/active states + responsive + the PRINT-PADDING fix flagged at the
+                1a sign-off [content hugs the paper edge; pre-existing print.css]). CANONICAL ENV = the repo .venv
+                (py3.12.13/pyarrow21) - goldens bake there via .venv\Scripts\python.exe; the py3.14 system Python must NOT
+                (ADR-11). c16w (standalone v0.2.5 release) is CANCELLED per ADR-43 - folded into the v0.2.6 close-out.
+                v0.2.6 = bold visual redesign anchored on shadcn/ui (ADR-43); the DIRECTION brief is
                 docs/plan/commits/v026/v026_visual_redesign_brief.md [reconciles "bold" -> shadcn-clean/neutral/
                 flat, NOT loud; verbatim shadcn oklch tokens + the shadcn->bobframes token map + open decisions:
                 flat-vs-ADR-34-depth, neutral-vs-hue-accent, radius token, type-tune, chart retune]. A NEW chat
@@ -71,7 +89,22 @@ current:        v026_visual_redesign    (status: REFERENCE LOCKED, IMPLEMENTATIO
                 token-validity guard + preview gallery; migrate summary.py off its inline <style> (visual parity).
                 NOTE: c16p (v0.2 release) COMPLETE - PyPI bobframes 0.2.0 LIVE; tag v0.2.0 -> 765a4db on main.
                 GIT: c16y + c16v are in the WORKING TREE, NOT yet committed (user hasn't asked to commit).)
-last_session:   2026-06-05 — c16x DONE (component system; ADR-42; G-30 CLOSED). 5-step sub-sequence on plan/v0.2.5,
+last_session:   2026-06-05 — v0.2.6 epic PLANNED/APPROVED + v0.2.6-0 DONE. Planned via 2 read-only verification
+                workflows (5 Explore agents verified the brief's load-bearing claims + the token/CLI/config machinery -
+                key find: bobframes ALREADY has a .bobframes.toml config cascade w/ deep-merge [ADR-25], so the accent
+                override rides it, NOT a source edit). Reconciled the brief's 6 open decisions via AskUserQuestion -> 4
+                locks (FLAT/reverse-ADR-34; NEUTRAL chrome + user-overridable accent via [theme]+--accent; restrained
+                type + summary-only hero numerals; Grafana-dense + --radius 6/8/10). Wrote + got approval on
+                ~/.claude/plans/bobframes-v0-2-6-visual-enumerated-bachman.md (NEW commit -1c for the theme override).
+                v0.2.6-0 (dev-only, ZERO production change, NO golden refresh): tools/shoot.py stdlib CDP screenshot
+                harness (validated on real Perf [9 captures] + a -m browser smoke proving light!=dark), test_contrast.py
+                (oklch->WCAG; converter==21.0 ref; --text-3 AA STRICT-xfail flips green at 1a), test_js_coupled_classes.py
+                (rdc-table class<->_compose_js rename guard), `browser` pytest marker. 319->326 passed +1 xfail.
+                THEN v0.2.6-1a (token lift, landed WITH -0 in ONE commit): neutral shadcn palette (chroma-0), WCAG-AA
+                --text-3 (3.0->4.85:1), --radius/sp_5/sp_10/fs_micro tokens DEFINED, type tune, kpi_strip_min 170; ADR-44;
+                pinned-byte tests updated in-commit; goldens refreshed (palette only, _pagedata+digests byte-unchanged);
+                327 green; gallery signed off ("nice"; print-padding flagged -> 1b). current -> v0.2.6-1b.
+                [prior session] c16x DONE (component system; ADR-42; G-30 CLOSED). 5-step sub-sequence on plan/v0.2.5,
                 319 green, UNPUSHED (90bd874..ee9b7ff): CSS/JS extracted to reports/assets/ files; escape-by-construction
                 el builder (subsumes C6); token-validity guard (CI test + `preview` warn); table component family built
                 (adopted v0.2.6 - byte-identical migration of ~117 sites infeasible); summary migrated off inline
@@ -798,9 +831,18 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    DO c16w (v0.2.5 close-out + release; commits/v025/c16w_v025_closeout.md), then v0.2.6 = the BOLD
-                VISUAL epic (ADR-43, own mini-release; adopt the table component + the everything-a-component redesign).
-                c16x DONE 2026-06-05 (component system, ADR-42, G-30 CLOSED, 319 green) - see `current:` + session log.
+next_action:    DO v0.2.6-1b (commits/v026/v026_1b_flat_surfaces.md — the visual half, CSS-rule edits in
+                reports/assets/*.css): re-tune --elev-1/2/3 toward FLAT + switch cards/minis/chips off box-shadow onto a
+                1px --border + radius (reverse ADR-34; update the pinned test_c16d_shadow_and_motion + test_c16d_depth_over_borders
+                IN-COMMIT); APPLY --radius-sm/--radius/--radius-lg over the ~21 hardcoded 2/3/4px literals; :focus-visible
+                ring + reduced-motion-safe :active micro-scale + tabular-nums + --fs-micro eyebrows; @container responsive;
+                and the PRINT-PADDING FIX (1a sign-off flagged: printed content hugs the paper edge / no outer @page margin
+                - pre-existing print.css). Full replacement-gate set (§21.1v) + browser matrix light/dark/print signed off
+                BEFORE goldens; make_golden+make_preview_golden+make_package_golden on the canonical .venv. Then 1c (theme
+                override: [theme] + --accent, ADR-45). NOTE: c16w (standalone v0.2.5 release) CANCELLED per ADR-43 - folded
+                into v0.2.6-6 close-out.
+                [prior] v0.2.6-0 + -1a DONE 2026-06-05 (dev tooling + neutral shadcn token lift; ADR-44/45; 327 green; one commit).
+                [prior] c16x DONE (ADR-42, G-30, 319 green) - see `current:` + session log.
                 [prior] c16y + c16v DONE (2026-06-05) - G-26 + G-29 closed. c16y (ZERO-OUTPUT): NEW
                 bobframes/aggregates.py is the single source of the per-(drop,area,entity) mesh-repeat + shader
                 uses/cost atoms + per-(drop,area) frame count; dashboard._top_* + instancing + shader_hotlist
@@ -934,6 +976,28 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-05 — v0.2.6-1a DONE (commits/v026/v026_1a_token_lift.md; the first pixel-moving commit, landed WITH v0.2.6-0
+  in ONE commit on plan/v0.2.6). Token VALUES only -> shadcn NEUTRAL palette (chroma-0 grayscale chrome; semantic
+  status/draw-class/data-accent hues kept), WCAG-AA --text-3 fix (3.0->4.85:1, proven by test_contrast; the -0 strict-xfail
+  flipped to a normal pass), NEW tokens --radius-sm/--radius/--radius-lg (6/8/10) + --sp-5/--sp-10 (legitimizes the G-30
+  --sp-5; guard typo-test moved to --sp-7) + --fs-micro, h1/h2/h3 type tune, kpi_strip_min 150->170; [radius] added to
+  _tokens._SUBST_SECTIONS. Pinned-byte tests updated IN-COMMIT (test_exact_color_lines bg+accent-primary, test_layout 170).
+  ADR-44 (visual language: flat/reverse-ADR-34 + neutral + radius + type + density) + ADR-45 (theme override) appended;
+  QUALITY_GATES §21.1v added. Gallery rendered + shot light/dark/print (tools/shoot.py) -> signed off ("nice"; print
+  global-padding flagged -> recorded as a v0.2.6-1b must-fix). Goldens refreshed on the canonical .venv (17 HTML + preview
+  + package; palette only -> _pagedata/*.js + golden_parquet/digests.json BYTE-UNCHANGED). 327 passed. NOT yet committed
+  -> will commit. NOTE: --radius/states/flat/print are DEFINED-not-applied here; 1b applies them. current -> v0.2.6-1b.
+- 2026-06-05 — v0.2.6 epic PLANNED+APPROVED + v0.2.6-0 DONE. Verified the redesign brief's claims + the token/CLI/config
+  machinery via 2 read-only workflows (5 Explore agents; key find: a .bobframes.toml config cascade + deep-merge [ADR-25]
+  already exists, so the pip-user accent override rides it, NOT a source edit). Reconciled the 6 open decisions via
+  AskUserQuestion -> 4 locks (FLAT/reverse-ADR-34; NEUTRAL chrome + user-overridable accent via [theme]+--accent;
+  restrained type + summary-only hero numerals; Grafana-dense + --radius 6/8/10). Approved plan
+  ~/.claude/plans/bobframes-v0-2-6-visual-enumerated-bachman.md (commits v0.2.6-0..-6; NEW -1c = theme override).
+  v0.2.6-0 (commits/v026/v026_0_tooling_and_gates.md; dev-only, ZERO production change, NO golden refresh): tools/shoot.py
+  (stdlib CDP screenshot harness, light/dark/print; validated on c:/tmp/perf [9 captures] + -m browser smoke light!=dark),
+  test_contrast.py (dependency-free oklch->WCAG; converter==21.0; --text-3 AA STRICT-xfail flips green at 1a),
+  test_js_coupled_classes.py (rdc-table class<->_compose_js rename guard), `browser` pytest marker. 319->326 passed +1
+  xfail. Canonical env confirmed = repo .venv (py3.12.13/pyarrow21). current -> v0.2.6-1a.
 - 2026-06-05 — c16x DONE (component system; ADR-42; G-30 CLOSED). EXPANDED via 2 planning workflows (4 Explore
   agents mapped every component/inline-CSS/token; 3 Plan agents + a synthesis judge designed it) -> approved plan
   ~/.claude/plans/bobframes-v0-2-5-continue-staged-octopus.md. User decisions: BOLD redesign; v0.2.5 = safe

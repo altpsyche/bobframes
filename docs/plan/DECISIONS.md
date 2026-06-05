@@ -884,3 +884,45 @@ passed as values, never `var()`-referenced, so they need no allowlist. **Consequ
 0.2.6 release (foundation + redesign); the ADR-37 invariants (static / JS-optional / printable /
 Ctrl-F-able / offline / ASCII / deterministic) hold throughout -- only the byte-parity gate is
 intentionally, and gate-replaced, relaxed. Reaffirms ADR-37/34/27/41/42; rides ADR-11/23.
+
+### ADR-44 — v0.2.6 visual language: flat/border-led (reverse ADR-34 depth), neutral chrome, radius scale, hero-on-summary type, Grafana density
+**Context.** ADR-43 authorized the v0.2.6 redesign anchored on shadcn/ui surfaces + Grafana data-density;
+the brief left six concrete look-and-feel decisions open for the implementing session. They were
+reconciled with the user (AskUserQuestion, 2026-06-05) and are recorded here so the visual language is a
+frozen decision, not a per-commit drift. **Decision.** (1) **Flat, border-led elevation** -- cards / minis
+/ reports sit on the page background, separated by a 1px `--border` + a radius, with near-zero shadow.
+This **reverses ADR-34's "depth over borders"** for v0.2.6 (recorded here per ADR-23; flat also prints
+cleaner and matches shadcn's identity). `--elev-1/2/3` are re-tuned toward flat in v0.2.6-1b. (2)
+**Neutral chrome** -- the default palette is chroma-0 grayscale (shadcn): white / `oklch(0.145)`
+backgrounds, hairline borders, a near-black/near-white `--accent-primary`. The **semantic data colors are
+kept** (`--status-*`, the `--c-*` draw classes, the `--accent-data` data accent + heatmap tint) so data
+stays legible on the quiet chrome. (3) **A `--radius` token scale** (`--radius-sm` 6px / `--radius` 8px /
+`--radius-lg` 10px) replaces the hardcoded 2/3/4px literals -- tight on dense minis, generous on hero
+cards. (4) **Restrained type** -- vendored Inter weight <= 600 holds (700 = faux-bold = regression); modest
+`h1/h2/h3` tune + `tabular-nums` + uppercase `--fs-micro` eyebrows (DOM text stays lowercase for Ctrl-F);
+`fs_body`/`fs_mono` unchanged; the ~2.75rem hero numeral is scoped to the summary one-pager KPIs only.
+(5) **Grafana density** -- dashboard / reports / drill pack tight (smaller spacing steps, more KPI cards
+per row, the `rdc-table` row height stays tight); the summary one-pager is the one airy/exec surface.
+**WCAG-AA** is fixed in the process (`--text-3` 3.0->4.85:1), proven by `test_contrast.py`. **Consequence.**
+A single frozen visual language for v0.2.6; ADR-34's depth is superseded for this release (its anti-clutter
+intent survives as the hairline-border restraint). Implemented across v0.2.6-1a (token values) + 1b (flat
+surfaces / radius application / states / responsive / print). Reaffirms ADR-37/43; rides ADR-23.
+
+### ADR-45 — user theme override: pip users tune accent/status/chart hues without editing source
+**Context.** ADR-44 makes the chrome neutral by default; the user requires that a `pip install`-ed user be
+able to brand the reports with their own accent WITHOUT editing the packaged `design_tokens.toml` (which
+lives in site-packages and is lost on upgrade), and tokens are substituted into a chrome module constant
+at import time. **Decision.** Reuse the EXISTING config cascade (ADR-25): a new `[theme]` section in
+`.bobframes.toml` (discovered via `$BOBFRAMES_CONFIG` > `<root>/.bobframes.toml` > `%APPDATA%/...`,
+deep-merged over the bundled token defaults) plus a one-shot `bobframes render --accent <oklch>` flag (the
+top precedence tier: CLI > env > config > default). The overridable surface is the COLOR HUES only
+(`accent_primary`, `accent_data`, the four `status_*`, the `c_*` draw-class palette) -- layout / spacing /
+type / radius stay bundled (a key outside the allowlist warns + is ignored, so a user can never desync
+`ROW_H` / density / parity machinery). A parameterized `chrome.compose_css(theme=None)` re-substitutes for
+an overriding render while `theme is None` returns the existing cached constant **byte-for-byte** (the
+default render stays byte-identical -> goldens green); the `theme` dict threads through the same seam that
+already carries `sink`/`build_ts`/`redact`. The overridden bundle is run through the c16x token guard at
+render (non-fatal warn / hard CI assert on a planted bad override). `package` (a PRESENTATION verb, ADR-40)
+rejects the flags. **Consequence.** Pip users brand reports via config/CLI, not source edits; the full
+per-token override stays deferred to Track B. Implemented in v0.2.6-1c. Extends ADR-25; rides ADR-40/43/44
++ the c16x guard.

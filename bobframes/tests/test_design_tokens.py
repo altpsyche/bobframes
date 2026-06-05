@@ -40,8 +40,10 @@ def test_exact_color_lines_preserved():
     """Spot-check hand-aligned lines, incl. the 3-space alignment, to prove value spacing is verbatim
     (the drill/root pages embed this block UN-minified, so the spacing is parity-significant)."""
     css = chrome._DESIGN_TOKENS
-    assert '  --bg:            light-dark(oklch(97.2% 0.012 80),  oklch(16.4% 0.012 260));' in css
-    assert '  --accent-primary: light-dark(oklch(38.0% 0.020 260), oklch(78.0% 0.015 260));' in css
+    # v0.2.6-1a (ADR-44): chrome neutralized to chroma-0 grayscale (shadcn). bg + accent-primary changed
+    # in-commit; --c-other was already neutral gray (kept) so its pin is unchanged.
+    assert '  --bg:            light-dark(oklch(100% 0 0), oklch(14.5% 0 0));' in css
+    assert '  --accent-primary: light-dark(oklch(20.5% 0 0), oklch(92.2% 0 0));' in css
     assert '  --c-other:       light-dark(oklch(64.0% 0.000 0),   oklch(75.0% 0.000 0));' in css
     assert '  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;' in css  # multi-decl line
 
@@ -54,7 +56,7 @@ def test_layout_literals_preserved():
     assert 'line-height: 18px;' in c
     assert 'width: 80px; height: 6px;' in c
     assert 'min-height: 88px;' in c
-    assert 'minmax(150px, 1fr)' in c
+    assert 'minmax(170px, 1fr)' in c  # v0.2.6-1a: kpi_strip_min 150 -> 170 (hero numeral headroom)
     assert 'minmax(180px, 1fr)' in c
     assert 'grid-template-columns: minmax(240px, 1fr) 2fr 90px;' in c
     assert 'minmax(360px, 1fr)' in c

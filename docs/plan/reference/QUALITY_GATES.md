@@ -664,6 +664,31 @@ c16x is a 5-step sub-sequence; x1-x4 are **zero-output** (`test_parity` + `test_
 The v0.2.6 bold-visual epic (ADR-43) is where the byte-parity gate is intentionally broken and the replacement
 gates (structural component tests + token guard + browser matrix on synthetic + real Perf) become the contract.
 
+## 21.1v v0.2.6 visual redesign: the replacement-gate contract (ADR-43/44/45) -- see [v026 commits](../commits/v026/)
+Byte-parity is **intentionally broken** for the redesign; these gates are the contract (a documented
+replacement, never a silent narrowing -- ADR-23). Every v0.2.6 surface commit holds ALL of:
+- **(a) Data path FROZEN (unconditional).** `test_parquet_parity` GREEN; `golden_parquet/digests.json`
+  + the 27 `_pagedata/*.js` **byte-unchanged** (confirm via `git status` scope); `health.py`/`aggregates.py`
+  import no chrome/base. **Never** `make_parquet_golden`.
+- **(b) Structural + ARIA tests** (golden-independent; mirror `test_report_structure`/`test_components`).
+  Redesign-invariant a11y holds every commit: `<th>` count == `scope="col"`; `aria-sort` + `wireSortHeader(`
+  stay in `_compose_js()`; search inputs keep `aria-label`; delta sign explicit; no DOM reorder. The
+  do-not-rename guard (`test_js_coupled_classes.py`) keeps the rdc-table engine classes co-present in
+  CSS + JS.
+- **(c) Token guard** `chrome.undefined_tokens() == set()` on both bundles; auto-covers new `var(--...)`.
+- **(d) Contrast** (`test_contrast.py`, dependency-free oklch->WCAG): fg AAA, text-2/text-3 AA both themes.
+- **(e) Browser matrix (MANDATORY per changed surface).** `tools/shoot.py` over headless Chrome `file://`,
+  **light/dark/print**, synthetic + real Perf `c:/tmp/perf`; dark/print are invisible to the theme-agnostic
+  golden so they are never skipped. Reviewed + **signed off BEFORE goldens bake**.
+- **(f) Lint/ASCII/determinism** + no new dep/build step (ADR-37 holds).
+**Golden discipline:** order `make_golden` -> `make_preview_golden` -> `make_package_golden` on the
+canonical env (py3.12/pyarrow21; the repo `.venv`), then `git status`/`diff --stat` must match the commit's
+declared surface scope. **v0.2.6-0** (dev-only): built (e)'s harness + (b)'s rename guard + (d)'s converter;
+zero production change, NO refresh. **v0.2.6-1a** (token lift): neutral shadcn palette + WCAG-AA `--text-3`
++ `--radius`/`--sp-5`/`--sp-10`/`--fs-micro` tokens + type tune; pinned-byte tests (`test_exact_color_lines`,
+`test_layout_literals`) updated in-commit; the `--text-3` strict-xfail flipped to a pass; goldens refreshed
+(palette only; `_pagedata`/`digests.json` byte-unchanged); 327 green.
+
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,
 dropped column, dtype slip). Skip `_`-prefixed (`_catalog`, `_global_entities`). Runs on synthetic +

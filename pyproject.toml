@@ -65,4 +65,8 @@ markers = [
   # the snapshot is byte-identical ONLY on the canonical CI env (py3.12 / pyarrow 21; ADR-11, D-8).
   # CI runs `-m golden_env` on that one cell and `-m "not golden_env"` on every other cell.
   "golden_env: byte-identical HTML golden comparison; canonical-env-only (ADR-11).",
+  # Headless-Chrome screenshot matrix for the v0.2.6 visual redesign (ADR-43 gate d). Opt-in: needs a
+  # local Chrome + a rendered tree; never runs in the default suite. Drives tools/shoot.py over CDP
+  # (light/dark/print). Dev-only; the captures are review artifacts under c:/tmp, never goldens.
+  "browser: headless-Chrome screenshot matrix; opt-in, needs Chrome (v0.2.6 gate d).",
 ]
