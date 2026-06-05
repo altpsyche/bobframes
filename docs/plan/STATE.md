@@ -8,40 +8,56 @@
 ```
 active_release: v0.2.5    (v0.1 COMPLETE - bobframes 0.1.0 live on PyPI 2026-05-31; v0.2.0 bump committed
                 867dcc5 on plan/v0.2.5)
-current:        c16v_multicapture_normalize    (status: not-started. c16u DONE 2026-06-04 - `package --redact`
-                produces a bundle safe to share externally (ADR-40, rides ADR-41/37/23). Device/host provenance
-                (gpu/driver/cpu/os + renderdoccmd/qrenderdoc + the drill's gl_renderer reuse of .device-strip +
-                trend_table's in-body per-drop chips) re-emitted as `redacted` at the RENDER seam:
-                chrome.provenance_strip(host_info, tool_versions, *, redact=False) gains a redact mode, threaded
-                `redact` through orchestrator/the 8 build()+dashboard+per-run/ab.render_pair/render_drop (same
-                shape as c16t sink/build_ts; all DEFAULTED -> default render BYTE-IDENTICAL: test_parity +
-                test_parquet_parity UNCHANGED, NO refresh, shared/ golden byte-unchanged). WHOLE-TREE
-                drop-sidecars (the planning design fork, user-chosen): the bundled raw _data ALSO leaks device
-                values, so a redacted bundle EXCLUDES _manifest.json + frame_metadata.jsonl wholesale (no page
-                links them; robust to schema growth, unlike field-scrub). --redact FORCES a re-render (structural
-                transform) -> --inline --redact re-renders at INLINE+redact (no longer a fast copy) + pinned
-                build_ts (its "built" line shows the run date - recorded divergence). _render_shared generalized
-                to _render_tree(sink,build_ts,redact); (REF,redact=False) byte-identical to c16t. Standalone
-                summary stays self-contained INLINE + redacted (shared-mode dedicated INLINE render done AFTER
-                the REF copy is zipped). ABS-PATH strip DRIVE-LETTER ONLY (build-time correction, recorded §21.1s
-                + c16u doc + FINDINGS G-31): the doc's "+ UNC" was a FALSE POSITIVE - JSON-escaping makes a
-                relative `shader_src\\NNNN.glsl` indistinguishable from a literal UNC, so a blanket UNC match
-                mangled real shader refs; the goal demands no false positives, so _ABS_PATH = `[A-Za-z]:\\...`
-                only; UNC + forward-slash + binary-parquet path columns = recorded limitations. `strip` (default)
-                rewrites tokens across all bundled text; `fail` (CI) scans the rendered surface (HTML+_pagedata),
-                raises BEFORE the zip. argparse `--redact` + `--redact-paths={strip,fail}` (fail without --redact
-                errors; NO --format ever). NEW golden_package/{redacted,shared_redacted}/ via make_package_golden.
-                262 -> 277 green (+15). Real-Perf VERIFIED: 0 device-value/abs-path/sidecar residuals across 967
-                text files, shader refs preserved, fail-mode clean (exit 0) + raises on planted leak; browser
-                file://: a report shows the redacted strip + styled tables, a drill builds 493 VTable rows (JS
-                intact) + its gl_renderer strip reads redacted. §21.1s c16u as-built + FINDINGS G-31 recorded;
-                ADR-40 NOT re-appended (frozen). NOW DO c16v (commits/v025/c16v_multicapture_normalize.md, G-29):
-                normalize instancing repeat-count + shader cost PER FRAME (/ ok_captures) in
-                instancing_opportunities + shader_hotlist + dashboard._top_meshes/_top_shaders + health.verdict;
-                golden-neutral on the 1-capture fixtures (/1 no-op -> ALL goldens byte-unchanged), proven by a
-                CONSTRUCTED multi-capture unit test (ADR-23). NOTE: c16p (v0.2 release) COMPLETE - PyPI bobframes
-                0.2.0 LIVE; tag v0.2.0 -> 765a4db on main; Node20 CI-actions bump done.)
-last_session:   2026-06-04 — c16u DONE (`package --redact`; ADR-40, rides ADR-41/37/23). Device/host
+current:        c16x_component_system    (status: not-started. c16y + c16v DONE 2026-06-05 - G-26 + G-29 closed,
+                the report-correctness spine. A code-review of the c16v blast radius produced a SEQUENCED
+                review-fix roadmap (user-approved): G-26 FIRST (so normalization lands once), then c16v, then a
+                v0.3 quality track [C3 reliability / C4 arrow-cache / C5 config-ify / C6 element-builder] + a
+                v0.3.x designer-tooling epic [C7-C10] - see the approved plan file.
+                c16y (G-26, ZERO-OUTPUT): NEW bobframes/aggregates.py (pure data layer, peer of health.py) is the
+                SINGLE source of the per-(drop,area,entity) mesh-repeat + shader uses/cost atoms + the
+                per-(drop,area) frame count. The formerly-triplicated count logic in dashboard._top_meshes/
+                _top_meshes_by_area + instancing_opportunities + shader_hotlist + _top_shaders/_top_shaders_by_area
+                now derives from it (mirrors the cache readers EXACTLY -> byte-identical; both shader cost formulas
+                exposed as atoms - cost_sum for the dashboard, uses+cplx for shader_hotlist). ALL goldens
+                BYTE-UNCHANGED, NO refresh.
+                c16v (G-29): instancing repeat + shader cost read PER FRAME via NEW base.per_frame(total,frames)
+                (returns total unchanged when frames<=1 -> 1-capture data byte-identical; heatmap emits raw value
+                so NEVER float-accumulate). Applied PER AREA then summed, at the aggregates seam, so the reports +
+                the verdict (mesh_repeat via _top_meshes_by_area) can't disagree. health.py/summary.py UNCHANGED
+                (inherit). KEY AS-BUILT (ADR-23, decided with user 'designed perfectly'): the divisor is the
+                DATA-derived distinct-capture count per (drop,area), NOT ok_captures. The committed synthetic
+                declares ok_captures=5 (manifest capture_status) but its draws/shaders populate ONLY capture='1' -
+                so /ok_captures would BREAK parity (x5) AND be wrong (1 real frame); the data-derived count is
+                golden-neutral (/1 on the synthetic) AND the correct denominator (can't average over frames that
+                exported no entity rows). The plan-doc's '/ ok_captures' was the wrong source - corrected.
+                277 -> 285 green (+8: tests/test_aggregates.py +3, tests/test_multicapture_normalize.py +5 incl.
+                the ok_captures=5/data=1 skew case proving the divisor). test_parity + test_parquet_parity
+                BYTE-UNCHANGED, NO refresh. config comment + config.py + module docstrings note per-frame; rendered
+                tooltips UNCHANGED (golden-safe, accurate for 1-capture display). FINDINGS G-26 + G-29 ticked;
+                QUALITY_GATES §21.1t reconciled; NEW commits/v025/c16y_aggregates_extraction.md + c16v as-built.
+                NOW DO c16x (commits/v025/c16x_component_system.md, ADR-42, G-30): server-side component system +
+                token-validity guard + preview gallery; migrate summary.py off its inline <style> (visual parity).
+                NOTE: c16p (v0.2 release) COMPLETE - PyPI bobframes 0.2.0 LIVE; tag v0.2.0 -> 765a4db on main.
+                GIT: c16y + c16v are in the WORKING TREE, NOT yet committed (user hasn't asked to commit).)
+last_session:   2026-06-05 — c16y + c16v DONE (G-26 + G-29; the report-correctness spine). A code-review of the
+                c16v blast radius produced a user-approved SEQUENCED review-fix roadmap (G-26 first; then c16v;
+                then a v0.3 quality track C3-C6 + a v0.3.x designer-tooling epic C7-C10 - see the approved plan
+                file). c16y (ZERO-OUTPUT, G-26): NEW bobframes/aggregates.py (pure, peer of health.py) is the
+                single source of the per-(drop,area,entity) mesh-repeat + shader uses/cost atoms + per-(drop,area)
+                frame count; dashboard._top_* + instancing_opportunities + shader_hotlist all consume it (mirrors
+                the cache readers exactly -> byte-identical; both shader cost formulas exposed). c16v (G-29):
+                instancing repeat + shader cost PER FRAME via NEW base.per_frame (no-op when frames<=1, so
+                1-capture byte-identical; never float-accumulate); applied PER AREA then summed, at the aggregates
+                seam, so reports + verdict can't disagree. KEY AS-BUILT (ADR-23, user 'designed perfectly'): the
+                divisor is the DATA-derived distinct-capture count per (drop,area), NOT ok_captures - the synthetic
+                declares ok_captures=5 but its draws/shaders are capture-1-only, so /ok_captures would break parity
+                AND be wrong; data-derived count is golden-neutral AND correct. 277 -> 285 green (+8:
+                test_aggregates +3, test_multicapture_normalize +5 incl the ok_captures=5/data=1 skew proof);
+                test_parity + test_parquet_parity BYTE-UNCHANGED, NO refresh. config + docstrings note per-frame;
+                tooltips unchanged (golden-safe). FINDINGS G-26+G-29 ticked; §21.1t reconciled; NEW
+                c16y_aggregates_extraction.md + c16v as-built. WORKING TREE (NOT committed; user hasn't asked).
+                current -> c16x.
+former_last_c16u:   2026-06-04 — c16u DONE (`package --redact`; ADR-40, rides ADR-41/37/23). Device/host
                 provenance scrubbed at the RENDER seam (provenance_strip gains `redact`, threaded like c16t's
                 sink/build_ts through orchestrator/8 build()+dashboard+per-run/ab.render_pair/render_drop +
                 trend_table in-body chips; all DEFAULTED -> default render BYTE-IDENTICAL, test_parity +
@@ -743,21 +759,23 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    c16u DONE (2026-06-04) - `package --redact` (ADR-40): device/host provenance re-emitted as
-                `redacted` at the RENDER seam (provenance_strip gains `redact`, threaded like c16t's sink/build_ts
-                through orchestrator/8 build()+dashboard+per-run/ab.render_pair/render_drop + trend_table chips;
-                all DEFAULTED -> default render BYTE-IDENTICAL, NO golden refresh, shared/ golden byte-unchanged).
-                Whole-tree drop-sidecars: the redacted bundle EXCLUDES _manifest.json + frame_metadata.jsonl.
-                --redact FORCES a re-render (--inline --redact re-renders at INLINE+redact + pinned build_ts);
-                _render_shared -> _render_tree(sink,build_ts,redact). Abs-path strip DRIVE-LETTER ONLY (UNC was a
-                JSON-escape false positive on relative shader refs - recorded §21.1s/G-31; UNC+fwd-slash+binary
-                parquet = limits). `strip` default / `fail` CI-asserts the rendered surface. NEW
-                golden_package/{redacted,shared_redacted}/. 262 -> 277 green; real-Perf + browser file:// verified.
-                NOW DO c16v (commits/v025/c16v_multicapture_normalize.md, G-29): normalize instancing repeat-count
-                + shader cost PER FRAME (/ ok_captures) in instancing_opportunities + shader_hotlist +
-                dashboard._top_meshes/_top_shaders + health.verdict; golden-neutral on 1-capture fixtures (/1
-                no-op -> goldens byte-unchanged), proven by a CONSTRUCTED multi-capture unit test (ADR-23).
-                Spine: c16s ✓ -> c16t ✓ -> c16u ✓ -> c16v -> c16x (component system, ADR-42) -> c16w close-out.
+next_action:    c16y + c16v DONE (2026-06-05) - G-26 + G-29 closed. c16y (ZERO-OUTPUT): NEW
+                bobframes/aggregates.py is the single source of the per-(drop,area,entity) mesh-repeat + shader
+                uses/cost atoms + per-(drop,area) frame count; dashboard._top_* + instancing + shader_hotlist
+                consume it, byte-identical. c16v: instancing repeat + shader cost PER FRAME via NEW base.per_frame
+                at the aggregates seam (per-area, summed). AS-BUILT (ADR-23): divisor = DATA-derived distinct
+                captures per (drop,area), NOT ok_captures (the synthetic declares ok_captures=5 but its
+                draws/shaders are capture-1-only -> /ok_captures would break parity + be wrong). 277 -> 285 green,
+                test_parity + test_parquet_parity BYTE-UNCHANGED, NO refresh. FINDINGS G-26+G-29 ticked, §21.1t
+                reconciled, c16y doc + c16v as-built written. c16y + c16v are in the WORKING TREE, NOT committed.
+                NOW DO c16x (commits/v025/c16x_component_system.md, ADR-42, G-30): server-side component system +
+                undefined-token guard + preview gallery; migrate summary.py off its inline <style> (visual
+                parity, golden refresh expected for summary.html only). THEN c16w (v0.2.5 close-out + release).
+                THEN the v0.3 review-fix track (see the approved plan file): C3 reliability (surface swallowed
+                read errors; catalog replay_status-vs-row-count cross-check; dashboard cache-miss fallback - note
+                c16y already gave the dashboard helpers a live-scan fallback), C4 arrow-native cache, C5
+                config-ify magic numbers, C6 HTML element builder; THEN the C7-C10 designer-tooling epic.
+                Spine: c16u ✓ -> c16y ✓ -> c16v ✓ -> c16x -> c16w close-out.
                 THEN c20 (--json output, v0.3): open commits/v03/c20_json_output.md and do exactly that one
                 commit. NOTE for c27/c35: the c09 classifier is already STATE-CAPABLE (when{} over any draw
                 column), so the state-first generic preset (D-10) is a preset not a rewrite; c35 removes the
@@ -874,6 +892,29 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-05 — c16y + c16v DONE (G-26 + G-29; report-correctness spine). A code-review of the c16v blast radius
+  produced a user-approved SEQUENCED review-fix roadmap (G-26 first so normalization lands once; then c16v; then
+  v0.3 quality C3-C6 + designer-tooling epic C7-C10 — in the approved plan file). c16y (ZERO-OUTPUT): NEW
+  bobframes/aggregates.py (pure data layer, peer of health.py) = single source of the per-(drop,area,entity)
+  mesh-repeat + shader uses/cost atoms + per-(drop,area) frame count; dashboard._top_meshes/_top_meshes_by_area/
+  _top_shaders/_top_shaders_by_area + instancing_opportunities + shader_hotlist all derive from it (mirrors the
+  cache readers exactly -> byte-identical; both shader cost formulas exposed: cost_sum for the dashboard,
+  uses+cplx for shader_hotlist; the dashboard helpers also gained a live-scan cache-miss fallback). c16v (G-29):
+  instancing repeat + shader cost read PER FRAME via NEW base.per_frame(total,frames) (returns total unchanged
+  when frames<=1 -> 1-capture byte-identical; heatmap emits the raw value so NEVER float-accumulate); applied PER
+  AREA then summed, at the aggregates seam, so the reports + the verdict (mesh_repeat via _top_meshes_by_area)
+  can't disagree; health.py/summary.py UNCHANGED. KEY AS-BUILT (ADR-23, decided with user "designed perfectly"):
+  the divisor is the DATA-derived distinct-capture count per (drop,area), NOT ok_captures — the committed
+  synthetic declares ok_captures=5 (manifest capture_status) but its draws/shaders populate ONLY capture='1', so
+  /ok_captures would BREAK parity (x5) AND be wrong (1 real frame); the data-derived count is golden-neutral (/1)
+  AND the correct denominator. The plan-doc's "/ ok_captures" was the wrong source — corrected. 277 -> 285 green
+  (+8: tests/test_aggregates.py +3 [atoms], tests/test_multicapture_normalize.py +5 incl the ok_captures=5/data=1
+  skew proof + repeat 3-cap==1 / 1-cap==3 / cost 60-not-180 / complexity unchanged / reports render per-frame).
+  test_parity + test_parquet_parity BYTE-UNCHANGED, NO refresh. config comment + config.py + module docstrings
+  note per-frame; rendered tooltips UNCHANGED (golden-safe, accurate for 1-capture display). FINDINGS G-26 + G-29
+  ticked; QUALITY_GATES §21.1t reconciled to the data-derived source; NEW commits/v025/c16y_aggregates_extraction.md
+  + c16v as-built section. c16y + c16v are in the WORKING TREE, NOT committed (user hasn't asked to commit).
+  current -> c16x.
 - 2026-06-04 — c16u DONE (`package --redact`; ADR-40, rides ADR-41/37/23). Device/host provenance scrubbed
   at the RENDER seam (provenance_strip `redact` mode threaded like c16t's sink/build_ts through orchestrator/
   8 build()+dashboard+per-run/ab.render_pair/render_drop + trend_table in-body chips; all DEFAULTED -> default

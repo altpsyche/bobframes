@@ -129,7 +129,7 @@ class ReportCfg:                      # c16 — report-presentation thresholds (
     shader_complexity_high: float = 60.0
     overdraw_reject_warn_pct: float = 40.0
     overdraw_reject_alarm_pct: float = 70.0
-    instancing_repeat_min: int = 4
+    instancing_repeat_min: int = 4    # c16v — min mesh repeat PER FRAME (repeat + shader cost are per-frame rates)
     gpu_regression_pct: float = 10.0
     max_prerendered_runs: int = 10    # c16f — cap on pre-rendered older-run pages (per-run UX)
 

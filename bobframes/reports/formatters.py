@@ -24,6 +24,18 @@ def _chrome_scrub() -> re.Pattern:
     return _chrome_scrub_compiled(config.get_config().formatting.chrome_scrub_chars)
 
 
+def per_frame(total, frames):
+    """Per-frame rate ``total / frames``, the c16v multi-capture normalization (G-29).
+
+    ``frames <= 1`` (or None) returns ``total`` UNCHANGED - the SAME object, same type - so on
+    1-capture-per-frame data every formatter/heatmap renders byte-for-byte the pre-c16v counts
+    (golden-neutral by construction; ``heatmap_cell`` emits the raw value via ``h()``, where a float
+    ``6.0`` would serialize ``"6.0"`` != int ``"6"``). Only ``frames > 1`` divides. Callers keep RAW
+    integer counters and divide at read-time via this one helper - never float-accumulate.
+    """
+    return total if (frames is None or frames <= 1) else total / frames
+
+
 def fmt_int(v) -> str:
     if v is None or v == '':
         return ''

@@ -48,5 +48,41 @@ late ONLY because it is golden-neutral on current 1-capture data - conceptually 
 - `instancing_repeat_min` per-frame semantic documented; G-29 ticked (resolved-by c16v).
 - QUALITY_GATES §21.1t added.
 
+## As-built (ADR-23 — deviations from the plan above, with rationale)
+
+1. **Rides c16y (G-26).** Normalization lands at the ONE `aggregates.py` seam (extracted in c16y, the
+   precursor), not patched into 3+ inline loops. `base.per_frame(total, frames)` (new, in
+   `formatters.py`, re-exported via `base`) is the single divide: it returns `total` UNCHANGED when
+   `frames<=1` (so 1-capture data is byte-identical — `heatmap_cell` emits the raw value via `h()`,
+   where a float `6.0` would serialize `"6.0"` != int `"6"`; we keep RAW integer counters and divide at
+   read-time, never float-accumulate). Applied PER AREA (each area's count ÷ that area's frame count)
+   then summed across areas, so cross-area displays stay correct and the verdict (reading
+   `_top_meshes_by_area`) can't disagree with the instancing report.
+
+2. **Frame-count source = the DATA, not `ok_captures` (the plan's stated source was wrong).** Verified
+   the committed synthetic fixture declares `ok_captures=5` (manifest `capture_status`, 5 ok) while its
+   `draws.parquet`/`shaders.parquet` populate ONLY `capture='1'`. So `/ok_captures` would (a) divide
+   every golden value by 5 (breaking the "no refresh" constraint) AND (b) be semantically wrong (1 real
+   frame of draws shown as 1/5). The denominator is instead the count of **distinct `capture` values
+   PRESENT in that drop+area's entity data** (`DrawAgg.frames`/`ShaderAgg.frames`, guarded `>=1`). On
+   consistent data this equals `ok_captures`; on the skewed synthetic it is 1 → golden-neutral. It is
+   also strictly more correct (can't average over frames that exported no entity rows). Decided with the
+   user ("designed perfectly"); recorded in FINDINGS G-29 + QUALITY_GATES §21.1t.
+
+3. **Batching repeat** (shares the `instancing_repeat_min` threshold) is normalized by the current
+   run's per-area frame count (max over its areas — exact on uniform/single-area drops, a documented
+   cross-area approximation otherwise).
+
+4. **Rendered tooltips/captions UNCHANGED** (e.g. "cost = complexity x total uses"). Editing them would
+   change the golden; they stay accurate for the 1-capture display. The per-frame semantic is documented
+   in the config comment (`instancing_repeat_min`) + `config.py` + module docstrings. A future
+   golden-refreshing commit may refine the copy.
+
+5. **Proof:** `tests/test_multicapture_normalize.py` — repeat 3-cap==1 / 1-cap==3 / divisor=data-frames
+   (the `ok_captures=5`, data=1-capture skew case → repeat==3 not 3/5) / cost normalized (60 not 180) /
+   complexity unchanged / instancing+shader reports render per-frame. Goldens BYTE-UNCHANGED (285 green,
+   NO refresh).
+
 ## Closes
-G-29 (multi-capture repeat/cost inflation). Next: c16w (v0.2.5 close-out + release).
+G-29 (multi-capture repeat/cost inflation). Next: **c16x** (component system, ADR-42, G-30) — then the
+c16w close-out (trust STATE's spine; this doc's earlier "Next: c16w" predated the c16x insertion).

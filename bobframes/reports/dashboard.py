@@ -33,7 +33,7 @@ def _top_meshes(root: str, current, n: int = 3) -> list:
     cls_by_mesh: dict = {}
     pass_by_mesh: dict = {}
     for (dk, area, mh), c in da.count.items():
-        counts[mh] += c
+        counts[mh] += base.per_frame(c, da.frames(dk, area))   # c16v: per frame, summed across areas
         indices[mh].extend(da.num_indices[(dk, area, mh)])
         cls_by_mesh.setdefault(mh, da.draw_class[(dk, area, mh)])
         pass_by_mesh.setdefault(mh, da.pass_norm[(dk, area, mh)])
@@ -84,7 +84,7 @@ def _top_shaders(root: str, current, n: int = 3) -> list:
     cplx: dict = {}
     stype: dict = {}
     for (dk, area, sk), cs in sa.cost_sum.items():
-        cost[sk] += cs
+        cost[sk] += base.per_frame(cs, sa.frames(dk, area))    # c16v: cost per frame (complexity unchanged)
         cplx[sk] = max(cplx.get(sk, 0), sa.cplx[(dk, area, sk)])
         stype[sk] = sa.stype[(dk, area, sk)]
     ranked = sorted(cost.items(), key=lambda kv: kv[1], reverse=True)[:n]
@@ -113,7 +113,7 @@ def _top_shaders_by_area(root: str, current, n: int = 999) -> list:
     stype: dict = {}
     for (dk, area, sk), cs in sa.cost_sum.items():
         key = (area, sk)
-        cost[key] += cs
+        cost[key] += base.per_frame(cs, sa.frames(dk, area))   # c16v: cost per frame
         cplx[key] = max(cplx.get(key, 0.0), sa.cplx[(dk, area, sk)])
         stype[key] = sa.stype[(dk, area, sk)]
     rows = [(area, f'{stype[(area, sk)][:4]}-cplx-{int(cval)}', cval, cost[(area, sk)])
@@ -197,7 +197,7 @@ def _top_meshes_by_area(root: str, current, n: int = 999) -> list:
     da = _agg.draw_aggregates(root, [current])
     counts: Counter = Counter()
     for (dk, area, mh), c in da.count.items():
-        counts[(area, mh)] += c
+        counts[(area, mh)] += base.per_frame(c, da.frames(dk, area))   # c16v: repeat per frame
     out = []
     for (area, mh), c in counts.most_common(n):
         k = (current.key, area, mh)

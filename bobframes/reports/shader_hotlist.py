@@ -134,7 +134,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
     _sa = _agg.shader_aggregates(root, drops, stage=stage)
     _uses_by_key: dict = defaultdict(Counter)
     for (dk, area, sk2), u in _sa.uses.items():
-        _uses_by_key[sk2][dk] += u
+        _uses_by_key[sk2][dk] += base.per_frame(u, _sa.frames(dk, area))   # c16v: uses per frame, per-area summed
     for sk, p in per_key.items():
         p['uses_by_drop'] = _uses_by_key.get(sk, Counter())
 

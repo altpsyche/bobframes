@@ -587,17 +587,44 @@ untouched) + `provenance_strip(redact=True)`. Render UNTOUCHED (redact defaults 
 green (+15). Real Perf `--redact`: 1306 abs-path tokens stripped, sidecars excluded, `grep` of the extracted
 tree for device values + drive-letter paths is clean.
 
-## 21.1t Multi-capture per-frame normalization (c16v, G-29) -- see [c16v](../commits/v025/c16v_multicapture_normalize.md)
-Latent-correctness fix: instancing repeat-count + shader cost/uses are normalized PER FRAME
-(`/ ok_captures`) in `instancing_opportunities` + `shader_hotlist` + `dashboard._top_meshes`/`_top_shaders`
-+ `health.verdict`. **Golden-neutral on current data:** the synthetic + real-Perf fixtures are 1
-capture/drop, so `/1` is a no-op -> ALL HTML + parquet goldens BYTE-UNCHANGED (`pytest tests/test_parity.py`
-+ `test_parquet_parity` green with NO refresh; this gate's whole point is that parity stays green by
-construction). The behavior is proven by a CONSTRUCTED multi-capture unit test (a temp tree / in-test
-parquet with 3 captures of one area: a mesh drawn once/frame asserts `repeat-per-frame == 1` not `3`; a
-shader used once/frame asserts cost normalized) plus a 1-capture no-op assertion. The `instancing_repeat_min`
-threshold + the shader cost now carry PER-FRAME semantics (documented in the report + config comment,
-ADR-23). Runs on the full matrix (no golden dependency).
+## 21.1t Single-source aggregation + multi-capture per-frame normalization (c16y + c16v, G-26 + G-29) -- see [c16v](../commits/v025/c16v_multicapture_normalize.md)
+Two sequenced commits (G-26 first so normalization lands in ONE place):
+
+**c16y (G-26, ZERO-OUTPUT):** the mesh repeat-count + shader uses/cost atoms (formerly triplicated
+across `dashboard._top_meshes`/`_top_meshes_by_area` + `instancing_opportunities` + `shader_hotlist` +
+`_top_shaders`/`_top_shaders_by_area`, kept in sync by convention) are extracted to a single
+presentation-independent `bobframes/aggregates.py` (peer of `health.py`), keyed per `(drop_key, area,
+entity)`, plus the per-`(drop_key, area)` frame count. Both shader cost formulas are exposed as atoms
+(`cost_sum` = sum-over-rows(cplx*uses) for the dashboard; `uses`+`cplx` for shader_hotlist's
+cplx*sum-uses) so each consumer stays byte-identical. ALL goldens BYTE-UNCHANGED, NO refresh.
+
+**c16v (G-29):** instancing repeat-count + shader cost/uses read PER FRAME via the single helper
+`base.per_frame(total, frames)` (returns `total` unchanged when `frames<=1`, so 1-capture data is a
+no-op; never float-accumulate — `heatmap_cell` emits the raw value, where a float `6.0` would serialize
+`"6.0"`). Normalization is PER AREA (divide each area's count by that area's frame count) then summed
+across areas, so cross-area displays stay correct and the verdict (which reads `_top_meshes_by_area`)
+can never disagree with the instancing report.
+
+**Frame-count source = the DATA, not `ok_captures` (as-built correction, ADR-23).** The denominator is
+the count of distinct `capture` values actually PRESENT in that drop+area's entity data (draws for
+meshes, shaders for shaders), guarded `>=1`. On consistent data this equals `ok_captures` =
+`frame_totals` rows; but the committed synthetic fixture declares `ok_captures=5` (manifest
+`capture_status`) while its draws/shaders populate only `capture='1'` — so `/ok_captures` would (a)
+divide every golden value by 5 (breaking parity) and (b) be semantically wrong (1 real frame of draws).
+The data-derived count is both golden-neutral (`/1` on the synthetic) and the correct denominator (it
+can't average over frames that exported no entity rows). The plan-doc's `/ ok_captures` was the wrong
+source; this gate records the data-derived choice.
+
+**Golden-neutral on current data:** the synthetic draws/shaders are single-capture, so `per_frame` is a
+no-op -> ALL HTML + parquet goldens BYTE-UNCHANGED (`pytest tests/test_parity.py` + `test_parquet_parity`
+green, NO refresh; if a golden moves it's a normalization bug, not a refresh trigger). Proven by
+CONSTRUCTED multi-capture tests (`tests/test_aggregates.py` + `tests/test_multicapture_normalize.py`): a
+mesh drawn once/frame across 3 captures -> `repeat-per-frame == 1` (not 3); a shader used twice/frame ->
+cost normalized (60 not 180), complexity unchanged; a 1-capture mesh drawn 3x -> repeat `== 3` (divisor
+is the FRAME count, not the draw count); and the synthetic-skew case (manifest 5 ok, data 1 capture) ->
+repeat `== 3` (divided by the 1 data-frame, NOT `ok_captures=5`). `instancing_repeat_min` + shader cost
+now carry PER-FRAME semantics (config comment + module docstrings; rendered tooltips unchanged to keep
+the golden, accurate for 1-capture display). Runs on the full matrix (no golden dependency).
 
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,

@@ -132,7 +132,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
     _da = _agg.draw_aggregates(root, drops)
     _repeat_by_mesh: dict = defaultdict(Counter)
     for (dk, area, mh2), c in _da.count.items():
-        _repeat_by_mesh[mh2][dk] += c
+        _repeat_by_mesh[mh2][dk] += base.per_frame(c, _da.frames(dk, area))   # c16v: per frame, per-area summed
     for mh, m in per_mesh.items():
         m['repeat_by_drop'] = _repeat_by_mesh.get(mh, Counter())
 
@@ -331,7 +331,13 @@ def build(root: str, *, drops: list | None = None, ab=None,
                          + '</rdc-sticky-h2>')
 
     # c16c fill-or-hide: only emit the batching section when there is real content - no bare heading.
-    top_batch = [(k, v) for k, v in batching_groups.items() if v >= rcfg.instancing_repeat_min]
+    # c16v: the batching repeat is per frame too (it shares the instancing_repeat_min threshold). The
+    # count is current-run + cross-area, so the denominator is the current run's per-area frame count
+    # (max over its areas; exact on a uniform/single-area drop, a documented approximation otherwise -
+    # ADR-23). On 1-capture data it is /1, byte-identical.
+    _cur_frames = max((len(v) for (dk, a), v in _da.captures.items() if dk == ck), default=1)
+    top_batch = [(k, base.per_frame(v, _cur_frames)) for k, v in batching_groups.items()
+                 if base.per_frame(v, _cur_frames) >= rcfg.instancing_repeat_min]
     top_batch.sort(key=lambda kv: kv[1], reverse=True)
     if top_batch:
         sec2 = ['<div class="table-wrap"><rdc-table data-mode="static" data-table="instancing_batching">',
