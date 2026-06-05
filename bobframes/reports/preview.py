@@ -151,4 +151,13 @@ def build(root: str) -> str:
     with open(out_path, 'w', encoding='utf-8') as f:
         f.write(html)
     base._lint_or_raise(out_path)
+    # c16x-3 (ADR-42, G-30): warn (non-fatal) in the designer's own loop if a token reference is
+    # undefined - the typo that silently zeroed the chip padding. CI hard-gates this (test_token_guard);
+    # here it is a heads-up, never a crash (a styling typo must not break `preview`/`render`).
+    undefined = base.undefined_tokens()
+    if undefined:
+        import sys
+        print('warning: design tokens referenced but not defined: '
+              + ', '.join('--' + t for t in sorted(undefined))
+              + ' (typo? add to design_tokens.toml or define --NAME in a CSS rule)', file=sys.stderr)
     return out_path
