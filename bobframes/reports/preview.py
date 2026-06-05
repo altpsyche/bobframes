@@ -23,7 +23,7 @@ _SWATCH_GROUPS = [
     ('accents', ['accent-primary', 'accent-data']),
     ('status', ['status-alarm', 'status-warn', 'status-ok', 'status-info']),
 ]
-_TYPE_STEPS = ['fs-display', 'fs-h1', 'fs-h2', 'fs-h3', 'fs-body', 'fs-mono', 'fs-small']
+_TYPE_STEPS = ['fs-display', 'fs-hero', 'fs-h1', 'fs-h2', 'fs-h3', 'fs-body', 'fs-mono', 'fs-small']
 _SPACE_STEPS = ['sp-1', 'sp-2', 'sp-3', 'sp-4', 'sp-6', 'sp-8', 'sp-12']
 
 

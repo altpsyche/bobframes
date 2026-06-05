@@ -703,6 +703,27 @@ hugs the paper edge (the 1a regression). Pinned `test_c16d_shadow_and_motion_tok
 `test_design_tokens.py`; goldens refreshed (HTML/preview/package); `_pagedata`/`digests.json`/`golden_parquet`
 byte-unchanged (0 drift); browser matrix light/dark/print synthetic + real Perf signed off BEFORE bake;
 327 green; smoke lint-clean. No new ADR (rides ADR-44, which already declared the ADR-34 reversal).
+**v0.2.6-1c** (user theme override; ADR-45): byte-neutral -- the `theme=None` path is byte-identical, so
+`test_parity`/`test_preview`/package goldens stayed GREEN with NO refresh (0 drift). NEW `config.ThemeCfg` +
+the 15-key color allowlist + `chrome.compose_css(theme=None)` (re-substitutes ONLY the `:root` block) threaded
+as a 4th optional param on the sink/build_ts/redact seam; `--accent`/`--accent-data`; `export-tokens
+--theme-template`; render-time guard; `package` rejects the flags. `test_theme.py` (8) + `test_config` (5);
+327 -> 340 green.
+**v0.2.6-2** (summary one-pager: hero numerals + componentization): the FIRST surface commit. The 4 summary
+KPI values render at a NEW `[type]` `fs_hero = '2.75rem'` token, scoped `[data-page-kind="summary"] .kpi-chip
+.kpi-value { font-size: var(--fs-hero); }` (dashboard/reports carry no `.kpi-chip` -> unaffected; weight stays
+<=600, `test_fonts` + its pinned `font:` shorthand untouched). The by-area table adopted `chrome.static_table`
+and the summary-local leaves (`_change_list`/`_change_line`/`_pct_pill`/the kpi-strip wrapper) rolled onto `el`
+-- **byte-NEUTRAL** (the c16x parity contract: `static_table`'s `<th class="num" scope="col">` order + the
+`<caption>` position match the hand-built table). PROVEN: a fresh render was byte-identical to the pre-bake
+golden on all 17 pages OUTSIDE `<style>`; the ONLY style delta is `--fs-hero:2.75rem;` (:root) + the one scoped
+rule. Package shape corroborates -- `redacted` (inline) HTML refreshed, but `shared`/`shared_redacted` changed
+only in `_assets/{report,catalog}.css` (HTML links external CSS -> bodies byte-unchanged). `_pagedata`/
+`digests.json`/`golden_parquet` BYTE-UNCHANGED (NO `make_parquet_golden`). NEW
+`test_design_tokens.test_v026_2_summary_hero_numeral`; `test_summary` structural asserts pass unchanged;
+`preview._TYPE_STEPS` gains `fs-hero` (gallery documents it). Goldens refreshed on the `.venv` (17 HTML +
+preview + package); 340 green (`-m "not browser"`); browser matrix light/dark/print synthetic + real Perf
+SIGNED OFF before bake. No new ADR (rides ADR-44 + ADR-42); FINDINGS G-32 (el long-tail) opened.
 
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,

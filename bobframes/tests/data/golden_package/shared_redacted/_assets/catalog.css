@@ -8,6 +8,7 @@
   --radius-sm: 6px;  --radius: 8px;  --radius-lg: 10px;
 
   --fs-display: 2.25rem;
+  --fs-hero: 2.75rem;
   --fs-h1: 1.625rem;  --fs-h2: 1.1875rem;  --fs-h3: 0.9375rem;
   --fs-body: 14px;  --fs-mono: 13px;  --fs-small: 11px;
   --fs-micro: 10px;
@@ -769,9 +770,10 @@ rdc-alarm-banner { display: contents; }
    owned bundle, .bh-trend* renamed -> .trendline* to match the promoted chrome/delta components).
    Scoped to [data-page-kind="summary"] so they are inert on every other page (which now carry these
    bytes inline, dedup'd in package mode). Restyles the KPI trend strip, the Movement 2-col layout,
-   the change lists, and the verdict status badge. */
+   the change lists, the verdict status badge, and (v0.2.6-2) the summary-only hero KPI numeral. */
 [data-page-kind="summary"] .kpi-strip { gap: var(--sp-4); margin-bottom: var(--sp-6); }
 [data-page-kind="summary"] .kpi-chip { padding: var(--sp-4) var(--sp-6) var(--sp-6); gap: var(--sp-1); }
+[data-page-kind="summary"] .kpi-chip .kpi-value { font-size: var(--fs-hero); }
 [data-page-kind="summary"] .kpi-chip .kpi-delta {
   min-height: 1.2em; display: flex; align-items: baseline; gap: var(--sp-2);
 }

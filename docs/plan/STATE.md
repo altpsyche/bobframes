@@ -11,7 +11,23 @@ active_release: v0.2.6    (v0.1 COMPLETE - bobframes 0.1.0 live on PyPI 2026-05-
                 migration, so there is no standalone 0.2.5 - the next PyPI release is 0.2.6, carrying the
                 foundation AND the visual redesign; _version jumps 0.2.0 -> 0.2.6. The c16x work + the CI
                 golden_env fix are on `main`; v0.2.6 work is on branch `plan/v0.2.6`.)
-current:        v0.2.6-2 (summary one-pager: restrained type + hero numerals, summary-scoped)    (status: PLANNED on plan/v0.2.6. The epic was
+current:        v0.2.6-3 (dashboard grid: shadcn-flat Grafana-dense cards + static_table minis)    (status: PLANNED on plan/v0.2.6.
+                v0.2.6-2 DONE 2026-06-05 (summary one-pager: hero numerals + componentization, the FIRST surface commit): the 4
+                summary KPI values render at a NEW [type] fs_hero='2.75rem' token, scoped [data-page-kind=summary] .kpi-chip
+                .kpi-value (dashboard/reports carry NO .kpi-chip -> unaffected; weight stays <=600, test_fonts + its pinned font:
+                shorthand untouched). The by-area table adopted chrome.static_table + the summary-local leaves
+                (_change_list/_change_line/_pct_pill/kpi-strip wrapper) rolled onto el -- BYTE-NEUTRAL (c16x parity contract:
+                static_table's <th class="num" scope="col"> attr order + the <caption> position match the hand-built table).
+                PROVEN: a fresh render was byte-identical to the pre-bake golden on all 17 pages OUTSIDE <style>; the ONLY style
+                delta is --fs-hero:2.75rem; (:root) + the one scoped rule. Package shape corroborates: redacted (inline) HTML
+                refreshed, shared/shared_redacted changed ONLY in _assets/{report,catalog}.css (HTML links external CSS -> bodies
+                byte-unchanged). _pagedata/digests.json/golden_parquet BYTE-UNCHANGED (NO make_parquet_golden). NEW
+                test_design_tokens.test_v026_2_summary_hero_numeral; test_summary structural asserts pass unchanged;
+                preview._TYPE_STEPS gains fs-hero (gallery documents it). Goldens refreshed on .venv (17 HTML + preview + package
+                shared/redacted/shared_redacted); 340 green (-m "not browser"); browser matrix light/dark/print synthetic + real
+                Perf SIGNED OFF before bake. No new ADR (rides ADR-44/42); §21.1v gets the -2 as-built; FINDINGS G-32 (el long-tail)
+                OPENED (summary leaves done, closes -5); commit doc v026_2_summary_one_pager.md + as-built. NEXT: v0.2.6-3.
+                The epic was
                 PLANNED + APPROVED 2026-06-05 -> ~/.claude/plans/bobframes-v0-2-6-visual-enumerated-bachman.md. 4 LOCKED
                 decisions (AskUserQuestion): FLAT/border-led [reverse ADR-34]; NEUTRAL chrome + a user-overridable accent
                 via a .bobframes.toml [theme] section + --accent CLI [NO source edit, reuses the ADR-25 config cascade];
@@ -118,7 +134,19 @@ current:        v0.2.6-2 (summary one-pager: restrained type + hero numerals, su
                 token-validity guard + preview gallery; migrate summary.py off its inline <style> (visual parity).
                 NOTE: c16p (v0.2 release) COMPLETE - PyPI bobframes 0.2.0 LIVE; tag v0.2.0 -> 765a4db on main.
                 GIT: c16y + c16v are in the WORKING TREE, NOT yet committed (user hasn't asked to commit).)
-last_session:   2026-06-05 — v0.2.6-1b + v0.2.6-1c DONE (same session, continued). v0.2.6-1c (user theme override,
+last_session:   2026-06-05 — v0.2.6-2 DONE (summary one-pager: hero numerals + summary componentization, the FIRST surface
+                commit). The 4 summary KPI values render at a NEW [type] fs_hero='2.75rem' token via a [data-page-kind=summary]
+                .kpi-chip .kpi-value scoped rule (dashboard/reports carry NO .kpi-chip; weight stays <=600, test_fonts holds). The
+                by-area table adopted chrome.static_table + the summary-local leaves (_change_list/_change_line/_pct_pill/kpi-strip
+                wrapper) rolled onto el -- ALL byte-NEUTRAL: a fresh render was byte-identical to the pre-bake golden on every page
+                OUTSIDE <style>; the ONLY golden delta is --fs-hero:2.75rem; (:root) + the one scoped rule (package shared/
+                shared_redacted changed only in _assets/{report,catalog}.css; redacted/inline HTML inlined it). _pagedata/
+                digests.json/golden_parquet BYTE-UNCHANGED, NO make_parquet_golden. NEW test_v026_2_summary_hero_numeral;
+                test_summary structural asserts unchanged; preview _TYPE_STEPS gains fs-hero. Goldens refreshed on .venv (17 HTML +
+                preview + package); 340 green (-m "not browser"); browser matrix light/dark/print synthetic + real Perf SIGNED OFF
+                before bake. §21.1v as-built; FINDINGS G-32 (el long-tail) OPENED; commit doc v026_2_summary_one_pager.md written.
+                No new ADR (rides ADR-44/42). current -> v0.2.6-3.
+                [prior session] v0.2.6-1b + v0.2.6-1c DONE (same session, continued). v0.2.6-1c (user theme override,
                 ADR-45) lets a pip user re-hue the accent WITHOUT editing the packaged design_tokens.toml. The seam: only
                 chrome._DESIGN_TOKENS (the :root block) is theme-dependent (token_subst flattens spacing/type/radius/
                 motion/color/shadow; everything else is var() refs), so an override re-substitutes ONLY that block.
@@ -902,16 +930,15 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    DO v0.2.6-1b (commits/v026/v026_1b_flat_surfaces.md — the visual half, CSS-rule edits in
-                reports/assets/*.css): re-tune --elev-1/2/3 toward FLAT + switch cards/minis/chips off box-shadow onto a
-                1px --border + radius (reverse ADR-34; update the pinned test_c16d_shadow_and_motion + test_c16d_depth_over_borders
-                IN-COMMIT); APPLY --radius-sm/--radius/--radius-lg over the ~21 hardcoded 2/3/4px literals; :focus-visible
-                ring + reduced-motion-safe :active micro-scale + tabular-nums + --fs-micro eyebrows; @container responsive;
-                and the PRINT-PADDING FIX (1a sign-off flagged: printed content hugs the paper edge / no outer @page margin
-                - pre-existing print.css). Full replacement-gate set (§21.1v) + browser matrix light/dark/print signed off
-                BEFORE goldens; make_golden+make_preview_golden+make_package_golden on the canonical .venv. Then 1c (theme
-                override: [theme] + --accent, ADR-45). NOTE: c16w (standalone v0.2.5 release) CANCELLED per ADR-43 - folded
-                into v0.2.6-6 close-out.
+next_action:    DO v0.2.6-3 (commits/v026/ — AUTHOR the v026_3 doc FIRST; none exists yet): the dashboard grid. shadcn-flat,
+                Grafana-dense cards (more cards/row, tighter gaps, dash_grid_min DOWN from 360px; per-card hairline + accent rail);
+                ADOPT chrome.static_table for the dashboard mini tables (dashboard._card_table); roll _card/chip_cluster onto el
+                (tick FINDINGS G-32 leaves). Full replacement-gate set (§21.1v) + browser matrix light/dark/print synthetic + real
+                Perf SIGNED OFF BEFORE goldens; make_golden+make_preview_golden+make_package_golden on the canonical .venv; verify
+                git diff scope (data path FROZEN: _pagedata/digests/golden_parquet byte-unchanged, NEVER make_parquet_golden).
+                Then -4 (6 detail reports adopt Column+data_table), -5 (catalog/drill wide + FINISH the el long-tail / close G-32),
+                -6 (close-out + PyPI: _version 0.2.0->0.2.6, ONE CHANGELOG [0.2.6], tag only after explicit authorization). NOTE:
+                c16w (standalone v0.2.5 release) CANCELLED per ADR-43 - folded into v0.2.6-6 close-out.
                 [prior] v0.2.6-0 + -1a DONE 2026-06-05 (dev tooling + neutral shadcn token lift; ADR-44/45; 327 green; one commit).
                 [prior] c16x DONE (ADR-42, G-30, 319 green) - see `current:` + session log.
                 [prior] c16y + c16v DONE (2026-06-05) - G-26 + G-29 closed. c16y (ZERO-OUTPUT): NEW
@@ -1047,6 +1074,16 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-05 — v0.2.6-2 DONE (commits/v026/v026_2_summary_one_pager.md, plan/v0.2.6). Summary one-pager, the FIRST surface
+  commit: the 4 KPI values render at a NEW [type] fs_hero='2.75rem' token via a [data-page-kind=summary] .kpi-chip .kpi-value
+  scoped rule (dashboard/reports have NO .kpi-chip -> unaffected; weight <=600, test_fonts holds). By-area table adopted
+  chrome.static_table; summary-local leaves (_change_list/_change_line/_pct_pill/kpi-strip wrapper) rolled onto el -- ALL
+  byte-NEUTRAL (c16x parity contract). PROVEN: fresh render byte-identical to the pre-bake golden on all 17 pages OUTSIDE
+  <style>; the ONLY style delta is --fs-hero:2.75rem; (:root) + the one scoped rule. _pagedata/digests/golden_parquet
+  BYTE-UNCHANGED, NO make_parquet_golden. NEW test_v026_2_summary_hero_numeral; preview _TYPE_STEPS gains fs-hero. Goldens
+  refreshed on .venv (17 HTML + preview + package shared/redacted/shared_redacted); 340 green; browser matrix light/dark/print
+  synthetic + real Perf SIGNED OFF before bake. §21.1v as-built; FINDINGS G-32 (el long-tail) OPENED. No new ADR (ADR-44/42).
+  current -> v0.2.6-3. Committed on plan/v0.2.6 (UNPUSHED; 1a/1b/1c committed earlier this epic).
 - 2026-06-05 — v0.2.6-1c DONE (commits/v026/v026_1c_theme_override.md, plan/v0.2.6; ADR-45). User theme override:
   pip users re-hue the accent/status/draw-class COLORS via a .bobframes.toml [theme] section (ADR-25 deep-merge) or
   render/preview --accent/--accent-data (CLI>config), NO source edit. NEW config.ThemeCfg + THEME_KEYS (15 color-only
