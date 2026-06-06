@@ -33,6 +33,7 @@ from .chrome import (
     classes,
     clip_attrs,
     clip_span,
+    colgroups_from,
     components_js,
     compose_css,
     data_table,
@@ -87,6 +88,8 @@ from .formatters import (
 from .delta import (
     class_segments_bar,
     delta_cell,
+    delta_column,
+    delta_parts,
     delta_pill,
     inline_bar,
     rank_pill,
@@ -161,7 +164,7 @@ __all__ = [
     'mesh_hash_short', 'pass_short', 'pass_suffix', 'per_frame', 'safe_chrome_text',
     'scrub_chrome_text', 'trunc_left', 'trunc_mid',
     # delta
-    'class_segments_bar', 'delta_cell', 'delta_pill', 'inline_bar',
+    'class_segments_bar', 'delta_cell', 'delta_column', 'delta_parts', 'delta_pill', 'inline_bar',
     'rank_pill', 'sparkline_svg',
     # charts (c16b, ADR-33)
     'bar_chart', 'donut', 'figure', 'histogram', 'icicle', 'line_chart',

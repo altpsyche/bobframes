@@ -49,42 +49,34 @@ def _gather_from_drops(drops: list) -> tuple[dict, list, list, int]:
 
 
 def _build_table(counts: dict, drop_keys: list) -> str:
-    classes = base.DRAW_CLASSES
-    rows = []
-    rows.append('<table class="data">')
-    rows.append('<caption>raw draw counts per class, per area and drop</caption>')
-    rows.append('<thead><tr>')
-    rows.append('<th scope="col">area</th><th scope="col">drop</th>'
-                '<th class="num" scope="col">total</th>')
-    for c in classes:
-        rows.append(f'<th class="num" scope="col">{base.h(c)}</th>')
-    rows.append('<th class="num" scope="col" '
-                'title="prepass draws divided by opaque draws (depth-prepass ratio)">'
-                'prepass / opaque</th>')
-    rows.append('</tr></thead><tbody>')
-
+    # v0.2.6-4: adopt the data_table component (ADR-43; the golden absorbs the markup normalization). No
+    # column groups - a compact fixed-column matrix; sort + auto-heatmap are the useful enhancements here.
+    draw_classes = base.DRAW_CLASSES
     keys = sorted(counts.keys(), key=lambda k: (k[1], k[0]))
-    totals = [sum(counts[k].values()) for k in keys]
-    hi_total = max(totals, default=0)
+    hi_total = max((sum(counts[k].values()) for k in keys), default=0)
+
+    # c16n: the area/drop text cells truncate via the default-tier .clip (escape + length-gated title=).
+    cols = [base.Column('area', 'area', clip='default'),
+            base.Column('drop', 'drop', clip='default'),
+            base.Column('total', 'total', numeric=True,
+                        render=lambda v, row: base.heatmap_cell(v, 0, row['_hi'],
+                                                                text=base.fmt_int(v)))]
+    cols += [base.Column(c, c, numeric=True) for c in draw_classes]
+    cols.append(base.Column('ratio', 'prepass / opaque', numeric=True,
+                            title='prepass draws divided by opaque draws (depth-prepass ratio)'))
+
+    rows = []
     for area, date in keys:
         cc = counts[(area, date)]
-        total = sum(cc.values())
-        rows.append('<tr>')
-        # c16n (ADR-38 tail): truncate the area/drop text cells via the inner .clip (default tier),
-        # matching the other tabled reports - the last tabled report c16m's scope skipped. clip_span
-        # HTML-escapes + adds the length-gated title= hover-reveal; the cell is in a static rdc-table,
-        # so it gets the clip + static print full-wrap for free. (was base.h.)
-        rows.append(f'<td>{base.clip_span(area)}</td>')
-        rows.append(f'<td>{base.clip_span(date)}</td>')
-        rows.append(f'<td class="num">{base.heatmap_cell(total, 0, hi_total, text=base.fmt_int(total))}</td>')
-        for c in classes:
-            n = cc.get(c, 0)
-            rows.append(f'<td class="num">{base.fmt_int(n)}</td>')
         ratio = (cc.get('prepass', 0) / cc['opaque']) if cc.get('opaque', 0) else 0.0
-        rows.append(f'<td class="num">{base.fmt_float(ratio, 2)}</td>')
-        rows.append('</tr>')
-    rows.append('</tbody></table>')
-    return '\n'.join(rows)
+        row = {'area': area, 'drop': date, 'total': sum(cc.values()), '_hi': hi_total,
+               'ratio': base.fmt_float(ratio, 2)}
+        for c in draw_classes:
+            row[c] = base.fmt_int(cc.get(c, 0))
+        rows.append(row)
+    return base.data_table(cols, rows, table_key='draws_by_class',
+                           default_sort='opaque', default_dir='desc',
+                           caption='raw draw counts per class, per area and drop')
 
 
 def _compute_kpis(counts: dict, areas: list) -> list:
@@ -178,14 +170,8 @@ def build(root: str, *, drops: list | None = None, ab=None,
                                          ''.join(sec_stacked))
                      + '</rdc-sticky-h2>')
 
-        # Section 2: raw counts table. c16l: static rdc-table; default-sort moves to the host. No column
-        # groups - it is a compact fixed-column matrix (area/drop rows), not a per-drop wall, so any
-        # collapse would hide core data; sort + auto-heatmap are the useful enhancements here.
-        counts_body = ('<div class="table-wrap">'
-                       '<rdc-table data-mode="static" data-table="draws_by_class" '
-                       'data-default-sort="opaque" data-default-dir="desc">'
-                       + _build_table(counts, drop_keys)
-                       + '</rdc-table></div>')
+        # Section 2: raw counts table (the data_table component builds the host + sort + auto-heatmap).
+        counts_body = str(_build_table(counts, drop_keys))
         parts.append('<rdc-sticky-h2>'
                      + base.section_card('counts', 'raw counts per class', counts_body,
                                          count=len(counts))

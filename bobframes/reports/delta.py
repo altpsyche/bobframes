@@ -6,7 +6,7 @@ import html as _html
 
 from .. import config
 from . import _tokens
-from .chrome import DRAW_CLASSES, class_color_var, h
+from .chrome import DRAW_CLASSES, Column, class_color_var, classes, h
 
 # Sparkline default dimensions from design_tokens.toml [layout] (c08, H-20: was 60x14 inline).
 _LAYOUT = _tokens.layout()
@@ -35,32 +35,49 @@ def inline_bar(value, max_value, *, color_var: str | None = None) -> str:
     return f'<div class="ibar"><div style="{style}"></div></div>'
 
 
-def delta_pill(curr, prev, *, lower_is_better: bool | None = True,
-               fmt: str | None = None) -> str:
-    """Same logic as delta_cell but renders <span class='delta-pill'>."""
+def delta_parts(curr, prev, *, lower_is_better: bool | None = True,
+                fmt: str | None = None,
+                regression_threshold_pct: float | None = None) -> tuple[str, str]:
+    """The shared (css_class, text) of a per-KPI delta -- the single source delta_cell / delta_pill /
+    delta_column all consume (v0.2.6-4). ASCII signs only; the class (not the sign) encodes direction.
+
+    Returns: ('flat', '') when both sides are None / unparseable; ('new', 'new') when there is no prior;
+    ('flat', '0') for no change; else ('pos'|'neg'[' alarm'], '<signed value>'). 'alarm' flags a large
+    REGRESSION only (cls == 'neg'); a big improvement must never wear the red regression accent (c16c).
+    """
     if fmt is None:
         fmt = config.get_config().delta.fmt   # H-22
     if curr is None and prev is None:
-        return '<span class="delta-pill flat"></span>'
+        return 'flat', ''
     if prev is None:
-        return '<span class="delta-pill new">new</span>'
+        return 'new', 'new'
     if curr is None:
         curr = 0
     try:
         curr_f = float(curr)
         prev_f = float(prev)
     except (TypeError, ValueError):
-        return '<span class="delta-pill flat"></span>'
+        return 'flat', ''
     diff = curr_f - prev_f
     if diff == 0:
-        return '<span class="delta-pill flat">0</span>'
+        return 'flat', '0'
     if lower_is_better is None:
         cls = 'flat'
     elif lower_is_better:
         cls = 'pos' if diff < 0 else 'neg'
     else:
         cls = 'pos' if diff > 0 else 'neg'
+    if (cls == 'neg' and regression_threshold_pct is not None and prev_f != 0
+            and abs(diff) / abs(prev_f) * 100.0 > regression_threshold_pct):
+        cls = cls + ' alarm'
     text = fmt.format(diff).replace('−', '-')
+    return cls, text
+
+
+def delta_pill(curr, prev, *, lower_is_better: bool | None = True,
+               fmt: str | None = None) -> str:
+    """Same logic as delta_cell but renders <span class='delta-pill'> (no regression alarm)."""
+    cls, text = delta_parts(curr, prev, lower_is_better=lower_is_better, fmt=fmt)
     return f'<span class="delta-pill {cls}">{_html.escape(text)}</span>'
 
 
@@ -68,42 +85,30 @@ def delta_cell(curr, prev, *,
                lower_is_better: bool | None = True,
                fmt: str | None = None,
                regression_threshold_pct: float | None = None) -> str:
-    """Render <td> for a per-KPI delta. ASCII signs only. CSS class encodes direction."""
-    if fmt is None:
-        fmt = config.get_config().delta.fmt   # H-22
-    if curr is None and prev is None:
-        return '<td class="delta flat"></td>'
-    if prev is None:
-        return '<td class="delta new">new</td>'
-    if curr is None:
-        curr = 0
-    try:
-        curr_f = float(curr)
-        prev_f = float(prev)
-    except (TypeError, ValueError):
-        return '<td class="delta flat"></td>'
+    """Render <td> for a per-KPI delta. ASCII signs only. CSS class encodes direction.
 
-    diff = curr_f - prev_f
-    if diff == 0:
-        return '<td class="delta flat">0</td>'
+    Retained for callers that emit a full <td> directly; the v0.2.6-4 tabled reports build delta columns
+    via `delta_column` (the Column factory) instead, so this is now unused by the reports (kept as a
+    valid standalone helper, still unit-tested)."""
+    cls, text = delta_parts(curr, prev, lower_is_better=lower_is_better, fmt=fmt,
+                            regression_threshold_pct=regression_threshold_pct)
+    return f'<td class="delta {cls}">{_html.escape(text)}</td>'
 
-    if lower_is_better is None:
-        cls = 'flat'
-    elif lower_is_better:
-        cls = 'pos' if diff < 0 else 'neg'
-    else:
-        cls = 'pos' if diff > 0 else 'neg'
 
-    # 'alarm' flags a large REGRESSION only (cls == 'neg'); a big improvement must never wear the
-    # red regression accent (c16c - was magnitude-only, which painted red bars on -100% wins).
-    alarm = ''
-    if cls == 'neg' and regression_threshold_pct is not None and prev_f != 0:
-        pct = abs(diff) / abs(prev_f) * 100.0
-        if pct > regression_threshold_pct:
-            alarm = ' alarm'
-
-    text = fmt.format(diff).replace('−', '-')
-    return f'<td class="delta {cls}{alarm}">{_html.escape(text)}</td>'
+def delta_column(key: str, header: str = 'delta', *,
+                 latest: bool = False, latest_cell: bool = False, group: str | None = None) -> Column:
+    """A `chrome.Column` for a per-KPI delta (v0.2.6-4). The cell VALUE at `row[key]` MUST be the
+    `(css_class, text)` tuple produced by `delta_parts(...)` -- render reads the text, cell_class reads
+    the direction, both off the PASSED value (no closure over a loop var). Reproduces today's split
+    classes: `<th class="num[ delta-latest]">` + `<td class="delta[ delta-latest] {dir}">`. `latest`
+    adds delta-latest to the th (all reports); `latest_cell` also to the td (trend's _kpi_matrix only).
+    `group` names the collapsible col-group it joins (shader_hotlist's history wall)."""
+    return Column(
+        key, header, group=group,
+        header_class=classes('num', 'delta-latest' if latest else ''),
+        render=lambda value, row: h(value[1] if value else ''),
+        cell_class=lambda value, row: classes('delta', 'delta-latest' if latest_cell else '',
+                                              value[0] if value else 'flat'))
 
 
 def class_segments_bar(weights: dict, total: float | None = None) -> str:

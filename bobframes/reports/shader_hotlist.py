@@ -6,7 +6,6 @@ back to live scan of **/shaders.parquet.
 
 from __future__ import annotations
 
-import json
 import os
 import sys
 from collections import Counter, defaultdict
@@ -217,52 +216,38 @@ def build(root: str, *, drops: list | None = None, ab=None,
 
         # Primary (diet) table -> the c16k STATIC-mode rdc-table proof (ADR-38): rows stay SERVER-BAKED
         # (golden-visible, readable JS-off, printable, Ctrl-F-able); JS only enhances IN PLACE (client
-        # sort, .num/.mono type-split via table.data, uniform-tint heatmap on plain-numeric cells, and
-        # collapsible column groups). Build the header list while recording each column's INDEX into a
-        # group: per-drop header text repeats ("delta"), so the groups key by index, not name.
-        ident_cols, cost_cols, hist_cols = [], [], []
-        ci = 0
-        sec = ['<div class="col-groups" role="group" aria-label="column groups"></div>',
-               '<div class="table-wrap">',
-               '<rdc-table data-mode="static" data-default-sort="cost proxy" data-default-dir="desc" '
-               'data-table="shader_hotlist">',
-               '<table class="data">',
-               f'<caption>top {stage} shaders ranked by cost proxy</caption>',
-               '<thead><tr>', '<th scope="col">shader</th>']
-        ident_cols.append(ci); ci += 1   # shader
-        sec.append('<th class="num" scope="col" title="shader complexity score (weighted instruction proxy)">complexity</th>')
-        cost_cols.append(ci); ci += 1     # complexity
-        sec.append('<th class="num" scope="col" title="used-by-draw count in the current run">uses (current)</th>')
-        cost_cols.append(ci); ci += 1     # uses (current)
+        # sort, .num/.mono type-split, uniform-tint heatmap, collapsible column groups).
+        # v0.2.6-4: adopt the data_table component (ADR-43; golden absorbs the normalization). Per-drop
+        # header text repeats, so the col-groups still key by INDEX -- colgroups_from derives those from
+        # each Column's `group` tag by position. identity (shader + src) + cost open; the per-drop
+        # history wall (per-drop uses + delta + trend) collapsed, dropped when single-drop.
+        cols = [base.Column('shader', 'shader', group='identity', render=lambda value, row: value),
+                base.Column('complexity', 'complexity', numeric=True, group='cost',
+                            title='shader complexity score (weighted instruction proxy)',
+                            render=lambda value, row: base.heatmap_cell(
+                                value, 0, row['_maxc'], text=base.fmt_float(value, 2))),
+                base.Column('uses_cur', 'uses (current)', numeric=True, group='cost',
+                            title='used-by-draw count in the current run')]
         for i, k in enumerate(drop_keys):
-            head = 'uses' if single else f'uses<span class="dim">@{base.h(k)}</span>'
-            sec.append(f'<th class="num" scope="col">{head}</th>')
-            (cost_cols if single else hist_cols).append(ci); ci += 1   # per-drop uses
+            head = 'uses' if single else base.raw(f'uses<span class="dim">@{base.h(k)}</span>')
+            cols.append(base.Column(f'u{i}', head, numeric=True,
+                                    group='cost' if single else 'history'))
             if i > 0:
-                latest = ' delta-latest' if i == len(drop_keys) - 1 else ''
-                sec.append(f'<th class="num{latest}" scope="col">delta</th>')
-                hist_cols.append(ci); ci += 1   # delta
+                cols.append(base.delta_column(f'd{i}', latest=(i == len(drop_keys) - 1),
+                                              group='history'))
         if len(drop_keys) >= 3:
-            sec.append('<th class="num" scope="col">trend</th>')
-            hist_cols.append(ci); ci += 1   # trend
-        sec.append('<th class="num" scope="col" title="cost proxy = complexity x total uses">cost proxy</th>')
-        cost_cols.append(ci); ci += 1     # cost proxy
-        sec.append('<th scope="col">flags</th>')
-        cost_cols.append(ci); ci += 1     # flags
-        sec.append('<th scope="col">src</th>')
-        ident_cols.append(ci); ci += 1    # src
-        sec.append('</tr></thead><tbody>')
+            cols.append(base.Column('trend', 'trend', numeric=True, group='history',
+                                    render=lambda value, row: base.sparkline_svg(value)))
+        cols.append(base.Column('cost', 'cost proxy', numeric=True, group='cost',
+                                title='cost proxy = complexity x total uses',
+                                render=lambda value, row: base.heatmap_cell(
+                                    value, 0, row['_maxcost'], text=base.fmt_float(value, 1))))
+        cols.append(base.Column('flags', 'flags', group='cost'))
+        cols.append(base.Column('src', 'src', mono=True, group='identity',
+                                render=lambda value, row: value))
 
-        # Column groups for static rdc-table: identity (shader+src) and cost open; the per-drop
-        # history wall (per-drop uses + delta + trend) collapsed. Empty groups dropped, so the
-        # single-drop synthetic omits history. Keyed by index (header text repeats).
-        colgroups = [{'name': 'identity', 'open': True, 'cols': ident_cols},
-                     {'name': 'cost', 'open': True, 'cols': cost_cols}]
-        if hist_cols:
-            colgroups.append({'name': 'history', 'open': False, 'cols': hist_cols})
-
+        rows = []
         for rank_i, (sk, p, total_uses, cost) in enumerate(ranked, 1):
-            sec.append('<tr>')
             rp = base.rank_pill(rank_i) if rank_i <= 3 else ''
             shader_label = f'{p["shader_type"][:4]}-cplx-{int(p["complexity"])}'
             drop_dir = _drop_dir_first(drops, p['rep_drop_date'], p['rep_drop_label'])
@@ -270,78 +255,64 @@ def build(root: str, *, drops: list | None = None, ab=None,
             copy_id = (f'<rdc-copy-button data-value="{base.safe_chrome_text(sk)}" '
                        f'data-label="copy shader id"></rdc-copy-button>')
             if src_link:
-                sec.append(f'<td>{rp}<a href="{base.h(src_link)}" data-link-kind="inline" target="_blank" rel="noopener">{base.h(shader_label)}{base.icon("link-out")}</a>{copy_id}</td>')
+                shader_html = (f'{rp}<a href="{base.h(src_link)}" data-link-kind="inline" target="_blank" '
+                               f'rel="noopener">{base.h(shader_label)}{base.icon("link-out")}</a>{copy_id}')
+                # c16m: clip the path text (wide tier) on an inner span so the file icon + the copy
+                # button ride OUTSIDE the clip; the copy data-value keeps the FULL path (c16c).
+                src_html = (f'<a href="{base.h(src_link)}" data-link-kind="inline" target="_blank" '
+                            f'rel="noopener">{base.clip_span(p["rep_src_path"], tier="wide")}'
+                            f'{base.icon("file")}</a>'
+                            f'<rdc-copy-button data-value="{base.safe_chrome_text(p["rep_src_path"])}" '
+                            f'data-label="copy src path"></rdc-copy-button>')
             else:
-                sec.append(f'<td>{rp}{base.h(shader_label)}{copy_id}</td>')
-            sec.append(f'<td class="num">{base.heatmap_cell(p["complexity"], 0, max_cplx, text=base.fmt_float(p["complexity"], 2))}</td>')
-            sec.append(f'<td class="num">{base.fmt_int(total_uses)}</td>')
-            prev = None
-            series = []
-            for i, k in enumerate(drop_keys):
-                v = p['uses_by_drop'].get(k, 0)
-                series.append(v)
-                sec.append(f'<td class="num">{base.fmt_int(v)}</td>')
-                if i > 0:
-                    sec.append(base.delta_cell(v, prev,
-                        lower_is_better=None, fmt='{:+,.0f}',
-                        regression_threshold_pct=None))
-                prev = v
-            if len(drop_keys) >= 3:
-                sec.append(f'<td class="num">{base.sparkline_svg(series)}</td>')
-
-            sec.append(f'<td class="num">{base.heatmap_cell(cost, 0, max_cost, text=base.fmt_float(cost, 1))}</td>')
-
+                shader_html = f'{rp}{base.h(shader_label)}{copy_id}'
+                src_html = ''
             flags = []
             if p['fb_fetch']:
                 flags.append('fb_fetch')
             if p['uses_cubemap']:
                 flags.append('cubemap')
-            sec.append(f'<td>{base.h(",".join(flags))}</td>')
+            row = {'shader': shader_html, 'complexity': p['complexity'], '_maxc': max_cplx,
+                   'uses_cur': base.fmt_int(total_uses), 'cost': cost, '_maxcost': max_cost,
+                   'flags': ','.join(flags), 'src': src_html}
+            prev = None
+            series = []
+            for i, k in enumerate(drop_keys):
+                v = p['uses_by_drop'].get(k, 0)
+                series.append(v)
+                row[f'u{i}'] = base.fmt_int(v)
+                if i > 0:
+                    row[f'd{i}'] = base.delta_parts(v, prev, lower_is_better=None,
+                                                   fmt='{:+,.0f}', regression_threshold_pct=None)
+                prev = v
+            if len(drop_keys) >= 3:
+                row['trend'] = series
+            rows.append(row)
 
-            if src_link:
-                # c16m: clip the path text (wide tier) on an inner span so the file icon + the copy
-                # button ride OUTSIDE the clip; the copy data-value keeps the FULL path (c16c).
-                sec.append(f'<td class="mono"><a href="{base.h(src_link)}" data-link-kind="inline" target="_blank" rel="noopener">{base.clip_span(p["rep_src_path"], tier="wide")}{base.icon("file")}</a>'
-                           f'<rdc-copy-button data-value="{base.safe_chrome_text(p["rep_src_path"])}" data-label="copy src path"></rdc-copy-button></td>')
-            else:
-                sec.append('<td class="mono"></td>')
+        colgroups = base.colgroups_from(cols, {'identity': True, 'cost': True, 'history': False})
+        sbody.append(str(base.data_table(cols, rows, table_key='shader_hotlist',
+                                         default_sort='cost proxy', default_dir='desc',
+                                         caption=f'top {stage} shaders ranked by cost proxy',
+                                         colgroups=colgroups)))
 
-            sec.append('</tr>')
-        # c16k: close the STATIC rdc-table; ship the column-groups spec (index-keyed) as its own
-        # inline classic script (offline, ASCII) - the engine reads window.__colgroups_shader_hotlist
-        # on DOMContentLoaded, same contract as the catalog's __colgroups_catalog.
-        sec.append('</tbody></table></rdc-table></div>')
-        sec.append('<script>window.__colgroups_shader_hotlist='
-                   f'{json.dumps(colgroups, separators=(",", ":"))};</script>')
-        sbody.append(''.join(sec))
-
-        # Secondary metrics (collapsed): per-shader instruction-mix detail (c16b column diet).
-        det = ['<details class="secondary-metrics"><summary>secondary metrics</summary>',
-               '<div class="table-wrap"><rdc-table data-mode="static" data-table="shader_secondary">',
-               '<table class="data">',
-               '<caption>per-shader instruction-mix detail</caption>',
-               '<thead><tr>',
-               '<th scope="col">shader</th>',
-               '<th class="num" scope="col">branches</th>',
-               '<th class="num" scope="col">loops</th>',
-               '<th class="num" scope="col">discards</th>',
-               '<th class="num" scope="col">dfdx/dfdy</th>',
-               '<th class="num" scope="col">tex samples</th>',
-               '<th class="num" scope="col">src bytes</th>',
-               '</tr></thead><tbody>']
-        for sk, p, total_uses, cost in ranked:
-            shader_label = f'{p["shader_type"][:4]}-cplx-{int(p["complexity"])}'
-            det.append('<tr>')
-            det.append(f'<td>{base.h(shader_label)}</td>')
-            det.append(f'<td class="num">{base.fmt_int(p["branches"])}</td>')
-            det.append(f'<td class="num">{base.fmt_int(p["loops"])}</td>')
-            det.append(f'<td class="num">{base.fmt_int(p["discards"])}</td>')
-            det.append(f'<td class="num">{base.fmt_int(p["dfdx_dfdy"])}</td>')
-            det.append(f'<td class="num">{base.fmt_int(p["tex_samples"])}</td>')
-            det.append(f'<td class="num">{base.fmt_int(p["src_len"])}</td>')
-            det.append('</tr>')
-        det.append('</tbody></table></rdc-table></div></details>')
-        sbody.append(''.join(det))
+        # Secondary metrics (collapsed): per-shader instruction-mix detail (c16b column diet). The
+        # <details>/<summary> wrapper stays hand-written (a structural leaf for the -5 el long-tail).
+        scols = [base.Column('shader', 'shader'),
+                 base.Column('branches', 'branches', numeric=True),
+                 base.Column('loops', 'loops', numeric=True),
+                 base.Column('discards', 'discards', numeric=True),
+                 base.Column('dfdx', 'dfdx/dfdy', numeric=True),
+                 base.Column('tex', 'tex samples', numeric=True),
+                 base.Column('srcb', 'src bytes', numeric=True)]
+        srows = [{'shader': f'{p["shader_type"][:4]}-cplx-{int(p["complexity"])}',
+                  'branches': base.fmt_int(p['branches']), 'loops': base.fmt_int(p['loops']),
+                  'discards': base.fmt_int(p['discards']), 'dfdx': base.fmt_int(p['dfdx_dfdy']),
+                  'tex': base.fmt_int(p['tex_samples']), 'srcb': base.fmt_int(p['src_len'])}
+                 for sk, p, total_uses, cost in ranked]
+        sbody.append('<details class="secondary-metrics"><summary>secondary metrics</summary>'
+                     + str(base.data_table(scols, srows, table_key='shader_secondary',
+                                           caption='per-shader instruction-mix detail'))
+                     + '</details>')
 
     parts.append('<rdc-sticky-h2>'
                  + base.section_card('shaders', f'top {stage} shaders by cost',
@@ -357,24 +328,19 @@ def build(root: str, *, drops: list | None = None, ab=None,
             key=lambda kv: (kv[1]['uses_by_drop'].get(bl.key, 0), kv[1]['complexity']),
             reverse=True)
         if resolved:
-            rbody = ['<div class="table-wrap"><rdc-table data-mode="static" data-table="shader_resolved">',
-                     '<table class="data">',
-                     f'<caption>{stage} shaders present in {base.h(bl.key)} but gone in {base.h(ck)} - removed or retired</caption>',
-                     '<thead><tr>', '<th scope="col">shader</th>',
-                     '<th class="num" scope="col">complexity</th>',
-                     f'<th class="num" scope="col">uses@{base.h(bl.key)}</th>',
-                     '</tr></thead><tbody>']
-            for sk, p in resolved[:30]:
-                shader_label = f'{p["shader_type"][:4]}-cplx-{int(p["complexity"])}'
-                rbody.append('<tr>')
-                rbody.append(f'<td>{base.h(shader_label)}</td>')
-                rbody.append(f'<td class="num">{base.fmt_float(p["complexity"], 2)}</td>')
-                rbody.append(f'<td class="num">{base.fmt_int(p["uses_by_drop"].get(bl.key, 0))}</td>')
-                rbody.append('</tr>')
-            rbody.append('</tbody></table></rdc-table></div>')
+            rcols = [base.Column('shader', 'shader'),
+                     base.Column('complexity', 'complexity', numeric=True),
+                     base.Column('uses', f'uses@{bl.key}', numeric=True)]
+            rrows = [{'shader': f'{p["shader_type"][:4]}-cplx-{int(p["complexity"])}',
+                      'complexity': base.fmt_float(p['complexity'], 2),
+                      'uses': base.fmt_int(p['uses_by_drop'].get(bl.key, 0))}
+                     for sk, p in resolved[:30]]
+            rbody = base.data_table(rcols, rrows, table_key='shader_resolved',
+                                    caption=f'{stage} shaders present in {bl.key} but gone in {ck} '
+                                            '- removed or retired')
             parts.append('<rdc-sticky-h2>'
                          + base.section_card('resolved', f'resolved since {bl.key}',
-                                             ''.join(rbody), count=len(resolved))
+                                             str(rbody), count=len(resolved))
                          + '</rdc-sticky-h2>')
 
     return base.write_report(out_path, [base.report_page(

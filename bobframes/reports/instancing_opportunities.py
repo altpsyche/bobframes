@@ -224,25 +224,26 @@ def build(root: str, *, drops: list | None = None, ab=None,
                                chart_id='inst-wasted'),
                 'estimated wasted indices (top meshes)'))
 
-        sec1 = ['<div class="table-wrap"><rdc-table data-mode="static" data-table="instancing_main">',
-                '<table class="data">',
-                '<caption>meshes drawn repeatedly - instancing / batching candidates</caption>',
-                '<thead><tr>', '<th scope="col">mesh</th>']
+        # v0.2.6-4: adopt the data_table component (ADR-43; golden absorbs the normalization). No column
+        # groups. Build the dynamic column list (per-drop repeat + delta) once, then the rows.
+        cols = [base.Column('mesh', 'mesh', render=lambda value, row: value)]   # prebuilt trusted inner
         for i, k in enumerate(drop_keys):
-            head = 'repeat' if single else f'repeat@{base.h(k)}'
-            sec1.append(f'<th class="num" scope="col">{head}</th>')
+            cols.append(base.Column(f'rep{i}', 'repeat' if single else f'repeat@{k}', numeric=True))
             if i > 0:
-                latest = ' delta-latest' if i == len(drop_keys) - 1 else ''
-                sec1.append(f'<th class="num{latest}" scope="col">delta</th>')
+                cols.append(base.delta_column(f'rdelta{i}', latest=(i == len(drop_keys) - 1)))
         if len(drop_keys) >= 3:
-            sec1.append('<th class="num" scope="col">trend</th>')
-        sec1.extend([
-            '<th scope="col">areas</th>',
-            '<th scope="col">dominant pass</th>',
-            '<th class="num" scope="col">indices typical</th>',
-            '<th class="num" scope="col" title="(max repeat - 1) x typical indices: index data re-submitted across repeats">wasted indices</th>',
-            '</tr></thead><tbody>',
-        ])
+            cols.append(base.Column('trend', 'trend', numeric=True,
+                                    render=lambda value, row: base.sparkline_svg(value)))
+        cols += [
+            base.Column('areas', 'areas', clip='default'),
+            base.Column('dompass', 'dominant pass', clip='narrow'),
+            base.Column('ityp', 'indices typical', numeric=True),
+            base.Column('wasted', 'wasted indices', numeric=True,
+                        title='(max repeat - 1) x typical indices: index data re-submitted across repeats',
+                        render=lambda value, row: base.heatmap_cell(value, 0, row['_maxw'],
+                                                                    text=base.fmt_int(value))),
+        ]
+        rows = []
         for rank_i, (mh, m) in enumerate(ranked, 1):
             max_repeat = _cur_repeat(m)
             try:
@@ -258,38 +259,33 @@ def build(root: str, *, drops: list | None = None, ab=None,
             suffix = base.pass_suffix(dominant_pass) or '?'
             hash_tag = str(mh)[-4:] if mh else ''
             mesh_label = f'{dominant_cls}/{suffix}/{n_typ}v#{hash_tag}'
-
-            sec1.append('<tr>')
             link = base.rel_path_to_drop_index(out_dir, rep_drop_dir, 'draws') if rep_drop_dir else '#'
             rp = base.rank_pill(rank_i) if rank_i <= 3 else ''
             copy_mh = (f'<rdc-copy-button data-value="{base.safe_chrome_text(mh)}" '
                        f'data-label="copy mesh hash"></rdc-copy-button>') if mh else ''
             # c16m: clip the mesh label on the <a> (default tier); rank pill + copy button ride outside.
-            sec1.append(
-                f'<td>{rp}<a href="{base.h(link)}"{base.clip_attrs(mesh_label)} data-link-kind="drill">{base.h(mesh_label)}</a>{copy_mh}</td>'
-            )
+            row = {
+                'mesh': (f'{rp}<a href="{base.h(link)}"{base.clip_attrs(mesh_label)} '
+                         f'data-link-kind="drill">{base.h(mesh_label)}</a>{copy_mh}'),
+                'areas': ', '.join(sorted(m['areas'])),
+                'dompass': base.pass_short(dominant_pass),
+                'ityp': base.fmt_int(n_typ),
+                'wasted': wasted, '_maxw': max_wasted,
+            }
             prev = None
             series = []
             for i, k in enumerate(drop_keys):
                 v = m['repeat_by_drop'].get(k, 0)
                 series.append(v)
-                sec1.append(f'<td class="num">{base.fmt_int(v)}</td>')
+                row[f'rep{i}'] = base.fmt_int(v)
                 if i > 0:
-                    sec1.append(base.delta_cell(v, prev,
-                        lower_is_better=True, fmt='{:+,.0f}',
-                        regression_threshold_pct=20.0))
+                    row[f'rdelta{i}'] = base.delta_parts(v, prev, lower_is_better=True,
+                                                         fmt='{:+,.0f}', regression_threshold_pct=20.0)
                 prev = v
             if len(drop_keys) >= 3:
-                sec1.append(f'<td class="num">{base.sparkline_svg(series)}</td>')
-
-            areas_str = ', '.join(sorted(m['areas']))
-            sec1.append(f'<td>{base.clip_span(areas_str)}</td>')
-            sec1.append(f'<td>{base.clip_span(base.pass_short(dominant_pass), tier="narrow")}</td>')
-            sec1.append(f'<td class="num">{base.fmt_int(n_typ)}</td>')
-            sec1.append(f'<td class="num">{base.heatmap_cell(wasted, 0, max_wasted, text=base.fmt_int(wasted))}</td>')
-            sec1.append('</tr>')
-        sec1.append('</tbody></table></rdc-table></div>')
-        mbody.append(''.join(sec1))
+                row['trend'] = series
+            rows.append(row)
+        mbody.append(str(base.data_table(cols, rows, table_key='instancing_main')))
     parts.append('<rdc-sticky-h2>'
                  + base.section_card('top_meshes', 'top meshes by repeat',
                                      ''.join(mbody), count=len(ranked))
@@ -303,12 +299,10 @@ def build(root: str, *, drops: list | None = None, ab=None,
              if m['repeat_by_drop'].get(bl.key, 0) > 0 and _cur_repeat(m) == 0),
             key=lambda kv: kv[1]['repeat_by_drop'].get(bl.key, 0), reverse=True)
         if resolved:
-            rbody = ['<div class="table-wrap"><rdc-table data-mode="static" data-table="instancing_resolved">',
-                     '<table class="data">',
-                     f'<caption>meshes drawn in {base.h(bl.key)} but gone in {base.h(ck)} - removed or fixed</caption>',
-                     '<thead><tr>', '<th scope="col">mesh</th>',
-                     f'<th class="num" scope="col">repeat@{base.h(bl.key)}</th>',
-                     '<th scope="col">areas</th>', '</tr></thead><tbody>']
+            rcols = [base.Column('mesh', 'mesh'),
+                     base.Column('rep', f'repeat@{bl.key}', numeric=True),
+                     base.Column('areas', 'areas')]
+            rrows = []
             for mh, m in resolved[:30]:
                 try:
                     n_typ = int(statistics.median(m['num_indices'])) if m['num_indices'] else 0
@@ -319,15 +313,14 @@ def build(root: str, *, drops: list | None = None, ab=None,
                 suffix = base.pass_suffix(dominant_pass) or '?'
                 hash_tag = str(mh)[-4:] if mh else ''
                 mesh_label = f'{dominant_cls}/{suffix}/{n_typ}v#{hash_tag}'
-                rbody.append('<tr>')
-                rbody.append(f'<td>{base.h(mesh_label)}</td>')
-                rbody.append(f'<td class="num">{base.fmt_int(m["repeat_by_drop"].get(bl.key, 0))}</td>')
-                rbody.append(f'<td>{base.h(", ".join(sorted(m["areas"])))}</td>')
-                rbody.append('</tr>')
-            rbody.append('</tbody></table></rdc-table></div>')
+                rrows.append({'mesh': mesh_label,
+                              'rep': base.fmt_int(m['repeat_by_drop'].get(bl.key, 0)),
+                              'areas': ', '.join(sorted(m['areas']))})
+            rbody = base.data_table(rcols, rrows, table_key='instancing_resolved',
+                                    caption=f'meshes drawn in {bl.key} but gone in {ck} - removed or fixed')
             parts.append('<rdc-sticky-h2>'
                          + base.section_card('resolved', f'resolved since {bl.key}',
-                                             ''.join(rbody), count=len(resolved))
+                                             str(rbody), count=len(resolved))
                          + '</rdc-sticky-h2>')
 
     # c16c fill-or-hide: only emit the batching section when there is real content - no bare heading.
@@ -340,25 +333,20 @@ def build(root: str, *, drops: list | None = None, ab=None,
                  if base.per_frame(v, _cur_frames) >= rcfg.instancing_repeat_min]
     top_batch.sort(key=lambda kv: kv[1], reverse=True)
     if top_batch:
-        sec2 = ['<div class="table-wrap"><rdc-table data-mode="static" data-table="instancing_batching">',
-                '<table class="data">',
-                '<caption>passes where many distinct meshes share one material - batch candidates</caption>',
-                '<thead><tr>', '<th scope="col">pass</th>', '<th scope="col">class</th>',
-                '<th class="num" scope="col">repeat</th>',
-                '<th class="num" scope="col">distinct meshes</th>',
-                '<th scope="col">drops</th>', '</tr></thead><tbody>']
-        for (pass_norm, fs, cls), n in top_batch[:30]:
-            sec2.append('<tr>')
-            sec2.append(f'<td>{base.h(base.pass_short(pass_norm))}</td>')
-            sec2.append(f'<td>{base.h(cls)}</td>')
-            sec2.append(f'<td class="num">{base.fmt_int(n)}</td>')
-            sec2.append(f'<td class="num">{base.fmt_int(len(batching_meshes[(pass_norm, fs, cls)]))}</td>')
-            sec2.append(f'<td>{base.h(", ".join(sorted(batching_drops[(pass_norm, fs, cls)])))}</td>')
-            sec2.append('</tr>')
-        sec2.append('</tbody></table></rdc-table></div>')
+        bcols = [base.Column('pass', 'pass'), base.Column('cls', 'class'),
+                 base.Column('rep', 'repeat', numeric=True),
+                 base.Column('distinct', 'distinct meshes', numeric=True),
+                 base.Column('drops', 'drops')]
+        brows = [{'pass': base.pass_short(pass_norm), 'cls': cls,
+                  'rep': base.fmt_int(n),
+                  'distinct': base.fmt_int(len(batching_meshes[(pass_norm, fs, cls)])),
+                  'drops': ', '.join(sorted(batching_drops[(pass_norm, fs, cls)]))}
+                 for (pass_norm, fs, cls), n in top_batch[:30]]
+        sec2 = base.data_table(bcols, brows, table_key='instancing_batching',
+                               caption='passes where many distinct meshes share one material - batch candidates')
         parts.append('<rdc-sticky-h2>'
                      + base.section_card('batching', 'potential material batching',
-                                         ''.join(sec2), count=len(top_batch))
+                                         str(sec2), count=len(top_batch))
                      + '</rdc-sticky-h2>')
 
     return base.write_report(out_path, [base.report_page(
