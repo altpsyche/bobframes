@@ -10,7 +10,8 @@ green (verified separately).
 from __future__ import annotations
 
 from bobframes.reports import chrome
-from bobframes.reports.chrome import Column, colgroups_from, data_table, static_table, el, _Raw
+from bobframes.reports.chrome import (Column, colgroups_from, data_table, static_table, el, _Raw,
+                                       table_controls, virtual_host, virtual_table_section)
 from bobframes.reports.delta import delta_column, delta_parts
 
 
@@ -156,3 +157,68 @@ def test_default_tier_clip():
     assert '<td><span class="clip">ui &amp; hud</span></td>' in static_table(
         [Column('area', 'area', clip='default')], [{'area': 'ui & hud'}])
     assert '<span class="clip">' not in static_table([Column('a', 'a')], [{'a': 'x'}])
+
+
+# --- virtual rdc-table host (v0.2.6-5): catalog/drill route through these instead of hand-concat -----
+
+def test_virtual_table_section_drill_shape():
+    """The DRILL per-table host: section.table-section[id] + header(h2 + .table-meta) + controls (no dl
+    data-link-kind) + the row-less <rdc-table data-mode="virtual"> -- no col-groups div on drill."""
+    out = virtual_table_section('draws', title='draws', meta='1,820 rows, 12 cols',
+                                csv_href='_data/draws.csv', parquet_href='_data/draws.parquet',
+                                filter_label='filter draws', placeholder='filter draws...')
+    assert isinstance(out, _Raw)
+    assert out == (
+        '<section class="table-section" id="draws">'
+        '<header class="table-header"><h2>draws</h2>'
+        '<span class="table-meta">1,820 rows, 12 cols</span></header>'
+        '<div class="controls">'
+        '<input type="search" aria-label="filter draws" placeholder="filter draws...">'
+        '<span class="ct visible-count"></span>'
+        '<a class="dl" href="_data/draws.csv">CSV</a>'
+        '<a class="dl" href="_data/draws.parquet">parquet</a></div>'
+        '<rdc-table class="table-scroll" data-mode="virtual" data-table="draws"></rdc-table>'
+        '</section>')
+    assert 'class="col-groups"' not in out                     # col-groups is catalog-only
+
+
+def test_virtual_host_col_groups_catalog_only():
+    """virtual_host(col_groups=True) emits EXACTLY the empty .col-groups toggle bar (the engine fills it)
+    BEFORE the host (catalog); col_groups=False (drill) is the bare host. Attr order matches the c16i/k
+    substring guards (class, data-mode, data-table) + (class, role, aria-label)."""
+    cat = virtual_host('catalog', col_groups=True)
+    assert cat == ('<div class="col-groups" role="group" aria-label="column groups"></div>'
+                   '<rdc-table class="table-scroll" data-mode="virtual" data-table="catalog"></rdc-table>')
+    assert cat.count('class="col-groups"') == 1
+    drill = virtual_host('draws')
+    assert drill == '<rdc-table class="table-scroll" data-mode="virtual" data-table="draws"></rdc-table>'
+    assert 'col-groups' not in drill
+
+
+def test_table_controls_link_kind_catalog_vs_drill():
+    """dl_link_kind='inline' (catalog) emits data-link-kind on the dl <a>s; None (drill) omits it. The
+    search input keeps its aria-label (a placeholder is NOT a label, c16o)."""
+    catalog = table_controls('_data/_catalog.csv', '_data/_catalog.parquet',
+                             filter_label='filter catalog', placeholder='filter', dl_link_kind='inline')
+    assert catalog == (
+        '<div class="controls">'
+        '<input type="search" aria-label="filter catalog" placeholder="filter">'
+        '<span class="ct visible-count"></span>'
+        '<a class="dl" href="_data/_catalog.csv" data-link-kind="inline">CSV</a>'
+        '<a class="dl" href="_data/_catalog.parquet" data-link-kind="inline">parquet</a></div>')
+    drill = table_controls('draws.csv', 'draws.parquet',
+                           filter_label='filter draws', placeholder='filter draws...')
+    assert '<a class="dl" href="draws.csv">CSV</a>' in drill        # no data-link-kind on drill
+    assert 'data-link-kind' not in drill
+
+
+def test_virtual_host_escapes_table_key_by_construction():
+    """The escape-by-construction property the el migration buys: a table_key with &/\" can't break out of
+    the data-table= attr (or, via virtual_table_section, the id= / aria-label=)."""
+    assert virtual_host('a&b"c') == (
+        '<rdc-table class="table-scroll" data-mode="virtual" data-table="a&amp;b&quot;c"></rdc-table>')
+    sec = virtual_table_section('a&b', title='a&b', meta='0 rows, 0 cols',
+                                csv_href='a&b.csv', parquet_href='a&b.parquet',
+                                filter_label='filter a&b', placeholder='filter a&b...')
+    assert '<section class="table-section" id="a&amp;b">' in sec
+    assert 'aria-label="filter a&amp;b"' in sec and 'data-table="a&amp;b"' in sec

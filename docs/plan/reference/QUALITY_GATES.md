@@ -789,6 +789,47 @@ golden_package HTML; net **-827 lines** (declarative columns replaced the hand-w
 `_pagedata`/`digests`/`golden_parquet` byte-unchanged (0 data drift). No new ADR (rides ADR-43 replacement
 gate + ADR-42 + ADR-44).
 
+**v0.2.6-5** (catalog/drill wide layout + virtual hosts through the component + CLOSE the `el` long-tail):
+the FOURTH (LAST) componentization commit. **(1) Wide layout** -- `per_drop.css` `body { max-width: 1800
+-> 2400px }` + `.table-scroll { max-height: 60 -> 72vh }` (catalog/drill only; reports never load
+`_PER_DROP_CSS`; the rdc-table ENGINE `rdc_table.{css,js}` incl. `--clip-cap*` stays FROZEN -- verified
+`.table-scroll` lives in per_drop.css, NOT the engine). **(2) Virtual hosts routed through NEW chrome
+table-family primitives** `table_controls` (search/count/CSV+parquet bar) + `virtual_host(table_key,
+col_groups=)` (the row-less windowed `<rdc-table data-mode="virtual">` + the optional empty `.col-groups`
+bar) + `virtual_table_section` (the drill per-table card); `render_root` composes the catalog inline from
+the same primitives; re-exported via `base.py`. The hand-concatenated hosts in `html/template.py`
+(`_inline_table_with_data`, `render_root`) now build through `el`. **Engine DOM contract preserved** (the
+gotcha the substring tests miss): `<input type=search>` + `.ct.visible-count` + `.col-groups` + the
+`<rdc-table>` host stay under ONE `<section>` (the engine finds them via
+`host.closest('section').querySelector(...)`), host a direct child (the expand-toggle `insertBefore`),
+drill section still nested in `<details class="category">` -- verified GREEN in the browser matrix
+(filter count `14/14 visible` populated + col-group toggles built + Expand-cells present). **(3) `el`
+long-tail CLOSED (G-32):** the 12 clean chrome leaves (`summary_bar`/`callout`/`empty_state`/`heatmap_cell`/
+`provenance_strip`/`ab_picker`/`run_picker`/`run_compare_banner`/`link`/`kpi_strip`/`section_card`/`ab_strip`)
++ the `\n`-joined structural leaves (`header`/`legend`; template `_toc`/`_category_block`/`_sidecar_category`
++ the inline `render_drop`/`render_root` page fragments incl. the catalog-page chip-cluster/catalog-grid/
+pair-list/pair-group) all migrated to `el`/`raw` **byte-IDENTICALLY** (Strategy A: `\n` between/around
+el-built siblings preserved); the two -4-deferred leaves (`shader_hotlist` `<details><summary>`, `overdraw`
+`<p class="note">`) done. **Documented irreducible floor (ADR-23):** `page_open`'s scaffold (`<!doctype>`
++ `<meta>`/`<title>`(already-escaped) + favicon `<link>` data-URI + open `<html>/<head>/<body>` + the
+`_ICON_SPRITE`) is fixed safe markup `el` cannot build (no doctype/open-tag); left as-is, recorded -- "no
+bespoke" = no UNJUSTIFIED bespoke. **Strategy A proven:** a fresh synthetic render diverges from golden on
+EXACTLY 2 pages (root `index.html` + the drill page -- the intended host reshape + wide-layout `<style>`);
+all 15 report HTML goldens BYTE-UNCHANGED (no report leaf migration shifted a byte). Gates: data FROZEN --
+`test_parquet_parity` + `_pagedata/*.js` + `digests.json` + `golden_parquet` + `golden_preview`
+BYTE-UNCHANGED (NO `make_parquet_golden`); the cell-text harness extended to catalog/drill (parses the
+FROZEN `_pagedata/<key>.js` `window.__data_<key>={cols,rows}` + `__colgroups_*`) -- GREEN on synthetic;
+the real-Perf overdraw rt-row diff is **R-19 only** (reconfirmed self-nondeterministic: same code, two
+renders, DIFFERENT tied-rt cells -> pre-existing, not this commit). `test_table_component` EXTENDED +4
+(virtual_table_section drill shape, virtual_host col-groups catalog-only, table_controls link-kind,
+escape-by-construction on a `&`/`"` key) -> **352 green**; token guard 0; `test_report_structure`
+(c16i/k/l/o substrings) held with NO edit. Browser matrix light/dark/print synthetic + real Perf (catalog
++ newest drill) SIGNED OFF before bake. Scope (`git diff --stat`): 6 source (per_drop.css/chrome.py/base.py/
+template.py/shader_hotlist.py/overdraw.py) + `test_table_component` + 2 render goldens (catalog + drill) +
+6 golden_package goldens (catalog/drill HTML twins + `_assets/catalog.css` on shared/shared_redacted) + 3
+docs; `report.css`/report HTML goldens/`_pagedata`/`digests`/`golden_parquet`/`golden_preview`
+BYTE-UNCHANGED. No new ADR (rides ADR-42/43/44 + ADR-23 documented scoping). **G-32 CLOSED.**
+
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,
 dropped column, dtype slip). Skip `_`-prefixed (`_catalog`, `_global_entities`). Runs on synthetic +

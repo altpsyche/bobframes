@@ -546,6 +546,52 @@ def data_table(columns, rows, *, table_key: str, caption: str = '',
     return wrapped
 
 
+# --- virtual rdc-table host (v0.2.6-5, ADR-42/43) -------------------------------------------------
+# The catalog/drill family's hosts (html/template.py) are VIRTUAL: rows are NOT server-baked -- the
+# VTable engine paints a windowed view client-side from the FROZEN _pagedata/<key>.js payload. So these
+# are row-less hosts (no `columns`/`rows`, distinct from `data_table`'s static path). They were
+# hand-concatenated in template.py through v0.2.6-4; these primitives put the host markup on `el`, the
+# last bespoke-markup site. Engine DOM contract (rdc_table.js): the `<input type=search>`, the
+# `.ct.visible-count` span, the `.col-groups` div, and the `<rdc-table>` host must all live under ONE
+# `<section>` (the engine finds them via host.closest('section').querySelector(...)) -- the callers in
+# template.py compose them inside a single <section> accordingly.
+
+def table_controls(csv_href, parquet_href, *, filter_label, placeholder,
+                   dl_link_kind: str | None = None) -> _Raw:
+    """The search-filter `<input>` + `.ct.visible-count` span + CSV/parquet `.dl` download links bar
+    shared by the catalog + drill virtual hosts. `dl_link_kind` -> `data-link-kind` on the dl `<a>`s
+    (catalog passes 'inline'; drill passes None -> the attribute is omitted). Built via `el`."""
+    return el('div', {'class': 'controls'},
+              el_void('input', {'type': 'search', 'aria-label': filter_label, 'placeholder': placeholder}),
+              el('span', {'class': 'ct visible-count'}),
+              el('a', {'class': 'dl', 'href': csv_href, 'data-link-kind': dl_link_kind}, 'CSV'),
+              el('a', {'class': 'dl', 'href': parquet_href, 'data-link-kind': dl_link_kind}, 'parquet'))
+
+
+def virtual_host(table_key, *, col_groups: bool = False) -> _Raw:
+    """The empty windowed `<rdc-table class="table-scroll" data-mode="virtual" data-table=KEY>` host
+    (+ the optional empty `.col-groups` toggle bar the engine fills client-side -- catalog only). Rows
+    stream from the FROZEN `_pagedata/<key>.js`; the engine builds the `<table class="data">` in place."""
+    host = el('rdc-table', {'class': 'table-scroll', 'data-mode': 'virtual', 'data-table': table_key})
+    if col_groups:
+        bar = el('div', {'class': 'col-groups', 'role': 'group', 'aria-label': 'column groups'})
+        return raw(str(bar) + str(host))
+    return host
+
+
+def virtual_table_section(table_key, *, title, meta, csv_href, parquet_href,
+                          filter_label, placeholder) -> _Raw:
+    """The DRILL per-table host: `<section class="table-section" id=KEY>` + a header (h2 + `.table-meta`
+    count) + `table_controls(...)` + `virtual_host(table_key)`. The catalog host has a different wrapper
+    (`<section><h2>catalog</h2>` + a col-groups div) and is composed inline by `render_root`."""
+    return el('section', {'class': 'table-section', 'id': table_key},
+              el('header', {'class': 'table-header'},
+                 el('h2', None, title),
+                 el('span', {'class': 'table-meta'}, meta)),
+              table_controls(csv_href, parquet_href, filter_label=filter_label, placeholder=placeholder),
+              virtual_host(table_key))
+
+
 # --- build-health one-pager components (c16x-5, ADR-42; promoted from summary._* at visual parity) --
 
 def kpi_card(label, value, *, delta_html: str = '', trend: str = '', note: str = '',
@@ -671,29 +717,21 @@ def summary_bar(label: str, headline: str, *,
     link_href: optional primary-action link rendered as button chip
     tone: neutral | alarm | warn | ok | info (controls top border color)
     """
-    wrap_open = ''
-    wrap_close = ''
-    if tone == 'alarm':
-        wrap_open = '<rdc-alarm-banner data-severity="high">'
-        wrap_close = '</rdc-alarm-banner>'
-    parts = [wrap_open]
-    parts.append(f'<aside class="summary-bar tone-{_html.escape(tone)}" aria-label="page summary">')
-    parts.append(f'<div class="sb-label">{_html.escape(label)}</div>')
-    parts.append(f'<div class="sb-headline">{_html.escape(headline)}</div>')
+    children = [el('div', {'class': 'sb-label'}, label),
+                el('div', {'class': 'sb-headline'}, headline)]
     if sub:
-        parts.append(f'<div class="sb-sub">{_html.escape(sub)}</div>')
+        children.append(el('div', {'class': 'sb-sub'}, sub))
     if link_href:
-        parts.append(f'<a class="sb-link" href="{_html.escape(link_href)}" '
-                     f'data-link-kind="primary">{_html.escape(link_text)}</a>')
-    parts.append('</aside>')
-    parts.append(wrap_close)
-    return ''.join(parts)
+        children.append(el('a', {'class': 'sb-link', 'href': link_href,
+                                 'data-link-kind': 'primary'}, link_text))
+    aside = el('aside', {'class': 'summary-bar tone-' + tone, 'aria-label': 'page summary'}, *children)
+    return el('rdc-alarm-banner', {'data-severity': 'high'}, aside) if tone == 'alarm' else aside
 
 
 def empty_state(message: str, *, icon_name: str = 'warn') -> str:
     """Friendly empty-state card (icon + message) for a report/section with no rows (c16). Replaces a
     bare `<p class="note">` / blank `<tbody>` so a sparse drop reads as 'no data', not 'broken'."""
-    return f'<div class="empty-state">{icon(icon_name)}<span>{h(message)}</span></div>'
+    return el('div', {'class': 'empty-state'}, raw(icon(icon_name)), el('span', None, message))
 
 
 def callout(severity: str, title: str, detail: str = '', *,
@@ -707,17 +745,17 @@ def callout(severity: str, title: str, detail: str = '', *,
     """
     sev = severity if severity in ('ok', 'warn', 'alarm', 'info') else 'neutral'
     ic = icon_name or ('warn' if sev in ('alarm', 'warn') else 'arrow-right')
-    wrap_open = wrap_close = ''
-    if sev in ('alarm', 'warn'):
-        wrap_open = f'<rdc-alarm-banner data-severity="{"high" if sev == "alarm" else "low"}">'
-        wrap_close = '</rdc-alarm-banner>'
-    body = [f'<div class="co-body"><div class="co-title">{h(title)}</div>']
+    co_body = [el('div', {'class': 'co-title'}, title)]
     if detail:
-        body.append(f'<div class="co-detail">{h(detail)}</div>')
+        co_body.append(el('div', {'class': 'co-detail'}, detail))
     if href:
-        body.append(f'<a href="{h(href)}" data-link-kind="inline">{h(link_text)}</a>')
-    body.append('</div>')
-    return f'{wrap_open}<div class="callout sev-{sev}">{icon(ic)}{"".join(body)}</div>{wrap_close}'
+        co_body.append(el('a', {'href': href, 'data-link-kind': 'inline'}, link_text))
+    callout_div = el('div', {'class': 'callout sev-' + sev},
+                     raw(icon(ic)),
+                     el('div', {'class': 'co-body'}, *co_body))
+    if sev in ('alarm', 'warn'):
+        return el('rdc-alarm-banner', {'data-severity': 'high' if sev == 'alarm' else 'low'}, callout_div)
+    return callout_div
 
 
 def heatmap_cell(value, lo, hi, *, direction: str = 'hot', text: str | None = None) -> str:
@@ -725,8 +763,9 @@ def heatmap_cell(value, lo, hi, *, direction: str = 'hot', text: str | None = No
     value+min+max; the component shades client-side, so the emitted HTML stays deterministic. Returns
     the element only — wrap it in a `<td class="num">`. ``direction`` 'hot' = high values are intense."""
     disp = text if text is not None else value
-    return (f'<rdc-heatmap-cell data-value="{h(value)}" data-min="{h(lo)}" data-max="{h(hi)}" '
-            f'data-direction="{h(direction)}">{h(disp)}</rdc-heatmap-cell>')
+    return el('rdc-heatmap-cell',
+              {'data-value': value, 'data-min': lo, 'data-max': hi, 'data-direction': direction},
+              disp)
 
 
 def provenance_strip(host_info: dict | None, tool_versions: dict | None,
@@ -756,8 +795,8 @@ def provenance_strip(host_info: dict | None, tool_versions: dict | None,
     if not fields:
         return ''
     if redact:
-        return '<div class="device-strip">redacted</div>'
-    return f'<div class="device-strip">{" | ".join(fields)}</div>'
+        return el('div', {'class': 'device-strip'}, 'redacted')
+    return el('div', {'class': 'device-strip'}, raw(' | '.join(fields)))
 
 
 def ab_picker(options: list, current_href: str | None = None) -> str:
@@ -768,15 +807,12 @@ def ab_picker(options: list, current_href: str | None = None) -> str:
     """
     if not options:
         return ''
-    parts = ['<rdc-ab-picker><label for="rdc-ab-select">compare</label>',
-             '<select id="rdc-ab-select">',
-             '<option value="">none</option>']
+    opts = [el('option', {'value': ''}, 'none')]
     for label, href in options:
-        sel = ' selected' if current_href == href else ''
-        parts.append(f'<option value="{_html.escape(href)}"{sel}>'
-                     f'{_html.escape(label)}</option>')
-    parts.append('</select></rdc-ab-picker>')
-    return ''.join(parts)
+        opts.append(el('option', {'value': href, 'selected': (current_href == href) or None}, label))
+    return el('rdc-ab-picker', None,
+              el('label', {'for': 'rdc-ab-select'}, 'compare'),
+              el('select', {'id': 'rdc-ab-select'}, *opts))
 
 
 def ab_picker_for(root: str, report_name: str, *, ab=None) -> str:
@@ -806,14 +842,11 @@ def run_picker(options: list, current_href: str | None = None) -> str:
     picker so both can coexist on one page; no 'none' option (a report is always for some run)."""
     if not options:
         return ''
-    parts = ['<rdc-ab-picker><label for="rdc-run-select">run</label>',
-             '<select id="rdc-run-select">']
-    for label, href in options:
-        sel = ' selected' if current_href == href else ''
-        parts.append(f'<option value="{_html.escape(href)}"{sel}>'
-                     f'{_html.escape(label)}</option>')
-    parts.append('</select></rdc-ab-picker>')
-    return ''.join(parts)
+    opts = [el('option', {'value': href, 'selected': (current_href == href) or None}, label)
+            for label, href in options]
+    return el('rdc-ab-picker', None,
+              el('label', {'for': 'rdc-run-select'}, 'run'),
+              el('select', {'id': 'rdc-run-select'}, *opts))
 
 
 def run_picker_for(run, report_name: str, *, reports_up: str = '',
@@ -857,8 +890,9 @@ def run_compare_banner(current, baseline) -> str:
     """
     if current is None or baseline is None:
         return ''
-    return (f'<div class="ab-strip">current: {_f.safe_chrome_text(current.key)} '
-            f'| baseline: <span class="dim">{_f.safe_chrome_text(baseline.key)}</span></div>')
+    return el('div', {'class': 'ab-strip'},
+              raw(f'current: {_f.safe_chrome_text(current.key)} | baseline: '),
+              el('span', {'class': 'dim'}, raw(_f.safe_chrome_text(baseline.key))))
 
 
 def link(href: str, text: str, *, kind: str = 'inline',
@@ -868,10 +902,10 @@ def link(href: str, text: str, *, kind: str = 'inline',
     kind: primary | inline | drill | copy | crumb
     icon_name: matches a symbol id in _ICON_SPRITE (link-out, file, arrow-right, copy, search, warn)
     """
-    target_attr = ' target="_blank" rel="noopener"' if target_blank else ''
-    icon_html = icon(icon_name) if icon_name else ''
-    return (f'<a href="{_html.escape(href)}" data-link-kind="{_html.escape(kind)}"'
-            f'{target_attr}>{_html.escape(text)}{icon_html}</a>')
+    return el('a', {'href': href, 'data-link-kind': kind,
+                    'target': '_blank' if target_blank else None,
+                    'rel': 'noopener' if target_blank else None},
+              text, raw(icon(icon_name)) if icon_name else None)
 
 
 def page_close() -> str:
@@ -961,22 +995,21 @@ def header(title: str, *, drops: int = 0, captures: int = 0,
     up = '../' * crumb_depth
     crumb_links = []
     if current_page != 'root':
-        crumb_links.append(f'<a href="{up}index.html" data-link-kind="crumb">root catalog</a>')
+        crumb_links.append(el('a', {'href': f'{up}index.html', 'data-link-kind': 'crumb'}, 'root catalog'))
     if current_page != 'dashboard':
-        crumb_links.append(f'<a href="{up}_reports/index.html" data-link-kind="crumb">dashboard</a>')
-    fact_spans = [f'<span>built <strong>{_html.escape(build_ts)}</strong></span>']
+        crumb_links.append(el('a', {'href': f'{up}_reports/index.html', 'data-link-kind': 'crumb'}, 'dashboard'))
+    fact_spans = [el('span', None, raw('built '), el('strong', None, build_ts))]
     if drops > 1:
-        fact_spans.append(f'<span>drops <strong>{drops}</strong></span>')
+        fact_spans.append(el('span', None, raw('drops '), el('strong', None, drops)))
     if run is not None and getattr(run, 'current', None):
-        fact_spans.append(
-            f'<span>run <strong>{_f.safe_chrome_text(run.ordinal)}</strong>: '
-            f'<strong>{_f.safe_chrome_text(run.run_label)}</strong></span>')
+        fact_spans.append(el('span', None, raw('run '),
+                             el('strong', None, raw(_f.safe_chrome_text(run.ordinal))),
+                             raw(': '),
+                             el('strong', None, raw(_f.safe_chrome_text(run.run_label)))))
     parts = [
-        f'<h1>{_html.escape(title)}</h1>',
-        '<header class="strip">',
-        *fact_spans,
-        '</header>',
-        f'<nav class="crumb">{"".join(crumb_links)}</nav>',
+        el('h1', None, title),
+        el('header', {'class': 'strip'}, raw('\n' + '\n'.join(fact_spans) + '\n')),
+        el('nav', {'class': 'crumb'}, raw(''.join(crumb_links))),
     ]
     if kpis:
         parts.append(kpi_strip(kpis))
@@ -984,12 +1017,11 @@ def header(title: str, *, drops: int = 0, captures: int = 0,
 
 
 def legend(classes: list[str] | None = None) -> str:
-    out = ['<div class="legend">']
-    for c in (classes or DRAW_CLASSES):
-        out.append(f'<span class="chip"><span class="swatch" '
-                   f'style="background: {class_color_var(c)}"></span>{_html.escape(c)}</span>')
-    out.append('</div>')
-    return '\n'.join(out)
+    chips = [el('span', {'class': 'chip'},
+                el('span', {'class': 'swatch', 'style': 'background: ' + class_color_var(c)}),
+                c)
+             for c in (classes or DRAW_CLASSES)]
+    return el('div', {'class': 'legend'}, raw('\n' + '\n'.join(chips) + '\n'))
 
 
 def kpi_chip(label: str, value, *, delta: str | None = None,
@@ -1005,34 +1037,25 @@ def kpi_strip(kpis: list) -> str:
     """Render hero KPI strip below page header."""
     if not kpis:
         return ''
-    parts = ['<div class="kpi-strip">']
-    for k in kpis:
-        parts.append(kpi_chip(
-            k.get('label', ''), k.get('value', ''),
-            delta=k.get('delta'), tone=k.get('tone', 'neutral'),
-        ))
-    parts.append('</div>')
-    return ''.join(parts)
+    chips = [raw(kpi_chip(k.get('label', ''), k.get('value', ''),
+                          delta=k.get('delta'), tone=k.get('tone', 'neutral')))
+             for k in kpis]
+    return el('div', {'class': 'kpi-strip'}, *chips)
 
 
 def section_card(section_id: str, title: str, body: str, *,
                  count: str | int | None = None,
                  subtitle: str | None = None,
                  level: str = 'h2') -> str:
-    head_parts = [f'<{level}>{h(title)}</{level}>']
+    head_children = [el(level, None, title)]
     if count is not None:
-        if isinstance(count, int):
-            count_str = _f.fmt_int(count)
-        else:
-            count_str = str(count)
-        head_parts.append(f'<span class="card-count">{h(count_str)}</span>')
-    sub = (f'<p class="card-subtitle">{h(subtitle)}</p>'
-           if subtitle else '')
-    return (f'<section class="card" id="{h(section_id)}">'
-            f'<header>{"".join(head_parts)}</header>'
-            f'{sub}'
-            f'{body}'
-            f'</section>')
+        count_str = _f.fmt_int(count) if isinstance(count, int) else str(count)
+        head_children.append(el('span', {'class': 'card-count'}, count_str))
+    sub = el('p', {'class': 'card-subtitle'}, subtitle) if subtitle else None
+    return el('section', {'class': 'card', 'id': section_id},
+              el('header', None, *head_children),
+              sub,
+              raw(body))
 
 
 def ab_strip(ab, *, baseline_suffix: str = '', compare_suffix: str = '') -> str:
@@ -1040,5 +1063,6 @@ def ab_strip(ab, *, baseline_suffix: str = '', compare_suffix: str = '') -> str:
     if ab is None:
         return ''
     baseline, compare = ab
-    return (f'<div class="ab-strip">baseline: {h(baseline.key)}{baseline_suffix} '
-            f'| compare: {h(compare.key)}{compare_suffix}</div>')
+    return el('div', {'class': 'ab-strip'},
+              raw(f'baseline: {h(baseline.key)}{baseline_suffix} '
+                  f'| compare: {h(compare.key)}{compare_suffix}'))

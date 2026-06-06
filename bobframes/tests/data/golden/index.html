@@ -973,7 +973,11 @@ rdc-table[data-mode="static"][data-expand="true"] table.data tbody td { white-sp
   }
 }
 
-body { max-width: 1800px; }
+/* v0.2.6-5: catalog/drill are the densest data surface -- widen the body so wide virtual tables use
+   more horizontal space (max data-per-screen), with a ceiling so ultra-wide displays don't stretch rows
+   to unreadable line lengths. Catalog/drill only (reports never load _PER_DROP_CSS); the rdc-table engine
+   --clip-cap* (rdc_table.css) stay FROZEN. */
+body { max-width: 2400px; }
 
 nav.toc a { display: flex; justify-content: space-between; padding: 2px 0; gap: 1rem; }
 nav.toc a .ct { color: var(--text-3); font-variant-numeric: tabular-nums; }
@@ -997,7 +1001,7 @@ nav.toc a .ct { color: var(--text-3); font-variant-numeric: tabular-nums; }
      box; tables past the cap scroll (the virtual-scroll spacers reserve the full height regardless,
      so clientHeight settles at 60vh and the windowing is unchanged). Was a fixed height: 60vh with
      a never-applied .table-scroll.short variant - this folds that intent into the default. */
-  height: auto; max-height: 60vh; overflow: auto;
+  height: auto; max-height: 72vh; overflow: auto;   /* v0.2.6-5: more rows per screen on the dense surface */
   border: 1px solid var(--border-1);
   background: var(--surface-0);
   position: relative;
@@ -1085,16 +1089,7 @@ section.table-section .table-meta {
 <a href="_reports/shader_hotlist.html" data-link-kind="primary">shader_hotlist</a>
 <a href="_reports/trend_table.html" data-link-kind="primary">trend_table</a>
 </div></section>
-<section><h2>catalog</h2>
-<div class="controls">
-<input type="search" aria-label="filter catalog" placeholder="filter">
-<span class="ct visible-count"></span>
-<a class="dl" href="_data/_catalog.csv" data-link-kind="inline">CSV</a>
-<a class="dl" href="_data/_catalog.parquet" data-link-kind="inline">parquet</a>
-</div>
-<div class="col-groups" role="group" aria-label="column groups"></div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="catalog"></rdc-table>
-</section>
+<section><h2>catalog</h2><div class="controls"><input type="search" aria-label="filter catalog" placeholder="filter"><span class="ct visible-count"></span><a class="dl" href="_data/_catalog.csv" data-link-kind="inline">CSV</a><a class="dl" href="_data/_catalog.parquet" data-link-kind="inline">parquet</a></div><div class="col-groups" role="group" aria-label="column groups"></div><rdc-table class="table-scroll" data-mode="virtual" data-table="catalog"></rdc-table></section>
 <script defer src="_pagedata/catalog.js"></script>
 <script>window.__colgroups_catalog=[{"name":"Metadata","open":true,"cols":["area","drop_date","drop_label","capture","schema_version","build_timestamp","replay_status","analysis_out_path"]},{"name":"Workload","open":true,"cols":["row_count_draws","row_count_events","row_count_state_change_events","row_count_counters_per_event","row_count_descriptor_access","row_count_passes","row_count_frame_totals","row_count_clears","row_count_dispatches","row_count_rt_event_timeline","row_count_vertex_inputs","row_count_resource_creation","row_count_draw_bindings","row_count_program_transitions","row_count_indirect_args","row_count_pass_class_breakdown","row_count_texture_usage"]},{"name":"Resources","open":false,"cols":["row_count_shaders","row_count_textures","row_count_render_targets","row_count_buffers","row_count_programs","row_count_samplers","row_count_fbos"]},{"name":"Samples","open":false,"cols":["row_count_pixel_history","row_count_vbo_samples","row_count_ibo_samples","row_count_post_vs_samples","row_count_texture_samples"]}];</script>
 <script>window.__labels={};</script>

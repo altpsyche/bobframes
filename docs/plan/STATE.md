@@ -11,8 +11,37 @@ active_release: v0.2.6    (v0.1 COMPLETE - bobframes 0.1.0 live on PyPI 2026-05-
                 migration, so there is no standalone 0.2.5 - the next PyPI release is 0.2.6, carrying the
                 foundation AND the visual redesign; _version jumps 0.2.0 -> 0.2.6. The c16x work + the CI
                 golden_env fix are on `main`; v0.2.6 work is on branch `plan/v0.2.6`.)
-current:        v0.2.6-5 (catalog/drill wide layout + virtual hosts through the component + el long-tail close)    (status:
+current:        v0.2.6-6 (close-out + ship to PyPI)    (status:
                 PLANNED on plan/v0.2.6.
+                v0.2.6-5 DONE 2026-06-06 (catalog/drill wide layout + virtual hosts through the component + el long-tail CLOSED;
+                UNPUSHED): the FOURTH (LAST) componentization commit. (1) WIDE layout: per_drop.css body max-width 1800->2400px +
+                .table-scroll max-height 60->72vh (catalog/drill ONLY; reports never load _PER_DROP_CSS; the rdc-table ENGINE
+                rdc_table.{css,js} incl. --clip-cap* FROZEN -- verified .table-scroll lives in per_drop.css NOT the engine). (2)
+                Virtual hosts routed through NEW chrome table-family primitives table_controls + virtual_host(table_key,
+                col_groups=) + virtual_table_section (re-exported via base.py); _inline_table_with_data (drill) collapses to one
+                call, render_root composes the catalog inline; _write_page_data/_table_payload untouched -> _pagedata byte-stable.
+                Engine same-<section> DOM contract preserved (the gotcha the substring tests miss: the engine finds search/count/
+                col-groups via host.closest('section').querySelector) -- browser matrix confirmed filter-count populated + toggles
+                built + Expand-cells present. (3) el long-tail CLOSED (G-32): the 12 clean chrome leaves (summary_bar/callout/
+                empty_state/heatmap_cell/provenance_strip/ab_picker/run_picker/run_compare_banner/link/kpi_strip/section_card/
+                ab_strip) + the \n-joined structural leaves (header/legend; template _toc/_category_block/_sidecar_category + the
+                inline render_drop/render_root fragments incl. catalog chip-cluster/catalog-grid/pair-list/pair-group) migrated to
+                el/raw BYTE-IDENTICALLY (Strategy A: internal \n preserved); the two -4-deferred leaves (shader_hotlist
+                <details><summary>, overdraw <p class="note">) done. page_open's scaffold (doctype + favicon link data-URI + open
+                html/head/body + _ICON_SPRITE) left as-is = the documented irreducible floor (ADR-23; el cannot emit a doctype/
+                open-tag). STRATEGY A PROVEN: a fresh synthetic render diverged from golden on EXACTLY 2 pages (root index.html +
+                the drill page = the intended host reshape + wide <style>); all 15 report HTML goldens BYTE-UNCHANGED. Data FROZEN:
+                test_parquet_parity + _pagedata/*.js + digests.json + golden_parquet + golden_preview BYTE-UNCHANGED (NO
+                make_parquet_golden); the cell-text harness extended to catalog/drill (parses the FROZEN _pagedata payloads +
+                __colgroups_*) GREEN on synthetic; the real-Perf overdraw rt-row diff is R-19 ONLY (reconfirmed self-
+                nondeterministic -- same NEW code, two re-renders disagreed on DIFFERENT tied-rt cells; not this commit).
+                test_table_component EXTENDED +4 -> 352 green (-m "not browser", was 348); token guard 0; test_report_structure
+                (c16i/k/l/o + th==scope + search aria-label) held with NO edit. Browser matrix light/dark/print synthetic + real
+                Perf (catalog + newest drill) SIGNED OFF before bake. git diff --stat: 6 source + test_table_component + 2 render
+                goldens (catalog + drill) + 6 golden_package goldens (catalog/drill twins + _assets/catalog.css) + 3 docs; report.css/
+                report HTML goldens/_pagedata/digests/golden_parquet/golden_preview byte-unchanged. No new ADR (rides ADR-42/43/44 +
+                ADR-23). QUALITY_GATES §21.1v + FINDINGS (G-32 CLOSED; R-19 reconfirmed/deferred) + commit doc
+                v026_5_catalog_drill_close.md as-built. NEXT: v0.2.6-6.
                 v0.2.6-4 DONE 2026-06-06 (5 tabled detail reports adopt Column+data_table): the THIRD surface commit and the
                 FIRST to BREAK byte-parity on purpose -- data_table NORMALIZES the hand-written markup (attr order/cell
                 shape/inline col-groups), the exact reason c16x x4 BUILT-NOT-ADOPTED the family; the golden refresh ABSORBS
@@ -194,7 +223,29 @@ current:        v0.2.6-5 (catalog/drill wide layout + virtual hosts through the 
                 token-validity guard + preview gallery; migrate summary.py off its inline <style> (visual parity).
                 NOTE: c16p (v0.2 release) COMPLETE - PyPI bobframes 0.2.0 LIVE; tag v0.2.0 -> 765a4db on main.
                 GIT: c16y + c16v are in the WORKING TREE, NOT yet committed (user hasn't asked to commit).)
-last_session:   2026-06-06 — v0.2.6-4 DONE (5 tabled detail reports adopt the Column+data_table family). The THIRD surface
+last_session:   2026-06-06 — v0.2.6-5 DONE (catalog/drill wide layout + virtual hosts through the component + el long-tail
+                CLOSED). The FOURTH (LAST) componentization commit. (1) WIDE layout: per_drop.css body max-width 1800->2400px +
+                .table-scroll 60->72vh (catalog/drill only; the rdc-table ENGINE rdc_table.{css,js} incl. --clip-cap* FROZEN --
+                .table-scroll verified to live in per_drop.css not the engine). (2) Virtual hosts routed through NEW chrome
+                table-family primitives table_controls/virtual_host/virtual_table_section (re-exported via base.py); template.py's
+                _inline_table_with_data + render_root catalog block now build through el; _pagedata byte-stable (writer untouched).
+                The engine's same-<section> DOM contract (search/count/col-groups found via host.closest('section')) preserved --
+                browser matrix confirmed the filter count populated + col-group toggles built + Expand-cells present. (3) el
+                long-tail CLOSED (G-32): the 12 clean chrome leaves + the \n-joined structural leaves (header/legend; template
+                _toc/_category_block/_sidecar_category + the inline render_drop/render_root fragments incl. catalog chip-cluster/
+                catalog-grid/pair-list/pair-group) migrated to el/raw BYTE-IDENTICALLY (Strategy A, internal \n preserved); the two
+                -4-deferred leaves (shader_hotlist <details><summary>, overdraw <p class="note">) done. page_open's scaffold
+                (doctype + favicon link + open html/head/body + _ICON_SPRITE) is the documented irreducible floor (ADR-23). Strategy
+                A PROVEN: a fresh synthetic render diverged from golden on EXACTLY the 2 intended catalog/drill pages; all 15 report
+                HTML goldens BYTE-UNCHANGED. Data FROZEN (test_parquet_parity + _pagedata + digests + golden_parquet + golden_preview
+                byte-unchanged, NO make_parquet_golden); cell-text harness extended to catalog/drill (parses the frozen _pagedata)
+                GREEN on synthetic; the real-Perf overdraw rt-row diff = R-19 only (reconfirmed self-nondeterministic, not this
+                commit). test_table_component +4 -> 352 green; token guard 0; test_report_structure held no-edit. Browser matrix
+                light/dark/print synthetic + real Perf SIGNED OFF before bake. git diff = 6 source + test_table_component + 2 render
+                goldens + 6 golden_package + 3 docs; report.css/report goldens/_pagedata/digests/parquet/preview byte-unchanged. No
+                new ADR (rides ADR-42/43/44/23); QUALITY_GATES §21.1v + FINDINGS (G-32 ☑, R-19 reconfirmed/deferred) + commit doc
+                v026_5_catalog_drill_close.md as-built. current -> v0.2.6-6.
+                [prior session] 2026-06-06 — v0.2.6-4 DONE (5 tabled detail reports adopt the Column+data_table family). The THIRD surface
                 commit + the FIRST to break byte-parity on purpose: data_table NORMALIZES the hand-written report tables
                 (attr order/cell shape/inline col-groups), the exact reason c16x x4 built-not-adopted the family; the golden
                 refresh ABSORBS it (ADR-43 replacement gate, EXERCISED not narrowed). overdraw/draws_by_class/shader_hotlist/
@@ -1030,18 +1081,18 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    DO v0.2.6-5 (commits/v026/ — AUTHOR the v026_5 doc FIRST; none exists yet): catalog/drill WIDE layout (the
-                densest surface, max data-per-screen) + route the VIRTUAL rdc-table hosts through the component (the
-                mode='virtual' path) + FINISH the el long-tail (header/summary_bar/callout/breadcrumb/toc/sidecar/pair_list/
-                disclosure/pickers) so NOTHING stays bespoke -> CLOSE FINDINGS G-32. CRITICAL: the rdc-table ENGINE + _pagedata
-                UNTOUCHED -> _pagedata/*.js + digests.json byte-STABLE (data FROZEN, NEVER make_parquet_golden); reuse the
-                data-preservation cell-text proof (extend to catalog/drill). Full replacement-gate set (§21.1v) + browser matrix
-                light/dark/print synthetic + real Perf SIGNED OFF BEFORE goldens; make_golden+make_preview_golden+
-                make_package_golden on the canonical .venv; verify git diff scope. Then -6 (close-out + PyPI: _version
-                0.2.0->0.2.6, ONE CHANGELOG [0.2.6] covering c16q->redesign, tag + PyPI only after explicit authorization).
-                NOTE: c16w (standalone v0.2.5 release) CANCELLED per ADR-43 - folded into v0.2.6-6 close-out. CARRY-OVER:
-                FINDINGS R-19 (overdraw set-iteration row-order nondeterminism on real multi-RT data; golden-neutral fix needs a
-                multi-tie fixture, its own commit) + the user's promised 0.2.7 feedback report.
+next_action:    DO v0.2.6-6 (commits/v026/ — the CLOSE-OUT + ship; AUTHOR the v026_6 doc if none exists). _version 0.2.0->0.2.6
+                (SCHEMA_VERSION stays 3 -- no data change); ONE CHANGELOG `## [0.2.6]` covering c16q->the redesign (ADR-42/43/44/45,
+                G-30, the component system + visual language + theme override + the full componentization closing G-32); full
+                matrix incl `pytest` with `-m browser` + the `golden_env` marker on the canonical .venv (py3.12/pyarrow21);
+                clean-wheel post-install verify (the reports/assets/* package-data resolves -> a fresh install renders STYLED, and
+                a `[theme]` override from outside the package works); real-Perf eyeball; `lint CHANGELOG.md`. TAG + PyPI ONLY after
+                explicit authorization (outward/irreversible). NOTE: c16w (standalone v0.2.5 release) CANCELLED per ADR-43 -- folded
+                into this close-out. CARRY-OVER: FINDINGS R-19 (overdraw set-iteration row-order nondeterminism on real multi-RT
+                data; reconfirmed at -5, still pre-existing; golden-neutral fix needs a multi-tie fixture + a determinism
+                regression, its OWN commit) + the user's promised 0.2.7 feedback report.
+                [prior] v0.2.6-5 DONE 2026-06-06 (catalog/drill wide layout + virtual hosts through the component + el long-tail
+                CLOSED [G-32]; the LAST componentization commit) - see `current:` + session log.
                 [prior] v0.2.6-4 DONE 2026-06-06 (5 tabled detail reports adopt Column+data_table; the FIRST byte-parity-breaking
                 surface commit) - see `current:` + session log.
                 [prior] v0.2.6-0 + -1a DONE 2026-06-05 (dev tooling + neutral shadcn token lift; ADR-44/45; 327 green; one commit).
@@ -1179,6 +1230,16 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-06 — v0.2.6-5 DONE (commits/v026/v026_5_catalog_drill_close.md, plan/v0.2.6). The LAST componentization commit:
+  (1) catalog/drill WIDE layout (per_drop.css body 1800->2400px + .table-scroll 60->72vh; engine rdc_table.{css,js} FROZEN);
+  (2) the virtual rdc-table hosts routed through NEW chrome table_controls/virtual_host/virtual_table_section (re-exported via
+  base.py); the engine same-<section> DOM contract preserved (browser-matrix-verified); (3) el long-tail CLOSED (G-32) -- 12
+  clean chrome leaves + the \n-joined structural leaves (header/legend; template _toc/_category_block/_sidecar_category + the
+  inline render_drop/render_root fragments) + the two -4-deferred leaves, all BYTE-IDENTICAL (Strategy A); page_open's scaffold
+  = the documented irreducible floor (ADR-23). Strategy A proven (fresh synthetic diverged from golden on EXACTLY the 2
+  catalog/drill pages; 15 report goldens byte-unchanged). Data FROZEN (parquet/_pagedata/digests/golden_parquet/golden_preview
+  byte-unchanged); real-Perf overdraw rt diff = R-19 only (reconfirmed). 352 green (+4); token guard 0; browser matrix signed
+  off before bake. No new ADR (ADR-42/43/44/23). G-32 CLOSED; R-19 deferred. current -> v0.2.6-6.
 - 2026-06-06 — v0.2.6-4 DONE (commits/v026/v026_4_detail_reports.md, plan/v0.2.6). 5 tabled detail reports adopt Column+
   data_table -- the THIRD surface commit + the FIRST to break byte-parity on purpose (data_table NORMALIZES attr-order/cell-
   shape/inline col-groups; golden ABSORBS per ADR-43, EXERCISED not narrowed). Idiosyncrasies preserved: overdraw N per-area
