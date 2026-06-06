@@ -6,13 +6,17 @@
 > defer to this.
 
 ```
-active_release: v0.2.6    (v0.1 COMPLETE - bobframes 0.1.0 live on PyPI 2026-05-31; v0.2.0 bump committed
-                867dcc5. v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing + a parity summary
-                migration, so there is no standalone 0.2.5 - the next PyPI release is 0.2.6, carrying the
-                foundation AND the visual redesign; _version jumps 0.2.0 -> 0.2.6. The c16x work + the CI
-                golden_env fix are on `main`; v0.2.6 work is on branch `plan/v0.2.6`.)
-current:        v0.2.6-6 (close-out + ship to PyPI)    (status:
-                DONE 2026-06-06 -- RELEASE-READY; tag + PyPI AWAIT EXPLICIT AUTHORIZATION (outward/irreversible). UNPUSHED.
+active_release: v0.2.6 SHIPPED 2026-06-06    (bobframes 0.2.6 LIVE on PyPI -- published by the `v0.2.6` tag CI run
+                (PyPI Trusted Publishing / OIDC, no token; ci.yml publish job, ADR-13) + a GitHub Release
+                (https://github.com/altpsyche/bobframes/releases/tag/v0.2.6); verified by a clean-venv
+                `uv pip install bobframes==0.2.6` -> version 0.2.6 schema 3 pyarrow 21. v0.1 COMPLETE (0.1.0 on PyPI
+                2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
+                0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
+                v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
+current:        v0.2.6 SHIPPED (release complete)    (status:
+                DONE 2026-06-06 -- bobframes 0.2.6 PUBLISHED to PyPI + GitHub Release (see active_release). The release
+                tail ran via the tag-triggered CI publish job (trusted publishing, no token). Closed out as:
+                DONE 2026-06-06 -- RELEASE-READY; tag + PyPI ran on authorization. UNPUSHED.
                 _version 0.2.0 -> 0.2.6 (SCHEMA_VERSION stays 3 -- no data change; `bobframes version` -> "bobframes 0.2.6
                 schema 3 pyarrow 21.0.0"). ONE CHANGELOG `## [0.2.6] - 2026-06-06` (Added/Changed/Fixed) covering the whole arc
                 since 0.2.0 -- build-health one-pager (ADR-39), package/shared-assets/redact (ADR-40/41), the component system +
@@ -239,7 +243,15 @@ current:        v0.2.6-6 (close-out + ship to PyPI)    (status:
                 token-validity guard + preview gallery; migrate summary.py off its inline <style> (visual parity).
                 NOTE: c16p (v0.2 release) COMPLETE - PyPI bobframes 0.2.0 LIVE; tag v0.2.0 -> 765a4db on main.
                 GIT: c16y + c16v are in the WORKING TREE, NOT yet committed (user hasn't asked to commit).)
-last_session:   2026-06-06 — v0.2.6-6 DONE (close-out, RELEASE-READY; tag + PyPI await explicit authorization). _version
+last_session:   2026-06-06 — v0.2.6 SHIPPED to PyPI. After v0.2.6-6 closed out release-ready, the v0.2.6 work was rebased
+                onto `main` and the `v0.2.6` annotated tag pushed -> the ci.yml `publish` job ran (test matrix GREEN on all
+                cells, then PyPI Trusted Publishing [OIDC, no token, ADR-13] + a GitHub Release at
+                github.com/altpsyche/bobframes/releases/tag/v0.2.6). Verified: a clean-venv `uv pip install bobframes==0.2.6`
+                from live PyPI -> `bobframes 0.2.6  schema 3  pyarrow 21.0.0`. README drift-fixed to 0.2.6 + a "Built for
+                Mayhem Studios" attribution/support section added (ASCII-clean, lint exit 0). HANDOVER.md retired (release done).
+                bobframes 0.2.6 is LIVE. CARRY-OVER (next release line): R-19 (overdraw set-iteration nondeterminism, own
+                commit, needs a multi-tie fixture) + the user's 0.2.7 feedback report.
+                [prior] v0.2.6-6 DONE (close-out, RELEASE-READY). _version
                 0.2.0->0.2.6 (SCHEMA_VERSION 3); ONE CHANGELOG `## [0.2.6]` covering c16q->the redesign (ADR-39/40/41/42/43/44/45,
                 G-30, G-32), `lint CHANGELOG.md` exit 0. FULL MATRIX GREEN on the canonical .venv: -m golden_env 5, -m browser 1,
                 -m "not browser" 352 (353 total). CLEAN-WHEEL verify: `uv build --wheel` -> bobframes-0.2.6-py3-none-any.whl (15
@@ -1106,18 +1118,15 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    SHIP v0.2.6 (v0.2.6-0..-6 all DONE + committed on plan/v0.2.6, UNPUSHED; the release is RELEASE-READY -- full
-                matrix green, clean-wheel verified, CHANGELOG + version done). REMAINING is the OUTWARD/IRREVERSIBLE tail, GATED on
-                EXPLICIT user authorization: (1) `git push` plan/v0.2.6 (or merge to main per the release flow); (2) `git tag
-                v0.2.6` -> push the tag; (3) build (`uv build`) + `twine upload dist/*` to PyPI; (4) post-publish smoke (`pip
-                install bobframes==0.2.6` from PyPI in a clean venv -> renders STYLED). Do NONE of these until the user says so.
-                NOTE: c16w (standalone v0.2.5 release) CANCELLED per ADR-43 -- folded into this close-out. CARRY-OVER (post-ship or
-                parallel, own commits): FINDINGS R-19 (overdraw set-iteration row-order nondeterminism on real multi-RT data;
-                reconfirmed at -5, pre-existing; golden-neutral fix needs a multi-tie fixture + a determinism regression) + the
-                user's promised 0.2.7 feedback report. See HANDOVER.md (repo root) for the cross-PC continuation guide.
-                [prior] v0.2.6-6 DONE 2026-06-06 (close-out; release-ready; tag+PyPI await auth) - see `current:` + session log.
-                [prior] v0.2.6-5 DONE 2026-06-06 (catalog/drill wide layout + virtual hosts through the component + el long-tail
-                CLOSED [G-32]; the LAST componentization commit) - see `current:` + session log.
+next_action:    v0.2.6 is SHIPPED (LIVE on PyPI + GitHub Release; see active_release / last_session). No open work on the
+                0.2.6 line. The next release line is v0.2.7; pick up either (or both), each its OWN commit, when the user is
+                ready: (1) the user's promised 0.2.7 visual/UX FEEDBACK REPORT (await their notes); (2) FINDINGS R-19 -- the
+                overdraw `set(by_area[area])` row-order nondeterminism on real multi-RT data (reconfirmed pre-existing at -5;
+                golden-neutral on the synthetic, so the fix needs a multi-tie fixture + a determinism regression; fix sketch:
+                `for label in sorted(set(by_area[area]))` or a `(-n_samples, label)` sort key; audit the other set-iterating
+                reports at fix time). Read `docs/plan/STATE.md` first next session (plan-driven). NOTE: c16w (standalone v0.2.5
+                release) was CANCELLED per ADR-43 -- folded into the 0.2.6 close-out.
+                [prior] v0.2.6-6 DONE 2026-06-06 (close-out; then SHIPPED to PyPI via the v0.2.6 tag CI run) - see `current:`.
                 [prior] v0.2.6-5 DONE 2026-06-06 (catalog/drill wide layout + virtual hosts through the component + el long-tail
                 CLOSED [G-32]; the LAST componentization commit) - see `current:` + session log.
                 [prior] v0.2.6-4 DONE 2026-06-06 (5 tabled detail reports adopt Column+data_table; the FIRST byte-parity-breaking
@@ -1257,6 +1266,11 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-06 — v0.2.6 SHIPPED to PyPI. Rebased the v0.2.6 work onto `main`, pushed the `v0.2.6` annotated tag -> the
+  ci.yml `publish` job ran (test matrix GREEN across the py3.10/3.12/3.13 x pyarrow17/21 grid, then PyPI Trusted
+  Publishing [OIDC, no token, ADR-13] + a GitHub Release). Verified: clean-venv `uv pip install bobframes==0.2.6` from
+  live PyPI -> `bobframes 0.2.6  schema 3  pyarrow 21.0.0`. Also: README drift-fixed to 0.2.6 + a "Built for Mayhem
+  Studios" attribution/support section (ASCII-clean, lint exit 0); HANDOVER.md retired. bobframes 0.2.6 is LIVE.
 - 2026-06-06 — v0.2.6-6 DONE (commits/v026/v026_6_closeout_ship.md, plan/v0.2.6). Close-out, RELEASE-READY. `_version`
   0.2.0->0.2.6 (schema 3); ONE CHANGELOG `## [0.2.6]` covering c16q->the redesign (ADR-39..45, G-30, G-32), lint clean. Full
   matrix GREEN on the canonical .venv: -m golden_env 5, -m browser 1, -m "not browser" 352 (353 total). Clean-wheel verify:
