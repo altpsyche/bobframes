@@ -12,7 +12,23 @@ active_release: v0.2.6    (v0.1 COMPLETE - bobframes 0.1.0 live on PyPI 2026-05-
                 foundation AND the visual redesign; _version jumps 0.2.0 -> 0.2.6. The c16x work + the CI
                 golden_env fix are on `main`; v0.2.6 work is on branch `plan/v0.2.6`.)
 current:        v0.2.6-6 (close-out + ship to PyPI)    (status:
-                PLANNED on plan/v0.2.6.
+                DONE 2026-06-06 -- RELEASE-READY; tag + PyPI AWAIT EXPLICIT AUTHORIZATION (outward/irreversible). UNPUSHED.
+                _version 0.2.0 -> 0.2.6 (SCHEMA_VERSION stays 3 -- no data change; `bobframes version` -> "bobframes 0.2.6
+                schema 3 pyarrow 21.0.0"). ONE CHANGELOG `## [0.2.6] - 2026-06-06` (Added/Changed/Fixed) covering the whole arc
+                since 0.2.0 -- build-health one-pager (ADR-39), package/shared-assets/redact (ADR-40/41), the component system +
+                token guard + preview gallery (ADR-42), the per-frame/aggregates spine, and the visual redesign + full
+                componentization (ADR-43/44/45, G-30, G-32); `bobframes lint CHANGELOG.md` exit 0. FULL MATRIX GREEN on the
+                canonical .venv (py3.12.13/pyarrow21): -m golden_env 5 passed (the byte-identical HTML golden gate, ADR-11), -m
+                browser 1 passed (Chrome found + ran), -m "not browser" 352 passed (353 total; post version-bump nothing broke).
+                CLEAN-WHEEL post-install verify: `uv build --wheel` -> bobframes-0.2.6-py3-none-any.whl (all 15 reports/assets/* +
+                _version.py inside); installed into a FRESH venv (only bobframes==0.2.6 + pyarrow==21) -> version 0.2.6; a render
+                of the synthetic produced a STYLED report (@font-face base64 font + --accent-primary token present -> the
+                reports/assets/* + design_tokens.toml package-data resolved from the installed wheel); a `.bobframes.toml [theme]
+                accent_primary="oklch(0.55 0.2 250)"` dropped OUTSIDE the package re-hued the render -> the ADR-45 pip-user theme
+                path works on a clean install. No production code change beyond the version bump (the redesign shipped in -0..-5);
+                no new ADR. REMAINING (gated on authorization, NOT in the green gate): `git tag v0.2.6` -> push -> build ->
+                `twine upload`. commit doc v026_6_closeout_ship.md + QUALITY_GATES §21.1v close note. CARRY-OVER: R-19 (deferred,
+                own commit) + the user's 0.2.7 feedback report.
                 v0.2.6-5 DONE 2026-06-06 (catalog/drill wide layout + virtual hosts through the component + el long-tail CLOSED;
                 UNPUSHED): the FOURTH (LAST) componentization commit. (1) WIDE layout: per_drop.css body max-width 1800->2400px +
                 .table-scroll max-height 60->72vh (catalog/drill ONLY; reports never load _PER_DROP_CSS; the rdc-table ENGINE
@@ -223,7 +239,16 @@ current:        v0.2.6-6 (close-out + ship to PyPI)    (status:
                 token-validity guard + preview gallery; migrate summary.py off its inline <style> (visual parity).
                 NOTE: c16p (v0.2 release) COMPLETE - PyPI bobframes 0.2.0 LIVE; tag v0.2.0 -> 765a4db on main.
                 GIT: c16y + c16v are in the WORKING TREE, NOT yet committed (user hasn't asked to commit).)
-last_session:   2026-06-06 — v0.2.6-5 DONE (catalog/drill wide layout + virtual hosts through the component + el long-tail
+last_session:   2026-06-06 — v0.2.6-6 DONE (close-out, RELEASE-READY; tag + PyPI await explicit authorization). _version
+                0.2.0->0.2.6 (SCHEMA_VERSION 3); ONE CHANGELOG `## [0.2.6]` covering c16q->the redesign (ADR-39/40/41/42/43/44/45,
+                G-30, G-32), `lint CHANGELOG.md` exit 0. FULL MATRIX GREEN on the canonical .venv: -m golden_env 5, -m browser 1,
+                -m "not browser" 352 (353 total). CLEAN-WHEEL verify: `uv build --wheel` -> bobframes-0.2.6-py3-none-any.whl (15
+                reports/assets/* inside); fresh-venv install renders a STYLED synthetic report (assets + design_tokens.toml
+                resolved) + a `.bobframes.toml [theme]` override from outside the package re-hued it (ADR-45 clean-install path).
+                No production change beyond the version bump; no new ADR. REMAINING = `git tag v0.2.6` + push + build + twine
+                upload, GATED on authorization. commit doc v026_6_closeout_ship.md + QUALITY_GATES §21.1v close note + STATE.
+                current stays v0.2.6-6 (release-ready). CARRY-OVER: R-19 (deferred) + the 0.2.7 feedback report.
+                [prior session] 2026-06-06 — v0.2.6-5 DONE (catalog/drill wide layout + virtual hosts through the component + el long-tail
                 CLOSED). The FOURTH (LAST) componentization commit. (1) WIDE layout: per_drop.css body max-width 1800->2400px +
                 .table-scroll 60->72vh (catalog/drill only; the rdc-table ENGINE rdc_table.{css,js} incl. --clip-cap* FROZEN --
                 .table-scroll verified to live in per_drop.css not the engine). (2) Virtual hosts routed through NEW chrome
@@ -1081,16 +1106,18 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    DO v0.2.6-6 (commits/v026/ — the CLOSE-OUT + ship; AUTHOR the v026_6 doc if none exists). _version 0.2.0->0.2.6
-                (SCHEMA_VERSION stays 3 -- no data change); ONE CHANGELOG `## [0.2.6]` covering c16q->the redesign (ADR-42/43/44/45,
-                G-30, the component system + visual language + theme override + the full componentization closing G-32); full
-                matrix incl `pytest` with `-m browser` + the `golden_env` marker on the canonical .venv (py3.12/pyarrow21);
-                clean-wheel post-install verify (the reports/assets/* package-data resolves -> a fresh install renders STYLED, and
-                a `[theme]` override from outside the package works); real-Perf eyeball; `lint CHANGELOG.md`. TAG + PyPI ONLY after
-                explicit authorization (outward/irreversible). NOTE: c16w (standalone v0.2.5 release) CANCELLED per ADR-43 -- folded
-                into this close-out. CARRY-OVER: FINDINGS R-19 (overdraw set-iteration row-order nondeterminism on real multi-RT
-                data; reconfirmed at -5, still pre-existing; golden-neutral fix needs a multi-tie fixture + a determinism
-                regression, its OWN commit) + the user's promised 0.2.7 feedback report.
+next_action:    SHIP v0.2.6 (v0.2.6-0..-6 all DONE + committed on plan/v0.2.6, UNPUSHED; the release is RELEASE-READY -- full
+                matrix green, clean-wheel verified, CHANGELOG + version done). REMAINING is the OUTWARD/IRREVERSIBLE tail, GATED on
+                EXPLICIT user authorization: (1) `git push` plan/v0.2.6 (or merge to main per the release flow); (2) `git tag
+                v0.2.6` -> push the tag; (3) build (`uv build`) + `twine upload dist/*` to PyPI; (4) post-publish smoke (`pip
+                install bobframes==0.2.6` from PyPI in a clean venv -> renders STYLED). Do NONE of these until the user says so.
+                NOTE: c16w (standalone v0.2.5 release) CANCELLED per ADR-43 -- folded into this close-out. CARRY-OVER (post-ship or
+                parallel, own commits): FINDINGS R-19 (overdraw set-iteration row-order nondeterminism on real multi-RT data;
+                reconfirmed at -5, pre-existing; golden-neutral fix needs a multi-tie fixture + a determinism regression) + the
+                user's promised 0.2.7 feedback report. See HANDOVER.md (repo root) for the cross-PC continuation guide.
+                [prior] v0.2.6-6 DONE 2026-06-06 (close-out; release-ready; tag+PyPI await auth) - see `current:` + session log.
+                [prior] v0.2.6-5 DONE 2026-06-06 (catalog/drill wide layout + virtual hosts through the component + el long-tail
+                CLOSED [G-32]; the LAST componentization commit) - see `current:` + session log.
                 [prior] v0.2.6-5 DONE 2026-06-06 (catalog/drill wide layout + virtual hosts through the component + el long-tail
                 CLOSED [G-32]; the LAST componentization commit) - see `current:` + session log.
                 [prior] v0.2.6-4 DONE 2026-06-06 (5 tabled detail reports adopt Column+data_table; the FIRST byte-parity-breaking
@@ -1230,6 +1257,13 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-06 — v0.2.6-6 DONE (commits/v026/v026_6_closeout_ship.md, plan/v0.2.6). Close-out, RELEASE-READY. `_version`
+  0.2.0->0.2.6 (schema 3); ONE CHANGELOG `## [0.2.6]` covering c16q->the redesign (ADR-39..45, G-30, G-32), lint clean. Full
+  matrix GREEN on the canonical .venv: -m golden_env 5, -m browser 1, -m "not browser" 352 (353 total). Clean-wheel verify:
+  uv-built bobframes-0.2.6 wheel (15 reports/assets/* inside) installed into a fresh venv renders a STYLED synthetic report +
+  a `.bobframes.toml [theme]` override from outside the package re-hues it (ADR-45 clean-install path). No production change
+  beyond the version bump; no new ADR. REMAINING = tag + PyPI, GATED on explicit authorization. HANDOVER.md written for the
+  cross-PC continuation. current stays v0.2.6-6 (release-ready); R-19 + the 0.2.7 feedback report carry over.
 - 2026-06-06 — v0.2.6-5 DONE (commits/v026/v026_5_catalog_drill_close.md, plan/v0.2.6). The LAST componentization commit:
   (1) catalog/drill WIDE layout (per_drop.css body 1800->2400px + .table-scroll 60->72vh; engine rdc_table.{css,js} FROZEN);
   (2) the virtual rdc-table hosts routed through NEW chrome table_controls/virtual_host/virtual_table_section (re-exported via

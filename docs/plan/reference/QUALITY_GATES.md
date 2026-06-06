@@ -830,6 +830,17 @@ template.py/shader_hotlist.py/overdraw.py) + `test_table_component` + 2 render g
 docs; `report.css`/report HTML goldens/`_pagedata`/`digests`/`golden_parquet`/`golden_preview`
 BYTE-UNCHANGED. No new ADR (rides ADR-42/43/44 + ADR-23 documented scoping). **G-32 CLOSED.**
 
+**v0.2.6-6** (close-out + ship): `_version 0.2.0 -> 0.2.6` (SCHEMA_VERSION stays 3 -- no data change); ONE
+`## [0.2.6]` CHANGELOG covering c16q -> the redesign (ADR-39..45, G-30, G-32), `lint CHANGELOG.md` clean.
+**Full matrix GREEN on the canonical `.venv` (py3.12.13/pyarrow21, ADR-11):** `-m golden_env` 5 (the
+byte-identical HTML golden gate), `-m browser` 1, `-m "not browser"` 352 (353 total). **Clean-wheel
+post-install verify** (the ADR-37 single-file + package-data invariant): `uv build --wheel` ->
+`bobframes-0.2.6-py3-none-any.whl` carries all 15 `reports/assets/*`; a FRESH-venv install renders a STYLED
+synthetic report (`@font-face` base64 font + `--accent-primary` token resolved from the installed package's
+`reports/assets/*` + `design_tokens.toml`) and a `.bobframes.toml [theme]` override from OUTSIDE the package
+re-hues it (the ADR-45 pip-user path, on a clean install). No production change beyond the version bump; no
+new ADR. **TAG + PyPI gated on explicit authorization** (outward/irreversible -- NOT part of the green gate).
+
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,
 dropped column, dtype slip). Skip `_`-prefixed (`_catalog`, `_global_entities`). Runs on synthetic +
