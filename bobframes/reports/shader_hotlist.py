@@ -309,10 +309,10 @@ def build(root: str, *, drops: list | None = None, ab=None,
                   'discards': base.fmt_int(p['discards']), 'dfdx': base.fmt_int(p['dfdx_dfdy']),
                   'tex': base.fmt_int(p['tex_samples']), 'srcb': base.fmt_int(p['src_len'])}
                  for sk, p, total_uses, cost in ranked]
-        sbody.append('<details class="secondary-metrics"><summary>secondary metrics</summary>'
-                     + str(base.data_table(scols, srows, table_key='shader_secondary',
-                                           caption='per-shader instruction-mix detail'))
-                     + '</details>')
+        sbody.append(base.el('details', {'class': 'secondary-metrics'},
+                             base.el('summary', None, 'secondary metrics'),
+                             base.data_table(scols, srows, table_key='shader_secondary',
+                                             caption='per-shader instruction-mix detail')))
 
     parts.append('<rdc-sticky-h2>'
                  + base.section_card('shaders', f'top {stage} shaders by cost',

@@ -66,8 +66,11 @@ from .chrome import (
     run_picker_for,
     section_card,
     summary_bar,
+    table_controls,
     theme_undefined_tokens,
     undefined_tokens,
+    virtual_host,
+    virtual_table_section,
 )
 from .formatters import (
     _BANNED_CHROME_CHARS,
@@ -158,6 +161,7 @@ __all__ = [
     'rdc_table_css', 'rdc_table_js',
     'report_page', 'run_compare_banner',
     'run_picker', 'run_picker_for', 'section_card', 'summary_bar',
+    'table_controls', 'virtual_host', 'virtual_table_section',
     'newest_drop_provenance',
     # formatters
     'fmt_bytes', 'fmt_float', 'fmt_id_short', 'fmt_int', 'fmt_pct',

@@ -1,5 +1,9 @@
 
-body { max-width: 1800px; }
+/* v0.2.6-5: catalog/drill are the densest data surface -- widen the body so wide virtual tables use
+   more horizontal space (max data-per-screen), with a ceiling so ultra-wide displays don't stretch rows
+   to unreadable line lengths. Catalog/drill only (reports never load _PER_DROP_CSS); the rdc-table engine
+   --clip-cap* (rdc_table.css) stay FROZEN. */
+body { max-width: 2400px; }
 
 nav.toc a { display: flex; justify-content: space-between; padding: 2px 0; gap: 1rem; }
 nav.toc a .ct { color: var(--text-3); font-variant-numeric: tabular-nums; }
@@ -23,7 +27,7 @@ nav.toc a .ct { color: var(--text-3); font-variant-numeric: tabular-nums; }
      box; tables past the cap scroll (the virtual-scroll spacers reserve the full height regardless,
      so clientHeight settles at 60vh and the windowing is unchanged). Was a fixed height: 60vh with
      a never-applied .table-scroll.short variant - this folds that intent into the default. */
-  height: auto; max-height: 60vh; overflow: auto;
+  height: auto; max-height: 72vh; overflow: auto;   /* v0.2.6-5: more rows per screen on the dense surface */
   border: 1px solid var(--border-1);
   background: var(--surface-0);
   position: relative;

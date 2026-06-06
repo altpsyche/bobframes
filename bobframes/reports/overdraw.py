@@ -227,7 +227,8 @@ def build(root: str, *, drops: list | None = None, ab=None,
     drops_without_data = [k for k in drop_keys if not per_drop_data.get(k)]
     if drops_without_data:
         msg = ', '.join(base.h(k) for k in drops_without_data)
-        parts.append(f'<p class="note">no pixel_history rows in drops: {msg}</p>')
+        parts.append(base.el('p', {'class': 'note'},
+                             base.raw('no pixel_history rows in drops: ' + msg)))
 
     if not by_area:
         parts.append(base.empty_state('no pixel_history data in the current run'))

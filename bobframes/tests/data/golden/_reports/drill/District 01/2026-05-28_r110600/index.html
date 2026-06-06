@@ -973,7 +973,11 @@ rdc-table[data-mode="static"][data-expand="true"] table.data tbody td { white-sp
   }
 }
 
-body { max-width: 1800px; }
+/* v0.2.6-5: catalog/drill are the densest data surface -- widen the body so wide virtual tables use
+   more horizontal space (max data-per-screen), with a ceiling so ultra-wide displays don't stretch rows
+   to unreadable line lengths. Catalog/drill only (reports never load _PER_DROP_CSS); the rdc-table engine
+   --clip-cap* (rdc_table.css) stay FROZEN. */
+body { max-width: 2400px; }
 
 nav.toc a { display: flex; justify-content: space-between; padding: 2px 0; gap: 1rem; }
 nav.toc a .ct { color: var(--text-3); font-variant-numeric: tabular-nums; }
@@ -997,7 +1001,7 @@ nav.toc a .ct { color: var(--text-3); font-variant-numeric: tabular-nums; }
      box; tables past the cap scroll (the virtual-scroll spacers reserve the full height regardless,
      so clientHeight settles at 60vh and the windowing is unchanged). Was a fixed height: 60vh with
      a never-applied .table-scroll.short variant - this folds that intent into the default. */
-  height: auto; max-height: 60vh; overflow: auto;
+  height: auto; max-height: 72vh; overflow: auto;   /* v0.2.6-5: more rows per screen on the dense surface */
   border: 1px solid var(--border-1);
   background: var(--surface-0);
   position: relative;
@@ -1094,32 +1098,8 @@ section.table-section .table-meta {
 <span class="cat-meta">2 tables, 65 rows</span>
 </summary>
 <div class="cat-body">
-<section class="table-section" id="passes">
-<header class="table-header">
-<h2>passes</h2>
-<span class="table-meta">60 rows, 33 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter passes" placeholder="filter passes...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/passes.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/passes.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="passes"></rdc-table>
-</section>
-<section class="table-section" id="frame_totals">
-<header class="table-header">
-<h2>frame_totals</h2>
-<span class="table-meta">5 rows, 39 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter frame_totals" placeholder="filter frame_totals...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/frame_totals.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/frame_totals.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="frame_totals"></rdc-table>
-</section>
+<section class="table-section" id="passes"><header class="table-header"><h2>passes</h2><span class="table-meta">60 rows, 33 cols</span></header><div class="controls"><input type="search" aria-label="filter passes" placeholder="filter passes..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/passes.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/passes.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="passes"></rdc-table></section>
+<section class="table-section" id="frame_totals"><header class="table-header"><h2>frame_totals</h2><span class="table-meta">5 rows, 39 cols</span></header><div class="controls"><input type="search" aria-label="filter frame_totals" placeholder="filter frame_totals..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/frame_totals.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/frame_totals.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="frame_totals"></rdc-table></section>
 </div></details>
 <details class="category" id="cat-entities">
 <summary>
@@ -1127,97 +1107,13 @@ section.table-section .table-meta {
 <span class="cat-meta">7 tables, 400 rows</span>
 </summary>
 <div class="cat-body">
-<section class="table-section" id="shaders">
-<header class="table-header">
-<h2>shaders</h2>
-<span class="table-meta">60 rows, 27 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter shaders" placeholder="filter shaders...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/shaders.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/shaders.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="shaders"></rdc-table>
-</section>
-<section class="table-section" id="textures">
-<header class="table-header">
-<h2>textures</h2>
-<span class="table-meta">60 rows, 22 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter textures" placeholder="filter textures...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/textures.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/textures.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="textures"></rdc-table>
-</section>
-<section class="table-section" id="render_targets">
-<header class="table-header">
-<h2>render_targets</h2>
-<span class="table-meta">45 rows, 32 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter render_targets" placeholder="filter render_targets...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/render_targets.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/render_targets.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="render_targets"></rdc-table>
-</section>
-<section class="table-section" id="programs">
-<header class="table-header">
-<h2>programs</h2>
-<span class="table-meta">60 rows, 20 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter programs" placeholder="filter programs...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/programs.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/programs.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="programs"></rdc-table>
-</section>
-<section class="table-section" id="samplers">
-<header class="table-header">
-<h2>samplers</h2>
-<span class="table-meta">55 rows, 24 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter samplers" placeholder="filter samplers...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/samplers.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/samplers.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="samplers"></rdc-table>
-</section>
-<section class="table-section" id="buffers">
-<header class="table-header">
-<h2>buffers</h2>
-<span class="table-meta">60 rows, 24 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter buffers" placeholder="filter buffers...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/buffers.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/buffers.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="buffers"></rdc-table>
-</section>
-<section class="table-section" id="fbos">
-<header class="table-header">
-<h2>fbos</h2>
-<span class="table-meta">60 rows, 21 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter fbos" placeholder="filter fbos...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/fbos.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/fbos.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="fbos"></rdc-table>
-</section>
+<section class="table-section" id="shaders"><header class="table-header"><h2>shaders</h2><span class="table-meta">60 rows, 27 cols</span></header><div class="controls"><input type="search" aria-label="filter shaders" placeholder="filter shaders..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/shaders.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/shaders.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="shaders"></rdc-table></section>
+<section class="table-section" id="textures"><header class="table-header"><h2>textures</h2><span class="table-meta">60 rows, 22 cols</span></header><div class="controls"><input type="search" aria-label="filter textures" placeholder="filter textures..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/textures.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/textures.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="textures"></rdc-table></section>
+<section class="table-section" id="render_targets"><header class="table-header"><h2>render_targets</h2><span class="table-meta">45 rows, 32 cols</span></header><div class="controls"><input type="search" aria-label="filter render_targets" placeholder="filter render_targets..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/render_targets.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/render_targets.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="render_targets"></rdc-table></section>
+<section class="table-section" id="programs"><header class="table-header"><h2>programs</h2><span class="table-meta">60 rows, 20 cols</span></header><div class="controls"><input type="search" aria-label="filter programs" placeholder="filter programs..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/programs.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/programs.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="programs"></rdc-table></section>
+<section class="table-section" id="samplers"><header class="table-header"><h2>samplers</h2><span class="table-meta">55 rows, 24 cols</span></header><div class="controls"><input type="search" aria-label="filter samplers" placeholder="filter samplers..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/samplers.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/samplers.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="samplers"></rdc-table></section>
+<section class="table-section" id="buffers"><header class="table-header"><h2>buffers</h2><span class="table-meta">60 rows, 24 cols</span></header><div class="controls"><input type="search" aria-label="filter buffers" placeholder="filter buffers..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/buffers.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/buffers.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="buffers"></rdc-table></section>
+<section class="table-section" id="fbos"><header class="table-header"><h2>fbos</h2><span class="table-meta">60 rows, 21 cols</span></header><div class="controls"><input type="search" aria-label="filter fbos" placeholder="filter fbos..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/fbos.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/fbos.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="fbos"></rdc-table></section>
 </div></details>
 <details class="category" id="cat-actions">
 <summary>
@@ -1225,162 +1121,18 @@ section.table-section .table-meta {
 <span class="cat-meta">12 tables, 685 rows</span>
 </summary>
 <div class="cat-body">
-<section class="table-section" id="draws">
-<header class="table-header">
-<h2>draws</h2>
-<span class="table-meta">60 rows, 62 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter draws" placeholder="filter draws...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/draws.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/draws.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="draws"></rdc-table>
-</section>
-<section class="table-section" id="draw_bindings">
-<header class="table-header">
-<h2>draw_bindings</h2>
-<span class="table-meta">60 rows, 12 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter draw_bindings" placeholder="filter draw_bindings...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/draw_bindings.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/draw_bindings.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="draw_bindings"></rdc-table>
-</section>
-<section class="table-section" id="events">
-<header class="table-header">
-<h2>events</h2>
-<span class="table-meta">60 rows, 26 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter events" placeholder="filter events...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/events.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/events.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="events"></rdc-table>
-</section>
-<section class="table-section" id="clears">
-<header class="table-header">
-<h2>clears</h2>
-<span class="table-meta">40 rows, 15 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter clears" placeholder="filter clears...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/clears.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/clears.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="clears"></rdc-table>
-</section>
-<section class="table-section" id="dispatches">
-<header class="table-header">
-<h2>dispatches</h2>
-<span class="table-meta">45 rows, 19 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter dispatches" placeholder="filter dispatches...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/dispatches.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/dispatches.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="dispatches"></rdc-table>
-</section>
-<section class="table-section" id="state_change_events">
-<header class="table-header">
-<h2>state_change_events</h2>
-<span class="table-meta">60 rows, 12 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter state_change_events" placeholder="filter state_change_events...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/state_change_events.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/state_change_events.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="state_change_events"></rdc-table>
-</section>
-<section class="table-section" id="vertex_inputs">
-<header class="table-header">
-<h2>vertex_inputs</h2>
-<span class="table-meta">60 rows, 17 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter vertex_inputs" placeholder="filter vertex_inputs...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/vertex_inputs.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/vertex_inputs.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="vertex_inputs"></rdc-table>
-</section>
-<section class="table-section" id="descriptor_access">
-<header class="table-header">
-<h2>descriptor_access</h2>
-<span class="table-meta">60 rows, 12 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter descriptor_access" placeholder="filter descriptor_access...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/descriptor_access.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/descriptor_access.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="descriptor_access"></rdc-table>
-</section>
-<section class="table-section" id="rt_event_timeline">
-<header class="table-header">
-<h2>rt_event_timeline</h2>
-<span class="table-meta">60 rows, 10 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter rt_event_timeline" placeholder="filter rt_event_timeline...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/rt_event_timeline.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/rt_event_timeline.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="rt_event_timeline"></rdc-table>
-</section>
-<section class="table-section" id="program_transitions">
-<header class="table-header">
-<h2>program_transitions</h2>
-<span class="table-meta">60 rows, 7 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter program_transitions" placeholder="filter program_transitions...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/program_transitions.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/program_transitions.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="program_transitions"></rdc-table>
-</section>
-<section class="table-section" id="resource_creation">
-<header class="table-header">
-<h2>resource_creation</h2>
-<span class="table-meta">60 rows, 9 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter resource_creation" placeholder="filter resource_creation...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/resource_creation.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/resource_creation.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="resource_creation"></rdc-table>
-</section>
-<section class="table-section" id="counters_per_event">
-<header class="table-header">
-<h2>counters_per_event</h2>
-<span class="table-meta">60 rows, 9 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter counters_per_event" placeholder="filter counters_per_event...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/counters_per_event.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/counters_per_event.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="counters_per_event"></rdc-table>
-</section>
+<section class="table-section" id="draws"><header class="table-header"><h2>draws</h2><span class="table-meta">60 rows, 62 cols</span></header><div class="controls"><input type="search" aria-label="filter draws" placeholder="filter draws..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/draws.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/draws.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="draws"></rdc-table></section>
+<section class="table-section" id="draw_bindings"><header class="table-header"><h2>draw_bindings</h2><span class="table-meta">60 rows, 12 cols</span></header><div class="controls"><input type="search" aria-label="filter draw_bindings" placeholder="filter draw_bindings..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/draw_bindings.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/draw_bindings.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="draw_bindings"></rdc-table></section>
+<section class="table-section" id="events"><header class="table-header"><h2>events</h2><span class="table-meta">60 rows, 26 cols</span></header><div class="controls"><input type="search" aria-label="filter events" placeholder="filter events..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/events.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/events.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="events"></rdc-table></section>
+<section class="table-section" id="clears"><header class="table-header"><h2>clears</h2><span class="table-meta">40 rows, 15 cols</span></header><div class="controls"><input type="search" aria-label="filter clears" placeholder="filter clears..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/clears.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/clears.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="clears"></rdc-table></section>
+<section class="table-section" id="dispatches"><header class="table-header"><h2>dispatches</h2><span class="table-meta">45 rows, 19 cols</span></header><div class="controls"><input type="search" aria-label="filter dispatches" placeholder="filter dispatches..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/dispatches.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/dispatches.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="dispatches"></rdc-table></section>
+<section class="table-section" id="state_change_events"><header class="table-header"><h2>state_change_events</h2><span class="table-meta">60 rows, 12 cols</span></header><div class="controls"><input type="search" aria-label="filter state_change_events" placeholder="filter state_change_events..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/state_change_events.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/state_change_events.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="state_change_events"></rdc-table></section>
+<section class="table-section" id="vertex_inputs"><header class="table-header"><h2>vertex_inputs</h2><span class="table-meta">60 rows, 17 cols</span></header><div class="controls"><input type="search" aria-label="filter vertex_inputs" placeholder="filter vertex_inputs..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/vertex_inputs.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/vertex_inputs.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="vertex_inputs"></rdc-table></section>
+<section class="table-section" id="descriptor_access"><header class="table-header"><h2>descriptor_access</h2><span class="table-meta">60 rows, 12 cols</span></header><div class="controls"><input type="search" aria-label="filter descriptor_access" placeholder="filter descriptor_access..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/descriptor_access.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/descriptor_access.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="descriptor_access"></rdc-table></section>
+<section class="table-section" id="rt_event_timeline"><header class="table-header"><h2>rt_event_timeline</h2><span class="table-meta">60 rows, 10 cols</span></header><div class="controls"><input type="search" aria-label="filter rt_event_timeline" placeholder="filter rt_event_timeline..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/rt_event_timeline.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/rt_event_timeline.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="rt_event_timeline"></rdc-table></section>
+<section class="table-section" id="program_transitions"><header class="table-header"><h2>program_transitions</h2><span class="table-meta">60 rows, 7 cols</span></header><div class="controls"><input type="search" aria-label="filter program_transitions" placeholder="filter program_transitions..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/program_transitions.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/program_transitions.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="program_transitions"></rdc-table></section>
+<section class="table-section" id="resource_creation"><header class="table-header"><h2>resource_creation</h2><span class="table-meta">60 rows, 9 cols</span></header><div class="controls"><input type="search" aria-label="filter resource_creation" placeholder="filter resource_creation..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/resource_creation.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/resource_creation.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="resource_creation"></rdc-table></section>
+<section class="table-section" id="counters_per_event"><header class="table-header"><h2>counters_per_event</h2><span class="table-meta">60 rows, 9 cols</span></header><div class="controls"><input type="search" aria-label="filter counters_per_event" placeholder="filter counters_per_event..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/counters_per_event.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/counters_per_event.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="counters_per_event"></rdc-table></section>
 </div></details>
 <details class="category" id="cat-samples">
 <summary>
@@ -1388,71 +1140,11 @@ section.table-section .table-meta {
 <span class="cat-meta">5 tables, 300 rows</span>
 </summary>
 <div class="cat-body">
-<section class="table-section" id="vbo_samples">
-<header class="table-header">
-<h2>vbo_samples</h2>
-<span class="table-meta">60 rows, 12 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter vbo_samples" placeholder="filter vbo_samples...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/vbo_samples.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/vbo_samples.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="vbo_samples"></rdc-table>
-</section>
-<section class="table-section" id="ibo_samples">
-<header class="table-header">
-<h2>ibo_samples</h2>
-<span class="table-meta">60 rows, 8 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter ibo_samples" placeholder="filter ibo_samples...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/ibo_samples.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/ibo_samples.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="ibo_samples"></rdc-table>
-</section>
-<section class="table-section" id="post_vs_samples">
-<header class="table-header">
-<h2>post_vs_samples</h2>
-<span class="table-meta">60 rows, 11 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter post_vs_samples" placeholder="filter post_vs_samples...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/post_vs_samples.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/post_vs_samples.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="post_vs_samples"></rdc-table>
-</section>
-<section class="table-section" id="texture_samples">
-<header class="table-header">
-<h2>texture_samples</h2>
-<span class="table-meta">60 rows, 12 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter texture_samples" placeholder="filter texture_samples...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/texture_samples.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/texture_samples.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="texture_samples"></rdc-table>
-</section>
-<section class="table-section" id="pixel_history">
-<header class="table-header">
-<h2>pixel_history</h2>
-<span class="table-meta">60 rows, 31 cols</span>
-</header>
-<div class="controls">
-<input type="search" aria-label="filter pixel_history" placeholder="filter pixel_history...">
-<span class="ct visible-count"></span>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/pixel_history.csv">CSV</a>
-<a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/pixel_history.parquet">parquet</a>
-</div>
-<rdc-table class="table-scroll" data-mode="virtual" data-table="pixel_history"></rdc-table>
-</section>
+<section class="table-section" id="vbo_samples"><header class="table-header"><h2>vbo_samples</h2><span class="table-meta">60 rows, 12 cols</span></header><div class="controls"><input type="search" aria-label="filter vbo_samples" placeholder="filter vbo_samples..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/vbo_samples.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/vbo_samples.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="vbo_samples"></rdc-table></section>
+<section class="table-section" id="ibo_samples"><header class="table-header"><h2>ibo_samples</h2><span class="table-meta">60 rows, 8 cols</span></header><div class="controls"><input type="search" aria-label="filter ibo_samples" placeholder="filter ibo_samples..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/ibo_samples.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/ibo_samples.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="ibo_samples"></rdc-table></section>
+<section class="table-section" id="post_vs_samples"><header class="table-header"><h2>post_vs_samples</h2><span class="table-meta">60 rows, 11 cols</span></header><div class="controls"><input type="search" aria-label="filter post_vs_samples" placeholder="filter post_vs_samples..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/post_vs_samples.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/post_vs_samples.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="post_vs_samples"></rdc-table></section>
+<section class="table-section" id="texture_samples"><header class="table-header"><h2>texture_samples</h2><span class="table-meta">60 rows, 12 cols</span></header><div class="controls"><input type="search" aria-label="filter texture_samples" placeholder="filter texture_samples..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/texture_samples.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/texture_samples.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="texture_samples"></rdc-table></section>
+<section class="table-section" id="pixel_history"><header class="table-header"><h2>pixel_history</h2><span class="table-meta">60 rows, 31 cols</span></header><div class="controls"><input type="search" aria-label="filter pixel_history" placeholder="filter pixel_history..."><span class="ct visible-count"></span><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/pixel_history.csv">CSV</a><a class="dl" href="../../../../_data/District 01/2026-05-28_r110600/pixel_history.parquet">parquet</a></div><rdc-table class="table-scroll" data-mode="virtual" data-table="pixel_history"></rdc-table></section>
 </div></details>
 <script>window.__labels={"by_capture":{"1":{"texture":{"119":"label_0","134":"label_1","141":"label_2","386":"label_3","398":"label_4","599":"label_5","2162":"label_6","2170":"label_7","2184":"label_8","2186":"label_9","3458":"label_10","9318":"label_11","9444":"label_12","9824":"label_13","10032":"label_14","10076":"label_15","10328":"label_16","10377":"label_17","13884":"label_18","13908":"label_19","13916":"label_20","14032":"label_21","41781":"label_22","101123":"label_23","558341":"label_24","558377":"label_25","558399":"label_26","558576":"label_27","558852":"label_28","558854":"label_29","558860":"label_30","558902":"label_31","558908":"label_32","559251":"label_33","559259":"label_34","559267":"label_35","559402":"label_36","559458":"label_37","559909":"label_38","559916":"label_39","559937":"label_40","559944":"label_41","559951":"label_42","559963":"label_43","561221":"label_44","561243":"label_45","561250":"label_46","561257":"label_47","562432":"label_48","563264":"label_49","563408":"label_50","563488":"label_51","563504":"label_52","563520":"label_53","563528":"label_54","563536":"label_55","563544":"label_56","563568":"label_57","563576":"label_58","563600":"label_59"},"shader":{"2192":"compute 224B h:39013910","2194":"compute 141B h:d53fab33","2200":"compute 500B h:d1728f32 br=1","2202":"compute 8043B h:251fc0fd br=14 lo=4","2210":"vertex 1749B h:737dc03e","2211":"fragment 2067B h:e505047a tex=4 br=2","2213":"compute 522B h:82e08bac br=1","2215":"compute 2821B h:40cd18d0 tex=2 br=7 lo=3","2217":"compute 2657B h:e2150f88","2222":"vertex 1222B h:df3ece14","2226":"vertex 2676B h:3a2e03fd","2227":"fragment 3182B h:c6c10c55 tex=4","2229":"compute 35258B h:f6d3bd82 tex=68 br=4 lo=4","2231":"fragment 2798B h:f21ac1de","3463":"vertex 2052B h:802c46ae","3464":"fragment 2342B h:19544759 tex=1 br=6","3466":"fragment 2315B h:b429702f tex=1 br=6","6687":"vertex 2123B h:72a65e4b","16635":"vertex 2806B h:43959392 br=2","16636":"fragment 282B h:2ada21de","16638":"vertex 1286B h:9af48b05","16641":"vertex 672B h:7e4063be","16643":"vertex 346B h:92281f6f","16644":"fragment 4809B h:25f4328e tex=2 br=6","16647":"vertex 9195B h:05695b90 tex=2 br=9 lo=1","16650":"vertex 9211B h:b059194a tex=2 br=9 lo=1","16839":"vertex 1364B h:178a83db","16844":"fragment 2364B h:e8c66d43 tex=1 br=6","16982":"vertex 6487B h:9634d1ae br=10","16984":"vertex 6488B h:7f97f170 br=6","16985":"fragment 828B h:b3efd2ca tex=1 br=1","16987":"vertex 3938B h:f34b0c06 br=2","16989":"vertex 4304B h:6b8ab998 br=6","16991":"vertex 5278B h:432ebd5e br=4","16992":"fragment 866B h:66608122 tex=1 br=1","16994":"vertex 2792B h:10eb135a","16996":"vertex 12870B h:b4394c95 tex=2 br=13 lo=1","16999":"vertex 10244B h:d61f96cc tex=2 br=9 lo=1","17004":"vertex 11846B h:81b4dc16 tex=2 br=13 lo=1","30533":"fragment 3044B h:d2d4c4a2 tex=1 br=8","30535":"fragment 2662B h:3bbd9117 br=8","30537":"fragment 3066B h:460135e9 tex=1 br=8","30539":"fragment 3046B h:249e3d2c tex=1 br=8","36250":"fragment 3074B h:258818f5 tex=1 br=8","36252":"fragment 2891B h:ffe1a3f1 tex=1 br=8","39831":"fragment 3520B h:b0bdd038 br=8","40764":"vertex 2115B h:80fa052c br=1","40768":"vertex 4864B h:060c97f0 br=1","40769":"fragment 1106B h:86dce6f6 tex=1 br=1","40773":"fragment 1106B h:e7a02e57 tex=1 br=1","40775":"vertex 3328B h:83aa0f72 br=1","40776":"fragment 1051B h:e4ec9917 tex=1 br=1","40778":"fragment 4582B h:b0dbd66c tex=2 br=6","40781":"vertex 8953B h:f29a50a6 tex=2 br=9 lo=1","40782":"fragment 824B h:f2111bb9","40784":"fragment 1456B h:642e5ae6 tex=1","40786":"vertex 11479B h:8f7a3960 tex=2 br=10 lo=1","40787":"fragment 10243B h:195a3130 tex=8 br=7 lo=1","40789":"fragment 10018B h:c962e35d tex=6 br=5 lo=1","40793":"vertex 11666B h:b6300f2f tex=2 br=10 lo=1"},"program":{"2193":"label_0","2195":"label_1","2201":"label_2","2203":"label_3","2212":"label_4","2214":"label_5","2216":"label_6","2218":"label_7","2228":"label_8","2230":"label_9","2232":"label_10","3465":"label_11","3467":"label_12","16637":"label_13","16639":"label_14","16642":"label_15","16645":"label_16","16845":"label_17","16983":"label_18","16986":"label_19","16988":"label_20","16990":"label_21","16993":"label_22","16995":"label_23","30534":"label_24","30536":"label_25","30538":"label_26","30540":"label_27","36251":"label_28","36253":"label_29","39832":"label_30","40765":"label_31","40770":"label_32","40774":"label_33","40777":"label_34","40779":"label_35","40783":"label_36","40785":"label_37","40788":"label_38","40790":"label_39","40795":"label_40","40805":"label_41","40807":"label_42","40809":"label_43","40811":"label_44","40813":"label_45","40815":"label_46","40820":"label_47","40823":"label_48","40827":"label_49","40829":"label_50","40833":"label_51","40835":"label_52","40839":"label_53","40842":"label_54","73062":"label_55","73876":"label_56","78389":"label_57","88024":"label_58","88026":"label_59"},"sampler":{"116":"label_0","120":"label_1","173":"label_2","174":"label_3","185":"label_4","244":"label_5","429":"label_6","460":"label_7","598":"label_8","3459":"label_9","16664":"label_10"},"fbo":{"632679":"label_0","580516":"label_1","2206":"label_3","16640":"label_6","580517":"label_9","2209":"label_10","580519":"label_11","428":"label_12"},"buffer":{}},"2":{"texture":{},"shader":{},"program":{},"sampler":{"116":"label_11","120":"label_12","173":"label_13","174":"label_14","185":"label_15","244":"label_16","429":"label_17","460":"label_18","598":"label_19","3459":"label_20","16664":"label_21"},"fbo":{"632679":"label_13","580516":"label_14","2206":"label_16","16640":"label_19","580517":"label_22","580776":"label_23","580519":"label_24","428":"label_25"},"buffer":{}},"3":{"texture":{},"shader":{},"program":{},"sampler":{"116":"label_22","120":"label_23","173":"label_24","174":"label_25","185":"label_26","244":"label_27","429":"label_28","460":"label_29","598":"label_30","3459":"label_31","16664":"label_32"},"fbo":{"632679":"label_26","580516":"label_27","2206":"label_29","16640":"label_32","580517":"label_35","580776":"label_36","580519":"label_37","428":"label_38"},"buffer":{}},"4":{"texture":{},"shader":{},"program":{},"sampler":{"116":"label_33","120":"label_34","173":"label_35","174":"label_36","185":"label_37","244":"label_38","429":"label_39","460":"label_40","598":"label_41","3459":"label_42","16664":"label_43"},"fbo":{"632679":"label_39","580516":"label_40","2206":"label_42","16640":"label_45","580517":"label_48","580776":"label_49","580519":"label_50","428":"label_51"},"buffer":{}},"5":{"texture":{},"shader":{},"program":{},"sampler":{"116":"label_44","120":"label_45","173":"label_46","174":"label_47","185":"label_48","244":"label_49","429":"label_50","460":"label_51","598":"label_52","3459":"label_53","16664":"label_54"},"fbo":{"632679":"label_52","580516":"label_53","2206":"label_55","16640":"label_58","580517":"label_59"},"buffer":{}}}};</script>
 <script defer src="_pagedata/buffers.js"></script>

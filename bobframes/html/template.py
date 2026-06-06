@@ -315,22 +315,12 @@ def _inline_table_with_data(table_name: str, out_dir: str,
 
     prefix = '' if sidecar_rel in ('.', '') else sidecar_rel.rstrip('/') + '/'
 
-    section = []
-    section.append(f'<section class="table-section" id="{table_name}">')
-    section.append('<header class="table-header">')
-    section.append(f'<h2>{_h(table_name)}</h2>')
-    section.append(f'<span class="table-meta">{n_total:,} rows, {n_cols} cols</span>')
-    section.append('</header>')
-    section.append('<div class="controls">')
-    section.append(f'<input type="search" aria-label="filter {table_name}" placeholder="filter {table_name}...">')
-    section.append('<span class="ct visible-count"></span>')
-    section.append(f'<a class="dl" href="{prefix}{table_name}.csv">CSV</a>')
-    section.append(f'<a class="dl" href="{prefix}{table_name}.parquet">parquet</a>')
-    section.append('</div>')
-    section.append(f'<rdc-table class="table-scroll" data-mode="virtual" data-table="{table_name}"></rdc-table>')
-    section.append('</section>')
+    section = reports_base.virtual_table_section(
+        table_name, title=table_name, meta=f'{n_total:,} rows, {n_cols} cols',
+        csv_href=f'{prefix}{table_name}.csv', parquet_href=f'{prefix}{table_name}.parquet',
+        filter_label=f'filter {table_name}', placeholder=f'filter {table_name}...')
 
-    return '\n'.join(section), table_name, payload
+    return str(section), table_name, payload
 
 
 def _categorize(table_specs: list[tuple[str, int, int]]) -> dict:
@@ -356,19 +346,20 @@ def _categorize(table_specs: list[tuple[str, int, int]]) -> dict:
 
 def _toc(by_cat: dict) -> str:
     """Category-aware TOC. Each category links to its <details> anchor."""
-    parts = ['<nav class="toc">']
+    el, raw = reports_base.el, reports_base.raw
+    anchors = []
     for cat in _CATEGORY_ORDER:
         if cat == 'sidecars':
-            parts.append(f'<a href="#cat-sidecars"><span>sidecars</span></a>')
+            anchors.append(el('a', {'href': '#cat-sidecars'}, el('span', None, 'sidecars')))
             continue
         items = by_cat.get(cat, [])
         if not items:
             continue
         total_rows = sum(r for _, r, _ in items)
-        parts.append(f'<a href="#cat-{_h(cat)}"><span>{_h(cat)}</span>'
-                     f'<span class="ct">{len(items)}t, {total_rows:,}r</span></a>')
-    parts.append('</nav>')
-    return '\n'.join(parts)
+        anchors.append(el('a', {'href': f'#cat-{cat}'},
+                          el('span', None, cat),
+                          el('span', {'class': 'ct'}, f'{len(items)}t, {total_rows:,}r')))
+    return el('nav', {'class': 'toc'}, raw('\n' + '\n'.join(anchors) + '\n'))
 
 
 def _category_block(cat: str, items: list, table_sections: dict,
@@ -377,21 +368,16 @@ def _category_block(cat: str, items: list, table_sections: dict,
     if not items:
         return ''
     total_rows = sum(r for _, r, _ in items)
-    open_attr = ' open' if is_open else ''
-    parts = [
-        f'<details class="category" id="cat-{_h(cat)}"{open_attr}>',
-        '<summary>',
-        f'<span class="cat-name">{_h(cat)}</span>',
-        f'<span class="cat-meta">{len(items)} tables, {total_rows:,} rows</span>',
-        '</summary>',
-        '<div class="cat-body">',
-    ]
-    for name, _, _ in items:
-        sec_html = table_sections.get(name)
-        if sec_html:
-            parts.append(sec_html)
-    parts.append('</div></details>')
-    return '\n'.join(parts)
+    el, raw = reports_base.el, reports_base.raw
+    summary = el('summary', None, raw(
+        '\n' + str(el('span', {'class': 'cat-name'}, cat))
+        + '\n' + str(el('span', {'class': 'cat-meta'}, f'{len(items)} tables, {total_rows:,} rows'))
+        + '\n'))
+    secs = [s for name, _, _ in items if (s := table_sections.get(name))]
+    body_inner = '\n' + ('\n'.join(secs) + '\n' if secs else '')
+    body = el('div', {'class': 'cat-body'}, raw(body_inner))
+    return str(el('details', {'class': 'category', 'id': f'cat-{cat}', 'open': True if is_open else None},
+                  raw('\n' + str(summary) + '\n' + str(body))))
 
 
 def _sidecar_category(out_dir: str, sidecar_rel: str = '.') -> str:
@@ -400,51 +386,47 @@ def _sidecar_category(out_dir: str, sidecar_rel: str = '.') -> str:
     sidecar_rel: relative path from rendered HTML to data dir, used to
     construct download links. Default '.' for legacy callers.
     """
+    el, raw = reports_base.el, reports_base.raw
     body_parts = []
     counts = []
     prefix = '' if sidecar_rel in ('.', '') else sidecar_rel.rstrip('/') + '/'
+
+    def _file_list(subdir: str, files: list) -> None:
+        lis = [str(el('li', None, el('a', {'href': f'{prefix}{subdir}/{f}'}, f))) for f in files]
+        body_parts.append(str(el('ul', {'class': 'sidecar-list'}, raw('\n' + '\n'.join(lis) + '\n'))))
 
     src_dir = os.path.join(out_dir, 'shader_src')
     if os.path.isdir(src_dir):
         files = os.listdir(src_dir)
         files.sort(key=lambda f: int(f.split('.', 1)[0]) if f.split('.', 1)[0].isdigit() else 0)
         counts.append(f'shader_src {len(files)}')
-        body_parts.append(f'<h3>shader_src ({len(files)} files)</h3>')
-        body_parts.append('<ul class="sidecar-list">')
-        for f in files:
-            body_parts.append(f'<li><a href="{prefix}shader_src/{_h(f)}">{_h(f)}</a></li>')
-        body_parts.append('</ul>')
+        body_parts.append(str(el('h3', None, f'shader_src ({len(files)} files)')))
+        _file_list('shader_src', files)
 
     hist_dir = os.path.join(out_dir, 'histogram')
     if os.path.isdir(hist_dir):
         files = sorted(os.listdir(hist_dir))
         if files:
             counts.append(f'histogram {len(files)}')
-            body_parts.append(f'<h3>histogram ({len(files)} files)</h3>')
-            body_parts.append('<ul class="sidecar-list">')
-            for f in files:
-                body_parts.append(f'<li><a href="{prefix}histogram/{_h(f)}">{_h(f)}</a></li>')
-            body_parts.append('</ul>')
+            body_parts.append(str(el('h3', None, f'histogram ({len(files)} files)')))
+            _file_list('histogram', files)
 
     for jsonl in ('frame_metadata.jsonl', 'uniforms_per_pass.jsonl'):
         p = os.path.join(out_dir, jsonl)
         if os.path.exists(p):
             counts.append(jsonl)
-            body_parts.append(f'<h3>{_h(jsonl)}</h3>')
-            body_parts.append(f'<p><a href="{prefix}{_h(jsonl)}">download</a></p>')
+            body_parts.append(str(el('h3', None, jsonl)))
+            body_parts.append(str(el('p', None, el('a', {'href': f'{prefix}{jsonl}'}, 'download'))))
 
     if not body_parts:
         return ''
 
     meta = ' / '.join(counts)
-    return ('<details class="category" id="cat-sidecars">'
-            '<summary>'
-            '<span class="cat-name">sidecars</span>'
-            f'<span class="cat-meta">{_h(meta)}</span>'
-            '</summary>'
-            '<div class="cat-body">'
-            + '\n'.join(body_parts)
-            + '</div></details>')
+    summary = el('summary', None,
+                 el('span', {'class': 'cat-name'}, 'sidecars'),
+                 el('span', {'class': 'cat-meta'}, meta))
+    body = el('div', {'class': 'cat-body'}, raw('\n'.join(body_parts)))
+    return str(el('details', {'class': 'category', 'id': 'cat-sidecars'}, summary, body))
 
 
 def _read_gl_renderer(out_dir: str) -> str:
@@ -520,18 +502,18 @@ def render_drop(drill_dir: str, *, data_dir: str,
     parts.append(f'{ha.head}</head>'
                  f'<body data-page-kind="drop-browser" style="--hdr-offset: 120px">')
 
-    parts.append(f'<h1>{_h(area)} / {_h(drop_key)}</h1>')
-    parts.append('<header class="strip">')
-    parts.append(f'<span>area <strong>{_h(area)}</strong></span>')
-    parts.append(f'<span>drop <strong>{_h(drop_key)}</strong></span>')
-    parts.append(f'<span>rows <strong>{total_rows:,}</strong></span>')
-    parts.append(f'<span>built <strong>{_h(build_timestamp)}</strong></span>')
-    parts.append('</header>')
+    el, raw = reports_base.el, reports_base.raw
+    parts.append(el('h1', None, f'{area} / {drop_key}'))
+    parts.append(el('header', {'class': 'strip'}, raw('\n' + '\n'.join([
+        str(el('span', None, raw('area '), el('strong', None, area))),
+        str(el('span', None, raw('drop '), el('strong', None, drop_key))),
+        str(el('span', None, raw('rows '), el('strong', None, f'{total_rows:,}'))),
+        str(el('span', None, raw('built '), el('strong', None, build_timestamp))),
+    ]) + '\n')))
     # drill_dir = <root>/_reports/drill/<area>/<drop>/ → up 4 to reach <root>
-    parts.append('<nav class="crumb">'
-                 '<a href="../../../../index.html" data-link-kind="crumb">root catalog</a>'
-                 '<a href="../../../index.html" data-link-kind="crumb">dashboard</a>'
-                 '</nav>')
+    parts.append(el('nav', {'class': 'crumb'},
+                    el('a', {'href': '../../../../index.html', 'data-link-kind': 'crumb'}, 'root catalog'),
+                    el('a', {'href': '../../../index.html', 'data-link-kind': 'crumb'}, 'dashboard')))
 
     # Summary bar: per-drop aggregates
     n_passes = row_counts.get('passes', 0)
@@ -545,8 +527,7 @@ def render_drop(drill_dir: str, *, data_dir: str,
 
     if gl_renderer:
         # c16u: gl_renderer is device info -> scrub at the data seam under --redact (ADR-40).
-        parts.append('<div class="device-strip">redacted</div>' if redact
-                     else f'<div class="device-strip">{_h(gl_renderer)}</div>')
+        parts.append(el('div', {'class': 'device-strip'}, 'redacted' if redact else gl_renderer))
 
     parts.append(reports_base.kpi_strip(kpis))
 
@@ -636,14 +617,15 @@ def render_root(root: str, *, sink: reports_base.AssetSink = reports_base.AssetS
     # Chrome CSS/JS via the c16r head_assets seam (ADR-41); INLINE byte-identical (ha.head in the
     # head, ha.body_js at body-end before </body>). theme=None -> default bytes (v0.2.6-1c).
     ha = head_assets(sink, 0, theme)
+    el, raw = reports_base.el, reports_base.raw
     parts = ['<!doctype html><html lang="en"><head><meta charset="utf-8">']
     parts.append('<title>capture analysis catalog</title>')
     parts.append(f'<link rel="icon" href="{reports_base._FAVICON_HREF}">')
     parts.append(f'{ha.head}</head><body style="--hdr-offset: 120px">')
-    parts.append('<header class="strip">')
-    parts.append(f'<span>built <strong>{_h(summary.get("build_timestamp", ""))}</strong></span>')
-    parts.append(f'<span>drops <strong>{summary.get("drop_count", 0)}</strong></span>')
-    parts.append('</header>')
+    parts.append(el('header', {'class': 'strip'}, raw('\n' + '\n'.join([
+        str(el('span', None, raw('built '), el('strong', None, summary.get("build_timestamp", "")))),
+        str(el('span', None, raw('drops '), el('strong', None, summary.get("drop_count", 0)))),
+    ]) + '\n')))
 
     # Summary bar: latest drop + area/capture counts
     area_idx = cols.index('area') if 'area' in cols else -1
@@ -683,24 +665,25 @@ def render_root(root: str, *, sink: reports_base.AssetSink = reports_base.AssetS
             # the landing surfaces lead, not an alphabetised file row.
             chips = []
             if os.path.exists(os.path.join(reports_dir, 'summary.html')):
-                chips.append(f'<a href="{_paths.REPORTS_DIR}/summary.html" '
-                             'data-link-kind="primary">build health summary</a>')
-            chips.append(f'<a href="{_paths.REPORTS_DIR}/{_paths.INDEX_HTML}" '
-                         'data-link-kind="primary">cumulative reports dashboard</a>')
-            parts.append('<section><h2 id="dashboard">dashboard</h2>'
-                         '<div class="chip-cluster">' + ''.join(chips) + '</div></section>')
+                chips.append(el('a', {'href': f'{_paths.REPORTS_DIR}/summary.html',
+                                      'data-link-kind': 'primary'}, 'build health summary'))
+            chips.append(el('a', {'href': f'{_paths.REPORTS_DIR}/{_paths.INDEX_HTML}',
+                                  'data-link-kind': 'primary'}, 'cumulative reports dashboard'))
+            parts.append(el('section', None,
+                            el('h2', {'id': 'dashboard'}, 'dashboard'),
+                            el('div', {'class': 'chip-cluster'}, *chips)))
 
         report_files = sorted(
             f for f in os.listdir(reports_dir)
             if f.endswith('.html') and f not in (_paths.INDEX_HTML, 'summary.html')
         )
         if report_files:
-            parts.append('<section><h2 id="reports">reports</h2>'
-                         '<div class="catalog-grid">')
-            for f in report_files:
-                parts.append(f'<a href="{_paths.REPORTS_DIR}/{_h(f)}" data-link-kind="primary">'
-                             f'{_h(f[:-5])}</a>')
-            parts.append('</div></section>')
+            links = [el('a', {'href': f'{_paths.REPORTS_DIR}/{f}', 'data-link-kind': 'primary'}, f[:-5])
+                     for f in report_files]
+            parts.append(el('section', None,
+                            el('h2', {'id': 'reports'}, 'reports'),
+                            el('div', {'class': 'catalog-grid'},
+                               raw('\n' + '\n'.join(str(a) for a in links) + '\n'))))
 
         ab_dir = os.path.join(reports_dir, _paths.AB_DIR)
         if os.path.isdir(ab_dir):
@@ -709,38 +692,33 @@ def render_root(root: str, *, sink: reports_base.AssetSink = reports_base.AssetS
                 if os.path.isdir(os.path.join(ab_dir, d))
             )
             if pairs:
-                parts.append('<section><h2 id="ab">a/b comparisons</h2>'
-                             '<div class="pair-list">')
+                groups = []
                 for pair in pairs:
                     pair_files = sorted(
                         f for f in os.listdir(os.path.join(ab_dir, pair))
                         if f.endswith('.html')
                     )
-                    chips = ''.join(
-                        f'<a href="{_paths.REPORTS_DIR}/{_paths.AB_DIR}/{_h(pair)}/{_h(f)}" data-link-kind="primary">'
-                        f'{_h(f[:-5])}</a>'
-                        for f in pair_files
-                    )
-                    parts.append(
-                        f'<div class="pair-group">'
-                        f'<h3>{_h(pair)}</h3>'
-                        f'<div class="chip-cluster">{chips}</div>'
-                        f'</div>'
-                    )
-                parts.append('</div></section>')
+                    chips = [el('a', {'href': f'{_paths.REPORTS_DIR}/{_paths.AB_DIR}/{pair}/{f}',
+                                      'data-link-kind': 'primary'}, f[:-5])
+                             for f in pair_files]
+                    groups.append(str(el('div', {'class': 'pair-group'},
+                                         el('h3', None, pair),
+                                         el('div', {'class': 'chip-cluster'}, *chips))))
+                parts.append(el('section', None,
+                                el('h2', {'id': 'ab'}, 'a/b comparisons'),
+                                el('div', {'class': 'pair-list'},
+                                   raw('\n' + '\n'.join(groups) + '\n'))))
 
-    parts.append('<section><h2>catalog</h2>')
-    parts.append('<div class="controls">')
-    parts.append('<input type="search" aria-label="filter catalog" placeholder="filter">')
-    parts.append('<span class="ct visible-count"></span>')
-    parts.append(f'<a class="dl" href="{_paths.DATA_DIR}/_catalog.csv" data-link-kind="inline">CSV</a>')
-    parts.append(f'<a class="dl" href="{_paths.DATA_DIR}/_catalog.parquet" data-link-kind="inline">parquet</a>')
-    parts.append('</div>')
-    # Empty container for the column-group toggle bar; the buttons are built client-side from
-    # window.__colgroups_catalog (c16i). Catalog only - drill pages emit neither.
-    parts.append('<div class="col-groups" role="group" aria-label="column groups"></div>')
-    parts.append(f'<rdc-table class="table-scroll" data-mode="virtual" data-table="catalog"></rdc-table>')
-    parts.append('</section>')
+    # Catalog virtual host: search/count/download controls + the empty col-groups toggle bar (the engine
+    # builds its buttons client-side from window.__colgroups_catalog, c16i -- catalog only) + the row-less
+    # <rdc-table data-mode="virtual"> the VTable paints from _pagedata. Composed via the chrome family
+    # (v0.2.6-5); all of it lives under one <section> for the engine's host.closest('section') lookups.
+    parts.append(el('section', None,
+                    el('h2', None, 'catalog'),
+                    reports_base.table_controls(
+                        f'{_paths.DATA_DIR}/_catalog.csv', f'{_paths.DATA_DIR}/_catalog.parquet',
+                        filter_label='filter catalog', placeholder='filter', dl_link_kind='inline'),
+                    reports_base.virtual_host('catalog', col_groups=True)))
 
     catalog_src = _write_page_data(os.path.join(root, _paths.PAGEDATA_DIR), 'catalog', payload)
     parts.append(f'<script defer src="{catalog_src}"></script>')
