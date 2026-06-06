@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-06-06
+
+A build-health one-pager, a shareable `package` bundle, a server-side component system, and a full visual
+redesign. No schema change (still schema 3); parquet digests stay byte-identical to 0.1.0/0.2.0 on the same
+captures. Per ADR-43 there is no standalone 0.2.5 -- this release carries the c16q-c16x foundation AND the
+redesign, so `_version` jumps `0.2.0 -> 0.2.6`.
+
+### Added
+- Build-health one-pager (`bobframes report summary`): a presentation-independent verdict/trend module
+  (`health.py` -- ordered OK<UNKNOWN<AT_RISK<ALARM so a real alarm is never masked yet missing data is
+  never a false green) feeding a print-first exec summary (verdict bar, averaged KPIs with vs-prior pills +
+  sparklines, a baseline-gated movement card, a worst-first by-area table). (ADR-39)
+- `bobframes package`: a non-mutating transform of a rendered tree into a shareable `<project>-<date>-report.zip`
+  (reproducible bytes) + a standalone self-contained `summary.html`. `--shared-assets` (the default) dedupes
+  chrome into `_assets/` linked per page (built at the render seam, not by scraping HTML); `--inline` opts out;
+  `--redact` scrubs device/host provenance at the data seam (whole-tree drop-sidecars excluded). (ADR-40/41)
+- Server-side component system (`reports/chrome.py`): an escape-by-construction element builder (`el`/`raw`/
+  `el_void`/`classes`), a normalized table-component family (`Column`/`data_table`/`static_table` + a virtual
+  `table_controls`/`virtual_host`/`virtual_table_section` host), a delta-column factory, and a token-validity
+  guard (`undefined_tokens()` -- a typo'd `var(--x)` is a CI failure + a `preview` warning). CSS/JS now live as
+  real `reports/assets/*.{css,js}` files. A `bobframes preview` gallery documents every component. (ADR-42)
+- User theme override for pip installs: a `.bobframes.toml [theme]` section + `render/preview --accent`/
+  `--accent-data` flags re-hue the accent/status/chart colors WITHOUT editing the packaged `design_tokens.toml`
+  (deep-merged through the existing config cascade; color-key allowlist; ASCII/injection-guarded). `export-tokens
+  --theme-template` emits a paste-ready starter; `--watch` polls `.bobframes.toml`. (ADR-45)
+- Dev-only screenshot harness `tools/shoot.py` (headless-Chrome over CDP, light/dark/print; not shipped) + a
+  `-m browser` opt-in matrix + a dependency-free oklch->WCAG contrast test, for the redesign's visual gate.
+
+### Changed
+- Visual redesign anchored on shadcn/ui + Grafana density (ADR-43/44): a neutral grayscale palette (chroma 0),
+  WCAG-AA tertiary text, FLAT border-led surfaces (reverses the ADR-34 depth -- a 1px border + a `--radius`
+  6/8/10 token scale replaces the elevation shadows + the hardcoded 2/3/4px radii), `:focus-visible` rings,
+  reduced-motion-safe `:active`, container-query responsive, and a print pass. Restrained type tune with hero
+  numerals scoped to the summary one-pager; Grafana-dense rows/cards everywhere else; the catalog/drill data
+  browser widened (max data-per-screen).
+- "Everything is a component": the summary, dashboard minis, the 6 detail reports, and the catalog/drill virtual
+  hosts all render through the component family; the remaining hand-written chrome leaves were migrated onto `el`
+  (the bespoke-markup long-tail is closed -- only the fixed page scaffold remains, by necessity). `data_table`
+  normalizes the previously hand-written report tables (the visual-parity gate is intentionally replaced by a
+  structural + data-preservation gate per ADR-43).
+- Per-frame normalization for multi-capture runs (instancing repeat + shader cost read per distinct capture,
+  no-op for 1-capture data so it stays byte-identical) and a single `aggregates.py` data layer feeding the
+  dashboard/reports/verdict so they cannot disagree.
+- Run model + sharing surfaced in the root catalog (build-health + dashboard chips, A/B pair lists).
+
+### Fixed
+- Single-drop trend-table crash (`'str' object has no attribute 'get'`); `--force` rotation-backup
+  double-counting in the catalog + global-entities walkers (canonical-basename reconstruction).
+- WCAG-AA contrast on tertiary text; print no longer hugs the paper edge.
+
 ## [0.2.0] - 2026-06-03
 
 De-hardcoding + a full report overhaul. No schema change (still schema 3); extraction output is stable
