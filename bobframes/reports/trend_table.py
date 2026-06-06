@@ -215,119 +215,93 @@ def _kpi_matrix(kpi: str, label: str, fmt: str, lower_is_better, threshold,
     One per KPI, n_drops >= 2 (c16c: framed via section_card; the chart `lead` rides in the body)."""
     is_int = kpi in _INT_KPIS
 
-    parts = []
-    if lead:
-        parts.append(lead)
-    parts.append(f'<div class="table-wrap"><rdc-table data-mode="static" data-table="trend_{kpi}">')
-    parts.append('<table class="data">')
-    parts.append(f'<caption>{base.h(label)} per area across drops</caption>')
-    parts.append('<thead><tr>')
-    parts.append('<th scope="col">area</th>')
+    # v0.2.6-4: adopt the data_table component (ADR-43; golden absorbs the normalization). The last
+    # delta column carries delta-latest on BOTH the th (header_class) and its tds (cell_class) -- the
+    # trend matrix brackets the most-recent comparison down the whole column (was the .replace hack).
     n_drops = len(drops)
+    cols = [base.Column('area', 'area', clip='default')]
     for i, d in enumerate(drops):
-        parts.append(f'<th class="num" scope="col">{base.h(d.key)}</th>')
+        cols.append(base.Column(f'v{i}', d.key, numeric=True))
         if i > 0:
-            latest_cls = ' delta-latest' if i == n_drops - 1 else ''
-            parts.append(f'<th class="num{latest_cls}" scope="col">delta</th>')
+            last = i == n_drops - 1
+            cols.append(base.delta_column(f'd{i}', latest=last, latest_cell=last))
     if n_drops >= 3:
-        parts.append('<th class="num" scope="col">trend</th>')
-    parts.append('</tr></thead><tbody>')
+        cols.append(base.Column('trend', 'trend', numeric=True,
+                                render=lambda value, row: base.sparkline_svg(value)))
 
+    rows = []
     for area in areas:
-        parts.append('<tr>')
-        parts.append(f'<td>{base.clip_span(area)}</td>')
+        row = {'area': area}
         series: list = []
         prev = None
         for i, d in enumerate(drops):
             v = per_drop_area_data[i].get(area, {}).get(kpi)
             series.append(v)
-            if is_int:
-                parts.append(f'<td class="num">{base.fmt_int(v)}</td>')
-            else:
-                parts.append(f'<td class="num">{base.fmt_float(v, 3)}</td>')
+            row[f'v{i}'] = base.fmt_int(v) if is_int else base.fmt_float(v, 3)
             if i > 0:
-                cell = base.delta_cell(
-                    v, prev,
-                    lower_is_better=lower_is_better,
-                    fmt=fmt,
-                    regression_threshold_pct=threshold,
-                )
-                if i == n_drops - 1:
-                    cell = cell.replace('class="delta', 'class="delta delta-latest', 1)
-                parts.append(cell)
+                row[f'd{i}'] = base.delta_parts(v, prev, lower_is_better=lower_is_better,
+                                               fmt=fmt, regression_threshold_pct=threshold)
             prev = v
         if n_drops >= 3:
-            parts.append(f'<td class="num">{base.sparkline_svg(series)}</td>')
-        parts.append('</tr>')
-    parts.append('</tbody></table></rdc-table></div>')
+            row['trend'] = series
+        rows.append(row)
+
+    body = [lead] if lead else []
+    body.append(str(base.data_table(cols, rows, table_key=f'trend_{kpi}',
+                                    caption=f'{label} per area across drops')))
     return ('<rdc-sticky-h2>'
-            + base.section_card(kpi, label, '\n'.join(parts))
+            + base.section_card(kpi, label, '\n'.join(body))
             + '</rdc-sticky-h2>')
 
 
 def _single_drop_matrix(per_drop_ft: list, areas: list, drops: list) -> str:
-    """Render single wide matrix (rows=area, cols=KPI) when n_drops==1."""
-    parts = []
-    parts.append('<div class="table-wrap"><rdc-table data-mode="static" data-table="trend_matrix">')
-    parts.append('<table class="data">')
-    parts.append('<caption>per-area KPI matrix for the single drop</caption>')
-    parts.append('<thead><tr>')
-    parts.append('<th scope="col">area</th>')
-    for kpi, label, *_ in KPIS:
-        parts.append(f'<th class="num" scope="col">{base.h(label)}</th>')
-    parts.append('</tr></thead><tbody>')
+    """Render single wide matrix (rows=area, cols=KPI) when n_drops==1. v0.2.6-4: data_table component."""
     data = per_drop_ft[0]
-    # Precompute per-column max for heatmap normalization
-    col_max: dict = {}
+    col_max: dict = {}   # per-column max for heatmap normalization
     for kpi, _, _, _, _ in KPIS:
         vals = [float(data.get(a, {}).get(kpi) or 0) for a in areas]
         col_max[kpi] = max(vals) if vals else 0.0
+
+    cols = [base.Column('area', 'area', clip='default')]
+    cols += [base.Column(kpi, label, numeric=True, render=lambda value, row: value)
+             for kpi, label, *_ in KPIS]   # value = the prebuilt heatmap-or-plain inner
+
+    rows = []
     for area in areas:
-        parts.append('<tr>')
-        parts.append(f'<td>{base.clip_span(area)}</td>')
+        row = {'area': area}
         for kpi, _, _, _, _ in KPIS:
             v = data.get(area, {}).get(kpi)
-            cmax = col_max[kpi]
-            if kpi in _INT_KPIS:
-                val_str = base.fmt_int(v)
-            else:
-                val_str = base.fmt_float(v, 3)
-            if v is not None and cmax > 0:
-                parts.append(f'<td class="num">{base.heatmap_cell(v, 0, cmax, text=val_str)}</td>')
-            else:
-                parts.append(f'<td class="num">{val_str}</td>')
-        parts.append('</tr>')
-    parts.append('</tbody></table></rdc-table></div>')
+            val_str = base.fmt_int(v) if kpi in _INT_KPIS else base.fmt_float(v, 3)
+            row[kpi] = (base.heatmap_cell(v, 0, col_max[kpi], text=val_str)
+                        if (v is not None and col_max[kpi] > 0) else val_str)
+        rows.append(row)
+    table = base.data_table(cols, rows, table_key='trend_matrix',
+                            caption='per-area KPI matrix for the single drop')
     return ('<rdc-sticky-h2>'
-            + base.section_card('matrix', 'per-area kpi matrix', '\n'.join(parts))
+            + base.section_card('matrix', 'per-area kpi matrix', str(table))
             + '</rdc-sticky-h2>')
 
 
 def _class_count_matrix(per_drop_area_class: list, areas: list,
                         drops: list) -> str:
-    parts = []
-    parts.append('<div class="table-wrap"><rdc-table data-mode="static" data-table="trend_class_counts">')
-    parts.append('<table class="data">')
-    parts.append('<caption>draw counts by class per area</caption>')
-    parts.append('<thead><tr>')
-    parts.append('<th scope="col">area</th>')
+    # v0.2.6-4: data_table component. Per (drop, class) column; single-drop drops the drop prefix.
     single = len(drops) == 1
-    for d in drops:
+    cols = [base.Column('area', 'area', clip='default')]
+    for i, d in enumerate(drops):
         for cls in base.DRAW_CLASSES:
-            head = base.h(cls) if single else f'{base.h(d.key)}/{base.h(cls)}'
-            parts.append(f'<th class="num" scope="col">{head}</th>')
-    parts.append('</tr></thead><tbody>')
+            cols.append(base.Column(f'd{i}_{cls}', cls if single else f'{d.key}/{cls}', numeric=True))
+    rows = []
     for area in areas:
-        parts.append('<tr>')
-        parts.append(f'<td>{base.clip_span(area)}</td>')
+        row = {'area': area}
         for i in range(len(drops)):
             cc = per_drop_area_class[i].get(area, {})
             for cls in base.DRAW_CLASSES:
-                parts.append(f'<td class="num">{base.fmt_int(cc.get(cls, 0))}</td>')
-        parts.append('</tr>')
-    parts.append('</tbody></table></rdc-table></div>')
+                row[f'd{i}_{cls}'] = base.fmt_int(cc.get(cls, 0))
+        rows.append(row)
+    table = base.data_table(cols, rows, table_key='trend_class_counts',
+                            caption='draw counts by class per area')
     return ('<rdc-sticky-h2>'
-            + base.section_card('class_counts', 'draws by class', '\n'.join(parts))
+            + base.section_card('class_counts', 'draws by class', str(table))
             + '</rdc-sticky-h2>')
 
 

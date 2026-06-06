@@ -232,93 +232,74 @@ def build(root: str, *, drops: list | None = None, ab=None,
     if not by_area:
         parts.append(base.empty_state('no pixel_history data in the current run'))
     else:
-        # c16l: column groups for the static rdc-table (shared across every per-area table - the
-        # column structure is identical, so one index-keyed __colgroups_overdraw spec + one inline
-        # script serve them all; each area-section finds its OWN .col-groups bar via the section-scoped
-        # lookup). identity (rt label/format/dims) + current (latest sample stats) open; the per-drop
-        # samples wall + deltas collapsed. Indices are fixed by the header order built below.
-        ident_cols = [0, 1, 2]
-        cur_cols = [3, 4, 5, 6, 7, 8, 9]
-        hist_cols = []
-        _ci = 10
-        for _i, _k in enumerate(drop_keys):
-            hist_cols.append(_ci); _ci += 1            # samples@k
-            if _i > 0:
-                hist_cols.append(_ci); _ci += 1        # delta
-        colgroups = [{'name': 'identity', 'open': True, 'cols': ident_cols},
-                     {'name': 'current', 'open': True, 'cols': cur_cols}]
-        if hist_cols:
-            colgroups.append({'name': 'per-drop history', 'open': False, 'cols': hist_cols})
+        # v0.2.6-4: adopt the data_table component (ADR-43; golden absorbs the normalization). The N
+        # per-area tables share ONE index-keyed __colgroups_overdraw spec (identical column structure),
+        # so each table emits only its .col-groups bar div (emit_colgroups_script=False) and ONE shared
+        # script is emitted at the end. identity (rt label/format/dims) + current (latest sample stats)
+        # open; the per-drop samples wall + deltas collapsed. Columns are built ONCE (drop-keyed, not
+        # area-keyed); colgroups_from derives the index spec from each Column's `group` by position.
+        cols = [base.Column('rtlabel', 'rt label', group='identity',
+                            render=lambda value, row: base.clip_span(value) + base.h(row['_swap'])),
+                base.Column('format', 'format', group='identity', clip='narrow'),
+                base.Column('dims', 'dims', numeric=True, group='identity'),
+                base.Column('samples', 'samples (latest)', numeric=True, group='current'),
+                base.Column('passed', 'passed', numeric=True, group='current'),
+                base.Column('depthfail', 'depth failed', numeric=True, group='current'),
+                base.Column('discarded', 'discarded', numeric=True, group='current'),
+                base.Column('scissor', 'scissor', numeric=True, group='current'),
+                base.Column('backface', 'backface', numeric=True, group='current'),
+                base.Column('bar', 'rejection bar', group='current', render=lambda value, row: value)]
+        for i, k in enumerate(drop_keys):
+            cols.append(base.Column(f's{i}', f'samples@{k}', numeric=True, group='per-drop history'))
+            if i > 0:
+                cols.append(base.delta_column(f'd{i}', latest=(i == len(drop_keys) - 1),
+                                              group='per-drop history'))
+        colgroups = base.colgroups_from(cols, {'identity': True, 'current': True,
+                                               'per-drop history': False})
 
         for ai, area in enumerate(sorted(by_area.keys())):
-            rows = []
+            arows = []
             for label in set(by_area[area]):
                 rep = per_drop_data.get(ck, {}).get((area, label))
                 cur_samples = rep.get('n_samples', 0) if rep else 0
-                rows.append((label, rep, cur_samples))
-            rows.sort(key=lambda x: x[2], reverse=True)
+                arows.append((label, rep, cur_samples))
+            arows.sort(key=lambda x: x[2], reverse=True)
 
-            sec = []
-            sec.append('<table class="data">')
-            sec.append(f'<caption>per-render-target sample rejection in {base.h(area)}</caption>')
-            sec.append('<thead><tr>')
-            sec.append('<th scope="col">rt label</th>')
-            sec.append('<th scope="col">format</th>')
-            sec.append('<th scope="col">dims</th>')
-            sec.append('<th class="num" scope="col">samples (latest)</th>')
-            sec.append('<th class="num" scope="col">passed</th>')
-            sec.append('<th class="num" scope="col">depth failed</th>')
-            sec.append('<th class="num" scope="col">discarded</th>')
-            sec.append('<th class="num" scope="col">scissor</th>')
-            sec.append('<th class="num" scope="col">backface</th>')
-            sec.append('<th scope="col">rejection bar</th>')
-            for i, k in enumerate(drop_keys):
-                sec.append(f'<th class="num" scope="col">samples@{base.h(k)}</th>')
-                if i > 0:
-                    latest_cls = ' delta-latest' if i == len(drop_keys) - 1 else ''
-                    sec.append(f'<th class="num{latest_cls}" scope="col">delta</th>')
-            sec.append('</tr></thead><tbody>')
-
-            for label, rep, _ in rows:
+            trows = []
+            for label, rep, _ in arows:
                 latest_bucket = per_drop_data.get(ck, {}).get((area, label))
                 if latest_bucket is None:
                     continue
                 n = latest_bucket['n_samples']
                 pct = lambda v, total=n: (v / total * 100.0) if total > 0 else 0.0
-                swap = ' (swap)' if latest_bucket.get('is_swap') else ''
-                dims = f'{latest_bucket["width"]}x{latest_bucket["height"]}' if latest_bucket['width'] else ''
-
-                sec.append('<tr>')
                 # c16m: clip the RT label (default tier); the swap marker rides outside the clip.
-                sec.append(f'<td>{base.clip_span(label)}{base.h(swap)}</td>')
-                sec.append(f'<td>{base.clip_span(latest_bucket.get("format") or "", tier="narrow")}</td>')
-                sec.append(f'<td class="num">{base.h(dims)}</td>')
-                sec.append(f'<td class="num">{base.fmt_int(n)}</td>')
-                sec.append(f'<td class="num">{base.fmt_pct(pct(latest_bucket["n_passed"]))}</td>')
-                sec.append(f'<td class="num">{base.fmt_pct(pct(latest_bucket["n_depth_failed"]))}</td>')
-                sec.append(f'<td class="num">{base.fmt_pct(pct(latest_bucket["n_discarded"]))}</td>')
-                sec.append(f'<td class="num">{base.fmt_pct(pct(latest_bucket["n_scissor"]))}</td>')
-                sec.append(f'<td class="num">{base.fmt_pct(pct(latest_bucket["n_backface"]))}</td>')
-                sec.append(f'<td>{_rejection_bar(latest_bucket)}</td>')
-
+                row = {'rtlabel': label,
+                       '_swap': ' (swap)' if latest_bucket.get('is_swap') else '',
+                       'format': latest_bucket.get('format') or '',
+                       'dims': (f'{latest_bucket["width"]}x{latest_bucket["height"]}'
+                                if latest_bucket['width'] else ''),
+                       'samples': base.fmt_int(n),
+                       'passed': base.fmt_pct(pct(latest_bucket['n_passed'])),
+                       'depthfail': base.fmt_pct(pct(latest_bucket['n_depth_failed'])),
+                       'discarded': base.fmt_pct(pct(latest_bucket['n_discarded'])),
+                       'scissor': base.fmt_pct(pct(latest_bucket['n_scissor'])),
+                       'backface': base.fmt_pct(pct(latest_bucket['n_backface'])),
+                       'bar': _rejection_bar(latest_bucket)}
                 prev_n = None
                 for i, k in enumerate(drop_keys):
                     bb = per_drop_data.get(k, {}).get((area, label))
-                    cur_n = bb['n_samples'] if bb else None  # not `cur` - that holds the current run DropSet
-                    sec.append(f'<td class="num">{base.fmt_int(cur_n) if cur_n is not None else ""}</td>')
+                    cur_n = bb['n_samples'] if bb else None  # not `cur` - that holds the current DropSet
+                    row[f's{i}'] = base.fmt_int(cur_n) if cur_n is not None else ''
                     if i > 0:
-                        sec.append(base.delta_cell(
-                            cur_n if cur_n is not None else 0,
-                            prev_n,
-                            lower_is_better=None, fmt='{:+,.0f}'))
+                        row[f'd{i}'] = base.delta_parts(cur_n if cur_n is not None else 0, prev_n,
+                                                       lower_is_better=None, fmt='{:+,.0f}')
                     prev_n = cur_n
-                sec.append('</tr>')
-            sec.append('</tbody></table>')
+                trows.append(row)
 
             # Flagship: sample-rejection % per RT with config warn/alarm rule-lines (c16b).
             body = []
             chart_rows = []
-            for label, _rep, _ in rows:
+            for label, _rep, _ in arows:
                 lb = per_drop_data.get(ck, {}).get((area, label))
                 if not lb or lb['n_samples'] <= 0:
                     continue
@@ -335,13 +316,13 @@ def build(root: str, *, drops: list | None = None, ab=None,
                         chart_id=f'overdraw-{ai}'),
                     f'{area}: sample rejection % per RT'))
 
-            # c16c: frame the per-area section in a sticky-highlighted card. c16l: the per-area table is
-            # a STATIC rdc-table; its own .col-groups bar (section-scoped) drives the shared spec below.
-            body.append('<div class="col-groups" role="group" aria-label="column groups"></div>')
-            body.append('<div class="table-wrap"><rdc-table data-mode="static" data-table="overdraw">'
-                        f'{"".join(sec)}</rdc-table></div>')
+            # c16c: frame the per-area section in a sticky-highlighted card. The per-area table is a
+            # STATIC rdc-table; its .col-groups bar (data_table emits it) drives the shared spec below.
+            body.append(str(base.data_table(cols, trows, table_key='overdraw',
+                                            caption=f'per-render-target sample rejection in {area}',
+                                            colgroups=colgroups, emit_colgroups_script=False)))
             parts.append('<rdc-sticky-h2>'
-                         + base.section_card(area, area, ''.join(body), count=len(rows))
+                         + base.section_card(area, area, ''.join(body), count=len(arows))
                          + '</rdc-sticky-h2>')
 
         # One inline, index-keyed column-groups spec for every per-area overdraw table (offline, ASCII).

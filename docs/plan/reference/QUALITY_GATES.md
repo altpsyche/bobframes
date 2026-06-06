@@ -751,6 +751,44 @@ design_tokens.toml/formatters.py/base.py) + 2 tests + goldens (17 HTML + preview
 shared/shared_redacted `_assets/{report,catalog}.css`). No new ADR (rides ADR-44 + ADR-42); FINDINGS G-32
 `chip_cluster` ticked.
 
+**v0.2.6-4** (5 tabled detail reports adopt the `Column`+`data_table` family): the THIRD surface commit and
+the FIRST to **break byte-parity on purpose** -- `data_table` NORMALIZES the hand-written markup (attr
+order / cell shape / inline col-groups), the exact reason c16x x4 BUILT-NOT-ADOPTED the family. The golden
+refresh ABSORBS the normalization (the (a)..(f) replacement contract IS exercised, not narrowed -- ADR-43).
+overdraw / draws_by_class / shader_hotlist / instancing_opportunities / trend_table render every table via
+`data_table`; pass_gpu (bar-rows, no table) is eyeball-only. Idiosyncrasies preserved BEHAVIORALLY:
+overdraw's N per-area tables share ONE index-keyed `__colgroups_overdraw` spec (each emits its `.col-groups`
+div via `data_table(..., emit_colgroups_script=False)`; the single shared script emitted once); shader_hotlist's
+wide-clip `src` on the inner `<a>` + copy-button OUTSIDE + identity/cost/history col-groups + the `<details>`
+secondary + resolved; instancing's 3-table family; the `.delta`/`delta-latest` comparison cells across 4
+reports. **Component extensions** (chrome.py): `Column.cell_class` (per-row td class) + `header_class`
+(extra th class) -- together they reproduce the delta column's split th/td classes; `data_table` emits the
+`.col-groups` div when `colgroups` set + a NEW `emit_colgroups_script` toggle; NEW `colgroups_from(columns,
+opens)` derives the index spec from each `Column.group` BY POSITION (no hand counter -> no off-by-one) +
+makes the formerly-vestigial `group` field load-bearing; `Column.clip='default'` for the default-tier clip.
+**delta.py:** NEW `delta_parts(...) -> (css_class, text)` factored out; `delta_cell`/`delta_pill` refactored
+onto it BYTE-IDENTICALLY (their tests unchanged); NEW `delta_column(...)` factory (cell value = the
+`(cls,text)` tuple; render/cell_class read the PASSED value -> NO closure-over-loop-var bug); `delta_cell`
+kept but now UNUSED BY REPORTS (recorded, ADR-23). **Escape discipline** (mirrors -3 R1): captions / plain
+headers / plain cells pass PLAIN (drop inline `base.h`) so `el` escapes ONCE; the markup header
+(shader_hotlist multi-drop `uses<span class="dim">@k</span>`) passes `base.raw(...)`. **Keystone gate -- the
+data-preservation proof** (the -4 analogue of -2/-3's "byte-identical outside `<style>`", which -4 can't
+use): a harness renders each report BEFORE + AFTER and asserts the ordered `<th>`/`<td>` text + colgroups
+indices are IDENTICAL per page -- GREEN on synthetic (2-drop: covers deltas/`delta-latest`/`_kpi_matrix`/
+the shader history colgroup; 13 pages / 1859 cells, deterministic 6x). The real-Perf proof surfaced a
+PRE-EXISTING overdraw row-order nondeterminism (`set(by_area[area])` tie-break on equal sample counts; two
+post-migration renders disagreed on DIFFERENT cells -> confirmed pre-existing, not the migration) -> recorded
+FINDINGS **R-19** (deferred, golden-neutral fix). Gates: `test_parquet_parity` + `_pagedata/*.js` +
+`digests.json` + `golden_parquet` BYTE-UNCHANGED (data FROZEN); `test_table_component` EXTENDED in-commit
+(cell_class/header_class, the col-groups div + `emit_colgroups_script`, `colgroups_from`, `delta_parts`/
+`delta_column` incl. the per-row-independence closure guard, the `'default'` clip) -> 348 green; token guard
+0; `test_report_structure` held with NO edit (the faithful migration preserved every substring/count assert).
+Browser matrix light/dark/print synthetic + real Perf SIGNED OFF before bake. Scope (`git diff --stat`):
+8 source (base/chrome/delta + the 5 reports) + `test_table_component` + 9 report HTML goldens + 27
+golden_package HTML; net **-827 lines** (declarative columns replaced the hand-written markup); preview +
+`_pagedata`/`digests`/`golden_parquet` byte-unchanged (0 data drift). No new ADR (rides ADR-43 replacement
+gate + ADR-42 + ADR-44).
+
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,
 dropped column, dtype slip). Skip `_`-prefixed (`_catalog`, `_global_entities`). Runs on synthetic +

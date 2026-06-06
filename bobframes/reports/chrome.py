@@ -452,20 +452,30 @@ class Column:
     `cell_title` sets an UNCONDITIONAL per-cell `title=` from the cell value -- the dashboard-mini's
     always-on hover-reveal (a responsive `table-layout:fixed` mini has no deterministic pixel clip point,
     so it can't length-gate like `clip`; c16m/c16n). NOT a general truncation knob -- use `clip` for that.
-    The value MUST be a plain str (never a pre-escaped `_Raw`) so it is escaped exactly once."""
+    The value MUST be a plain str (never a pre-escaped `_Raw`) so it is escaped exactly once.
+
+    `header_class` / `cell_class` add EXTRA classes beyond `numeric`/`mono` (v0.2.6-4). The asymmetry is
+    intentional: `header_class` is a static str (a column's header is one cell), while `cell_class` is a
+    `cell_class(value, row) -> str` callable (a column's body class can vary per row). Together they
+    reproduce the per-report delta column -- `<th class="num[ delta-latest]">` (via `header_class`) +
+    `<td class="delta {dir}[ delta-latest]">` (via `cell_class`) -- whose th and td classes legitimately
+    differ. `group` (read by `colgroups_from`) names the collapsible col-group this column joins."""
     key: str
     header: str = ''
     numeric: bool = False
     mono: bool = False
     title: str | None = None
     cell_title: bool = False
-    clip: str = ''                              # '' | 'narrow' | 'wide'
+    clip: str = ''                              # '' (none) | 'default' | 'narrow' | 'wide'
     group: str | None = None
     render: '_Callable | None' = None
+    header_class: str = ''
+    cell_class: '_Callable | None' = None
 
 
 def _table_th(col: 'Column') -> _Raw:
-    return el('th', {'class': 'num' if col.numeric else None, 'scope': 'col', 'title': col.title},
+    return el('th', {'class': classes('num' if col.numeric else '', col.header_class) or None,
+                     'scope': 'col', 'title': col.title},
               col.header)
 
 
@@ -474,12 +484,15 @@ def _table_td(col: 'Column', row: dict) -> _Raw:
     if col.render is not None:
         inner = raw(col.render(value, row))     # trusted safe HTML (built via el/helpers)
     elif col.clip:
-        inner = raw(clip_span(value, tier=col.clip))
+        # 'default' => the default 320px tier (clip_span tier=''); 'narrow'/'wide' => those tiers.
+        inner = raw(clip_span(value, tier='' if col.clip == 'default' else col.clip))
     else:
         inner = value                           # el escapes a plain value
     # cell_title: an always-on hover-reveal from the (plain) value, escaped once by el (dashboard mini).
     cell_title = value if (col.cell_title and value) else None
-    return el('td', {'class': classes('num' if col.numeric else '', 'mono' if col.mono else '') or None,
+    extra = col.cell_class(value, row) if col.cell_class else ''   # per-row td class (delta direction)
+    return el('td', {'class': classes('num' if col.numeric else '', 'mono' if col.mono else '',
+                                      extra) or None,
                      'title': cell_title},
               inner)
 
@@ -492,16 +505,33 @@ def static_table(columns, rows, *, caption: str = '') -> _Raw:
     return el('table', {'class': 'data'}, cap, head, body)
 
 
+def colgroups_from(columns, opens: dict) -> list:
+    """Build the index-keyed col-groups spec from each `Column.group` tag (v0.2.6-4).
+
+    `opens` maps group-name -> open-bool AND fixes the group ORDER (its key order). Each column's
+    0-based POSITION in `columns` is collected into its `group`'s bucket (enumerate, so there is no
+    hand-maintained parallel counter to drift); empty groups are dropped. Mirrors the index-keyed spec
+    the engine reads (per-drop header text repeats, so groups key by index, not name)."""
+    buckets: dict = {name: [] for name in opens}
+    for i, c in enumerate(columns):
+        if c.group in buckets:
+            buckets[c.group].append(i)
+    return [{'name': name, 'open': bool(opens[name]), 'cols': buckets[name]}
+            for name in opens if buckets[name]]
+
+
 def data_table(columns, rows, *, table_key: str, caption: str = '',
                default_sort: str | None = None, default_dir: str | None = None,
-               colgroups=None, wrap: bool = True) -> _Raw:
+               colgroups=None, emit_colgroups_script: bool = True, wrap: bool = True) -> _Raw:
     """An interactive static rdc-table (sort / heatmap / col-groups via the always-on engine, ADR-38).
 
     Normalized host markup with a CONSISTENT attribute order -- the target shape reports adopt in
-    v0.2.6. `colgroups` (a list of {name, open, cols}) emits the inline `window.__colgroups_<key>` spec
-    the engine reads to build the collapsible group bar."""
+    v0.2.6. `colgroups` (a list of {name, open, cols}) emits BOTH the empty `.col-groups` toggle-bar div
+    (the engine fills it client-side) AND the inline `window.__colgroups_<key>` spec. Set
+    `emit_colgroups_script=False` to emit the div but NOT the script -- overdraw shares ONE spec across
+    its N per-area tables, so it emits the single script itself (the div still rides each table)."""
     cgroup = None
-    if colgroups:
+    if colgroups and emit_colgroups_script:
         import json as _json
         cgroup = raw(f'<script>window.__colgroups_{table_key}='
                      f'{_json.dumps(colgroups, separators=(",", ":"))};</script>')
@@ -509,7 +539,11 @@ def data_table(columns, rows, *, table_key: str, caption: str = '',
               {'data-mode': 'static', 'data-table': table_key,
                'data-default-sort': default_sort, 'data-default-dir': default_dir},
               cgroup, static_table(columns, rows, caption=caption))
-    return el('div', {'class': 'table-wrap'}, host) if wrap else host
+    wrapped = el('div', {'class': 'table-wrap'}, host) if wrap else host
+    if colgroups:   # the empty toggle-bar the engine fills (sibling BEFORE the table-wrap)
+        bar = el('div', {'class': 'col-groups', 'role': 'group', 'aria-label': 'column groups'})
+        return raw(str(bar) + str(wrapped))
+    return wrapped
 
 
 # --- build-health one-pager components (c16x-5, ADR-42; promoted from summary._* at visual parity) --

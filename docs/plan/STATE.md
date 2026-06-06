@@ -11,7 +11,46 @@ active_release: v0.2.6    (v0.1 COMPLETE - bobframes 0.1.0 live on PyPI 2026-05-
                 migration, so there is no standalone 0.2.5 - the next PyPI release is 0.2.6, carrying the
                 foundation AND the visual redesign; _version jumps 0.2.0 -> 0.2.6. The c16x work + the CI
                 golden_env fix are on `main`; v0.2.6 work is on branch `plan/v0.2.6`.)
-current:        v0.2.6-4 (6 detail reports: adopt the Column+data_table family)    (status: PLANNED on plan/v0.2.6.
+current:        v0.2.6-5 (catalog/drill wide layout + virtual hosts through the component + el long-tail close)    (status:
+                PLANNED on plan/v0.2.6.
+                v0.2.6-4 DONE 2026-06-06 (5 tabled detail reports adopt Column+data_table): the THIRD surface commit and the
+                FIRST to BREAK byte-parity on purpose -- data_table NORMALIZES the hand-written markup (attr order/cell
+                shape/inline col-groups), the exact reason c16x x4 BUILT-NOT-ADOPTED the family; the golden refresh ABSORBS
+                it (ADR-43 replacement gate, the (a)..(f) contract EXERCISED not narrowed). overdraw/draws_by_class/
+                shader_hotlist/instancing_opportunities/trend_table render every table via data_table; pass_gpu (bar-rows, no
+                table) eyeball-only. Idiosyncrasies preserved BEHAVIORALLY: overdraw's N per-area tables share ONE index-keyed
+                __colgroups_overdraw spec (each emits its .col-groups div via emit_colgroups_script=False; one shared script
+                emitted once); shader src wide-clip on the inner <a> + copy-button OUTSIDE + identity/cost/history groups +
+                <details> secondary + resolved; instancing 3-table family; .delta/delta-latest across 4 reports (trend's
+                _kpi_matrix puts delta-latest on BOTH th + td via latest+latest_cell). EXTENSIONS: Column.cell_class (per-row
+                td class) + header_class (extra th class) reproduce the delta column's split classes; data_table emits the
+                .col-groups div + a NEW emit_colgroups_script toggle; NEW colgroups_from(columns,opens) derives the index spec
+                from each Column.group BY POSITION (no off-by-one; makes the vestigial `group` field load-bearing);
+                Column.clip='default' (default 320px tier; '' still = no clip). delta.py: NEW delta_parts(...)->(cls,text);
+                delta_cell/delta_pill refactored onto it BYTE-IDENTICAL (tests unchanged); NEW delta_column factory (cell
+                value = the (cls,text) tuple; render/cell_class read the PASSED value, NOT a loop var -> closure-bug guard);
+                delta_cell kept but NOW UNUSED BY REPORTS (recorded, ADR-23). Escape discipline (mirror -3 R1): captions/
+                plain headers/plain cells pass PLAIN (dropped inline base.h) so el escapes ONCE; the markup header
+                (shader_hotlist multi-drop uses<span class=dim>@k</span>) passes base.raw; shader_hotlist dead `import json`
+                removed. KEYSTONE GATE = the data-preservation proof (a harness asserts the ordered <th>/<td> text +
+                colgroups indices IDENTICAL pre/post per page -- the -4 analogue of -2/-3's "byte-identical outside <style>",
+                which -4 cannot use): GREEN on synthetic (2-drop -> covers deltas/delta-latest/_kpi_matrix/shader history
+                colgroup; 13 pages/1859 cells; deterministic across 6 re-runs). The real-Perf proof surfaced a PRE-EXISTING
+                overdraw row-order nondeterminism (set(by_area[area]) tie-break on equal sample counts; two POST-migration
+                renders disagreed on DIFFERENT cells -> confirmed pre-existing, NOT the migration, which kept the selection+
+                sort verbatim) -> FINDINGS R-19 (deferred; golden-neutral fix needs a multi-tie fixture). DATA FROZEN:
+                test_parquet_parity + _pagedata/*.js + digests.json + golden_parquet BYTE-UNCHANGED (NO make_parquet_golden).
+                test_table_component EXTENDED in-commit 7->13 (cell_class/header_class, col-groups div + emit_colgroups_script,
+                colgroups_from, delta_parts/delta_column incl per-row independence, the 'default' clip); test_report_structure
+                held with NO edit (faithful migration preserved every substring/count + clip-class + colgroups + src-copy
+                assert); 348 green (-m "not browser"); token guard 0. Browser matrix light/dark/print synthetic + real Perf
+                (54 PNGs) SIGNED OFF by user before bake (user: "lets proceed now! I will write a feedback report which we can
+                address for 0.2.7"). Goldens refreshed on .venv (17 HTML + 27 _pagedata + preview + package 49/45/49). git
+                diff --stat = 8 source (base/chrome/delta + 5 reports) + test_table_component + 9 report HTML + 27
+                golden_package HTML + 2 docs; net -827 lines (declarative columns replaced hand-written markup);
+                _pagedata/digests/golden_parquet + golden_preview BYTE-UNCHANGED (0 data drift; preview _table_block is a
+                standalone mini, not a data_table); nothing outside scope. No new ADR (rides ADR-43/42/44); §21.1v +
+                FINDINGS (R-19 NEW + G-32 -4 note) + commit doc v026_4_detail_reports.md as-built. NEXT: v0.2.6-5.
                 v0.2.6-3 DONE 2026-06-06 (dashboard grid: shadcn-flat Grafana-dense cards + static_table minis): the SECOND
                 surface commit, the first DENSE one. CSS density block is the SOLE output change: [layout] dash_grid_min
                 360->300px (real Perf 4-up at 1600 vs 3-up), .dash-grid gap sp-6->sp-4, a.dash-card padding sp-4->sp-3 +
@@ -155,7 +194,31 @@ current:        v0.2.6-4 (6 detail reports: adopt the Column+data_table family) 
                 token-validity guard + preview gallery; migrate summary.py off its inline <style> (visual parity).
                 NOTE: c16p (v0.2 release) COMPLETE - PyPI bobframes 0.2.0 LIVE; tag v0.2.0 -> 765a4db on main.
                 GIT: c16y + c16v are in the WORKING TREE, NOT yet committed (user hasn't asked to commit).)
-last_session:   2026-06-06 — v0.2.6-3 DONE (dashboard grid: shadcn-flat Grafana-dense cards + static_table minis). The SECOND
+last_session:   2026-06-06 — v0.2.6-4 DONE (5 tabled detail reports adopt the Column+data_table family). The THIRD surface
+                commit + the FIRST to break byte-parity on purpose: data_table NORMALIZES the hand-written report tables
+                (attr order/cell shape/inline col-groups), the exact reason c16x x4 built-not-adopted the family; the golden
+                refresh ABSORBS it (ADR-43 replacement gate, EXERCISED not narrowed). overdraw/draws_by_class/shader_hotlist/
+                instancing_opportunities/trend_table now render every table via data_table; pass_gpu (bar-rows) eyeball-only.
+                Idiosyncrasies preserved: overdraw N per-area tables share ONE __colgroups_overdraw spec (emit_colgroups_script
+                =False per table + one shared script); shader src wide-clip on the inner <a> + copy-button OUTSIDE +
+                identity/cost/history groups + <details> secondary + resolved; instancing 3-table family; .delta/delta-latest
+                across 4 reports. NEW component extensions: Column.cell_class/header_class (reproduce the delta column's split
+                th/td classes), data_table .col-groups div + emit_colgroups_script, colgroups_from (Column.group now
+                load-bearing, indices BY POSITION), Column.clip='default'; delta.delta_parts (delta_cell/delta_pill refactored
+                BYTE-IDENTICAL) + delta_column factory (no closure bug); delta_cell now unused by reports (recorded). Escape
+                discipline (mirror -3 R1): captions/headers/cells PLAIN so el escapes once, markup header via base.raw; dead
+                `import json` removed from shader_hotlist. KEYSTONE GATE = a data-preservation proof (ordered <th>/<td> text +
+                colgroups identical pre/post per page; the -4 analogue of -2/-3's byte-identity): GREEN on synthetic (2-drop,
+                13 pages/1859 cells, deterministic 6x); the real-Perf proof surfaced a PRE-EXISTING overdraw set-iteration
+                tie-break nondeterminism (two post-migration renders disagreed on DIFFERENT cells -> not the migration) ->
+                FINDINGS R-19 (deferred). Data FROZEN (test_parquet_parity + _pagedata/digests/golden_parquet byte-unchanged,
+                NO make_parquet_golden). test_table_component 7->13; test_report_structure held with NO edit; 348 green
+                (-m "not browser"); token guard 0. Browser matrix light/dark/print synthetic + real Perf (54 PNGs) SIGNED OFF
+                by user before bake. Goldens refreshed on .venv; git diff = 8 source + test_table_component + 9 report HTML +
+                27 golden_package HTML + 2 docs, net -827 lines, preview byte-unchanged, nothing outside scope. No new ADR
+                (rides ADR-43/42/44); §21.1v + FINDINGS (R-19 + G-32 -4 note) + commit doc v026_4_detail_reports.md as-built.
+                current -> v0.2.6-5.
+                [prior session] 2026-06-06 — v0.2.6-3 DONE (dashboard grid: shadcn-flat Grafana-dense cards + static_table minis). The SECOND
                 surface commit, first DENSE one. CSS density block is the SOLE golden delta: dash_grid_min 360->300px (real
                 Perf 4-up at 1600 vs 3-up), .dash-grid gap sp-6->sp-4, a.dash-card padding sp-4->sp-3 + inner gap sp-3->sp-2.
                 Accent rail is a SUBTLE always-on 30% tint (box-shadow: inset 2px 0 0 color-mix(in oklch,
@@ -967,15 +1030,20 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    DO v0.2.6-3 (commits/v026/ — AUTHOR the v026_3 doc FIRST; none exists yet): the dashboard grid. shadcn-flat,
-                Grafana-dense cards (more cards/row, tighter gaps, dash_grid_min DOWN from 360px; per-card hairline + accent rail);
-                ADOPT chrome.static_table for the dashboard mini tables (dashboard._card_table); roll _card/chip_cluster onto el
-                (tick FINDINGS G-32 leaves). Full replacement-gate set (§21.1v) + browser matrix light/dark/print synthetic + real
-                Perf SIGNED OFF BEFORE goldens; make_golden+make_preview_golden+make_package_golden on the canonical .venv; verify
-                git diff scope (data path FROZEN: _pagedata/digests/golden_parquet byte-unchanged, NEVER make_parquet_golden).
-                Then -4 (6 detail reports adopt Column+data_table), -5 (catalog/drill wide + FINISH the el long-tail / close G-32),
-                -6 (close-out + PyPI: _version 0.2.0->0.2.6, ONE CHANGELOG [0.2.6], tag only after explicit authorization). NOTE:
-                c16w (standalone v0.2.5 release) CANCELLED per ADR-43 - folded into v0.2.6-6 close-out.
+next_action:    DO v0.2.6-5 (commits/v026/ — AUTHOR the v026_5 doc FIRST; none exists yet): catalog/drill WIDE layout (the
+                densest surface, max data-per-screen) + route the VIRTUAL rdc-table hosts through the component (the
+                mode='virtual' path) + FINISH the el long-tail (header/summary_bar/callout/breadcrumb/toc/sidecar/pair_list/
+                disclosure/pickers) so NOTHING stays bespoke -> CLOSE FINDINGS G-32. CRITICAL: the rdc-table ENGINE + _pagedata
+                UNTOUCHED -> _pagedata/*.js + digests.json byte-STABLE (data FROZEN, NEVER make_parquet_golden); reuse the
+                data-preservation cell-text proof (extend to catalog/drill). Full replacement-gate set (§21.1v) + browser matrix
+                light/dark/print synthetic + real Perf SIGNED OFF BEFORE goldens; make_golden+make_preview_golden+
+                make_package_golden on the canonical .venv; verify git diff scope. Then -6 (close-out + PyPI: _version
+                0.2.0->0.2.6, ONE CHANGELOG [0.2.6] covering c16q->redesign, tag + PyPI only after explicit authorization).
+                NOTE: c16w (standalone v0.2.5 release) CANCELLED per ADR-43 - folded into v0.2.6-6 close-out. CARRY-OVER:
+                FINDINGS R-19 (overdraw set-iteration row-order nondeterminism on real multi-RT data; golden-neutral fix needs a
+                multi-tie fixture, its own commit) + the user's promised 0.2.7 feedback report.
+                [prior] v0.2.6-4 DONE 2026-06-06 (5 tabled detail reports adopt Column+data_table; the FIRST byte-parity-breaking
+                surface commit) - see `current:` + session log.
                 [prior] v0.2.6-0 + -1a DONE 2026-06-05 (dev tooling + neutral shadcn token lift; ADR-44/45; 327 green; one commit).
                 [prior] c16x DONE (ADR-42, G-30, 319 green) - see `current:` + session log.
                 [prior] c16y + c16v DONE (2026-06-05) - G-26 + G-29 closed. c16y (ZERO-OUTPUT): NEW
@@ -1111,6 +1179,21 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-06 — v0.2.6-4 DONE (commits/v026/v026_4_detail_reports.md, plan/v0.2.6). 5 tabled detail reports adopt Column+
+  data_table -- the THIRD surface commit + the FIRST to break byte-parity on purpose (data_table NORMALIZES attr-order/cell-
+  shape/inline col-groups; golden ABSORBS per ADR-43, EXERCISED not narrowed). Idiosyncrasies preserved: overdraw N per-area
+  tables share ONE __colgroups_overdraw spec (emit_colgroups_script=False + one shared script); shader src wide-clip on the
+  inner <a> + copy-button OUTSIDE + identity/cost/history + <details> secondary + resolved; instancing 3-table; .delta/delta-
+  latest x4. Extensions: Column.cell_class/header_class, data_table col-groups div + emit_colgroups_script, colgroups_from
+  (Column.group load-bearing), clip='default'; delta_parts (delta_cell/delta_pill byte-identical) + delta_column factory (no
+  closure bug; delta_cell now unused by reports). Escape: captions/headers/cells PLAIN (el escapes once), markup header via
+  base.raw; dead `import json` removed. KEYSTONE = data-preservation proof (cell-text + colgroups identical pre/post per page):
+  synthetic GREEN (2-drop, 13 pages/1859 cells, det 6x); real-Perf surfaced PRE-EXISTING overdraw set-iteration tie-break
+  nondeterminism -> R-19 (deferred). Data FROZEN (parquet/_pagedata/digests byte-unchanged, NO make_parquet_golden).
+  test_table_component 7->13; test_report_structure NO edit; 348 green; token guard 0; browser matrix synthetic+real Perf
+  (54 PNGs) SIGNED OFF by user before bake. Goldens on .venv; git diff = 8 source + test + 9 report HTML + 27 package HTML +
+  2 docs, net -827 lines, preview byte-unchanged, in scope. No new ADR (ADR-43/42/44); §21.1v + FINDINGS(R-19+G-32) + as-built.
+  current -> v0.2.6-5.
 - 2026-06-06 — v0.2.6-3 DONE (commits/v026/v026_3_dashboard_grid.md, plan/v0.2.6). Dashboard grid, the SECOND surface commit
   (first DENSE): CSS density block is the SOLE golden delta -- dash_grid_min 360->300px (real Perf 4-up at 1600), .dash-grid
   gap sp-6->sp-4, a.dash-card padding sp-4->sp-3 + inner gap sp-3->sp-2; the 2px left accent rail is a SUBTLE always-on 30%
