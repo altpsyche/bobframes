@@ -229,14 +229,15 @@ def build(root: str, *, drops: list | None = None, ab=None,
     b_sh = max((r[2] for r in _dash._top_shaders_by_area(root, bl, 999)), default=None) if bl else None
 
     kpis = [
-        base.kpi_card('avg draws / frame', base.fmt_int(round(avg_draws)),
+        base.kpi_card('pooled mean draws / frame', base.fmt_int(round(avg_draws)),
              delta_html=_pct_pill(avg_draws, b_avg_draws) if bl else '',
              trend=base.trendline(series['draws'], tone=_dir_tone(avg_draws, b_avg_draws)),
-             note=f'{n_areas} area{"" if n_areas == 1 else "s"} - {base.fmt_int(td)} total'),
-        base.kpi_card('avg gpu / frame', base.fmt_float(avg_gpu, 4),
+             note=f'pooled across {base.fmt_int(nf)} frames, {n_areas} area'
+                  f'{"" if n_areas == 1 else "s"} - {base.fmt_int(td)} total'),
+        base.kpi_card('pooled mean gpu / frame', base.fmt_float(avg_gpu, 4),
              delta_html=_pct_pill(avg_gpu, b_avg_gpu) if bl else '',
              trend=base.trendline(series['gpu'], tone=_dir_tone(avg_gpu, b_avg_gpu)),
-             note=f'{base.fmt_float(tg, 3)} s total'),
+             note=f'pooled across {base.fmt_int(nf)} frames - {base.fmt_float(tg, 3)} s total'),
         base.kpi_card('worst overdraw', base.fmt_pct(ov_val) if ov_val is not None else '-',
              delta_html=_pct_pill(ov_val, b_ov) if bl else '',
              trend=base.trendline(series['overdraw'], tone=_dir_tone(ov_val, b_ov)),
@@ -266,8 +267,10 @@ def build(root: str, *, drops: list | None = None, ab=None,
                    key=lambda a: (v.area_verdicts[a].value, cur_hm.per_area[a].avg_gpu_per_frame),
                    reverse=True)
     cols = [base.Column('area', 'area'),
-            base.Column('draws', 'avg draws / frame', numeric=True),
-            base.Column('gpu', 'avg gpu / frame', numeric=True),
+            base.Column('draws', 'mean draws / frame (per area)', numeric=True,
+                        title='area draws / area captured frames'),
+            base.Column('gpu', 'mean gpu / frame (per area)', numeric=True,
+                        title='area gpu seconds / area captured frames'),
             base.Column('overdraw', 'overdraw', numeric=True),
             base.Column('status', 'status')]
     trows = []
@@ -286,7 +289,8 @@ def build(root: str, *, drops: list | None = None, ab=None,
             'overdraw': ov,
             'status': base.status_badge(v.area_verdicts[a].name, _STATE_LABEL[v.area_verdicts[a]]),
         })
-    table = base.static_table(cols, trows, caption='By area')
+    table = base.static_table(cols, trows,
+        caption="By area - each area's own per-frame mean; the headline pools all captured frames")
     parts.append(base.section_card('by_area', 'By area', table, count=n_areas))
 
     return base.write_report(out_path, [base.report_page(

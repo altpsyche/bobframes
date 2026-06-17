@@ -119,14 +119,14 @@ def _links_block() -> str:
 
 def _kpi_cards_block() -> str:
     cards = [
-        base.kpi_card('avg draws / frame', base.fmt_int(28410),
+        base.kpi_card('pooled mean draws / frame', base.fmt_int(28410),
                       delta_html='<span class="delta-pill neg">+4%</span>',
                       trend=base.trendline([3, 5, 4, 8, 6, 9, 7], tone='neg'),
-                      note='5 areas - 142,050 total', tone='neg'),
-        base.kpi_card('avg gpu / frame', base.fmt_float(12.8, 4),
+                      note='pooled across 5 frames, 5 areas - 142,050 total', tone='neg'),
+        base.kpi_card('pooled mean gpu / frame', base.fmt_float(12.8, 4),
                       delta_html='<span class="delta-pill pos">-1%</span>',
                       trend=base.trendline([9, 7, 8, 6, 6, 5, 5], tone='pos'),
-                      note='0.064 s total', tone='pos'),
+                      note='pooled across 5 frames - 0.064 s total', tone='pos'),
     ]
     return ('<div data-page-kind="summary"><div class="kpi-strip">'
             + ''.join(cards) + '</div></div>')

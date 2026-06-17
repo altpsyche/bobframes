@@ -163,3 +163,69 @@ def shader_aggregates(root: str, drops: list, *, stage: str | None = None) -> Sh
         sa.cplx[k] = max(sa.cplx.get(k, 0.0), c_val)
         sa.stype[k] = stype
     return sa
+
+
+# --- frame counts (D-15: the single owner of every per-(drop, area) frame count) ----------------
+
+def _frame_total_captures(root: str, drops: list) -> dict:
+    """``{(drop_key, area): {captures}}`` from ``frame_totals.parquet`` -- the authoritative
+    captured-frame set (the distinct ``capture`` values present in the per-frame GPU/draws table that
+    ``dashboard._run_totals`` / ``_top_areas_gpu`` divide by). Read live per drop_dir (frame_totals has
+    no per-drop cache, mirroring the dashboard readers). If a frame_totals has no ``capture`` column,
+    each row is treated as one distinct frame (num_rows) so the count never under-reports."""
+    out: dict = defaultdict(set)
+    for d in drops:
+        for r in d.rows:
+            p = os.path.join(r.drop_dir, 'frame_totals.parquet')
+            if not os.path.exists(p):
+                continue
+            try:
+                names = set(papq.read_schema(p).names)
+                if 'capture' in names:
+                    caps = papq.read_table(p, columns=['capture']).column('capture').to_pylist()
+                else:
+                    caps = [f'__row_{i}' for i in range(papq.read_metadata(p).num_rows)]
+            except Exception:
+                continue
+            out[(drop_key(r.drop_date, r.drop_label), r.area)].update(caps)
+    return out
+
+
+def frame_counts(root: str, drops: list) -> dict:
+    """The ONE owner of every per-(drop, area) frame count (D-15 / D-A4). Returns
+    ``{(drop_key, area): {'frames', 'draw_frames', 'shader_frames'}}`` where ``frames`` = distinct
+    captures in frame_totals (the GPU/draws-per-frame denominator) and ``draw_frames``/``shader_frames``
+    = distinct captures in the draws/shaders entity data (the c16v entity-rate denominators).
+
+    The three legitimately DIFFER when a capture replayed "ok" but exported no entity rows (the c16v
+    as-built, ADR-23): per-frame GPU divides by the frames that produced GPU data, while per-frame mesh/
+    shader rates divide by the frames that produced that entity -- both correct for their metric, on
+    different populations. ``frame_count_divergences`` surfaces the difference so the different-N
+    normalization is visible across reports rather than silent. Raw counts (no >=1 guard) so divergence
+    is detectable; the per-frame no-op guard stays in ``DrawAgg.frames`` / ``ShaderAgg.frames``.
+    """
+    da = draw_aggregates(root, drops)
+    sa = shader_aggregates(root, drops)
+    ft = _frame_total_captures(root, drops)
+    keys = set(ft) | set(da.captures) | set(sa.captures)
+    return {
+        k: {
+            'frames': len(ft.get(k, ())),
+            'draw_frames': len(da.captures.get(k, ())),
+            'shader_frames': len(sa.captures.get(k, ())),
+        }
+        for k in keys
+    }
+
+
+def frame_count_divergences(root: str, drops: list) -> list:
+    """``[(drop_key, area, frames, draw_frames, shader_frames), ...]`` for every (drop, area) where an
+    entity count that EXISTS (>0) differs from the frame_totals frame count -- i.e. a capture produced
+    GPU/draw data but not the matching entity rows (or vice versa). Sorted for deterministic logging.
+    Empty when every layer agrees (the uniform-capture case). Drives the render-time warning (D-15)."""
+    out = []
+    for (dk, area), c in sorted(frame_counts(root, drops).items()):
+        ftn, dfr, sfr = c['frames'], c['draw_frames'], c['shader_frames']
+        if (dfr and dfr != ftn) or (sfr and sfr != ftn):
+            out.append((dk, area, ftn, dfr, sfr))
+    return out

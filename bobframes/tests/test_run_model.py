@@ -115,7 +115,7 @@ def test_dashboard_total_draws_is_current_run_only(root, pages):
     labels = re.findall(r'class="kpi-label">([^<]*)<', idx)
     values = re.findall(r'class="kpi-value">([^<]*)<', idx)
     kv = dict(zip(labels, values))
-    rendered = int(kv['total draws'].replace(',', ''))
+    rendered = int(kv['total draws over captures'].replace(',', ''))
     assert rendered == cur_sum, f'dashboard total draws {rendered} != current run {cur_sum}'
     assert rendered < both_sum, 'dashboard total draws must NOT be the cross-run sum'
 

@@ -90,7 +90,12 @@ def test_report_thresholds_defaults():
     for got, want in [(r.shader_complexity_high, 60.0),
                       (r.overdraw_reject_warn_pct, 40.0),
                       (r.overdraw_reject_alarm_pct, 70.0),
-                      (r.gpu_regression_pct, 10.0)]:
+                      (r.gpu_regression_pct, 10.0),
+                      # H-41 — per-KPI trend thresholds; defaults reproduce the old KPIS literals.
+                      (r.draws_regression_pct, 10.0),
+                      (r.vbo_regression_pct, 15.0),
+                      (r.ibo_regression_pct, 15.0),
+                      (r.program_switches_regression_pct, 20.0)]:
         assert _bits(got) == _bits(want)
     assert r.instancing_repeat_min == 4
     assert r.max_prerendered_runs == 10        # c16f — per-run page cap

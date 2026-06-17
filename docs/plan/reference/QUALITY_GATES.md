@@ -841,6 +841,33 @@ synthetic report (`@font-face` base64 font + `--accent-primary` token resolved f
 re-hues it (the ADR-45 pip-user path, on a clean install). No production change beyond the version bump; no
 new ADR. **TAG + PyPI gated on explicit authorization** (outward/irreversible -- NOT part of the green gate).
 
+## 21.1w v0.2.7 aggregation consistency: one per-frame basis, named estimators (ADR-46) -- see [v027 commits](../commits/v027/)
+The "confusing averages" burndown (audit `reference/AGGREGATION_FINDINGS.md`; D-13..D-16 / Q-10..Q-13 /
+H-41). Each commit that changes emitted numbers/labels is a BOUNDED golden refresh (ADR-23 -- intentional,
+diff reviewed; never a silent narrowing); the **data path is FROZEN** every commit (`golden_parquet` +
+`_pagedata` BYTE-UNCHANGED, NO `make_parquet_golden`). New gates, all in `-m "not browser"`:
+- **frame-count single owner (v027_0, D-15):** `test_aggregates` -- `aggregates.frame_counts` owns every
+  per-(drop, area) count; `frame_count_divergences` flags ONLY a genuinely skewed (drop, area); the entity
+  divisor (`DrawAgg.frames`) is unchanged (c16v held). Golden-NEUTRAL (the warning is `log()`/stderr).
+- **per-frame regression parity (v027_1, D-13/H-41):** `test_trend_regression_basis` -- a 7-vs-5-capture run
+  at equal per-frame cost -> 0 regressions (was a false +40% from raw totals); a real per-frame rise flags;
+  `.bobframes.toml gpu_regression_pct` moves BOTH the heatmap alarm cells and the hero count (config defaults
+  reproduce the old `KPIS` literals, `test_config`).
+- **cross-report per-frame consistency (v027_2, D-14/D-16):** `test_report_structure.test_cross_report_per_frame_gpu_consistent`
+  -- a given area's per-frame GPU reads byte-identically on the dashboard card and the summary By-area table.
+- **true median + total/per-frame pair (v027_3, Q-11/Q-12):** `test_draws_by_class_kpis` -- the prepass/opaque
+  ratio is `statistics.median` (even-n proof vs the old upper-middle `sorted[n//2]`); "total ... over captures"
+  is paired with a per-frame mean.
+- **naming gate (v027_4, ADR-46):** `test_report_structure.test_no_vague_estimator_labels` -- no rendered
+  LABEL (kpi-label / th / caption) uses the vague "avg"/"average"/"(med)"/"typical"; estimators are NAMED
+  ("pooled mean" / "mean ... (per area)" / "median ..." / "total ... over captures"). Scoped to label
+  contexts so the base64 font blob (an incidental "Avg") is ignored.
+- **Q-13 (recorded, not changed):** overdraw reject% is a pooled micro-average over pixel samples (correct);
+  summary "worst overdraw" is a MAX selection (correctly labeled) -- documented so neither is "fixed" into a
+  mean by mistake.
+Suite 352 -> 362 (`-m "not browser"`). The v0.2.7 RELEASE ship (version bump + CHANGELOG + tag) is a separate
+later commit, gated on authorization.
+
 ## 21.2 Schema regression
 Every parquet column list equals `schemas.expected_columns(stem)` (catches alphabetization drift,
 dropped column, dtype slip). Skip `_`-prefixed (`_catalog`, `_global_entities`). Runs on synthetic +

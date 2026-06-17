@@ -220,7 +220,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
         if chart_items:
             mbody.append(base.figure(
                 base.bar_chart(chart_items, title='estimated wasted indices',
-                               desc='(max repeat - 1) x typical indices, per mesh',
+                               desc='(max repeat - 1) x median indices, per mesh',
                                chart_id='inst-wasted'),
                 'estimated wasted indices (top meshes)'))
 
@@ -237,9 +237,9 @@ def build(root: str, *, drops: list | None = None, ab=None,
         cols += [
             base.Column('areas', 'areas', clip='default'),
             base.Column('dompass', 'dominant pass', clip='narrow'),
-            base.Column('ityp', 'indices typical', numeric=True),
+            base.Column('ityp', 'median indices', numeric=True),
             base.Column('wasted', 'wasted indices', numeric=True,
-                        title='(max repeat - 1) x typical indices: index data re-submitted across repeats',
+                        title='(max repeat - 1) x median indices: index data re-submitted across repeats',
                         render=lambda value, row: base.heatmap_cell(value, 0, row['_maxw'],
                                                                     text=base.fmt_int(value))),
         ]

@@ -926,3 +926,37 @@ render (non-fatal warn / hard CI assert on a planted bad override). `package` (a
 rejects the flags. **Consequence.** Pip users brand reports via config/CLI, not source edits; the full
 per-token override stays deferred to Track B. Implemented in v0.2.6-1c. Extends ADR-25; rides ADR-40/43/44
 + the c16x guard.
+
+### ADR-46 — one aggregation policy: per-frame canonical, estimator+population named on every label (v0.2.7)
+**Context.** A 2026-06-16 audit of the real RDC mainline Perf corpus (`reference/AGGREGATION_FINDINGS.md`)
+found the reports use FOUR aggregation bases (pooled/frame-weighted mean, per-area mean, median, raw total),
+several labeled as a bare "avg", so the same metric reads at different magnitudes across reports. The
+rendered-corpus review confirmed the felt confusion: the same area's GPU read `0.0356` on summary
+(per-frame), `0.178` on the dashboard card (raw total), and `0.178` on trend, with no bridge
+(`0.178 = 0.0356 x 5 captures`, denominator never shown). Two reports also computed "GPU regression" on
+contradictory bases -- raw cross-capture total in `trend_table` (capture-count-SENSITIVE) vs per-frame mean
+in `summary`/`health` (capture-count-INDEPENDENT) -- producing disagreeing action items when capture counts
+differ; the corpus had to be hand-trimmed to a uniform 5 captures/run to dodge it. User feedback (v0.2.7):
+"the averages are very confusing when we read the reports," plus a directive to name the estimator
+precisely ("Mean", not "avg"). c16v (G-29) already established `formatters.per_frame` as the ONE
+normalization seam and `aggregates.py` as the single per-(drop, area) data layer with a data-derived frame
+count. **Decision (user-confirmed 2026-06-17).** (1) Canonical headline basis for additive quantities (GPU
+s, draws, bytes) = **per-frame, pooled micro** (`Sigma total / Sigma frames`); canonical per-area basis =
+**per-frame, per-area** (`area_total / area_frames`). (2) Non-additive roll-ups (prepass/opaque ratio,
+"typical" verts) use the **median** across the population. (3) Raw cross-capture totals are NEVER a lone
+headline -- where shown they are labeled "total over N captures" and paired with the per-frame rate
+(user decision: normalize the raw-total reports to per-frame). (4) **Naming convention:** the exact
+estimator word -- "Pooled mean" / "Mean ... (per area)" / "Median ..." / "Total ..." -- never "avg"/
+"average"/"(med)". (5) ONE regression basis = per-frame, sourced from `ReportCfg`, consumed identically by
+`trend_table`, `summary`, `health` (D-13, H-41). (6) ONE owner of every per-(drop, area) frame count
+(`aggregates.frame_counts`); per-frame GPU/draws divide by the frame_totals frame count, per-frame entity
+rates by the entity-capture count -- these legitimately DIFFER (a capture can replay ok yet export no
+entity rows), so the build WARNS on divergence rather than forcing a single (wrong) denominator (D-15;
+equality does not hold by design -- the synthetic itself is 5 vs 1). (7) Overdraw's pooled-over-samples
+reject% and the MAX "worst overdraw" are correct as designed and recorded so they are not "fixed" into a
+mean (Q-13). **Consequence.** Each labeling/normalization commit changes emitted numbers/labels -> a bounded
+golden refresh per ADR-23 (intentional change, diff reviewed in the PR), never a silent gate narrowing. On
+the 1-capture-per-frame path `per_frame` is a no-op, so numeric churn is confined to multi-capture data +
+constructed tests. Enforced by new tests (trend<->health per-frame parity; headline<->per-area-column
+relationship; an "avg/(med) absent from rendered labels" naming gate). Extends c16v/G-29; implemented across
+v0.2.7-0..-4.

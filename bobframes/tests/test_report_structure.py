@@ -94,16 +94,47 @@ def test_dashboard_kpi_totals_paired_with_averages(rendered):
     idx = rendered['_reports/index.html']
     labels = re.findall(r'class="kpi-label">([^<]*)<', idx)
     values = re.findall(r'class="kpi-value">([^<]*)<', idx)
-    # per-area average is NOT a single headline number (one per area) -> it lives in the trend card
-    assert labels == ['total gpu (s)', 'avg gpu / frame (s)', 'total draws',
-                      'avg draws / frame', 'areas']
+    # v027_2 (D-14): the hero leads with the pooled mean, pairs each with the labeled raw total
+    assert labels == ['pooled mean gpu / frame (s)', 'total gpu (s) over captures',
+                      'pooled mean draws / frame', 'total draws over captures', 'areas']
     kv = dict(zip(labels, values))
     to_num = lambda s: float(s.replace(',', ''))
-    # the average must be a fraction of the total (n_frames > 1 in the synthetic: 2 drops x 5 frames)
-    assert to_num(kv['avg draws / frame']) < to_num(kv['total draws'])
-    assert to_num(kv['avg gpu / frame (s)']) < to_num(kv['total gpu (s)'])
-    # per-area avg draws lives in the trend-table card, not the headline strip
-    assert 'avg draws / frame' in idx and 'per-area GPU + draw load' in idx
+    # the mean must be a fraction of the total (n_frames > 1 in the synthetic: 2 drops x 5 frames)
+    assert to_num(kv['pooled mean draws / frame']) < to_num(kv['total draws over captures'])
+    assert to_num(kv['pooled mean gpu / frame (s)']) < to_num(kv['total gpu (s) over captures'])
+    # per-area per-frame mean lives in the trend-table card, not the headline strip (D-16)
+    assert 'mean draws / frame' in idx and 'per-area GPU per captured frame' in idx
+
+
+def test_cross_report_per_frame_gpu_consistent(tmp_path):
+    """D-16: a given area's per-frame GPU reads IDENTICALLY on the dashboard card and the summary
+    By-area table (both derive from `_top_areas_gpu[4]`). Before v027_2 the dashboard showed the raw
+    total (0.178) while summary showed the per-frame mean (0.0356) for the same area, with no bridge."""
+    from bobframes.reports import dashboard as _dash, base
+    dest = u.render_fresh(str(tmp_path / 'root'))
+    rc = base.run_context(base.discover_drops(dest))
+    top = _dash._top_areas_gpu([rc.current], 999)
+    assert top
+    val = base.fmt_float(top[0][4], 4)              # the top area's per-frame gpu (4dp)
+    dash = open(os.path.join(dest, '_reports/index.html'), encoding='utf-8').read()
+    summ = open(os.path.join(dest, '_reports/summary.html'), encoding='utf-8').read()
+    assert val in dash and val in summ, f'per-frame gpu {val!r} must read the same on dashboard + summary'
+
+
+def test_no_vague_estimator_labels(rendered):
+    """ADR-46 naming gate (v027_4): every estimator is NAMED in rendered labels ('mean'/'pooled mean'/
+    'median'/'total'), never the vague 'avg'/'average'/'(med)'/'typical'. Scoped to label contexts
+    (kpi-label / th / caption) so the base64 font blob (which contains an incidental 'Avg') is ignored."""
+    import re
+    label_re = re.compile(r'class="kpi-label">([^<]*)<|<th\b[^>]*>([^<]*)<|<caption>([^<]*)<')
+    banned = ('avg', 'average', '(med)', 'typical', 'indices typ')
+    for name in ['summary', 'index'] + _ALL_REPORTS:
+        html = rendered[f'_reports/{name}.html']
+        labels = [g for m in label_re.finditer(html) for g in m.groups() if g]
+        for lab in labels:
+            low = lab.lower()
+            for term in banned:
+                assert term not in low, f'{name}: vague estimator label {lab!r} (term {term!r})'
 
 
 def test_header_names_current_run(rendered):
@@ -470,8 +501,8 @@ def test_c16m_dashboard_mini_hover_title(rendered):
     # (and Ctrl-F matches the real inline text). Numeric cells (right-aligned, short) get no title.
     idx = rendered['_reports/index.html']
     assert '<td title="' in idx, 'dashboard mini text cells must carry a hover title='
-    # headers clip too under table-layout:fixed (e.g. "avg draws / frame"), so they carry title= as well
-    assert '<th class="num" scope="col" title="avg draws / frame">' in idx
+    # headers clip too under table-layout:fixed (e.g. "mean draws / frame"), so they carry title= as well
+    assert '<th class="num" scope="col" title="mean draws / frame">' in idx
     # the marker column is no longer builder-truncated (trunc_left) - the full value reaches the DOM,
     # the CSS clip handles the display, the title= reveals it. A trailing-ellipsis builder-trunc would
     # have put a literal "..." into the cell text; the unified path keeps the full value instead.

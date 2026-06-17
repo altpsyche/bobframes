@@ -61,7 +61,7 @@ def test_direction_tag(rendered):
 
 def test_four_headline_kpis(rendered):
     s = _summary(rendered[1])
-    for lbl in ['avg draws / frame', 'avg gpu / frame', 'worst overdraw', 'worst shader']:
+    for lbl in ['pooled mean draws / frame', 'pooled mean gpu / frame', 'worst overdraw', 'worst shader']:
         assert lbl in s
     assert s.count('class="kpi-chip') == 4
     assert 'delta-pill' in s                 # colored vs-prior deltas
@@ -85,7 +85,7 @@ def test_by_area_table(rendered):
     s = _summary(rendered[1])
     assert 'id="by_area"' in s
     by = s[s.index('id="by_area"'):]
-    assert '<caption>By area</caption>' in by
+    assert '<caption>By area' in by and 'per-frame mean' in by   # D-14: discloses the per-area basis
     assert '<th>' not in by                  # every th carries scope
     assert by.count('<th ') == by.count('scope="col"')
     body = by[by.index('<tbody>'):by.index('</tbody>')]
@@ -109,13 +109,13 @@ def test_no_banned_unicode(rendered):
 def test_avg_kpis_reconcile_with_dashboard(rendered):
     dest, pages = rendered
     s, dash = pages['_reports/summary.html'], pages['_reports/index.html']
-    # the one-pager's averaged KPIs equal the dashboard's current-run KPIs (same pooled total/frames)
-    assert _kpi_value(s, 'avg draws / frame') == _kpi_value(dash, 'avg draws / frame')
-    assert _kpi_value(s, 'avg gpu / frame') == _kpi_value(dash, 'avg gpu / frame (s)')
+    # the one-pager's pooled-mean KPIs equal the dashboard's current-run KPIs (same pooled total/frames)
+    assert _kpi_value(s, 'pooled mean draws / frame') == _kpi_value(dash, 'pooled mean draws / frame')
+    assert _kpi_value(s, 'pooled mean gpu / frame') == _kpi_value(dash, 'pooled mean gpu / frame (s)')
     # and against the raw current-run computation directly (capture-count-independent)
     rc = base.run_context(base.discover_drops(dest))
     _tg, td, nf = _dash._run_totals([rc.current])
-    assert _kpi_value(s, 'avg draws / frame') == base.fmt_int(round(td / nf))
+    assert _kpi_value(s, 'pooled mean draws / frame') == base.fmt_int(round(td / nf))
 
 
 def test_total_line_matches_dashboard_totals(rendered):

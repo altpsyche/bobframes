@@ -17,22 +17,55 @@ from . import base
 from ..config import get_config
 
 
-# (col_name, label, fmt, lower_is_better, regression_pct)
+# (col_name, label, fmt, lower_is_better). v027_1: all KPIs read PER FRAME (D-13, divided by the
+# (drop, area) captured-frame count) so the trend is capture-count-independent and agrees with the
+# health verdict; labels carry "/ frame". The per-KPI regression threshold is NO LONGER a tuple
+# literal (H-41) -- it is sourced from `ReportCfg` via `_REGRESSION_PCT_ATTR`, so `.bobframes.toml`
+# moves BOTH the heatmap alarm cells AND the hero regression count.
 KPIS = [
-    ('total_gpu_duration_s',          'gpu (s)',           '{:+,.3f}', True,  10.0),
-    ('n_draws',                        'draws',             '{:+,.0f}', True,  10.0),
-    ('vbo_bytes_bound_derived',        'vbo bytes',         '{:+,.0f}', True,  15.0),
-    ('ibo_bytes_bound_derived',        'ibo bytes',         '{:+,.0f}', True,  15.0),
-    ('program_switches',               'prog switches',     '{:+,.0f}', True,  20.0),
+    ('total_gpu_duration_s',          'gpu / frame (s)',     '{:+,.4f}', True),
+    ('n_draws',                        'draws / frame',       '{:+,.1f}', True),
+    ('vbo_bytes_bound_derived',        'vbo bytes / frame',   '{:+,.0f}', True),
+    ('ibo_bytes_bound_derived',        'ibo bytes / frame',   '{:+,.0f}', True),
+    ('program_switches',               'prog switches / frame', '{:+,.1f}', True),
 ]
 
-_INT_KPIS = {'n_draws', 'vbo_bytes_bound_derived', 'ibo_bytes_bound_derived',
-             'program_switches'}
+# H-41: per-KPI regression threshold -> ReportCfg attr (gpu reuses the existing key).
+_REGRESSION_PCT_ATTR = {
+    'total_gpu_duration_s':     'gpu_regression_pct',
+    'n_draws':                  'draws_regression_pct',
+    'vbo_bytes_bound_derived':  'vbo_regression_pct',
+    'ibo_bytes_bound_derived':  'ibo_regression_pct',
+    'program_switches':         'program_switches_regression_pct',
+}
 
 
-def _aggregate_frame_totals(drop: base.DropSet, ok_caps: set) -> dict:
-    """Return {area: {kpi: sum}} from frame_totals.parquet."""
+def _threshold_for(kpi: str, rcfg) -> float:
+    return float(getattr(rcfg, _REGRESSION_PCT_ATTR[kpi]))
+
+
+# Per-frame KPIs are means (floats), not raw integer counts (D-13). Display precision per KPI; the
+# large byte rates round to integers (a fractional byte/frame is noise).
+_VALUE_DECIMALS = {'total_gpu_duration_s': 4, 'n_draws': 1, 'program_switches': 1}
+_BYTES_KPIS = {'vbo_bytes_bound_derived', 'ibo_bytes_bound_derived'}
+
+
+def _fmt_value(kpi: str, v) -> str:
+    """Format a per-frame KPI mean for a matrix cell (None -> '')."""
+    if v is None or v == '':
+        return ''
+    if kpi in _BYTES_KPIS:
+        return base.fmt_int(round(float(v)))
+    return base.fmt_float(v, _VALUE_DECIMALS.get(kpi, 3))
+
+
+def _aggregate_frame_totals(drop: base.DropSet, ok_caps: set) -> tuple[dict, dict]:
+    """Return ``({area: {kpi: sum}}, {area: frame_count})`` from frame_totals.parquet. ``frame_count``
+    = distinct captures actually summed for that area (the D-13 per-frame denominator; matches the
+    rows that fed the sum, so ``sum / frame_count`` is the true per-frame mean -- the same basis the
+    health verdict's ``avg_gpu_per_frame`` uses)."""
     out: dict = defaultdict(lambda: defaultdict(float))
+    frames: dict = defaultdict(set)
     for r in drop.rows:
         p = os.path.join(r.drop_dir, 'frame_totals.parquet')
         if not os.path.exists(p):
@@ -47,12 +80,13 @@ def _aggregate_frame_totals(drop: base.DropSet, ok_caps: set) -> dict:
             key = (r.area, r.drop_date, r.drop_label, cap)
             if ok_caps and key not in ok_caps:
                 continue
+            frames[r.area].add(cap)
             for kpi, *_ in KPIS:
                 if kpi in cols:
                     v = cols[kpi][i]
                     if v is not None:
                         out[r.area][kpi] += v
-    return out
+    return out, {a: len(c) for a, c in frames.items()}
 
 
 def _aggregate_buffer_bytes(drop: base.DropSet, ok_caps: set) -> dict:
@@ -213,8 +247,6 @@ def _kpi_matrix(kpi: str, label: str, fmt: str, lower_is_better, threshold,
     """Render one KPI matrix as a sticky section card: (flagship chart) + table-wrap.
 
     One per KPI, n_drops >= 2 (c16c: framed via section_card; the chart `lead` rides in the body)."""
-    is_int = kpi in _INT_KPIS
-
     # v0.2.6-4: adopt the data_table component (ADR-43; golden absorbs the normalization). The last
     # delta column carries delta-latest on BOTH the th (header_class) and its tds (cell_class) -- the
     # trend matrix brackets the most-recent comparison down the whole column (was the .replace hack).
@@ -237,7 +269,7 @@ def _kpi_matrix(kpi: str, label: str, fmt: str, lower_is_better, threshold,
         for i, d in enumerate(drops):
             v = per_drop_area_data[i].get(area, {}).get(kpi)
             series.append(v)
-            row[f'v{i}'] = base.fmt_int(v) if is_int else base.fmt_float(v, 3)
+            row[f'v{i}'] = _fmt_value(kpi, v)
             if i > 0:
                 row[f'd{i}'] = base.delta_parts(v, prev, lower_is_better=lower_is_better,
                                                fmt=fmt, regression_threshold_pct=threshold)
@@ -258,7 +290,7 @@ def _single_drop_matrix(per_drop_ft: list, areas: list, drops: list) -> str:
     """Render single wide matrix (rows=area, cols=KPI) when n_drops==1. v0.2.6-4: data_table component."""
     data = per_drop_ft[0]
     col_max: dict = {}   # per-column max for heatmap normalization
-    for kpi, _, _, _, _ in KPIS:
+    for kpi, *_ in KPIS:
         vals = [float(data.get(a, {}).get(kpi) or 0) for a in areas]
         col_max[kpi] = max(vals) if vals else 0.0
 
@@ -269,9 +301,9 @@ def _single_drop_matrix(per_drop_ft: list, areas: list, drops: list) -> str:
     rows = []
     for area in areas:
         row = {'area': area}
-        for kpi, _, _, _, _ in KPIS:
+        for kpi, *_ in KPIS:
             v = data.get(area, {}).get(kpi)
-            val_str = base.fmt_int(v) if kpi in _INT_KPIS else base.fmt_float(v, 3)
+            val_str = _fmt_value(kpi, v)
             row[kpi] = (base.heatmap_cell(v, 0, col_max[kpi], text=val_str)
                         if (v is not None and col_max[kpi] > 0) else val_str)
         rows.append(row)
@@ -323,17 +355,28 @@ def build(root: str, *, drops: list | None = None, ab=None,
 
     ok_caps = base.ok_capture_set(root)
 
-    per_drop_ft = []
+    per_drop_ft = []        # per-frame means -> matrices, deltas, regression (D-13)
+    per_drop_ft_raw = []    # raw cross-capture sums -> the labeled "total" hero
+    per_drop_frames = []    # {area: captured-frame count}
     per_drop_bytes = []
     per_drop_class = []
     device_strings = []
     for d in drops:
-        ft = _aggregate_frame_totals(d, ok_caps)
+        ft, ft_frames = _aggregate_frame_totals(d, ok_caps)
         bb = _aggregate_buffer_bytes(d, ok_caps)
         for area in list(ft.keys()) + list(bb.keys()):
             ft.setdefault(area, {})
             ft[area].update(bb.get(area, {}))
-        per_drop_ft.append(ft)
+        per_drop_ft_raw.append({a: dict(kv) for a, kv in ft.items()})
+        per_drop_frames.append(ft_frames)
+        # D-13: per-frame-normalize every KPI by the area's captured-frame count via base.per_frame
+        # (a no-op when frames<=1, so single-capture data stays byte-identical). The matrices, deltas,
+        # regression count, and biggest-regression all read per_drop_ft -> all capture-count-independent
+        # and on the SAME per-frame basis the health verdict uses.
+        per_drop_ft.append({
+            a: {k: base.per_frame(v, ft_frames.get(a, 0)) for k, v in kv.items()}
+            for a, kv in ft.items()
+        })
         per_drop_bytes.append(bb)
         per_drop_class.append(_aggregate_class_counts(d, ok_caps))
         device_strings.append(_device_string(d))
@@ -343,26 +386,34 @@ def build(root: str, *, drops: list | None = None, ab=None,
 
     rcfg = get_config().report
 
-    # Hero KPIs: latest total GPU, delta vs previous drop, regression count.
-    def _sum_gpu(ft):
-        return sum(float(ft.get(a, {}).get('total_gpu_duration_s', 0) or 0) for a in all_areas)
-    latest_gpu = _sum_gpu(per_drop_ft[-1])
+    # Hero KPIs: pooled mean GPU/frame (capture-count-independent, the SAME basis the summary headline
+    # uses: total GPU / total captured frames across areas) + the labeled raw total, the per-frame
+    # delta vs the previous drop, and the regression count. D-13: the count is per-frame (was raw
+    # total -> capture-count-sensitive), H-41: each KPI's threshold is config-driven.
+    def _pooled_gpu_per_frame(raw: dict, frames: dict) -> tuple[float, float]:
+        tg = sum(float(raw.get(a, {}).get('total_gpu_duration_s', 0) or 0) for a in all_areas)
+        nf = sum(frames.get(a, 0) for a in all_areas)
+        return ((tg / nf) if nf else 0.0), tg
+    latest_ppf, latest_total = _pooled_gpu_per_frame(per_drop_ft_raw[-1], per_drop_frames[-1])
     kpis = [
-        {'label': 'latest gpu (s)', 'value': base.fmt_float(latest_gpu, 3)},
-        {'label': 'areas',          'value': base.fmt_int(len(all_areas))},
+        {'label': 'gpu / frame (s)',           'value': base.fmt_float(latest_ppf, 4)},
+        {'label': 'total gpu (s) over captures', 'value': base.fmt_float(latest_total, 3)},
+        {'label': 'areas',                     'value': base.fmt_int(len(all_areas))},
     ]
     if len(drops) > 1:
-        d_gpu = latest_gpu - _sum_gpu(per_drop_ft[-2])
+        prev_ppf, _ = _pooled_gpu_per_frame(per_drop_ft_raw[-2], per_drop_frames[-2])
+        d_gpu = latest_ppf - prev_ppf
         n_reg = 0
-        for _kpi, _lbl, *_ in KPIS:
+        for _kpi, *_ in KPIS:
+            thr = _threshold_for(_kpi, rcfg)
             for a in all_areas:
                 cur = per_drop_ft[-1].get(a, {}).get(_kpi)
                 prv = per_drop_ft[-2].get(a, {}).get(_kpi)
                 if (cur is not None and prv not in (None, 0) and float(prv) > 0
-                        and 100.0 * (float(cur) - float(prv)) / float(prv) >= rcfg.gpu_regression_pct):
+                        and 100.0 * (float(cur) - float(prv)) / float(prv) >= thr):
                     n_reg += 1
         # Explicit sign so the regression direction is not conveyed by tone colour alone (c16c a11y).
-        kpis.insert(1, {'label': 'gpu delta (s)', 'value': f'{d_gpu:+,.3f}',
+        kpis.insert(2, {'label': 'gpu / frame delta (s)', 'value': f'{d_gpu:+,.4f}',
                         'tone': 'neg' if d_gpu > 0 else ('pos' if d_gpu < 0 else 'neutral')})
         kpis.append({'label': 'regressions', 'value': base.fmt_int(n_reg)})
 
@@ -412,7 +463,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
                     prev = cur
         if worst_tuple is not None:
             kpi, area, label, pct, prev_key, cur_key = worst_tuple
-            tone = 'alarm' if pct >= rcfg.gpu_regression_pct else 'warn'
+            tone = 'alarm' if pct >= _threshold_for(kpi, rcfg) else 'warn'
             parts.append(base.summary_bar(
                 'biggest regression',
                 f'{area} / {label} +{base.fmt_float(pct, 1)}%',
@@ -444,7 +495,8 @@ def build(root: str, *, drops: list | None = None, ab=None,
             parts.append(f'<a href="#{base.h(kpi)}" data-link-kind="crumb">{base.h(label)}</a>')
         parts.append('<a href="#class_counts" data-link-kind="crumb">draws by class</a>')
         parts.append('</nav>')
-        for kpi, label, fmt, lib, thr in KPIS:
+        for kpi, label, fmt, lib in KPIS:
+            thr = _threshold_for(kpi, rcfg)   # H-41: config-driven, was the dropped KPIS tuple literal
             # Flagship: per-area line of this KPI across drops, leading the matrix (c16b).
             series = []
             for area in all_areas:

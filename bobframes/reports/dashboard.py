@@ -301,11 +301,11 @@ def _global_kpis(drops: list) -> list:
     avg_gpu_frame = (total_gpu / n_frames) if n_frames else 0.0
     avg_draws_frame = (total_draws / n_frames) if n_frames else 0.0
     return [
-        {'label': 'total gpu (s)',      'value': base.fmt_float(total_gpu, 3)},
-        {'label': 'avg gpu / frame (s)', 'value': base.fmt_float(avg_gpu_frame, 4)},
-        {'label': 'total draws',        'value': base.fmt_int(total_draws)},
-        {'label': 'avg draws / frame',  'value': base.fmt_int(round(avg_draws_frame))},
-        {'label': 'areas',              'value': base.fmt_int(len(areas))},
+        {'label': 'pooled mean gpu / frame (s)', 'value': base.fmt_float(avg_gpu_frame, 4)},
+        {'label': 'total gpu (s) over captures', 'value': base.fmt_float(total_gpu, 3)},
+        {'label': 'pooled mean draws / frame',   'value': base.fmt_int(round(avg_draws_frame))},
+        {'label': 'total draws over captures',   'value': base.fmt_int(total_draws)},
+        {'label': 'areas',                       'value': base.fmt_int(len(areas))},
     ]
 
 
@@ -351,6 +351,9 @@ def build(root: str, *, drops: list | None = None, ab=None,
     rc = base.run_context(drops, run_label=run_label, run_date=run_date)
     cur = rc.current
     cur_drops = [cur] if cur else []
+    # v027_4: per-area captured-frame counts (the single owner, D-15) so the mini cards can read
+    # per-frame and stay consistent with summary + the trend card (no bare cross-capture totals).
+    area_frames = {a: c['frames'] for (_dk, a), c in _agg.frame_counts(root, cur_drops).items()}
 
     # c16f: a per-run dashboard lives at _reports/run/<key>/index.html; its sibling reports (instancing
     # etc.) are pre-rendered there too, so their links stay bare. trend_table is NOT per-run (it is the
@@ -398,22 +401,23 @@ def build(root: str, *, drops: list | None = None, ab=None,
                          *[base.el('a', {'href': href, 'data-link-kind': 'primary'}, lbl)
                            for href, lbl in _NAV]))
 
-    # Card: trend table - GPU time per area (mini bars matching the trend flagship).
+    # Card: trend table - GPU PER FRAME per area (D-16: leads with the per-frame mean so the same area
+    # reads the SAME number here and on summary; the raw run total rides alongside as the labeled bridge).
     top_a = top_a[:3]
     chart_tt = base.figure(base.bar_chart(
-        [(a, g) for a, g, *_ in top_a], value_fmt=lambda v: f'{v:.3f}', width=280,
-        title='gpu (s) per area', desc='top areas by GPU seconds', chart_id='dash-tt'))
+        [(t[0], t[4]) for t in top_a], value_fmt=lambda v: f'{v:.4f}', width=280,
+        title='gpu / frame per area', desc='top areas by GPU per captured frame', chart_id='dash-tt'))
     body_tt = _card_table(
         top_a,
         [
             ('area', lambda r: r[0], False),
-            ('gpu (s)', lambda r: base.fmt_float(r[1], 3), True),
-            ('draws', lambda r: base.fmt_int(r[2]), True),
-            ('avg draws / frame', lambda r: base.fmt_int(round(r[3])), True),
+            ('mean gpu / frame', lambda r: base.fmt_float(r[4], 4), True),
+            ('total gpu (s)', lambda r: base.fmt_float(r[1], 3), True),
+            ('mean draws / frame', lambda r: base.fmt_int(round(r[3])), True),
         ],
-        caption='per-area GPU + draw load (avg draws per captured frame)')
-    sub_tt = ('GPU time per area in the current run.'
-              + (f' worst: {top_a[0][0]} {base.fmt_float(top_a[0][1], 3)}s' if top_a else ''))
+        caption='per-area GPU per captured frame + the run total (mean = area total / area frames)')
+    sub_tt = ('GPU per frame per area in the current run.'
+              + (f' worst: {top_a[0][0]} {base.fmt_float(top_a[0][4], 4)}s / frame' if top_a else ''))
     cards.append(_card(tt_href, 'trend table', sub_tt, chart_tt, body_tt))
 
     # Card: instancing - repeat per mesh (mini bars).
@@ -426,7 +430,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
         [
             ('mesh', lambda r: r[0], False),
             ('repeat', lambda r: base.fmt_int(r[1]), True),
-            ('indices typ', lambda r: base.fmt_int(r[2]), True),
+            ('median verts', lambda r: base.fmt_int(r[2]), True),
         ],
         caption='most-repeated meshes')
     sub_im = ('Repeated meshes worth instancing or batching.'
@@ -438,7 +442,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
     top_p = _top_passes(cur_drops)
     chart_pg = base.figure(base.bar_chart(
         [(pl, g) for _, pl, g in top_p], value_fmt=lambda v: f'{v:.3f}', width=280,
-        title='gpu (s) per pass', desc='heaviest passes by GPU seconds', chart_id='dash-pg'))
+        title='total gpu (s) per pass', desc='heaviest passes by total GPU seconds', chart_id='dash-pg'))
     body_pg = _card_table(
         top_p,
         [
@@ -447,9 +451,10 @@ def build(root: str, *, drops: list | None = None, ab=None,
             # so hover could never reveal it). The CSS clip now truncates the display + the td title=
             # reveals the full value on hover - consistent with every other mini text column.
             ('marker', lambda r: base.scrub_chrome_text(r[1]), False),
-            ('gpu (s)', lambda r: base.fmt_float(r[2], 3), True),
+            # per-pass GPU is a cross-capture total (the pass report's native basis); labeled as such.
+            ('total gpu (s)', lambda r: base.fmt_float(r[2], 3), True),
         ],
-        caption='heaviest passes by GPU time')
+        caption='heaviest passes by total GPU time')
     sub_pg = ('Heaviest GPU passes.'
               + (f' top: {top_p[0][1]} {base.fmt_float(top_p[0][2], 3)}s in {top_p[0][0]}'
                  if top_p else ''))
@@ -503,10 +508,13 @@ def build(root: str, *, drops: list | None = None, ab=None,
         pa_rows,
         [
             ('area', lambda r: r[0], False),
-            ('draws', lambda r: base.fmt_int(r[1]['n_draws']), True),
+            # per-frame to match summary's By-area + the trend card (D-16 consistency), not a bare total.
+            ('mean draws / frame',
+             lambda r: base.fmt_int(round(base.per_frame(r[1]['n_draws'], area_frames.get(r[0], 0)))),
+             True),
             ('dominant', lambda r: r[1]['dominant_class'], False),
         ],
-        caption='top areas by draw count')
+        caption='top areas by mean draws per captured frame')
     dom = class_totals.most_common(1)[0] if class_totals else None
     sub_dc = ('Draw mix by class.'
               + (f' dominant: {dom[0]} {base.fmt_pct(100.0 * dom[1] / grand)}'
