@@ -71,6 +71,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
     # Run model (ADR-35): the hotlist ranks the CURRENT run's shaders; prior runs feed the per-drop
     # comparison columns + the resolved-since section, never the cost ranking.
     rc = base.run_context(drops, run_label=run_label, run_date=run_date)
+    drops = rc.history   # R-22: cross-drop comparison scoped to <= current (picker still lists all via rc)
     cur = rc.current
     bl = rc.baseline
     ck = cur.key if cur else None

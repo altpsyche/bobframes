@@ -71,6 +71,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
     # Run model (ADR-35): live candidates are meshes drawn in the CURRENT run; prior runs supply the
     # per-drop comparison columns + the resolved-since section, never inflate the live list.
     rc = base.run_context(drops, run_label=run_label, run_date=run_date)
+    drops = rc.history   # R-22: cross-drop trend scoped to <= current (picker still lists all via rc)
     cur = rc.current
     bl = rc.baseline
     ck = cur.key if cur else None

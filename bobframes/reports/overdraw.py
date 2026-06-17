@@ -133,8 +133,10 @@ def build(root: str, *, drops: list | None = None, ab=None,
     if drops is None:
         drops = base.discover_drops(root)
     # Run model (ADR-35): live render targets = those sampled in the CURRENT run; per-drop sample
-    # columns below keep every run. A representative bucket is the current run's, not the oldest.
+    # columns below span the runs UP TO the current one (R-22: never runs that came after it; the run
+    # picker still lists every run). A representative bucket is the current run's, not the oldest.
     rc = base.run_context(drops, run_label=run_label, run_date=run_date)
+    drops = rc.history   # R-22: scope cross-drop data to <= current
     cur = rc.current
     ck = cur.key if cur else None
     out_path = base.output_path(root, 'overdraw', ab, run=rc)

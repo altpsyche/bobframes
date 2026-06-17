@@ -35,6 +35,37 @@ def _drops(root):
     return base.discover_drops(root)
 
 
+def test_run_context_history_scopes_to_current(root):
+    """R-22: RunContext.history = drops UP TO & INCLUDING current (the data scope for cross-drop
+    charts/tables); .drops stays the full set (the run picker lists every run)."""
+    drops = base.discover_drops(root)              # date-asc: [older, ..., newest]
+    older, newest = drops[0], drops[-1]
+    rc_new = base.run_context(drops)               # default current = newest
+    assert [d.key for d in rc_new.history] == [d.key for d in drops]      # newest -> all
+    rc_old = base.run_context(drops, run_label=older.label, run_date=older.date)
+    assert [d.key for d in rc_old.history] == [older.key]                 # oldest -> just itself
+    assert [d.key for d in rc_old.drops] == [d.key for d in drops]        # picker still sees all
+
+
+def test_older_run_page_scopes_to_history(root, pages):
+    """R-22: cross-drop comparisons on an OLDER run's page span only runs UP TO it -- never a run that
+    came after it. pass_gpu renders its per-drop comparison row ('drops (total / drop)') ONLY when >1
+    run is in scope, so it is a direct signal: present on the newest page (2 runs in history), ABSENT on
+    the oldest page (1 run in history). The newer run still appears in the run picker (navigation)."""
+    drops = base.discover_drops(root)
+    if len(drops) < 2:
+        pytest.skip("need >= 2 runs")
+    older = drops[0].key
+    older_pg = open(os.path.join(root, '_reports', 'run', older, 'pass_gpu.html'),
+                    encoding='utf-8').read()
+    assert 'drops (total / drop)' in pages['_reports/pass_gpu.html'], \
+        'newest page should show the multi-drop comparison'
+    assert 'drops (total / drop)' not in older_pg, \
+        'oldest page must NOT show a cross-drop comparison spanning later runs (R-22)'
+    # and the run picker still lists every run on the older page (navigation is unaffected).
+    assert 'rdc-run-select' in older_pg
+
+
 def _slice_section(html: str, section_id: str) -> str:
     """The single `<section class="card" id="<id>">...</section>` (sections do not nest)."""
     start = html.find(f'id="{section_id}"')
