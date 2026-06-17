@@ -513,6 +513,10 @@ _DETACH_RES = (
     re.compile(rb'<rdc-ab-picker><label for="rdc-run-select">.*?</rdc-ab-picker>', re.S),
     re.compile(rb'<nav class="crumb">.*?</nav>', re.S),          # breadcrumb (root catalog / dashboard)
     re.compile(rb'<a class="sb-link"[^>]*>.*?</a>', re.S),       # summary-bar "dashboard" link
+    # the "viewing an older run / go to newest" nav banner (older-run one-pagers); its link points to a
+    # sibling page absent beside a lone file. Anchored on its title so the health alarm-banner is kept.
+    re.compile(rb'<rdc-alarm-banner\b[^>]*>(?:(?!</rdc-alarm-banner>).)*?viewing an older run'
+               rb'(?:(?!</rdc-alarm-banner>).)*?</rdc-alarm-banner>', re.S),
 )
 
 
