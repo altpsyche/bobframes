@@ -447,6 +447,23 @@ def test_redacted_abs_path_scan_clean(env):
             assert m is None, f"abs-path {m.group(0)!r} survived strip in {rel}"
 
 
+def test_older_run_standalone_strips_nav_banner(env, tmp_path):
+    """R-21/R-22: an OLDER run's standalone one-pager must not carry the 'viewing an older run /
+    go to newest' nav banner (nor the run picker) -- those point to sibling pages absent beside a
+    lone file. The page's own content survives."""
+    from ..reports import discovery
+    drops = discovery.discover_drops(env.dest)
+    if len(drops) < 2:
+        pytest.skip("need >= 2 runs")
+    older = drops[0].key
+    _zip, summ = pkg.build(env.dest, out=str(tmp_path / "old.zip"), run=older)
+    html = open(summ, encoding="utf-8").read()
+    assert "viewing an older run" not in html, "older-run one-pager kept the dead nav banner"
+    assert "go to newest" not in html, "older-run one-pager kept the dead 'go to newest' link"
+    assert "rdc-run-select" not in html, "older-run one-pager kept the run picker"
+    assert "by_area" in html, "the page's own content must survive"
+
+
 def test_redacted_standalone_summary(env):
     """Both redacted standalone summaries stay self-contained (INLINE) AND carry no device value."""
     for p in (env.red_summary, env.sred_summary):
