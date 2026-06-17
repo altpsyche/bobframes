@@ -131,6 +131,12 @@ class ReportCfg:                      # c16 — report-presentation thresholds (
     overdraw_reject_alarm_pct: float = 70.0
     instancing_repeat_min: int = 4    # c16v — min mesh repeat PER FRAME (repeat + shader cost are per-frame rates)
     gpu_regression_pct: float = 10.0
+    # H-41 (v027_1) — per-KPI trend regression thresholds; were baked in `trend_table.KPIS` literals.
+    # Trend-only (health's verdict has only a gpu trajectory rule). Defaults reproduce the old literals.
+    draws_regression_pct: float = 10.0
+    vbo_regression_pct: float = 15.0
+    ibo_regression_pct: float = 15.0
+    program_switches_regression_pct: float = 20.0
     max_prerendered_runs: int = 10    # c16f — cap on pre-rendered older-run pages (per-run UX)
 
 
@@ -327,6 +333,10 @@ def _build_config(root: str | None) -> Config:
             overdraw_reject_alarm_pct=rpt.get('overdraw_reject_alarm_pct', 70.0),
             instancing_repeat_min=rpt.get('instancing_repeat_min', 4),
             gpu_regression_pct=rpt.get('gpu_regression_pct', 10.0),
+            draws_regression_pct=rpt.get('draws_regression_pct', 10.0),
+            vbo_regression_pct=rpt.get('vbo_regression_pct', 15.0),
+            ibo_regression_pct=rpt.get('ibo_regression_pct', 15.0),
+            program_switches_regression_pct=rpt.get('program_switches_regression_pct', 20.0),
             max_prerendered_runs=rpt.get('max_prerendered_runs', 10),
         ),
         theme=ThemeCfg(tokens=tuple(theme_tokens.items())) if theme_tokens else None,

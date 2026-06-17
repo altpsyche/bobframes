@@ -13,6 +13,7 @@ from collections import defaultdict
 import pyarrow.parquet as papq
 
 from . import base
+from .. import aggregates as _agg
 
 
 def _aggregate(drops: list, ok_caps: set) -> dict:
@@ -96,10 +97,17 @@ def build(root: str, *, drops: list | None = None, ab=None,
             total_gpu += g
             n_passes += 1
             cur_areas_set.add(area)
+    # Q-10: lead with GPU PER FRAME (pooled over the run's captured frames, the summary/dashboard
+    # basis) so this hero shares a magnitude with the rest of the reports; the raw cross-capture total
+    # rides alongside as the labeled "total ... over captures".
+    fc = _agg.frame_counts(root, [cur]) if cur else {}
+    total_frames = sum(v['frames'] for v in fc.values())
+    gpu_per_frame = (total_gpu / total_frames) if total_frames else 0.0
     kpis = [
-        {'label': 'total gpu (s)', 'value': base.fmt_float(total_gpu, 3)},
-        {'label': 'areas',         'value': base.fmt_int(len(cur_areas_set))},
-        {'label': 'passes',        'value': base.fmt_int(n_passes)},
+        {'label': 'gpu / frame (s)',             'value': base.fmt_float(gpu_per_frame, 4)},
+        {'label': 'total gpu (s) over captures', 'value': base.fmt_float(total_gpu, 3)},
+        {'label': 'areas',                       'value': base.fmt_int(len(cur_areas_set))},
+        {'label': 'passes',                      'value': base.fmt_int(n_passes)},
     ]
 
     # Summary bar: top pass in the current run + area count
@@ -126,7 +134,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
             parts.append(base.callout(
                 'info',
                 f'heaviest pass: {area} / {marker_short}',
-                f'{base.fmt_float(global_top_gpu, 3)}s GPU on the costliest capture - '
+                f'{base.fmt_float(global_top_gpu, 3)}s GPU summed over the run\'s captures - '
                 f'profile this pass first.',
                 href=f'#{base.h(area)}', link_text='jump to area'))
 
@@ -183,7 +191,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
 
                 if len(drop_keys) >= 2:
                     cells = ['<div class="bar-row">',
-                             '<span class="key" style="color: var(--text-2)">drops</span>',
+                             '<span class="key" style="color: var(--text-2)">drops (total / drop)</span>',
                              '<div style="display:flex;gap:var(--sp-3);font:var(--fs-small) ui-monospace,monospace;align-items:center;color:var(--text-2)">']
                     prev_gpu = None
                     for i, k in enumerate(drop_keys):

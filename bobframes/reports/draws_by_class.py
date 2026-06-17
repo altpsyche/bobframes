@@ -7,12 +7,14 @@ Segments colored by draw_class. Below: raw-count table.
 from __future__ import annotations
 
 import os
+import statistics
 import sys
 from collections import Counter, defaultdict
 
 import pyarrow.parquet as papq
 
 from . import base
+from .. import aggregates as _agg
 
 
 def _gather_from_drops(drops: list) -> tuple[dict, list, list, int]:
@@ -79,8 +81,11 @@ def _build_table(counts: dict, drop_keys: list) -> str:
                            caption='raw draw counts per class, per area and drop')
 
 
-def _compute_kpis(counts: dict, areas: list) -> list:
-    """Hero KPIs: total draws, n areas, median prepass/opaque ratio, dominant class."""
+def _compute_kpis(counts: dict, areas: list, total_frames: int) -> list:
+    """Hero KPIs (current run): mean draws / frame + the labeled raw total, n areas, the MEDIAN
+    prepass/opaque ratio across areas, dominant class. Q-12: lead with the per-frame mean (the
+    capture-count-independent number) and label the total. Q-11: `statistics.median` (not the
+    upper-middle `sorted[n//2]`), and the label names the estimator + population."""
     total = sum(sum(cc.values()) for cc in counts.values())
     ratios = []
     class_totals: Counter = Counter()
@@ -90,14 +95,15 @@ def _compute_kpis(counts: dict, areas: list) -> list:
         op = cc.get('opaque', 0)
         if op:
             ratios.append(cc.get('prepass', 0) / op)
-    median_ratio = (sorted(ratios)[len(ratios) // 2]
-                    if ratios else 0.0)
+    median_ratio = statistics.median(ratios) if ratios else 0.0
     dominant_cls = (class_totals.most_common(1)[0][0]
                     if class_totals else '')
+    mean_draws = base.per_frame(total, total_frames)   # per frame (no-op when frames<=1)
     return [
-        {'label': 'total draws', 'value': base.fmt_int(total)},
+        {'label': 'mean draws / frame', 'value': base.fmt_int(round(mean_draws))},
+        {'label': 'total draws over captures', 'value': base.fmt_int(total)},
         {'label': 'areas',       'value': base.fmt_int(len(areas))},
-        {'label': 'prepass/opaque (med)', 'value': base.fmt_float(median_ratio, 2)},
+        {'label': 'median prepass / opaque (across areas)', 'value': base.fmt_float(median_ratio, 2)},
         {'label': 'dominant class', 'value': dominant_cls or '-'},
     ]
 
@@ -115,6 +121,8 @@ def build(root: str, *, drops: list | None = None, ab=None,
     counts, areas, drop_keys, total_captures = _gather_from_drops(drops)
     cur_counts = {k: cc for k, cc in counts.items() if cur and k[1] == cur.key}
     cur_areas = cur.areas if cur else []
+    # Q-12: per-frame mean draws needs the current run's captured-frame count (the single owner, D-15).
+    cur_frames = sum(v['frames'] for v in (_agg.frame_counts(root, [cur]) if cur else {}).values())
 
     parts = []
 
@@ -183,7 +191,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
         drops=len(drops), captures=total_captures, build_ts=build_ts or base.now_iso(),
         crumb_depth=base.crumb_depth(ab, run=rc), ab=ab, root=root, report_key='draws_by_class',
         sink=sink, theme=theme,
-        kpis=_compute_kpis(cur_counts, cur_areas), run=rc,
+        kpis=_compute_kpis(cur_counts, cur_areas, cur_frames), run=rc,
         device=base.provenance_strip(*base.newest_drop_provenance(root, [cur] if cur else []), redact=redact))])
 
 

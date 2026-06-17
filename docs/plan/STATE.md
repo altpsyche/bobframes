@@ -6,14 +6,78 @@
 > defer to this.
 
 ```
-active_release: v0.2.6 SHIPPED 2026-06-06    (bobframes 0.2.6 LIVE on PyPI -- published by the `v0.2.6` tag CI run
+active_release: v0.2.7 (DEV -- opened 2026-06-17; aggregation-consistency "confusing averages" burndown, commits/v027/;
+                approved plan ~/.claude/plans/check-aggregation-findings-read-it-elegant-kite.md; audit
+                docs/plan/reference/AGGREGATION_FINDINGS.md -> intaken as D-13..D-16 + Q-10..Q-13 + H-41; ADR-46 drafts in
+                v027_1)    (prior: v0.2.6 SHIPPED 2026-06-06    -- bobframes 0.2.6 LIVE on PyPI, published by the `v0.2.6` tag CI run
                 (PyPI Trusted Publishing / OIDC, no token; ci.yml publish job, ADR-13) + a GitHub Release
                 (https://github.com/altpsyche/bobframes/releases/tag/v0.2.6); verified by a clean-venv
                 `uv pip install bobframes==0.2.6` -> version 0.2.6 schema 3 pyarrow 21. v0.1 COMPLETE (0.1.0 on PyPI
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.6 SHIPPED (release complete)    (status:
+current:        v0.2.7 aggregation burndown COMPLETE (v027_0..-4 DONE) -- NEXT = the v0.2.7 RELEASE ship (own commit:
+                _version->0.2.7 + CHANGELOG + matrix/clean-wheel verify + tag/PyPI on authorization)    (status:
+                v0.2.7-4 DONE 2026-06-17 (record Q-13 + close out; docs/gates + naming-gate test only, NO production code).
+                Q-13 recorded as correct-as-designed (overdraw pooled-micro reject% + MAX "worst", not changed). NEW
+                test_no_vague_estimator_labels (ADR-46 naming gate: no "avg"/"average"/"(med)"/"typical" in any rendered
+                kpi-label/th/caption; scoped past the base64 font's incidental "Avg"). preview.py gallery demo labels ->
+                "pooled mean ..." (preview golden rebaked; 17 report goldens + data path BYTE-UNCHANGED by this commit).
+                QUALITY_GATES §21.1w (the v0.2.7 gate summary) + AGGREGATION_FINDINGS resolution table written. 362 green.
+                ADDENDUM (post-render eyeball): dashboard mini-card bare totals folded into the convention (D-16 ext) --
+                pass card "gpu (s)" -> "total gpu (s)"; draws-by-class card "draws" -> "mean draws / frame" (per-frame via
+                NEW area_frames from aggregates.frame_counts) so per-area draws read consistently with summary + the trend
+                card. Golden confined to _reports/index.html (+ per-run twin); data frozen; still 362 green. Real corpus
+                re-rendered -> verified every dashboard per-area number is per-frame, per-pass GPU labeled total.
+                The burndown is COMPLETE: D-13..D-16 / Q-10..Q-13 / H-41 all ☑; ADR-46 frozen. CARRY-OVER: R-19 (overdraw
+                tie nondeterminism, own commit) + the v0.2.7 release ship. Browser visual pass recommended before the PR.
+                v0.2.7-3 DONE 2026-06-17 (median + total-basis disclosure; Q-11 + Q-12; GOLDEN-AFFECTING). draws_by_class
+                ratio uses statistics.median (was sorted[n//2], the upper-middle off-by-one on even n); labels "median
+                prepass / opaque (across areas)" / dashboard "median verts" / instancing "median indices" (all values were
+                already statistics.median); draws_by_class hero leads "mean draws / frame" (via aggregates.frame_counts) +
+                labeled "total draws over captures". CORRECTION (ADR-23 honesty): the audit's Q-12 "sums over ALL drops"
+                sub-claim is FALSE -- _compute_kpis is already called with cur_counts (current run); recorded in the row.
+                NEW test_draws_by_class_kpis (2) proves the even-n median + the total/per-frame pair. Golden refresh confined
+                to draws_by_class/index(dashboard)/instancing (+ per-run twins); golden_parquet + _pagedata BYTE-UNCHANGED;
+                361 green. FINDINGS Q-11 + Q-12 ticked; commit doc v027_3_median_total_disclosure.md. NEXT: v0.2.7-4.
+                v0.2.7-2 DONE 2026-06-17 (cross-report GPU consistency + "Mean" labels; D-14 + D-16 + Q-10;
+                GOLDEN-AFFECTING). THE VISIBLE WIN: every label now names its estimator precisely (never "avg") -- summary
+                headline "pooled mean gpu / frame" (+ note "pooled across N frames - X total"), By-area "mean gpu / frame
+                (per area)" + a caption disclosing the pooled-vs-per-area relationship; dashboard hero "pooled mean ..." +
+                labeled "total ... over captures"; the dashboard "trend table" CARD now LEADS with the per-frame mean
+                (_top_areas_gpu[4]) in both chart + table with the raw total beside it as the labeled bridge -> the same area
+                reads 0.0355/frame on BOTH summary AND dashboard (was 0.0356 vs 0.178, no bridge); pass_gpu hero per-framed
+                (gpu/frame + total over captures) + callout "costliest capture" -> "summed over the run's captures" + drops
+                row labeled "(total / drop)". NEW test_cross_report_per_frame_gpu_consistent (D-16). DEVIATION (ADR-23): no
+                separate basis-legend element -- labels + the By-area caption are self-documenting, so a legend would only
+                repeat them. Golden refresh confined to summary/index(dashboard)/pass_gpu (+ per-run twins) + v027_1 trend;
+                golden_parquet + _pagedata BYTE-UNCHANGED. 358 green. FINDINGS D-14/D-16/Q-10 ticked; commit doc
+                v027_2_cross_report_gpu_consistency.md. NEXT: v0.2.7-3.
+                v0.2.7-1 DONE 2026-06-17 (regression unification per-frame + config thresholds + ADR-46; D-13 + H-41;
+                GOLDEN-AFFECTING, trend_table.html only). trend_table now reads EVERY KPI per frame (base.per_frame at the
+                per_drop_ft seam; matrices/deltas/regression count/biggest-regression all consume it) so its regression is
+                capture-count-INDEPENDENT and on the SAME basis health uses; hero leads "gpu / frame (s)" (pooled micro =
+                total/total-frames) + a labeled "total gpu (s) over captures". H-41: KPIS 5->4-tuple (dropped per-KPI
+                literals); thresholds from ReportCfg via _threshold_for (NEW draws_/vbo_/ibo_/program_switches_regression_pct,
+                defaults reproduce 10/10/15/15/20) so .bobframes.toml moves BOTH the heatmap alarm cells AND the hero count.
+                PROVEN: NEW test_trend_regression_basis (3) -- 7-vs-5-capture equal-per-frame -> 0 regressions (was a false
+                +40%); a real 0.10->0.13 per-frame rise flags; gpu_regression_pct=50 suppresses it. Golden refresh CONFINED to
+                trend_table.html (render + 3 package twins); golden_parquet + _pagedata BYTE-UNCHANGED (NO make_parquet_golden);
+                baked on canonical .venv. 355->358 green. ADR-46 appended (the canonical aggregation policy + Mean-naming
+                convention). FINDINGS D-13 + HARDCODE H-41 ticked; commit doc v027_1_regression_unification.md. Browser visual
+                pass on the trend page recommended before PR (not run unattended). NEXT: v0.2.7-2.
+                v0.2.7-0 DONE 2026-06-17 (frame-count single source of truth + divergence warning; D-15/D-A4; GOLDEN-NEUTRAL).
+                NEW aggregates.frame_counts is the ONE owner of every per-(drop,area) frame count (frames=distinct
+                frame_totals captures = GPU/draws denominator; draw_frames/shader_frames=distinct entity captures = c16v
+                entity-rate denominators); NEW frame_count_divergences + an orchestrator log() WARNING surface the different-N
+                normalization. DATA-GROUNDED CORRECTION vs the plan: the synthetic has frame_totals=5 vs entity=1 (the c16v
+                skew), so equality does NOT hold by design -- forcing one denominator would x5 GPU or /5 entities (both wrong,
+                a c16v regression). Resolved by centralize+warn+document, NOT unify; each metric keeps its correct divisor
+                (DrawAgg.frames/ShaderAgg.frames UNCHANGED). PROVEN: synthetic render -> 2 divergences logged, rc 0;
+                test_parity + test_parquet_parity BYTE-UNCHANGED (NO make_golden); test_aggregates 3->6 (+3 D-15 tests);
+                full -m "not browser" 352->355. No new ADR. FINDINGS D-15 ticked; D-13/D-14/D-16 + Q-10..Q-13 + H-41 opened
+                with resolved-by stubs; commit doc commits/v027/v027_0_frame_count_sot.md. NEXT: v0.2.7-1 (GOLDEN-AFFECTING).
+                ----- prior release (v0.2.6, SHIPPED) -----
                 DONE 2026-06-06 -- bobframes 0.2.6 PUBLISHED to PyPI + GitHub Release (see active_release). The release
                 tail ran via the tag-triggered CI publish job (trusted publishing, no token). Closed out as:
                 DONE 2026-06-06 -- RELEASE-READY; tag + PyPI ran on authorization. UNPUSHED.
@@ -243,7 +307,35 @@ current:        v0.2.6 SHIPPED (release complete)    (status:
                 token-validity guard + preview gallery; migrate summary.py off its inline <style> (visual parity).
                 NOTE: c16p (v0.2 release) COMPLETE - PyPI bobframes 0.2.0 LIVE; tag v0.2.0 -> 765a4db on main.
                 GIT: c16y + c16v are in the WORKING TREE, NOT yet committed (user hasn't asked to commit).)
-last_session:   2026-06-06 — v0.2.6 SHIPPED to PyPI. After v0.2.6-6 closed out release-ready, the v0.2.6 work was rebased
+last_session:   2026-06-17 — v0.2.7 OPENED + v0.2.7-0..-4 DONE: the aggregation-consistency "confusing averages" burndown is
+                COMPLETE (D-13..D-16 / Q-10..Q-13 / H-41 all ☑; ADR-46 frozen; 352->362 green; goldens refreshed bounded per
+                commit, data path frozen throughout). NEXT = the v0.2.7 RELEASE ship (own commit). The
+                user's 0.2.7 feedback (AGGREGATION_FINDINGS.md: reports use 4 averaging bases, several labeled bare "avg")
+                was reviewed against BOTH the code AND the rendered real-corpus reports (C:/Users/vsiva/Downloads/RDCs/RDC
+                mainline  capture; 7 areas x 4 runs). Grounded confirmation: the same area's GPU reads 0.0356 on summary
+                (per-frame), 0.178 on the dashboard card (raw total), 0.178 on trend (no bridge; 0.178 = 0.0356 x 5
+                captures); pass_gpu callout says "costliest capture" but sums over all captures; draws_by_class "(med)"
+                undefined. APPROVED PLAN (5 commits) + 2 user decisions: full burndown + normalize the raw-total reports to
+                per-frame; plus a 3rd directive: use the exact estimator word ("Mean"/"Pooled mean"/"Median"/"Total"),
+                never "avg". v0.2.7-0 (D-15/D-A4) DONE + GOLDEN-NEUTRAL: aggregates.frame_counts/frame_count_divergences
+                single owner + orchestrator WARNING; data inspection corrected the design (equality doesn't hold -> centralize
+                +warn+document, not unify); 355 green; parity byte-unchanged; FINDINGS/HARDCODE intaken (D-13..16/Q-10..13/H-41);
+                commit doc + this STATE. Then v0.2.7-1 DONE (regression unification per-frame + config thresholds + ADR-46;
+                D-13 + H-41): trend_table per-frames every KPI so its regression is capture-count-independent + agrees with
+                health; KPIS 5->4-tuple, thresholds from ReportCfg; NEW test_trend_regression_basis (3) proves the 7-vs-5
+                false-+40% is now 0 + config moves the count; golden refresh confined to trend_table.html; 358 green. Then v0.2.7-2 DONE
+                (cross-report GPU consistency + "Mean" labels; D-14 + D-16 + Q-10): every label names its estimator (never
+                "avg"); the same area's per-frame GPU now reads identically on summary + dashboard (was 0.0356 vs 0.178);
+                pass_gpu hero per-framed + callout fixed; NEW cross-report consistency test; goldens confined to summary/
+                dashboard/pass_gpu (+ per-run twins); 358 green. Then v0.2.7-3 DONE (median + total-basis disclosure; Q-11 +
+                Q-12): statistics.median (was the upper-middle sorted[n//2]) + "median ..." labels across draws_by_class/
+                dashboard/instancing; draws_by_class hero leads "mean draws / frame" + labeled total; NEW
+                test_draws_by_class_kpis; goldens confined to draws_by_class/dashboard/instancing; 361 green. Then v0.2.7-4 DONE (record Q-13 +
+                close out; docs/gates + naming-gate test, no production code): Q-13 recorded correct-as-designed; NEW
+                test_no_vague_estimator_labels (ADR-46 naming gate); preview gallery labels -> "pooled mean ..."; QUALITY_GATES
+                §21.1w + AGGREGATION_FINDINGS resolution table; 362 green. CARRY-OVER: R-19 (overdraw tie nondeterminism, own
+                commit) + the v0.2.7 release ship (version bump + CHANGELOG + tag/PyPI on authorization).
+                [prior] 2026-06-06 — v0.2.6 SHIPPED to PyPI. After v0.2.6-6 closed out release-ready, the v0.2.6 work was rebased
                 onto `main` and the `v0.2.6` annotated tag pushed -> the ci.yml `publish` job ran (test matrix GREEN on all
                 cells, then PyPI Trusted Publishing [OIDC, no token, ADR-13] + a GitHub Release at
                 github.com/altpsyche/bobframes/releases/tag/v0.2.6). Verified: a clean-venv `uv pip install bobframes==0.2.6`

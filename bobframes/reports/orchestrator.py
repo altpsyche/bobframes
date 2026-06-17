@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 
+from .. import aggregates as _agg
 from .. import lint
 from ..config import get_config
 from ..html import template
@@ -42,6 +43,16 @@ def render_all_reports(root: str, log, *,
     t0 = time.monotonic()
     cache_out = reports_base.build_per_drop_cache(root)
     log(f'  built per-drop cache: {cache_out} ({time.monotonic()-t0:.1f}s)')
+
+    # D-15 (D-A4): one owner of every per-(drop, area) frame count. Per-frame GPU/draws divide by the
+    # frame_totals frame count; per-frame mesh/shader rates divide by the entity-capture count (c16v).
+    # They legitimately differ when a capture replayed "ok" but exported no entity rows -- surface that
+    # so cross-report per-frame normalization uses different N visibly, not silently (ADR-23, warn not
+    # assert: the divergence is a real data condition, present even in the synthetic fixture).
+    for dk, area, ftn, dfr, sfr in _agg.frame_count_divergences(root, reports_base.discover_drops(root)):
+        log(f'  WARNING: frame-count divergence {area} {dk}: frame_totals={ftn} draws={dfr} '
+            f'shaders={sfr} -- per-frame GPU/draws and per-frame entity rates use different '
+            f'denominators (a capture replayed but exported partial entity data)')
 
     for mod in all_reports():
         try:

@@ -97,6 +97,7 @@ def test_trend_table_single_drop_renders(tmp_path):
     assert len(drops) >= 1
     out = trend_table.build(dest, drops=drops[:1])          # force the single-drop path
     html = open(out, encoding='utf-8').read()
-    # hero KPI strip is intact (dict labels), not the clobbered per-area frame-totals dict-keys
-    assert 'latest gpu (s)' in html and 'class="kpi-value"' in html
+    # hero KPI strip is intact (dict labels), not the clobbered per-area frame-totals dict-keys.
+    # v027_1 (D-13): the hero leads with per-frame GPU + the labeled raw total.
+    assert 'gpu / frame (s)' in html and 'class="kpi-value"' in html
     assert 'total_gpu_duration_s' not in html
