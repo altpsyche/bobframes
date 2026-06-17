@@ -316,7 +316,13 @@ last_session:   2026-06-17 — v0.2.7 OPENED + v0.2.7-0..-4 DONE: the aggregatio
                 Fixed by deferring init() to DOMContentLoaded in RdcBase (mirrors the _wireRowDrill tail); proven via
                 headless-Chrome CDP (role combobox + navigates) + NEW browser-marked test_run_picker_inits_and_navigates.
                 Golden-affecting (inlined JS on every page); data frozen; 362 green (+1 browser). On feat/v027 branch as a
-                separate fix(reports) commit for golden coherence. The
+                separate fix(reports) commit for golden coherence. Then a 2ND export bug found while sharing the real corpus
+                (R-21): the EXPORTED standalone one-pager carried dead tree-relative nav -- the run dropdown (options ->
+                run/<key>/summary.html siblings not bundled with a lone file), the breadcrumb, and the dashboard link.
+                Fixed by NEW package._detach_summary (strips those 3 from the standalone bytes only; in-tree summary keeps
+                its working nav; the full ZIP's dropdown was always fine). Golden-NEUTRAL (standalone summary isn't in
+                golden_package); test_standalone_summary_self_contained + test_redacted_standalone_summary updated; 362 green.
+                Built ALL share variants (3 modes x 2 audiences + one-pagers) under Downloads/RDCs/shares/. The
                 user's 0.2.7 feedback (AGGREGATION_FINDINGS.md: reports use 4 averaging bases, several labeled bare "avg")
                 was reviewed against BOTH the code AND the rendered real-corpus reports (C:/Users/vsiva/Downloads/RDCs/RDC
                 mainline  capture; 7 areas x 4 runs). Grounded confirmation: the same area's GPU reads 0.0356 on summary

@@ -298,8 +298,13 @@ def test_zip_entries_are_reproducible(env):
 # --- friendly artifacts ---------------------------------------------------------------------------
 
 def test_standalone_summary_self_contained(env):
-    """The standalone summary is INLINE (self-contained) in BOTH modes -- a verbatim copy of the
-    source one-pager, so it works emailed alone even though the shared bundle's pages link `_assets/`."""
+    """The standalone summary is INLINE (self-contained) in BOTH modes, so it works emailed alone even
+    though the shared bundle's pages link `_assets/`. R-21: as a DETACHED single file it must NOT carry
+    tree-relative navigation that cannot resolve beside a lone HTML (the run dropdown, the breadcrumb,
+    the summary-bar dashboard link) -- those are stripped, while the in-tree summary keeps them."""
+    src_summary = open(os.path.join(env.dest, "_reports", "summary.html"), encoding="utf-8").read()
+    # sanity: the in-tree page DOES carry the run picker (it works there, with its run/ siblings).
+    assert 'id="rdc-run-select"' in src_summary
     for p in (env.shared_summary, env.inline_summary):
         assert os.path.isfile(p)
         project = os.path.basename(os.path.normpath(env.dest))
@@ -308,9 +313,12 @@ def test_standalone_summary_self_contained(env):
         assert "_assets/" not in html, "standalone summary must not link shared assets"
         assert FONT_MARKER in html, "standalone summary must inline its own font"
         assert "fetch(" not in html and 'type="module"' not in html, "JS-self-contained / file://-safe"
-        # it is exactly the rendered one-pager (already inline via head_assets(INLINE), c16q).
-        with open(p, "rb") as a, open(os.path.join(env.dest, "_reports", "summary.html"), "rb") as b:
-            assert a.read() == b.read()
+        # R-21: the dead tree-navigation chrome is stripped from the detached one-pager.
+        assert 'rdc-run-select' not in html, "detached one-pager must not carry the run dropdown"
+        assert 'class="crumb"' not in html, "detached one-pager must not carry the breadcrumb"
+        assert 'class="sb-link"' not in html, "detached one-pager must not carry the dashboard link"
+        # the page's own content survives.
+        assert "build health" in html and "by_area" in html
 
 
 def test_readme_present_and_ascii(env):
@@ -448,6 +456,7 @@ def test_redacted_standalone_summary(env):
         assert FONT_MARKER in html, "redacted standalone summary must inline its own font"
         assert "fetch(" not in html and 'type="module"' not in html
         assert REDACTED_STRIP in html, "redacted standalone summary missing the redacted strip"
+        assert 'rdc-run-select' not in html, "detached one-pager must not carry the run dropdown (R-21)"
         for val in SYNTH_DEVICE_VALUES:
             assert val not in html, f"device value {val!r} leaked into the standalone summary"
 
