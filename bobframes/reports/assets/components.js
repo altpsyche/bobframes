@@ -6,7 +6,19 @@
     connectedCallback(){
       if (this._rdcUp) return;
       this._rdcUp = true;
-      try { this.init(); } catch(e) { console.error('rdc init error', this.tagName, e); }
+      const run = () => {
+        try { this.init(); } catch(e) { console.error('rdc init error', this.tagName, e); }
+      };
+      // The component JS rides in <head> (adjacent to the CSS), so a custom element upgrades as its
+      // START tag is parsed -- BEFORE its light-DOM children (e.g. the run <select>) exist. Inits that
+      // querySelector a child would see nothing and bail. Defer to DOMContentLoaded while the document
+      // is still parsing so children are present; run immediately for elements created after load.
+      // (Mirrors the _wireRowDrill deferral below.)
+      if (document.readyState === 'loading'){
+        document.addEventListener('DOMContentLoaded', run, { once: true });
+      } else {
+        run();
+      }
     }
     init(){}
   }
