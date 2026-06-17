@@ -4,7 +4,14 @@
     connectedCallback(){
       if (this._rdcUp) return;
       this._rdcUp = true;
-      try { this.init(); } catch(e) { console.error('rdc init error', this.tagName, e); }
+      const run = () => {
+        try { this.init(); } catch(e) { console.error('rdc init error', this.tagName, e); }
+      };
+      if (document.readyState === 'loading'){
+        document.addEventListener('DOMContentLoaded', run, { once: true });
+      } else {
+        run();
+      }
     }
     init(){}
   }

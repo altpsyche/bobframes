@@ -47,3 +47,44 @@ def test_harness_captures_light_dark_print(tmp_path):
         assert len(data) > 100, f"{mode} too small"
     # light-dark() must actually respond to the emulated prefers-color-scheme (the CDP win over a CLI shot).
     assert shots["light"] != shots["dark"], "light and dark captures are identical (media emulation failed)"
+
+
+_GOLDEN = pathlib.Path(__file__).resolve().parent / "data" / "golden" / "_reports"
+
+
+def _eval(chrome, expr):
+    s = chrome.session
+    r = chrome.cdp.call("Runtime.evaluate",
+                        {"expression": expr, "returnByValue": True}, session=s)
+    return r["result"].get("value")
+
+
+def test_run_picker_inits_and_navigates(tmp_path):
+    """Regression guard for the run-selector dropdown (the component JS rides in <head>, so a custom
+    element upgrades BEFORE its child <select> is parsed -- `RdcBase` must defer `init()` to
+    DOMContentLoaded or the change handler is never wired and selecting a run does nothing). JS
+    interactivity has no other gate, so this drives the real browser. Uses the byte-identical HTML
+    golden (top-level summary has the run picker: the synthetic has 2 runs)."""
+    if not shoot.find_chrome():
+        pytest.skip("Chrome not found")
+    page = _GOLDEN / "summary.html"
+    if not page.exists():
+        pytest.skip("golden summary not rendered")
+    with shoot.Chrome() as chrome:
+        s = chrome.session
+        chrome.cdp.call("Page.navigate", {"url": page.as_uri()}, session=s)
+        chrome.cdp.wait_event("Page.loadEventFired", session=s)
+        # init() ran iff role was set (it is the first thing init does after finding the child select).
+        role = _eval(chrome, "document.querySelector('rdc-ab-picker').getAttribute('role')")
+        assert role == "combobox", "run-picker init() did not run (head-timing regression in RdcBase)"
+        before = _eval(chrome, "location.pathname")
+        # select a different run and fire change -> the handler must navigate to its href.
+        target = _eval(chrome,
+            "(()=>{const s=document.getElementById('rdc-run-select');"
+            "const t=[...s.options].map(o=>o.value).find(v=>v!==s.value);"
+            "s.value=t;s.dispatchEvent(new Event('change'));return t;})()")
+        chrome.cdp.wait_event("Page.loadEventFired", session=s)
+        after = _eval(chrome, "location.pathname")
+    assert target, "no alternate run option to select"
+    assert after != before, "selecting a different run did not navigate (dropdown is dead)"
+    assert after.endswith("summary.html")

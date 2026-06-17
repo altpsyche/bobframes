@@ -309,7 +309,14 @@ current:        v0.2.7 aggregation burndown COMPLETE (v027_0..-4 DONE) -- NEXT =
                 GIT: c16y + c16v are in the WORKING TREE, NOT yet committed (user hasn't asked to commit).)
 last_session:   2026-06-17 — v0.2.7 OPENED + v0.2.7-0..-4 DONE: the aggregation-consistency "confusing averages" burndown is
                 COMPLETE (D-13..D-16 / Q-10..Q-13 / H-41 all ☑; ADR-46 frozen; 352->362 green; goldens refreshed bounded per
-                commit, data path frozen throughout). NEXT = the v0.2.7 RELEASE ship (own commit). The
+                commit, data path frozen throughout). NEXT = the v0.2.7 RELEASE ship (own commit). Also fixed a PRE-EXISTING bug found while eyeballing the
+                rendered corpus: the run-selector dropdown did nothing in any report (R-20) -- the component JS rides in
+                <head>, so custom elements upgraded before their child <select> parsed and RdcBase ran init() too early
+                (querySelector(child)->null->bailed, change handler never wired; same for sticky-h2/search-cards).
+                Fixed by deferring init() to DOMContentLoaded in RdcBase (mirrors the _wireRowDrill tail); proven via
+                headless-Chrome CDP (role combobox + navigates) + NEW browser-marked test_run_picker_inits_and_navigates.
+                Golden-affecting (inlined JS on every page); data frozen; 362 green (+1 browser). On feat/v027 branch as a
+                separate fix(reports) commit for golden coherence. The
                 user's 0.2.7 feedback (AGGREGATION_FINDINGS.md: reports use 4 averaging bases, several labeled bare "avg")
                 was reviewed against BOTH the code AND the rendered real-corpus reports (C:/Users/vsiva/Downloads/RDCs/RDC
                 mainline  capture; 7 areas x 4 runs). Grounded confirmation: the same area's GPU reads 0.0356 on summary
