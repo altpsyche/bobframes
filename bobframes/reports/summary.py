@@ -114,7 +114,7 @@ def _per_run_series(root: str, rc) -> dict:
     gpu: list = []
     overd: list = []
     shad: list = []
-    for d in rc.drops:
+    for d in rc.history:   # R-22: up to & including current -> an older page's sparkline ends at THAT run
         tg, td, nf = _dash._run_totals([d])
         draws.append((td / nf) if nf else None)
         gpu.append((tg / nf) if nf else None)
@@ -166,6 +166,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
     # Run model (ADR-35): ONE current run, never a cumulative sum (the G-19 flaw). baseline = the
     # immediately-prior run (None when current is the oldest -> per-run pages get per-run truth).
     rc = base.run_context(drops, run_label=run_label, run_date=run_date)
+    drops = rc.history   # R-22: header count + the per-run sparkline cover runs <= current (picker via rc)
     cur, bl = rc.current, rc.baseline
     cur_drops = [cur] if cur else []
     out_path = base.output_path(root, 'summary', ab, run=rc)

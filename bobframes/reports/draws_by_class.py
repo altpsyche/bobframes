@@ -118,6 +118,7 @@ def build(root: str, *, drops: list | None = None, ab=None,
     # table below keeps every run as the breakdown / comparison view.
     rc = base.run_context(drops, run_label=run_label, run_date=run_date)
     cur = rc.current
+    drops = rc.history   # R-22: cross-drop data scoped to <= current (picker still lists all via rc)
     counts, areas, drop_keys, total_captures = _gather_from_drops(drops)
     cur_counts = {k: cc for k, cc in counts.items() if cur and k[1] == cur.key}
     cur_areas = cur.areas if cur else []

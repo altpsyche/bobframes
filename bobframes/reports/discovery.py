@@ -183,6 +183,15 @@ class RunContext:
         return bool(self.current) and self.index == self.n_runs - 1
 
     @property
+    def history(self) -> list:
+        """Drops up to AND INCLUDING the current run (chronological) -- the data scope for cross-drop
+        CHARTS/TABLES on a per-run page, so an OLDER run's page never shows data for runs that came
+        AFTER it (ADR-35; R-22). The run picker still lists every run (from `drops`); only the rendered
+        data is scoped. Equals `drops` on the newest page (index == n_runs - 1)."""
+        i = self.index
+        return list(self.drops) if i < 0 else self.drops[:i + 1]
+
+    @property
     def run_label(self) -> str:
         """current.key (e.g. '2026-06-01_r110788'); '' when there is no current run."""
         return self.current.key if self.current else ''

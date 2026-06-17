@@ -69,9 +69,11 @@ def build(root: str, *, drops: list | None = None, ab=None,
     if drops is None:
         drops = base.discover_drops(root)
     # Run model (ADR-35): GPU headline + treemap + per-area ranking reflect the CURRENT run; the
-    # per-drop GPU comparison rows below keep every run.
+    # per-drop GPU comparison rows below span the runs UP TO the current one (R-22: an older run's page
+    # must not show runs that came after it; the run picker still lists every run).
     rc = base.run_context(drops, run_label=run_label, run_date=run_date)
     cur = rc.current
+    drops = rc.history   # R-22: scope cross-drop data to <= current
     ck = cur.key if cur else None
     out_path = base.output_path(root, 'pass_gpu', ab, run=rc)
     out_dir = os.path.dirname(out_path)

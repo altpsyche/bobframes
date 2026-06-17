@@ -322,7 +322,14 @@ last_session:   2026-06-17 — v0.2.7 OPENED + v0.2.7-0..-4 DONE: the aggregatio
                 Fixed by NEW package._detach_summary (strips those 3 from the standalone bytes only; in-tree summary keeps
                 its working nav; the full ZIP's dropdown was always fine). Golden-NEUTRAL (standalone summary isn't in
                 golden_package); test_standalone_summary_self_contained + test_redacted_standalone_summary updated; 362 green.
-                Built ALL share variants (3 modes x 2 audiences + one-pagers) under Downloads/RDCs/shares/. The
+                Built ALL share variants (3 modes x 2 audiences + one-pagers) under Downloads/RDCs/shares/. Then per-run
+                one-pagers (4 runs x 2 audiences) added. Then a 3RD bug (R-22): older run pages showed cross-drop GRAPHS/
+                tables spanning ALL runs incl. future ("graphs on older reports use the latest") -- run_context.drops is
+                the full list (right for the picker) but every cross-drop renderer iterated it. Fixed with NEW
+                RunContext.history (<= current) consumed by summary/pass_gpu/overdraw/instancing/shader/draws_by_class for
+                DATA; picker keeps rc.drops. history==drops when current is newest, so top-level + A/B pages byte-unchanged;
+                golden refresh confined to _reports/run/<older>/*.html. NEW test_run_context_history_scopes_to_current +
+                test_older_run_page_scopes_to_history; 364 green. The
                 user's 0.2.7 feedback (AGGREGATION_FINDINGS.md: reports use 4 averaging bases, several labeled bare "avg")
                 was reviewed against BOTH the code AND the rendered real-corpus reports (C:/Users/vsiva/Downloads/RDCs/RDC
                 mainline  capture; 7 areas x 4 runs). Grounded confirmation: the same area's GPU reads 0.0356 on summary
