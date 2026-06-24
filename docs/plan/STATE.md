@@ -7,7 +7,7 @@
 
 ```
 active_release: v0.2.8 (RELEASE-READY + BROWSER-VERIFIED -- opened + COMPLETED 2026-06-24 on feat/v028-ui-control-panel;
-                commit spine v028_0..-7 DONE (v028_7 = pre-ship CI JS-execution gate; v028_8 externalize-JS pending pre-ship). The `bobframes ui` ZERO-dep local-web control panel for QA/product
+                commit spine v028_0..-8 DONE (v028_7 = pre-ship CI JS-execution gate; v028_8 = externalize panel JS/CSS to static assets). The `bobframes ui` ZERO-dep local-web control panel for QA/product
                 (ingest/generate/package + serve/open + A/B + theming + scaffold in a browser), commits/v028/, ADR-47;
                 approved plan ~/.claude/plans/lets-plan-on-improving-bubbly-bumblebee.md. Spawns the existing verbs as
                 subprocesses + streams stdout over SSE; emits NO report HTML (golden gate untouched throughout); NO new
@@ -27,18 +27,26 @@ active_release: v0.2.8 (RELEASE-READY + BROWSER-VERIFIED -- opened + COMPLETED 2
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.8 v028_7 DONE 2026-06-24 (CI JS-execution guard: node --check + browser-marked populate smoke).
-                Pre-ship hardening from the approved UI-improvement plan (~/.claude/plans/plan-a-ui-improvement-track-
-                sharded-sky.md): closes the HIGH finding the release itself exposed -- nothing in CI parsed or ran the panel
-                JS (the v028_2 broken-<script> shipped through five commits because pytest never executes it). Added
-                tests/test_ui_js_parses.py (extracts the served <script>, node --check; skips if no node) +
-                tests/test_ui_browser.py (@pytest.mark.browser; live panel via _ui_util.running + tools/shoot.py Chrome, an
-                awaited Runtime.evaluate asserts #root/#tools/#drops populate) + an UNCONDITIONAL ci.yml `node --check` step
-                (+ node --version). Gate proven to bite (broken literal -> node --check exit 1). 402 green `-m "not browser"`
-                (was 401; +1) / 3 deselected; 1 browser smoke green; 5 golden_env BYTE-UNCHANGED, NO golden refresh; no new
-                dep. Spine v028_0..-7 DONE. NEXT = v028_8 (externalize the inline JS/CSS to bobframes/ui/assets/panel.{js,css}
-                served as static files; retarget the gate at the real panel.js), then the v0.2.8 PR -> tag -> ci.yml publish
-                -> PyPI (GATED on user authorization). commit doc commits/v028/v028_7_js_execution_gate.md.
+current:        v0.2.8 v028_8 DONE 2026-06-24 (externalize panel JS/CSS to served static assets). LAST pre-ship commit;
+                v0.2.8 RELEASE-READY (spine v028_0..-8 DONE). The client JS + static CSS moved out of the server._CONTROL_PAGE
+                Python string into bobframes/ui/assets/panel.{js,css}, served at GET /panel.js (text/javascript) + /panel.css
+                (text/css), untokened (no secret/state; token stays in the page URL). control_page() -> a JS-free HTML shell
+                (_SHELL, plain string) + a tiny inline <style> injecting chrome.design_tokens_css() (the only dynamic CSS;
+                neutral theme) + <link>/<script src>; panel_js()/panel_css()/_asset() read via importlib.resources (the
+                report-chrome convention). The v028_2 `\n`-in-an-r-string bug class is now STRUCTURALLY IMPOSSIBLE (no JS
+                embedded in any Python string). test_ui_js_parses node --checks the real file; test_ui_smoke asserts the
+                shell links both assets + they serve untokened with right content-types + no inline <script>; ci.yml step
+                simplified to `node --check bobframes/ui/assets/panel.js`. CHANGELOG [0.2.8] +Changed (assets externalized)
+                +Tests/CI (the JS gate). VERIFIED: node --check clean; -m browser populate-smoke green (live panel loads the
+                externalized assets over http and still fills #root/#tools/#drops); -m "not browser" 403 passed / 3 deselected
+                (was 402 at v028_7; +1); -m golden_env 5 passed BYTE-UNCHANGED, NO golden refresh; clean wheel ships
+                bobframes/ui/assets/panel.{js,css} (packages=["bobframes"] recursive, NO pyproject change, ADR-10); no new
+                dep. NEXT = the v0.2.8 RELEASE SEQUENCE (GATED on user authorization): PR feat/v028-ui-control-panel -> main;
+                update main; before tag run `pytest -m browser` as sign-off; tag v0.2.8 -> ci.yml publish -> PyPI + GitHub
+                Release; verify clean-venv `uv pip install bobframes==0.2.8`; then branch feat/v029-panel-polish off main for
+                the 0.2.9 track (v029_0..13). commit doc commits/v028/v028_8_externalize_assets.md.
+                (prior: v028_7 DONE 2026-06-24 -- CI JS-execution guard: node --check + a @pytest.mark.browser live-panel
+                populate smoke; the HIGH finding the release exposed. Gate proven to bite. commits/v028/v028_7_js_execution_gate.md.)
                 (prior: v028_6 DONE 2026-06-24 -- panel bug fixes + guided UI redesign + browser sign-off.) v028_6
                 as-built (surfaced by the first real browser test on the live corpus): (1) BUG -- control_page() was a
                 normal triple-quoted string, so the embedded JS `"\n"` became a REAL newline mid-literal -> the WHOLE
@@ -423,13 +431,15 @@ current:        v0.2.8 v028_7 DONE 2026-06-24 (CI JS-execution guard: node --che
                 token-validity guard + preview gallery; migrate summary.py off its inline <style> (visual parity).
                 NOTE: c16p (v0.2 release) COMPLETE - PyPI bobframes 0.2.0 LIVE; tag v0.2.0 -> 765a4db on main.
                 GIT: c16y + c16v are in the WORKING TREE, NOT yet committed (user hasn't asked to commit).)
-last_session:   2026-06-24 — v0.2.8 v028_7 DONE (CI JS-execution guard: node --check + browser-marked populate smoke;
-                pre-ship hardening per the approved UI-improvement plan plan-a-ui-improvement-track-sharded-sky.md). Closed
-                the HIGH finding the release exposed -- nothing in CI parsed/ran the panel JS. Added a node --check pytest
-                gate (extract served <script>; skip if no node) + an unconditional ci.yml `node --check` step (+ node
-                --version) + a @pytest.mark.browser live-panel populate smoke (tools/shoot.py CDP, asserts #root/#tools/#drops
-                fill). Gate proven to bite (broken literal -> exit 1). 402 green `-m "not browser"` / 3 deselected; 1 browser
-                green; 5 golden_env byte-unchanged. NEXT = v028_8 externalize JS/CSS to static assets.
+last_session:   2026-06-24 — v0.2.8 v028_7 + v028_8 DONE (pre-ship hardening per the approved UI-improvement plan
+                plan-a-ui-improvement-track-sharded-sky.md): the v0.2.8 release is now RELEASE-READY with the JS-execution
+                gap closed. v028_7 -- the HIGH finding (nothing in CI parsed/ran the panel JS): a node --check pytest gate +
+                an unconditional ci.yml node --check step (+ node --version) + a @pytest.mark.browser live-panel populate
+                smoke (tools/shoot.py CDP); gate proven to bite. v028_8 -- externalized the client JS + static CSS to
+                bobframes/ui/assets/panel.{js,css} served at /panel.js + /panel.css (control_page() -> a JS-free shell + inline
+                token <style>), making the v028_2 `\n`-in-a-string bug class structurally impossible; node --check now targets
+                the real file. 403 green `-m "not browser"` / 3 deselected; 1 browser populate-smoke green; 5 golden_env
+                byte-unchanged, no refresh; wheel ships the assets; no new dep. NEXT = the v0.2.8 release sequence (GATED).
                 (prior session: v0.2.8 v028_6 DONE -- panel bug fixes + guided UI redesign + browser sign-off) -- the FIRST
                 real end-to-end browser test (live panel against the user's rendered 7-area/4-run corpus under Downloads/
                 RDCs). Found the panel JS had NEVER run in any browser since v028_2: control_page() was a normal triple-
@@ -1390,20 +1400,17 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    v028_8 -- externalize the inline panel JS/CSS to bobframes/ui/assets/panel.{js,css} served as static files
-                (new GET /panel.js + /panel.css routes; design tokens stay server-rendered inline; control_page() -> thin
-                shell). Kills the `\n`-in-an-r-string bug class permanently + lets node --check/lint run on a real file;
-                retarget the v028_7 gate + the test_ui_smoke quote-heuristic at panel.js; confirm the wheel ships the assets
-                (packages=["bobframes"] recursive -> NO pyproject change, per ADR-10). Done-when: /panel.js + /panel.css 200
-                (correct content-type) + page renders identically; node --check + browser smoke green; `-m "not browser"`
-                green; `-m golden_env` byte-unchanged; append 2 lines to the unreleased [0.2.8] CHANGELOG. THEN release
-                (GATED on user authorization): open the v0.2.8 PR from feat/v028-ui-control-panel; before tagging run
-                `pytest -m browser` locally as the sign-off; tag `v0.2.8` -> ci.yml publish job (Trusted Publishing/OIDC,
-                ADR-13) -> PyPI + GitHub Release; verify clean-venv `uv pip install bobframes==0.2.8` -> 0.2.8; then branch
-                feat/v029-panel-polish off main for the 0.2.9 polish track (v029_0..13, each finding its own commit). Read
-                `docs/plan/STATE.md` first next session (plan-driven); approved UI-improvement plan
-                ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md (epic plan
-                ~/.claude/plans/lets-plan-on-improving-bubbly-bumblebee.md).
+next_action:    v0.2.8 RELEASE SEQUENCE (GATED on user authorization; pre-ship hardening v028_7/8 DONE -- spine v028_0..-8
+                green, _version 0.2.8, 403 `-m "not browser"` + 5 golden_env byte-unchanged, wheel ships ui/assets/*, no new
+                dep). Steps: (1) open the v0.2.8 PR from feat/v028-ui-control-panel -> main; CI matrix green incl. the new
+                node --check step; merge. (2) git checkout main && git pull so the tag sits on the merged HEAD. (3) BEFORE
+                tagging run `pytest -m browser` locally (Chrome) as the release sign-off (node --check covers parse; this
+                covers "the live panel populates"). (4) tag `v0.2.8` + push -> ci.yml publish job (Trusted Publishing/OIDC,
+                ADR-13) -> PyPI + GitHub Release. (5) verify clean-venv `uv pip install bobframes==0.2.8` -> 0.2.8. (6) branch
+                feat/v029-panel-polish off the updated main and start the 0.2.9 polish track (v029_0 = Cancel job + track-open
+                housekeeping; then v029_1..13, each finding its own commit). Read `docs/plan/STATE.md` first next session
+                (plan-driven); approved UI-improvement plan ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md (epic
+                plan ~/.claude/plans/lets-plan-on-improving-bubbly-bumblebee.md).
                 CARRY-OVER (independent, own commit): FINDINGS R-19 -- the
                 overdraw `set(by_area[area])` row-order nondeterminism on real multi-RT data (reconfirmed pre-existing at -5;
                 CARRY-OVER (independent, own commit): FINDINGS R-19 -- the
@@ -1553,6 +1560,13 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-24 — v0.2.8 v028_8 DONE (commits/v028/v028_8_externalize_assets.md, feat/v028-ui-control-panel). Externalized the
+  panel client JS + static CSS out of server._CONTROL_PAGE into bobframes/ui/assets/panel.{js,css}, served at /panel.js +
+  /panel.css (untokened); control_page() is now a JS-free HTML shell + inline design-tokens <style>. Makes the v028_2
+  `\n`-in-an-r-string bug class structurally impossible; node --check (test + ci.yml step) now targets the real file. 403
+  green `-m "not browser"` (+1) / 3 deselected; 1 browser populate-smoke green (live panel loads the externalized assets);
+  5 golden_env byte-unchanged, no refresh; wheel ships the assets (no pyproject change); no new dep. v0.2.8 RELEASE-READY;
+  NEXT = the release sequence (GATED), then branch feat/v029-panel-polish for the 0.2.9 track.
 - 2026-06-24 — v0.2.8 v028_7 DONE (commits/v028/v028_7_js_execution_gate.md, feat/v028-ui-control-panel). Pre-ship JS-
   execution guard per the approved UI-improvement plan (the HIGH finding the release exposed: nothing in CI parsed or ran
   the panel JS). Added test_ui_js_parses.py (extract served <script> -> node --check; skip if no node) + test_ui_browser.py

@@ -27,6 +27,14 @@ stay byte-identical on the same captures. No schema change (still schema 3). `_v
 - The static preview server body moved from `cli._cmd_serve` into a reusable `serve.make_server` /
   `serve.serve_forever` so the panel's background serve and the `bobframes serve` verb share it; the
   `serve` verb's behavior is unchanged.
+- The control panel's JS and CSS are now served as static files (`bobframes/ui/assets/panel.{js,css}`,
+  at `GET /panel.js` / `GET /panel.css`) instead of being embedded in a Python string -- so the client
+  is a real file that `node --check`/lint can validate (no build step; still no framework or router).
+
+### Tests / CI
+- Added an automated guard that the panel JS parses and runs: a `node --check` gate (a pytest test +
+  an unconditional CI step) and an opt-in `browser`-marked headless smoke that drives the live panel in
+  Chrome and asserts it populates -- closing the gap that let a broken `<script>` ship undetected.
 
 ## [0.2.7] - 2026-06-24
 
