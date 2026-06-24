@@ -295,6 +295,12 @@ class _Handler(http.server.BaseHTTPRequestHandler):
                 return
             self._ab_reports(getattr(self.server, 'bobframes_root', '.'), query)
             return
+        if path == '/api/serve':                       # status of the background static serve (v029_9)
+            if not self._has_valid_token(query):
+                self._send_json({'error': 'forbidden'}, code=403)
+                return
+            self._send_json({'serving': getattr(self.server, 'bobframes_serve', None)})
+            return
         if path.startswith('/api/stream/'):
             if not self._has_valid_token(query):           # EventSource can only auth via the query
                 self._send_json({'error': 'forbidden'}, code=403)
@@ -340,6 +346,9 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             return
         if path == '/api/serve':
             self._serve_static(root, self._read_json_body())
+            return
+        if path == '/api/serve/stop':
+            self._stop_serve()
             return
         if path == '/api/scaffold':
             self._scaffold(root, self._read_json_body())
@@ -489,6 +498,19 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         self.server.bobframes_serve = info             # type: ignore[attr-defined]
         self.server.bobframes_serve_httpd = httpd      # type: ignore[attr-defined]
         self._send_json(info)
+
+    def _stop_serve(self) -> None:
+        """Stop the background static serve started by ``/api/serve`` (the v029_9 Stop button) so its port
+        is released and a later ``/api/serve`` rebinds a fresh one. No-op (``stopped: false``) if nothing
+        is serving. Mirrors ``_shutdown_aux`` (shutdown + server_close)."""
+        httpd = getattr(self.server, 'bobframes_serve_httpd', None)  # type: ignore[attr-defined]
+        was_serving = getattr(self.server, 'bobframes_serve', None) is not None  # type: ignore[attr-defined]
+        if httpd is not None:
+            httpd.shutdown()
+            httpd.server_close()
+        self.server.bobframes_serve = None             # type: ignore[attr-defined]
+        self.server.bobframes_serve_httpd = None       # type: ignore[attr-defined]
+        self._send_json({'ok': True, 'stopped': was_serving})
 
     def _reveal(self, root: str, body: dict) -> None:
         """Open a folder in the OS file explorer (the v029_6 'reveal in folder' action; no client path,

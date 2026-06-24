@@ -34,7 +34,14 @@ active_release: v0.2.9 (OPEN 2026-06-24 on feat/v029-panel-polish, off main @ v0
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.9 v029_8 DONE 2026-06-24 (prune the job registry). jobs.prune_registry(registry, keep=MAX_REGISTRY=20)
+current:        v0.2.9 v029_9 DONE 2026-06-24 (list/stop the background static serve). GET /api/serve -> {serving:{url,port}
+                |null}; POST /api/serve/stop -> _stop_serve (shutdown+server_close the aux httpd, clear the singleton so a
+                re-serve rebinds a fresh port; {stopped:bool}). panel.js: showServe() adds a "Stop server" link; checkServe()
+                on load surfaces an already-running serve. 430 green `-m "not browser"` (was 427; +3) / 3 deselected; node
+                --check + browser populate-smoke green (checkServe init OK); 5 golden_env byte-unchanged; no new dep. NEXT =
+                v029_10 (Captures RUN-column de-duplication -- collapse the repeated date_label per capture row). commit doc
+                commits/v029/v029_9_serve_list_stop.md.
+                (prior: v029_8 DONE 2026-06-24 -- prune the job registry. jobs.prune_registry(registry, keep=MAX_REGISTRY=20)
                 drops the oldest FINISHED jobs past the cap (never a running one; dict order = oldest-first); _start_job
                 calls it after inserting. Safe for in-flight streams (the SSE handler holds its own Job ref). Server-only;
                 no JS change. 427 green `-m "not browser"` (was 424; +3) / 3 deselected; node --check green (standing); 5
@@ -1480,13 +1487,13 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    v029_9 -- serve list/stop (LOW finding). `/api/serve` starts ONE background static server (singleton).
-                Add `GET /api/serve` (status: the running {url,port} or null) + a "Stop" button -> `POST /api/serve/stop`
-                that shutdown()s the aux httpd (reuse the _shutdown_aux logic) and clears server.bobframes_serve so a
-                re-serve gets a fresh port. Done-when: serve -> listed with URL -> stop releases the port (re-serve gets a
-                new one); tests; node --check + browser green; `-m "not browser"` green; `-m golden_env` byte-unchanged; no
-                new dep. Then v029_10 (RUN-col dedup) -> v029_11 (favicon) -> v029_12 (narrow-width) -> v029_13 close-out
-                (version bump 0.2.8->0.2.9 + CHANGELOG [0.2.9]; open the v0.2.9 PR; tag after merge). See the plan
+next_action:    v029_10 -- Captures "RUN" column de-duplication (LOW finding). In the drops table the RUN value (date_label)
+                is its own column already (one row per area, newest drop), so verify whether there is real repetition to
+                collapse; if the dedup target is elsewhere (e.g. a capture-level listing repeating the run key), group it.
+                Client display only (panel.js render()). Done-when: the RUN value isn't redundantly repeated; the browser
+                smoke asserts the table shape; node --check green; `-m "not browser"` green; `-m golden_env` byte-unchanged;
+                no new dep. Then v029_11 (favicon) -> v029_12 (narrow-width) -> v029_13 close-out (version bump 0.2.8->0.2.9
+                + CHANGELOG [0.2.9]; open the v0.2.9 PR; tag after merge). See the plan
                 ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md. _version bump 0.2.8->0.2.9 + CHANGELOG [0.2.9] at the v029_13 close-out; open
                 the v0.2.9 PR when the track's gates are green, tag v0.2.9 after merge. Read `docs/plan/STATE.md` first next
                 session (plan-driven); approved UI-improvement plan ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md.
@@ -1639,6 +1646,10 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-24 — v0.2.9 v029_9 DONE (commits/v029/v029_9_serve_list_stop.md, feat/v029-panel-polish). Serve list/stop: GET
+  /api/serve status + POST /api/serve/stop (_stop_serve releases the aux httpd + clears the singleton so a re-serve rebinds
+  a fresh port); panel.js showServe() Stop link + checkServe() on load. 430 green `-m "not browser"` (+3) / 3 deselected;
+  node --check + browser green; 5 golden_env byte-unchanged; no new dep. NEXT = v029_10 (RUN-col dedup).
 - 2026-06-24 — v0.2.9 v029_8 DONE (commits/v029/v029_8_prune_job_registry.md, feat/v029-panel-polish). Prune job registry:
   jobs.prune_registry(keep=20) drops oldest FINISHED jobs (never a running one); _start_job calls it; safe for in-flight
   streams. Server-only. 427 green `-m "not browser"` (+3) / 3 deselected; node --check green; 5 golden_env byte-unchanged;
