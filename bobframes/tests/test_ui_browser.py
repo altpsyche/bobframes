@@ -49,7 +49,8 @@ new Promise(function(resolve){
         root: root.textContent,
         tools: document.getElementById('tools').innerHTML,
         drops: document.getElementById('drops').innerHTML,
-        estimate: document.getElementById('ingest_estimate').textContent
+        estimate: document.getElementById('ingest_estimate').textContent,
+        phaseLive: document.getElementById('phase').getAttribute('aria-live')
       });
     } else if ((waited += step) >= deadline) {
       clearInterval(timer);
@@ -79,3 +80,5 @@ def test_panel_js_runs_and_populates_state(tmp_path):
     assert 'Town' in state['drops'] or 'Bay' in state['drops'], 'drops table did not render'
     # v029_3: the honest ingest estimate computed in-browser (4 captures x 600s budget -> ~40 min).
     assert '4 capture' in state['estimate'] and 'min' in state['estimate'], state['estimate']
+    # v029_4: the aria-live attribute survives to the live DOM (screen-reader announce).
+    assert state['phaseLive'] == 'polite', state['phaseLive']
