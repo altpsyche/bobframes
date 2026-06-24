@@ -1,0 +1,50 @@
+/* bobframes ui -- control-panel static styles (v028_8).
+   Served verbatim at GET /panel.css. The :root design tokens are injected server-side as a tiny inline
+   <style> by server.control_page() (chrome.design_tokens_css(); neutral theme -- the panel chrome is not
+   user-themed, the REPORT is, via render --accent). Every rule below references those token vars, so this
+   file is the static half and the tokens are the dynamic half (ADR-47 reuse; no build step). */
+  body { font: var(--fs-body)/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+         max-width: 56rem; margin: var(--sp-10) auto var(--sp-12); padding: 0 var(--sp-4);
+         background: var(--bg); color: var(--text-1); }
+  h1 { font-size: var(--fs-h1); margin: 0; }
+  .sub { color: var(--text-2); margin: var(--sp-1) 0 var(--sp-6); }
+  h2 { font-size: var(--fs-h2); margin: 0; }
+  .muted { color: var(--text-2); }
+  .hint { color: var(--text-2); font-size: var(--fs-small); margin: var(--sp-2) 0 0; }
+  .ok { color: var(--status-ok); } .bad { color: var(--status-alarm); }
+  .step { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-1);
+          padding: var(--sp-4) var(--sp-5); margin: var(--sp-4) 0; }
+  .step-head { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+  .badge { margin-left: auto; font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: .04em;
+           padding: 2px var(--sp-2); border-radius: var(--radius-sm); border: 1px solid var(--border); color: var(--text-2); }
+  .badge.good { color: var(--status-ok); border-color: var(--status-ok); }
+  .badge.warn { color: var(--status-alarm); border-color: var(--status-alarm); }
+  .actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+  .fields { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: baseline; margin-top: var(--sp-3); }
+  code { background: var(--code-bg); padding: 2px var(--sp-1); border-radius: var(--radius-sm);
+         font: var(--fs-mono)/1.4 ui-monospace, "Cascadia Code", monospace; word-break: break-all; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: var(--sp-1) var(--sp-2); border-bottom: 1px solid var(--border); }
+  th { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: .04em; color: var(--text-2); }
+  pre { white-space: pre-wrap; font: var(--fs-mono)/1.45 ui-monospace, "Cascadia Code", monospace;
+        color: var(--text-2); background: var(--surface-2); border-radius: var(--radius-sm);
+        padding: var(--sp-2); max-height: 16rem; overflow: auto; margin: var(--sp-2) 0 0; }
+  label { display: inline-flex; gap: .4rem; align-items: baseline; }
+  button { font: inherit; padding: var(--sp-1) var(--sp-3); border-radius: var(--radius-sm);
+           border: 1px solid var(--border-strong); background: var(--surface-0); color: var(--text-1);
+           cursor: pointer; transition: box-shadow var(--motion-hover); }
+  button:hover { box-shadow: var(--elev-2); }
+  button:focus-visible { outline: 2px solid var(--accent-data); outline-offset: 2px; }
+  button.primary { background: var(--accent-primary); color: var(--bg); border-color: var(--accent-primary); }
+  button:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+  input, select { font: inherit; padding: var(--sp-1) var(--sp-2); border-radius: var(--radius-sm);
+                  border: 1px solid var(--border); background: var(--surface-0); color: var(--text-1); }
+  input:focus-visible, select:focus-visible { outline: 2px solid var(--accent-data); outline-offset: 1px; }
+  a { color: var(--accent-data); }
+  summary { cursor: pointer; color: var(--text-2); font-size: var(--fs-small); }
+  details { margin-top: var(--sp-3); }
+  .result { border-left: 3px solid var(--accent-data); background: var(--surface-2);
+            padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-sm); margin-top: var(--sp-3); }
+  .phase { margin: 0; color: var(--text-2); font-size: var(--fs-small); }
+  .job { margin-top: var(--sp-3); }
+  [hidden] { display: none !important; }
