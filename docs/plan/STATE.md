@@ -22,10 +22,21 @@ active_release: v0.2.8 (DEV -- opened 2026-06-24 on feat/v028-ui-control-panel; 
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.8 v028_0 DONE 2026-06-24 (`ui` verb + control-panel skeleton + ADR-47). NEXT = v028_1 (the generated
-                control page on `/` + read-only `GET /api/state` [tools via config.resolve_tool_verbose, drops via
-                discovery.find_drops] + the security guard: localhost bind + a random per-session token on every `/api/*`;
-                tests test_ui_state / test_ui_security / test_ui_smoke). v028_0 as-built: ADR-47 appended (frontends =
+current:        v0.2.8 v028_1 DONE 2026-06-24 (control page + read-only /api/state + security guard). NEXT = v028_2 (the
+                subprocess job runner + SSE progress + POST /api/ingest: spawn `python -m bobframes.run` [the _render_watch
+                precedent], stream its [HH:MM:SS] stdout over Server-Sent Events GET /api/stream/<job> with a terminal
+                return-code event; client stage strip + per-capture replay bar + raw log pane; test_ui_jobs mocked spawn).
+                v028_1 as-built: bobframes/ui/server.py gained panel_state(root) [tools via config.resolve_tool_verbose
+                a la _cmd_check; drops via discovery.find_drops; None if root missing] + control_page() [server-rendered
+                HTML + vanilla JS, no framework/router/build step; reads ?t= token, fetches /api/state, renders tools +
+                drops table + empty/missing-root states surfacing the <Area>/<date[_label]>/*.rdc convention] + the ADR-47
+                token guard [build_server mints secrets.token_urlsafe(32); /api/state requires it via ?t= or
+                X-Bobframes-Token header, compare_digest, else 403; / is open; serve() puts the token in the opened URL].
+                NEW tests/_ui_util.py + test_ui_security/test_ui_state/test_ui_smoke (8 tests). VERIFIED: 8/8 ui tests +
+                full `-m "not browser"` 373 passed / 2 deselected (was 365; +8; no regression; no golden refresh -- panel
+                emits no report HTML). On-brand chrome.design_tokens_css() styling deferred to v028_5. No new dependency.
+                commit doc commits/v028/v028_1_control_page_state_security.md.
+                (prior: v028_0 DONE 2026-06-24 -- `ui` verb + control-panel skeleton + ADR-47. as-built: ADR-47 appended (frontends =
                 SURFACE above the ADR-40 taxonomy; zero-dep stdlib-http panel that DRIVES the verbs; localhost+token guard;
                 no JS-framework governance line); NEW bobframes/ui/{__init__,server}.py (ThreadingHTTPServer on 127.0.0.1
                 serving a placeholder, clean start/stop, Ctrl+C->4, bind-fail->1); `_cmd_ui` + `ui` subparser
