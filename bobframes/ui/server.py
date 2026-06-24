@@ -136,10 +136,11 @@ def control_page() -> str:
     return _SHELL.replace('/*TOKENS*/', chrome.design_tokens_css())
 
 
-# A plain string: this shell is HTML only (no embedded JS, no backslash escapes), so it carries none of
-# the v028_2 risk that made the old combined page an r-string. The token marker is substituted by
-# control_page(); the bulk CSS + all JS are served as static files (/panel.css, /panel.js).
-_SHELL = """<!doctype html>
+# Raw string: this shell is HTML only (no embedded JS), but kept r-prefixed so a literal backslash in
+# any attribute (e.g. a Windows-path placeholder) is never mangled into a Python escape -- the same
+# v028_2 lesson that moved the JS out. The token marker is substituted by control_page(); the bulk CSS
+# + all JS are served as static files (/panel.css, /panel.js).
+_SHELL = r"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>bobframes ui</title>
@@ -149,6 +150,11 @@ _SHELL = """<!doctype html>
 <h1>bobframes</h1>
 <p class="sub">Guided control panel &mdash; turn RenderDoc captures into shareable reports.</p>
 <p class="muted" id="root">Loading...</p>
+<div class="fields">
+  <label>Project folder <input id="root_input" placeholder="C:/path/to/captures" style="width:24rem"></label>
+  <button id="set_root">Open folder</button>
+</div>
+<p id="root_msg" class="hint"></p>
 
 <section class="step">
   <div class="step-head"><h2>RenderDoc tools</h2><span id="tools_badge" class="badge">...</span></div>
@@ -322,6 +328,9 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         if path == '/api/config/stub':
             self._write_config_stub(root)
             return
+        if path == '/api/root':
+            self._set_root(self._read_json_body())
+            return
         if path.startswith('/api/cancel/'):
             self._cancel_job(path[len('/api/cancel/'):])
             return
@@ -435,6 +444,23 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         self.server.bobframes_serve = info             # type: ignore[attr-defined]
         self.server.bobframes_serve_httpd = httpd      # type: ignore[attr-defined]
         self._send_json(info)
+
+    def _set_root(self, body: dict) -> None:
+        """Repoint the panel at another folder without relaunching from a terminal (the v029_2 root
+        input). Validates the path is an existing directory, updates the server's active root, and
+        returns fresh state so the client can re-render. Single-user local action (ADR-47 localhost +
+        token); 400 on a missing / non-directory path. A job already running keeps its original root
+        (its argv was fixed at spawn)."""
+        new = body.get('path')
+        if not isinstance(new, str) or not new.strip():
+            self._send_json({'error': 'path is required'}, code=400)
+            return
+        new = os.path.abspath(new.strip())
+        if not os.path.isdir(new):
+            self._send_json({'error': f'not a folder: {new}'}, code=400)
+            return
+        self.server.bobframes_root = new       # type: ignore[attr-defined]
+        self._send_json(panel_state(new))
 
     def _write_config_stub(self, root: str) -> None:
         """Write a starter ``.bobframes.toml`` to ``root`` (the v029_1 first-run helper when a RenderDoc

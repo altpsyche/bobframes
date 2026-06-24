@@ -34,7 +34,16 @@ active_release: v0.2.9 (OPEN 2026-06-24 on feat/v029-panel-polish, off main @ v0
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.9 v029_1 DONE 2026-06-24 (write-starter-config button). POST /api/config/stub ->
+current:        v0.2.9 v029_2 DONE 2026-06-24 (root-path input: repoint without relaunching). POST /api/root {path} ->
+                _set_root (dir-validated; updates httpd.bobframes_root; returns fresh panel_state) + a "Project folder"
+                input/"Open folder" button that render()s the returned state; non-dir -> 400. IN-COMMIT HARDENING: the
+                first cut put a `C:\path\to\..` placeholder in the plain-string _SHELL and Python turned `\t` into a TAB
+                (SyntaxWarning) -- the same escape class v028_8 removed for the JS; fixed with a forward-slash placeholder
+                AND r-prefixing _SHELL, guarded by a clean `-W error` import. 411 green `-m "not browser"` (was 408; +3) /
+                3 deselected; node --check + browser populate-smoke green; 5 golden_env byte-unchanged; no new dep. NEXT =
+                v029_3 (honest ingest time estimate: captures x replay_timeout_s, labelled as a worst-case upper bound).
+                commit doc commits/v029/v029_2_root_input.md.
+                (prior: v029_1 DONE 2026-06-24 -- write-starter-config button. POST /api/config/stub ->
                 config.write_config_stub(root) (returns {path, written}; idempotent, no overwrite) + a "Write starter
                 config" button shown only when a RenderDoc tool is missing (the tools_fix block; render() toggles its
                 hidden state, never rebuilds it -> the written-path message persists), fixing the first-run dead end. 408
@@ -1430,12 +1439,13 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    v029_2 -- root-path input (MED finding; repoint the panel at another folder without relaunching from a
-                terminal). On feat/v029-panel-polish: add `POST /api/root {path}` -> validate the dir exists, update
-                httpd.bobframes_root, return fresh panel_state; a path input + "Open folder" in panel.js re-renders
-                tools/drops/runs; non-existent/non-dir path -> 400. Single-user local action under ADR-47. Done-when:
-                posting a valid dir flips state.root + drops; invalid -> 400; node --check + browser populate-smoke green;
-                `-m "not browser"` green; `-m golden_env` byte-unchanged; no new dep. Then v029_3..13 (each review finding
+next_action:    v029_3 -- honest ingest time estimate (MED finding). Show `n_captures x replay_timeout_s` as a labelled
+                WORST-CASE upper bound ("up to ~X min for N captures"; it's the per-capture replay budget, not expected
+                time; replay is sequential -- ADR-23 honest phrasing) before + during ingest. Source replay_timeout_s from
+                config.get_config() (config.py:75) surfaced via /api/state; pure display (the classifier already carries
+                replay_total/replay_done for the live bar). Done-when: a labelled upper-bound estimate shows pre-ingest
+                (from state) + during replay; a unit test pins the calc; node --check + browser populate-smoke green;
+                `-m "not browser"` green; `-m golden_env` byte-unchanged; no new dep. Then v029_4..13 (each review finding
                 its own commit; see the plan). _version bump 0.2.8->0.2.9 + CHANGELOG [0.2.9] at the v029_13 close-out; open
                 the v0.2.9 PR when the track's gates are green, tag v0.2.9 after merge. Read `docs/plan/STATE.md` first next
                 session (plan-driven); approved UI-improvement plan ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md.
@@ -1588,6 +1598,12 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-24 — v0.2.9 v029_2 DONE (commits/v029/v029_2_root_input.md, feat/v029-panel-polish). Root-path input: POST
+  /api/root {path} -> _set_root (dir-validated; updates root; returns fresh state) + a "Project folder" input/"Open folder"
+  button. Caught + fixed in-commit: a `C:\path` placeholder in the plain-string _SHELL turned `\t` into a TAB
+  (SyntaxWarning); fixed with a forward-slash placeholder + r-prefixing _SHELL, guarded by a clean `-W error` import. 411
+  green `-m "not browser"` (+3) / 3 deselected; node --check + browser populate-smoke green; 5 golden_env byte-unchanged;
+  no new dep. NEXT = v029_3 (honest ingest time estimate).
 - 2026-06-24 — v0.2.9 v029_1 DONE (commits/v029/v029_1_write_config_stub.md, feat/v029-panel-polish). Write-starter-config
   button: POST /api/config/stub -> config.write_config_stub(root) ({path,written}, idempotent) + a "Write starter config"
   button shown only when a RenderDoc tool is missing (tools_fix block), fixing the first-run dead end. 408 green
