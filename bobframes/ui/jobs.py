@@ -34,10 +34,58 @@ def build_run_argv(root: str, *, force: bool = False, render_only: bool = False,
     return argv
 
 
+def build_render_argv(root: str, *, accent: str | None = None,
+                      accent_data: str | None = None) -> list[str]:
+    """The argv for `python -m bobframes.run --render-only` (mirrors cli._cmd_render -- re-generate
+    reports from existing parquet, no GPU/replay). The optional one-shot accent / accent-data overrides
+    (ADR-45) re-hue the chrome without a config edit; run.py accepts both directly."""
+    argv = ['--root', os.path.abspath(root), '--render-only']
+    if accent:
+        argv += ['--accent', accent]
+    if accent_data:
+        argv += ['--accent-data', accent_data]
+    return argv
+
+
+def build_package_argv(root: str, *, light: bool = False, redact: bool = False) -> list[str]:
+    """The argv for `python -m bobframes.cli package <root>` (mirrors cli._cmd_package). `root` is the
+    verb's positional argument (every bobframes verb takes <root> positionally, not as --root)."""
+    argv = ['package', os.path.abspath(root)]
+    if light:
+        argv += ['--light']
+    if redact:
+        argv += ['--redact']
+    return argv
+
+
+def build_ab_argv(root: str, *, baseline_label: str, compare_label: str,
+                  baseline_date: str | None = None, compare_date: str | None = None) -> list[str]:
+    """The argv for `python -m bobframes.cli ab <root>` (mirrors cli._cmd_ab): every report for one
+    (baseline, compare) drop pair. Labels are required; the dates disambiguate a label reused across
+    runs (base.resolve_drop_set matches by label and/or date)."""
+    argv = ['ab', os.path.abspath(root),
+            '--baseline-label', baseline_label, '--compare-label', compare_label]
+    if baseline_date:
+        argv += ['--baseline-date', baseline_date]
+    if compare_date:
+        argv += ['--compare-date', compare_date]
+    return argv
+
+
 def spawn(argv: list[str]) -> subprocess.Popen:
     """Spawn `python -m bobframes.run <argv>` with merged stdout/stderr as text. Monkeypatched in tests."""
     return subprocess.Popen(
         [sys.executable, '-m', 'bobframes.run', *argv],
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, bufsize=1,
+    )
+
+
+def spawn_cli(argv: list[str]) -> subprocess.Popen:
+    """Spawn `python -m bobframes.cli <argv>` (the verbs that aren't run.py: e.g. `package`), merged
+    text stdout. The separate seam tests monkeypatch for the non-ingest jobs."""
+    return subprocess.Popen(
+        [sys.executable, '-m', 'bobframes.cli', *argv],
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         text=True, bufsize=1,
     )

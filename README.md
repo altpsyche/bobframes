@@ -24,6 +24,21 @@ bobframes check
 `bobframes check` prints the resolved paths for `renderdoccmd` and `qrenderdoc` and exits non-zero if
 either is missing, so you can confirm the toolchain before a long ingest.
 
+## Guided mode (recommended for QA / product)
+
+Not comfortable in a terminal? `bobframes ui` opens a local-web control panel in your browser that
+drives the whole pipeline point-and-click: detect the RenderDoc tools, pick a capture folder, ingest
+with live per-capture progress, then open / serve / package the report or compare two runs.
+
+```
+pipx install bobframes
+bobframes ui             # opens http://127.0.0.1:8765 in your browser
+```
+
+The panel binds `127.0.0.1` only and carries a one-time session token in the opened URL, so only your
+own browser can drive it. It is stdlib-only -- one `pipx install` gives every feature, no extra setup --
+and it emits no report files of its own; it just runs the same verbs as the CLI.
+
 ## Quickstart
 
 ```
@@ -47,6 +62,7 @@ time to rebuild the HTML from existing Parquet without re-replaying captures.
 | `lint <file>...` | Check HTML or markdown against the banlist. |
 | `check` | Print resolved tool paths; non-zero when a tool is missing. |
 | `serve [root] [--port 8000] [--bind 127.0.0.1]` | Static preview via the stdlib HTTP server. |
+| `ui [root] [--port 8765] [--bind 127.0.0.1] [--no-open]` | Guided local-web control panel (ADR-47): ingest / render / package / A-B / open / serve / scaffold from a browser, with live progress. Localhost-bound + per-session token; emits no report output of its own. |
 | `package [root] [--inline] [--light] [--redact] [--redact-paths {strip,fail}] [--out PATH] [--run KEY] [--no-summary-file] [--stage]` | Bundle a rendered tree into a shareable `<project>-<rundate>-report.zip` + a standalone `<project>-<rundate>-summary.html`, both written OUTSIDE `<root>` (non-mutating). `--redact` scrubs device/host provenance + absolute paths for external sharing. |
 | `preview [root] [--accent OKLCH] [--accent-data OKLCH]` | Render the chrome gallery to `_reports/_chrome_preview.html`; no capture data needed. `--accent` previews a theme override before you commit it. |
 | `export-tokens [--format toml\|json\|css] [--theme-template]` | Print the design tokens to stdout in the chosen format. `--theme-template` emits a paste-ready `[theme]` block for `.bobframes.toml`. |
