@@ -34,7 +34,13 @@ active_release: v0.2.9 (OPEN 2026-06-24 on feat/v029-panel-polish, off main @ v0
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.9 v029_6 DONE 2026-06-24 (reveal output folder; LOW tier opens). POST /api/reveal {kind} ->
+current:        v0.2.9 v029_7 DONE 2026-06-24 (log copy/download). Each job log pane (run/share/ab) gains "Copy log"
+                (navigator.clipboard) + "Download" (<name>.txt via Blob) buttons -- pure client JS, no server change.
+                424 green `-m "not browser"` (was 423; +1) / 3 deselected; node --check + browser populate-smoke green
+                (controls in the live DOM); 5 golden_env byte-unchanged; no new dep. NEXT = v029_8 (prune the job
+                registry -- bound the id->Job dict so it doesn't grow unbounded). commit doc
+                commits/v029/v029_7_log_copy_download.md.
+                (prior: v029_6 DONE 2026-06-24 -- reveal output folder; LOW tier opens. POST /api/reveal {kind} ->
                 _reveal: kind=package opens the dir BESIDE the project (root parent, where the zip lands), else root; no
                 client path (no traversal surface); os.startfile (Windows-only; 501 else, 409 if gone). panel.js adds a
                 "Reveal in folder" link on the package result. 423 green `-m "not browser"` (was 419; +4) / 3 deselected;
@@ -1468,13 +1474,14 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    v029_7 -- log copy/download (LOW finding). Add Copy-to-clipboard (navigator.clipboard) + download-as-.txt
-                (Blob) buttons on each log pane (job_run/job_share/job_ab) in panel.js (pure client JS; no server change).
-                Done-when: the buttons are present + wired; the browser smoke asserts the handlers exist + the log text is
-                reachable; node --check green; `-m "not browser"` green; `-m golden_env` byte-unchanged; no new dep. Then
-                v029_8 (prune job registry) -> v029_9 (serve list/stop) -> v029_10 (RUN-col dedup) -> v029_11 (favicon) ->
-                v029_12 (narrow-width) -> v029_13 close-out (version bump 0.2.8->0.2.9 + CHANGELOG [0.2.9]; open the v0.2.9
-                PR; tag after merge). See the plan ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md. _version bump 0.2.8->0.2.9 + CHANGELOG [0.2.9] at the v029_13 close-out; open
+next_action:    v029_8 -- prune the job registry (LOW finding). The server's id->Job dict (server.bobframes_jobs) grows
+                unbounded (one entry per job, forever). Bound it -- e.g. on starting a new job, drop finished jobs beyond
+                the last K (keep a couple for late stream reads). Server-side only (no JS change -> node --check runs as the
+                standing regression). Done-when: after N jobs the registry is bounded (unit test); node --check green;
+                `-m "not browser"` green; `-m golden_env` byte-unchanged; no new dep. Then v029_9 (serve list/stop) ->
+                v029_10 (RUN-col dedup) -> v029_11 (favicon) -> v029_12 (narrow-width) -> v029_13 close-out (version bump
+                0.2.8->0.2.9 + CHANGELOG [0.2.9]; open the v0.2.9 PR; tag after merge). See the plan
+                ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md. _version bump 0.2.8->0.2.9 + CHANGELOG [0.2.9] at the v029_13 close-out; open
                 the v0.2.9 PR when the track's gates are green, tag v0.2.9 after merge. Read `docs/plan/STATE.md` first next
                 session (plan-driven); approved UI-improvement plan ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md.
                 CARRY-OVER (independent, own commit): FINDINGS R-19 -- the
@@ -1626,6 +1633,10 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-24 — v0.2.9 v029_7 DONE (commits/v029/v029_7_log_copy_download.md, feat/v029-panel-polish). Log copy/download:
+  each job log pane gets "Copy log" (navigator.clipboard) + "Download" (.txt Blob) buttons -- pure client JS. 424 green
+  `-m "not browser"` (+1) / 3 deselected; node --check + browser green (controls in live DOM); 5 golden_env byte-unchanged;
+  no new dep. NEXT = v029_8 (prune job registry).
 - 2026-06-24 — v0.2.9 v029_6 DONE (commits/v029/v029_6_reveal_in_folder.md, feat/v029-panel-polish). Reveal output folder
   (LOW tier opens): POST /api/reveal {kind} -> os.startfile on root's parent (package) or root; no client path (no
   traversal); 501 off-Windows. panel.js: "Reveal in folder" link on the package result. 423 green `-m "not browser"` (+4)

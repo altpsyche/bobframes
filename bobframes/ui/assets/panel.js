@@ -115,7 +115,19 @@
       .then(function(j){ t.jobId = j.job; if (t.cancel) { el(t.cancel).hidden = false; el(t.cancel).disabled = false; } stream(j.job, t, onDone); })
       .catch(function(e){ el(t.phase).innerHTML = '<span class="bad">' + esc(e.message) + '</span>'; });
   }
-  function cancelJob(t){                           // stop the running job (POST /api/cancel/<job>)
+  function copyLog(t, btnId){                      // copy the log pane's text to the clipboard
+    var text = el(t.log).textContent || "";
+    var flash = function(){ var b = el(btnId), old = b.textContent; b.textContent = "Copied"; setTimeout(function(){ b.textContent = old; }, 1200); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(flash, function(){});
+    else flash();                                  // best-effort (older browsers)
+  }
+  function downloadLog(t, name){                   // save the log pane's text as <name>.txt (Blob)
+    var blob = new Blob([el(t.log).textContent || ""], { type: "text/plain" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a"); a.href = url; a.download = name + ".txt";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  }
+  function cancelJob(t){                            // stop the running job (POST /api/cancel/<job>)
     if (!t.jobId) return;
     el(t.cancel).disabled = true; el(t.phase).textContent = "cancelling...";
     // the stream's terminal 'done' (cancelled) sets the final phase + hides the button; re-enable on error.
@@ -196,6 +208,12 @@
   el("cancel_run").onclick = function(){ cancelJob(RUN_T); };
   el("cancel_share").onclick = function(){ cancelJob(SHARE_T); };
   el("cancel_ab").onclick = function(){ cancelJob(AB_T); };
+  el("copy_run").onclick = function(){ copyLog(RUN_T, "copy_run"); };
+  el("dl_run").onclick = function(){ downloadLog(RUN_T, "ingest-log"); };
+  el("copy_share").onclick = function(){ copyLog(SHARE_T, "copy_share"); };
+  el("dl_share").onclick = function(){ downloadLog(SHARE_T, "share-log"); };
+  el("copy_ab").onclick = function(){ copyLog(AB_T, "copy_ab"); };
+  el("dl_ab").onclick = function(){ downloadLog(AB_T, "ab-log"); };
   el("set_root").onclick = function(){           // repoint the panel at another folder (POST /api/root)
     var p = el("root_input").value;
     if (!p) { el("root_msg").innerHTML = '<span class="bad">enter a folder path</span>'; return; }
