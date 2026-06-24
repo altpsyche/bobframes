@@ -267,6 +267,15 @@ def _cmd_serve(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_ui(args: argparse.Namespace) -> int:
+    # ADR-47: a zero-dependency local-web control panel that DRIVES the verbs for non-terminal users.
+    # A frontend SURFACE above the verb taxonomy -- it emits no report HTML (golden gate untouched) and
+    # pulls no dep into core. Lazy-imported so a core install never loads the ui package.
+    from .ui import server
+    return server.serve(os.path.abspath(args.root), bind=args.bind, port=args.port,
+                        open_browser=not args.no_open)
+
+
 def _cmd_package(args: argparse.Namespace) -> int:
     # Non-mutating stream transform of a rendered tree -> a shareable zip + standalone summary, both
     # OUTSIDE <root> (c16s, ADR-40). build() prints the one summary line and raises a typed
@@ -379,6 +388,16 @@ def _build_parser() -> argparse.ArgumentParser:
     sp.add_argument('--port', type=int, default=8000)
     sp.add_argument('--bind', default='127.0.0.1')
     sp.set_defaults(func=_cmd_serve)
+
+    sp = sub.add_parser('ui', parents=[common],
+                        help='guided local-web control panel (ingest/generate/package in a browser)')
+    sp.add_argument('root', nargs='?', default='.')
+    sp.add_argument('--port', type=int, default=8765)
+    sp.add_argument('--bind', default='127.0.0.1',
+                    help='bind address; localhost only by design (ADR-47)')
+    sp.add_argument('--no-open', action='store_true',
+                    help="don't auto-open the browser")
+    sp.set_defaults(func=_cmd_ui)
 
     sp = sub.add_parser('package', parents=[common],
                         help='bundle a rendered tree into a shareable zip + standalone summary')
