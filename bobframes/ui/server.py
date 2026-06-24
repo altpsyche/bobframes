@@ -187,7 +187,7 @@ _SHELL = """<!doctype html>
     </div>
     <p class="hint">Accent colors re-hue the report; applied by "Rebuild reports only".</p>
   </details>
-  <div class="job" id="job_run" hidden><p id="phase" class="phase"></p><pre id="log"></pre></div>
+  <div class="job" id="job_run" hidden><div class="actions"><p id="phase" class="phase"></p><button id="cancel_run" style="margin-left:auto" hidden>Cancel</button></div><pre id="log"></pre></div>
 </section>
 
 <section class="step">
@@ -202,7 +202,7 @@ _SHELL = """<!doctype html>
     <label><input type="checkbox" id="pkg_redact"> Redact (scrub provenance + paths)</label>
   </div>
   <div id="share_result" class="result" hidden></div>
-  <div class="job" id="job_share" hidden><p id="phase_share" class="phase"></p><pre id="log_share"></pre></div>
+  <div class="job" id="job_share" hidden><div class="actions"><p id="phase_share" class="phase"></p><button id="cancel_share" style="margin-left:auto" hidden>Cancel</button></div><pre id="log_share"></pre></div>
 </section>
 
 <section class="step">
@@ -214,7 +214,7 @@ _SHELL = """<!doctype html>
   </div>
   <p id="ab_hint" class="hint"></p>
   <div id="ab_result" class="result" hidden></div>
-  <div class="job" id="job_ab" hidden><p id="phase_ab" class="phase"></p><pre id="log_ab"></pre></div>
+  <div class="job" id="job_ab" hidden><div class="actions"><p id="phase_ab" class="phase"></p><button id="cancel_ab" style="margin-left:auto" hidden>Cancel</button></div><pre id="log_ab"></pre></div>
 </section>
 <script src="/panel.js"></script>
 </body></html>
@@ -314,6 +314,9 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         if path == '/api/scaffold':
             self._scaffold(root, self._read_json_body())
             return
+        if path.startswith('/api/cancel/'):
+            self._cancel_job(path[len('/api/cancel/'):])
+            return
         self.send_error(404, 'not found')
 
     # --- job helpers ---------------------------------------------------------------------------
@@ -371,6 +374,17 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         jid = secrets.token_urlsafe(6)
         registry[jid] = job
         self._send_json({'job': jid}, code=202)
+
+    def _cancel_job(self, jid: str) -> None:
+        """Stop a running job from the UI (the v029_0 Cancel button). Terminates the spawned verb
+        process via ``jobs.Job.cancel()``; the stream then emits its terminal event with ``cancelled``
+        set so the panel reads 'cancelled' rather than 'failed'. 404 if there is no such job."""
+        job = self.server.bobframes_jobs.get(jid)              # type: ignore[attr-defined]
+        if job is None:
+            self._send_json({'error': 'no such job'}, code=404)
+            return
+        job.cancel()
+        self._send_json({'ok': True, 'cancelled': True})
 
     def _open_report(self, root: str, rel: str | None = None) -> None:
         """Open a rendered page in the user's default browser (in-process; the panel runs on the user's
@@ -451,7 +465,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
                     self.wfile.flush()
                     continue
                 if item is jobs.DONE:
-                    self.wfile.write(f'event: done\ndata: {json.dumps({"rc": job.rc})}\n\n'.encode('utf-8'))
+                    self.wfile.write(f'event: done\ndata: {json.dumps({"rc": job.rc, "cancelled": job.cancelled})}\n\n'.encode('utf-8'))
                     self.wfile.flush()
                     return
                 self.wfile.write(f'data: {json.dumps(cls.feed(item))}\n\n'.encode('utf-8'))

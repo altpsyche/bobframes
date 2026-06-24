@@ -6,9 +6,9 @@
 // validate it directly (tests/test_ui_js_parses.py + the ci.yml node --check step).
   var TOKEN = new URLSearchParams(location.search).get("t") || "";
   var RUNS = [];
-  var RUN_T = { phase: "phase", log: "log", job: "job_run" };
-  var SHARE_T = { phase: "phase_share", log: "log_share", job: "job_share" };
-  var AB_T = { phase: "phase_ab", log: "log_ab", job: "job_ab" };
+  var RUN_T = { phase: "phase", log: "log", job: "job_run", cancel: "cancel_run" };
+  var SHARE_T = { phase: "phase_share", log: "log_share", job: "job_share", cancel: "cancel_share" };
+  var AB_T = { phase: "phase_ab", log: "log_ab", job: "job_ab", cancel: "cancel_ab" };
   function esc(s){var d=document.createElement("div");d.textContent=(s==null?"":String(s));return d.innerHTML;}
   function el(id){return document.getElementById(id);}
   function badge(id, good, text){ el(id).className = "badge " + (good ? "good" : "warn"); el(id).textContent = text; }
@@ -82,8 +82,11 @@
       el(t.phase).textContent = p;
     };
     es.addEventListener("done", function(ev){
-      var rc = JSON.parse(ev.data).rc;
-      el(t.phase).innerHTML = (rc === 0) ? '<span class="ok">done</span>' : '<span class="bad">failed (exit ' + esc(rc) + ')</span>';
+      var d = JSON.parse(ev.data), rc = d.rc;
+      el(t.phase).innerHTML = d.cancelled ? '<span class="muted">cancelled</span>'
+                            : (rc === 0) ? '<span class="ok">done</span>'
+                            : '<span class="bad">failed (exit ' + esc(rc) + ')</span>';
+      if (t.cancel) el(t.cancel).hidden = true;
       es.close();
       if (onDone) onDone(rc, log.textContent);   // caller surfaces results / refreshes state (per-action)
     });
@@ -97,10 +100,17 @@
   }
   function startJob(path, body, t, onDone){       // streamed subprocess (ingest / render / package / ab)
     el(t.job).hidden = false; el(t.log).textContent = ""; el(t.phase).textContent = "starting...";
+    if (t.cancel) el(t.cancel).hidden = true;     // shown once we have a job id to cancel
     postJSON(path, body)
       .then(function(r){ if (r.status === 409) throw new Error("a job is already running"); if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-      .then(function(j){ stream(j.job, t, onDone); })
+      .then(function(j){ t.jobId = j.job; if (t.cancel) { el(t.cancel).hidden = false; el(t.cancel).disabled = false; } stream(j.job, t, onDone); })
       .catch(function(e){ el(t.phase).innerHTML = '<span class="bad">' + esc(e.message) + '</span>'; });
+  }
+  function cancelJob(t){                           // stop the running job (POST /api/cancel/<job>)
+    if (!t.jobId) return;
+    el(t.cancel).disabled = true; el(t.phase).textContent = "cancelling...";
+    // the stream's terminal 'done' (cancelled) sets the final phase + hides the button; re-enable on error.
+    postJSON("/api/cancel/" + t.jobId, {}).catch(function(){ el(t.cancel).disabled = false; });
   }
   function action(path, body, onok, errId){       // one-shot (open / serve): show the JSON result
     errId = errId || "share_result";
@@ -148,4 +158,7 @@
       .then(function(j){ el("sc_msg").innerHTML = (j.created ? "Created " : "Already exists: ") + "<code>" + esc(j.path) + "</code>. Drop your .rdc files there, then Ingest."; loadState(); })
       .catch(function(e){ el("sc_msg").innerHTML = '<span class="bad">' + esc(e.message) + '</span>'; });
   };
+  el("cancel_run").onclick = function(){ cancelJob(RUN_T); };
+  el("cancel_share").onclick = function(){ cancelJob(SHARE_T); };
+  el("cancel_ab").onclick = function(){ cancelJob(AB_T); };
   loadState();
