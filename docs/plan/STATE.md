@@ -34,7 +34,14 @@ active_release: v0.2.9 (OPEN 2026-06-24 on feat/v029-panel-polish, off main @ v0
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.9 v029_4 DONE 2026-06-24 (aria-live on the progress + result regions). aria-live="polite" on the job
+current:        v0.2.9 v029_5 DONE 2026-06-24 (A/B: link every report in the pair). GET /api/ab/reports?base=&cmp= ->
+                _ab_reports lists `_reports/ab/<base>_vs_<cmp>/*.html` ({name,rel}; key-guarded vs separators/.. -> 400;
+                un-rendered -> []); panel.js showAbReports() links each, openAbReport() opens one via the traversal-guarded
+                /api/open without wiping the list. Replaces the old single summary.html link. 419 green `-m "not browser"`
+                (was 415; +4) / 3 deselected; node --check + browser populate-smoke green; 5 golden_env byte-unchanged; no
+                new dep. **MED tier v029_0..5 COMPLETE.** NEXT = v029_6 (reveal output folder: POST /api/reveal ->
+                os.startfile, Windows). commit doc commits/v029/v029_5_ab_all_reports.md.
+                (prior: v029_4 DONE 2026-06-24 -- aria-live on the progress + result regions. aria-live="polite" on the job
                 phase regions (phase/phase_share/phase_ab), result boxes (share_result/ab_result), and action status lines
                 (sc_msg/config_msg/root_msg/ab_hint) so a screen reader announces job completion + outcomes; the streaming
                 log <pre>s are deliberately NOT aria-live (would flood the reader). SCOPING (ADR-23): errors render into the
@@ -1455,14 +1462,14 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    v029_5 -- A/B: link every report in the pair, not just summary.html (MED finding). After an A/B run,
-                enumerate the pair's emitted files under `_reports/ab/<base>_vs_<cmp>/` and link each (reuse the
-                traversal-guarded _open_report(rel), server.py). Likely a new read endpoint (e.g. GET /api/ab/reports?base=&cmp=
-                or fold into /api/state) returning the pair's report list; panel.js renders the links in ab_result; each
-                opens via POST /api/open {path:rel} (already validated). Done-when: after an A/B run the result box links
-                each report in the pair + each opens (traversal -> 400); tests; node --check + browser green;
-                `-m "not browser"` green; `-m golden_env` byte-unchanged; no new dep. Then v029_6..13 (LOW polish + close-out;
-                see the plan). _version bump 0.2.8->0.2.9 + CHANGELOG [0.2.9] at the v029_13 close-out; open
+next_action:    v029_6 -- reveal output folder (LOW finding; first of the LOW tier). Add `POST /api/reveal {path?}` ->
+                os.startfile(dirname) on the output dir (Windows-only, matches v1); a "Reveal in folder" action on the
+                package/serve result in panel.js. Traversal-guarded like _open_report. Done-when: reveal opens the folder
+                (mock os.startfile in tests); traversal -> 400; node --check + browser green; `-m "not browser"` green;
+                `-m golden_env` byte-unchanged; no new dep. Then v029_7..12 (LOW: log copy/download, prune job registry,
+                serve list/stop, RUN-col dedup, favicon, narrow-width) + v029_13 close-out (version bump 0.2.8->0.2.9 +
+                CHANGELOG [0.2.9] + open the v0.2.9 PR; tag after merge). See the plan
+                ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md. _version bump 0.2.8->0.2.9 + CHANGELOG [0.2.9] at the v029_13 close-out; open
                 the v0.2.9 PR when the track's gates are green, tag v0.2.9 after merge. Read `docs/plan/STATE.md` first next
                 session (plan-driven); approved UI-improvement plan ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md.
                 CARRY-OVER (independent, own commit): FINDINGS R-19 -- the
@@ -1614,6 +1621,11 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-24 — v0.2.9 v029_5 DONE (commits/v029/v029_5_ab_all_reports.md, feat/v029-panel-polish). A/B links every report
+  in the pair: GET /api/ab/reports?base=&cmp= lists `_reports/ab/<pair>/*.html` (key-guarded -> 400; un-rendered -> []);
+  panel.js links each, opens via the traversal-guarded /api/open without wiping the list. 419 green `-m "not browser"`
+  (+4) / 3 deselected; node --check + browser green; 5 golden_env byte-unchanged; no new dep. MED tier v029_0..5 COMPLETE.
+  NEXT = v029_6 (reveal output folder).
 - 2026-06-24 — v0.2.9 v029_4 DONE (commits/v029/v029_4_aria_live.md, feat/v029-panel-polish). aria-live="polite" on the
   progress (phase x3) + result (share/ab) + action-status (sc/config/root/ab_hint) regions so a screen reader announces
   completion; logs left non-live (would flood). Errors render into the same polite regions (announced, not interrupting --
