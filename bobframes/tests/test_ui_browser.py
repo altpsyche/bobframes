@@ -131,3 +131,29 @@ def test_narrow_viewport_has_no_horizontal_overflow(tmp_path):
             _eval(chrome, _WAIT_POPULATED, await_promise=True)
             overflow = _eval(chrome, "document.documentElement.scrollWidth - window.innerWidth")
     assert overflow <= 1, f'horizontal overflow at 480px: scrollWidth - innerWidth = {overflow}'
+
+
+_FEED_REPLAY = """(function(){
+  applyProgress(RUN_T, {line:'replay: 3 captures', phase:'replay', replay_done:0, replay_total:3});
+  applyProgress(RUN_T, {line:'  2: rc=0', phase:'replay', replay_done:2, replay_total:3});
+  var b = document.getElementById('bar_run');
+  return JSON.stringify({hidden: b.hidden, value: b.value, max: b.max});
+})()"""
+
+
+def test_replay_progress_bar_fills(tmp_path):
+    """v029_14: feeding scripted replay lines through the real panel JS fills the per-capture progress
+    bar (value/max bound to replay_done/replay_total). Drives applyProgress() in a real browser."""
+    if not shoot.find_chrome():
+        pytest.skip('Chrome not found')
+    root = make_capture_root(tmp_path)
+    with running(root) as (httpd, port):
+        url = f'http://127.0.0.1:{port}/?t={httpd.bobframes_token}'
+        with shoot.Chrome() as chrome:
+            s = chrome.session
+            chrome.cdp.call('Page.navigate', {'url': url}, session=s)
+            chrome.cdp.wait_event('Page.loadEventFired', session=s)
+            _eval(chrome, _WAIT_POPULATED, await_promise=True)
+            bar = json.loads(_eval(chrome, _FEED_REPLAY))
+    assert bar['hidden'] is False, 'progress bar stayed hidden during replay'
+    assert bar['value'] == 2 and bar['max'] == 3, bar          # 2 of 3 captures replayed

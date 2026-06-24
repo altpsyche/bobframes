@@ -6,9 +6,9 @@
 // validate it directly (tests/test_ui_js_parses.py + the ci.yml node --check step).
   var TOKEN = new URLSearchParams(location.search).get("t") || "";
   var RUNS = [];
-  var RUN_T = { phase: "phase", log: "log", job: "job_run", cancel: "cancel_run" };
-  var SHARE_T = { phase: "phase_share", log: "log_share", job: "job_share", cancel: "cancel_share" };
-  var AB_T = { phase: "phase_ab", log: "log_ab", job: "job_ab", cancel: "cancel_ab" };
+  var RUN_T = { phase: "phase", log: "log", job: "job_run", cancel: "cancel_run", bar: "bar_run" };
+  var SHARE_T = { phase: "phase_share", log: "log_share", job: "job_share", cancel: "cancel_share", bar: "bar_share" };
+  var AB_T = { phase: "phase_ab", log: "log_ab", job: "job_ab", cancel: "cancel_ab", bar: "bar_ab" };
   function esc(s){var d=document.createElement("div");d.textContent=(s==null?"":String(s));return d.innerHTML;}
   function el(id){return document.getElementById(id);}
   function badge(id, good, text){ el(id).className = "badge " + (good ? "good" : "warn"); el(id).textContent = text; }
@@ -90,24 +90,28 @@
         el("root").innerHTML = '<span class="bad">Could not load state ('+esc(e.message)+'). Open the panel via the link printed in the terminal (it carries the session token).</span>';
       });
   }
+  function applyProgress(t, d){      // one stdout line -> log + phase strip + replay progress bar
+    var log = el(t.log);
+    log.textContent += d.line + "\n"; log.scrollTop = log.scrollHeight;
+    var p = d.phase || "running";
+    if (d.replay_total) {            // the only countable phase (per-capture replay, sequential)
+      p += "  -  replay " + d.replay_done + "/" + d.replay_total;
+      if (t.bar) { var b = el(t.bar); b.hidden = false; b.max = d.replay_total; b.value = d.replay_done; }
+    }
+    el(t.phase).textContent = p;
+  }
   function stream(job, t, onDone){
     var es = new EventSource("/api/stream/" + job + "?t=" + encodeURIComponent(TOKEN));
-    var log = el(t.log);
-    es.onmessage = function(ev){
-      var d = JSON.parse(ev.data);
-      log.textContent += d.line + "\n"; log.scrollTop = log.scrollHeight;
-      var p = d.phase || "running";
-      if (d.replay_total) p += "  -  replay " + d.replay_done + "/" + d.replay_total;
-      el(t.phase).textContent = p;
-    };
+    es.onmessage = function(ev){ applyProgress(t, JSON.parse(ev.data)); };
     es.addEventListener("done", function(ev){
       var d = JSON.parse(ev.data), rc = d.rc;
       el(t.phase).innerHTML = d.cancelled ? '<span class="muted">cancelled</span>'
                             : (rc === 0) ? '<span class="ok">done</span>'
                             : '<span class="bad">failed (exit ' + esc(rc) + ')</span>';
       if (t.cancel) el(t.cancel).hidden = true;
+      if (t.bar) el(t.bar).hidden = true;          // clear the bar; the phase shows the outcome
       es.close();
-      if (onDone) onDone(rc, log.textContent);   // caller surfaces results / refreshes state (per-action)
+      if (onDone) onDone(rc, el(t.log).textContent);   // caller surfaces results / refreshes state (per-action)
     });
   }
   function postJSON(path, body){
@@ -120,6 +124,7 @@
   function startJob(path, body, t, onDone){       // streamed subprocess (ingest / render / package / ab)
     el(t.job).hidden = false; el(t.log).textContent = ""; el(t.phase).textContent = "starting...";
     if (t.cancel) el(t.cancel).hidden = true;     // shown once we have a job id to cancel
+    if (t.bar) { el(t.bar).hidden = true; el(t.bar).value = 0; }   // reset the replay bar for this run
     postJSON(path, body)
       .then(function(r){ if (r.status === 409) throw new Error("a job is already running"); if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
       .then(function(j){ t.jobId = j.job; if (t.cancel) { el(t.cancel).hidden = false; el(t.cancel).disabled = false; } stream(j.job, t, onDone); })

@@ -212,7 +212,7 @@ _SHELL = r"""<!doctype html>
     </div>
     <p class="hint">Accent colors re-hue the report; applied by "Rebuild reports only".</p>
   </details>
-  <div class="job" id="job_run" hidden><div class="actions"><p id="phase" class="phase" aria-live="polite"></p><button id="copy_run" style="margin-left:auto">Copy log</button><button id="dl_run">Download</button><button id="cancel_run" hidden>Cancel</button></div><pre id="log"></pre></div>
+  <div class="job" id="job_run" hidden><div class="actions"><p id="phase" class="phase" aria-live="polite"></p><button id="copy_run" style="margin-left:auto">Copy log</button><button id="dl_run">Download</button><button id="cancel_run" hidden>Cancel</button></div><progress id="bar_run" max="1" value="0" hidden></progress><pre id="log"></pre></div>
 </section>
 
 <section class="step">
@@ -227,7 +227,7 @@ _SHELL = r"""<!doctype html>
     <label><input type="checkbox" id="pkg_redact"> Redact (scrub provenance + paths)</label>
   </div>
   <div id="share_result" class="result" hidden aria-live="polite"></div>
-  <div class="job" id="job_share" hidden><div class="actions"><p id="phase_share" class="phase" aria-live="polite"></p><button id="copy_share" style="margin-left:auto">Copy log</button><button id="dl_share">Download</button><button id="cancel_share" hidden>Cancel</button></div><pre id="log_share"></pre></div>
+  <div class="job" id="job_share" hidden><div class="actions"><p id="phase_share" class="phase" aria-live="polite"></p><button id="copy_share" style="margin-left:auto">Copy log</button><button id="dl_share">Download</button><button id="cancel_share" hidden>Cancel</button></div><progress id="bar_share" max="1" value="0" hidden></progress><pre id="log_share"></pre></div>
 </section>
 
 <section class="step">
@@ -239,7 +239,7 @@ _SHELL = r"""<!doctype html>
   </div>
   <p id="ab_hint" class="hint" aria-live="polite"></p>
   <div id="ab_result" class="result" hidden aria-live="polite"></div>
-  <div class="job" id="job_ab" hidden><div class="actions"><p id="phase_ab" class="phase" aria-live="polite"></p><button id="copy_ab" style="margin-left:auto">Copy log</button><button id="dl_ab">Download</button><button id="cancel_ab" hidden>Cancel</button></div><pre id="log_ab"></pre></div>
+  <div class="job" id="job_ab" hidden><div class="actions"><p id="phase_ab" class="phase" aria-live="polite"></p><button id="copy_ab" style="margin-left:auto">Copy log</button><button id="dl_ab">Download</button><button id="cancel_ab" hidden>Cancel</button></div><progress id="bar_ab" max="1" value="0" hidden></progress><pre id="log_ab"></pre></div>
 </section>
 <script src="/panel.js"></script>
 </body></html>
