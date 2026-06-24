@@ -6,6 +6,7 @@ so the tests exercise the real HTTP surface (token gating, JSON shape) without a
 from __future__ import annotations
 
 import contextlib
+import json
 import os
 import threading
 import urllib.request
@@ -44,4 +45,12 @@ def running(root: str):
 def get(port: int, path: str, headers: dict | None = None):
     """GET http://127.0.0.1:<port><path>; returns the response (raises HTTPError on >=400)."""
     req = urllib.request.Request(f'http://127.0.0.1:{port}{path}', headers=headers or {})
+    return urllib.request.urlopen(req, timeout=5)
+
+
+def post(port: int, path: str, token: str, body: dict):
+    """POST JSON with the session token; returns the response (raises HTTPError on >=400)."""
+    req = urllib.request.Request(
+        f'http://127.0.0.1:{port}{path}', data=json.dumps(body).encode('utf-8'), method='POST',
+        headers={'Content-Type': 'application/json', 'X-Bobframes-Token': token})
     return urllib.request.urlopen(req, timeout=5)

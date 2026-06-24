@@ -22,10 +22,23 @@ active_release: v0.2.8 (DEV -- opened 2026-06-24 on feat/v028-ui-control-panel; 
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.8 v028_1 DONE 2026-06-24 (control page + read-only /api/state + security guard). NEXT = v028_2 (the
-                subprocess job runner + SSE progress + POST /api/ingest: spawn `python -m bobframes.run` [the _render_watch
-                precedent], stream its [HH:MM:SS] stdout over Server-Sent Events GET /api/stream/<job> with a terminal
-                return-code event; client stage strip + per-capture replay bar + raw log pane; test_ui_jobs mocked spawn).
+current:        v0.2.8 v028_2 DONE 2026-06-24 (subprocess job runner + SSE progress + POST /api/ingest). NEXT = v028_3
+                (share & explore: POST /api/render [+ theme flags later], /api/package [light/redact via package.build],
+                /api/open [webbrowser.open root_index_html], /api/serve [the _cmd_serve body, opt. extracted to
+                serve.serve_forever]). v028_2 as-built: NEW bobframes/ui/jobs.py (build_run_argv mirrors _cmd_ingest;
+                spawn() = Popen python -m bobframes.run [the _render_watch precedent, NOT in-process]; Job pumps stdout
+                ->queue on a daemon thread + DONE sentinel + .rc; the single monkeypatch seam for GPU-free tests) + NEW
+                bobframes/ui/progress.py (server-side Classifier.feed(line)->{line,phase,replay_done,replay_total} on
+                run.py's stable _log substrings; raw line always carried -- ADR-23). server.py: bobframes_jobs registry,
+                token-gated POST /api/ingest (coerced body, one-job-at-a-time->409, ->202 {job}), GET /api/stream/<job>
+                (text/event-stream, classified data: events + :keepalive each idle sec for the 600s replay + event:done
+                with rc, Connection:close; token via query since EventSource can't set headers). Control page gained the
+                Run card (force/render-only/workers + Ingest) consuming the EventSource into a stage line + raw log,
+                refreshing drops on clean exit. NEW test_ui_progress (3) + test_ui_jobs (5); _ui_util.post added.
+                VERIFIED (mocked spawn, no GPU -- ADR-6 discipline): 8/8 new + full `-m "not browser"` 381 passed / 2
+                deselected (was 373; +8; no regression; no golden refresh). No new dependency.
+                commit doc commits/v028/v028_2_job_runner_sse.md.
+                (prior: v028_1 DONE 2026-06-24 -- control page + read-only /api/state + security guard.)
                 v028_1 as-built: bobframes/ui/server.py gained panel_state(root) [tools via config.resolve_tool_verbose
                 a la _cmd_check; drops via discovery.find_drops; None if root missing] + control_page() [server-rendered
                 HTML + vanilla JS, no framework/router/build step; reads ?t= token, fetches /api/state, renders tools +

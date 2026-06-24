@@ -21,6 +21,7 @@ import http.server
 import json
 import logging
 import os
+import queue
 import secrets
 import sys
 import threading
@@ -28,6 +29,7 @@ import webbrowser
 from urllib.parse import parse_qs, urlparse
 
 from .. import errors
+from . import jobs, progress
 
 _logger = logging.getLogger('bobframes')
 
@@ -104,6 +106,14 @@ def control_page() -> str:
 <p class="muted" id="root">Loading...</p>
 <div class="card"><h2>RenderDoc tools</h2><div id="tools">...</div></div>
 <div class="card"><h2>Capture drops</h2><div id="drops">...</div></div>
+<div class="card"><h2>Run pipeline</h2>
+  <label><input type="checkbox" id="force"> force re-ingest (rebuild from captures)</label><br>
+  <label><input type="checkbox" id="render_only"> render only (rebuild reports from existing data)</label><br>
+  <label>workers <input type="number" id="workers" min="1" style="width:4rem"></label>
+  <button id="ingest">Ingest</button>
+  <p id="phase" class="muted"></p>
+  <pre id="log" style="max-height:18rem;overflow:auto"></pre>
+</div>
 <script>
   var TOKEN = new URLSearchParams(location.search).get("t") || "";
   function esc(s){var d=document.createElement("div");d.textContent=(s==null?"":String(s));return d.innerHTML;}
@@ -128,12 +138,44 @@ def control_page() -> str:
       el("drops").innerHTML = "<table><thead><tr><th>Area</th><th>Run</th><th>Captures</th></tr></thead><tbody>"+rows+"</tbody></table>";
     }
   }
-  fetch("/api/state?t=" + encodeURIComponent(TOKEN))
-    .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
-    .then(render)
-    .catch(function(e){
-      el("root").innerHTML = '<span class="bad">Could not load state ('+esc(e.message)+'). Open the panel via the link printed in the terminal (it carries the session token).</span>';
+  function loadState(){
+    fetch("/api/state?t=" + encodeURIComponent(TOKEN))
+      .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+      .then(render)
+      .catch(function(e){
+        el("root").innerHTML = '<span class="bad">Could not load state ('+esc(e.message)+'). Open the panel via the link printed in the terminal (it carries the session token).</span>';
+      });
+  }
+  function stream(job){
+    var es = new EventSource("/api/stream/" + job + "?t=" + encodeURIComponent(TOKEN));
+    var log = el("log");
+    es.onmessage = function(ev){
+      var d = JSON.parse(ev.data);
+      log.textContent += d.line + "\n"; log.scrollTop = log.scrollHeight;
+      var p = d.phase || "running";
+      if (d.replay_total) p += "  -  replay " + d.replay_done + "/" + d.replay_total;
+      el("phase").textContent = p;
+    };
+    es.addEventListener("done", function(ev){
+      var rc = JSON.parse(ev.data).rc;
+      el("phase").innerHTML = (rc === 0) ? '<span class="ok">done (exit 0)</span>' : '<span class="bad">exit ' + esc(rc) + '</span>';
+      es.close();
+      if (rc === 0) loadState();          // refresh the drops list after a successful run
     });
+  }
+  el("ingest").onclick = function(){
+    var body = { force: el("force").checked, render_only: el("render_only").checked, workers: el("workers").value };
+    el("log").textContent = ""; el("phase").textContent = "starting...";
+    fetch("/api/ingest?t=" + encodeURIComponent(TOKEN), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Bobframes-Token": TOKEN },
+      body: JSON.stringify(body)
+    })
+      .then(function(r){ if (r.status === 409) throw new Error("a job is already running"); if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(function(j){ stream(j.job); })
+      .catch(function(e){ el("phase").innerHTML = '<span class="bad">' + esc(e.message) + '</span>'; });
+  };
+  loadState();
 </script>
 </body></html>
 """
@@ -177,7 +219,87 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             root = getattr(self.server, 'bobframes_root', '.')
             self._send_json(panel_state(root))
             return
+        if path.startswith('/api/stream/'):
+            if not self._has_valid_token(query):           # EventSource can only auth via the query
+                self._send_json({'error': 'forbidden'}, code=403)
+                return
+            job = self.server.bobframes_jobs.get(path[len('/api/stream/'):])  # type: ignore[attr-defined]
+            if job is None:
+                self.send_error(404, 'no such job')
+                return
+            self._stream(job)
+            return
         self.send_error(404, 'not found')
+
+    def do_POST(self) -> None:  # noqa: N802
+        parsed = urlparse(self.path)
+        path, query = parsed.path, parse_qs(parsed.query)
+        if not self._has_valid_token(query):
+            self._send_json({'error': 'forbidden'}, code=403)
+            return
+        if path == '/api/ingest':
+            self._start_job(jobs.build_run_argv(
+                self.server.bobframes_root, **self._ingest_opts(self._read_json_body())))  # type: ignore[attr-defined]
+            return
+        self.send_error(404, 'not found')
+
+    # --- job helpers ---------------------------------------------------------------------------
+
+    def _read_json_body(self) -> dict:
+        n = int(self.headers.get('Content-Length') or 0)
+        if not n:
+            return {}
+        try:
+            return json.loads(self.rfile.read(n).decode('utf-8') or '{}')
+        except (ValueError, UnicodeDecodeError):
+            return {}
+
+    @staticmethod
+    def _ingest_opts(body: dict) -> dict:
+        """Coerce the POST body into build_run_argv kwargs (defensive: never trust the client)."""
+        workers = body.get('workers')
+        return {
+            'force': bool(body.get('force')),
+            'render_only': bool(body.get('render_only')),
+            'workers': int(workers) if str(workers or '').isdigit() else None,
+            'pixel_grid': int(body['pixel_grid']) if str(body.get('pixel_grid') or '').isdigit() else 4,
+        }
+
+    def _start_job(self, argv: list[str]) -> None:
+        registry = self.server.bobframes_jobs                # type: ignore[attr-defined]
+        if any(j.running() for j in registry.values()):      # one job at a time (single-user panel)
+            self._send_json({'error': 'busy'}, code=409)
+            return
+        job = jobs.Job(jobs.spawn(argv))
+        jid = secrets.token_urlsafe(6)
+        registry[jid] = job
+        self._send_json({'job': jid}, code=202)
+
+    def _stream(self, job: jobs.Job) -> None:
+        """Server-Sent Events: relay the job's stdout (classified) until DONE; final `done` event
+        carries the return code. No Content-Length (streamed); connection closes at end."""
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/event-stream; charset=utf-8')
+        self.send_header('Cache-Control', 'no-cache')
+        self.send_header('Connection', 'close')
+        self.end_headers()
+        cls = progress.Classifier()
+        try:
+            while True:
+                try:
+                    item = job.q.get(timeout=1.0)
+                except queue.Empty:
+                    self.wfile.write(b': keepalive\n\n')    # keep the slow 600s replay connection warm
+                    self.wfile.flush()
+                    continue
+                if item is jobs.DONE:
+                    self.wfile.write(f'event: done\ndata: {json.dumps({"rc": job.rc})}\n\n'.encode('utf-8'))
+                    self.wfile.flush()
+                    return
+                self.wfile.write(f'data: {json.dumps(cls.feed(item))}\n\n'.encode('utf-8'))
+                self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError):
+            return                                            # client navigated away; the job keeps running
 
     def log_message(self, fmt: str, *args) -> None:  # noqa: A003
         _logger.debug('ui: %s - %s', self.address_string(), fmt % args)
@@ -193,6 +315,7 @@ def build_server(root: str, *, bind: str = '127.0.0.1', port: int = 8765) -> htt
     httpd.daemon_threads = True
     httpd.bobframes_root = os.path.abspath(root)         # type: ignore[attr-defined]
     httpd.bobframes_token = secrets.token_urlsafe(32)    # type: ignore[attr-defined]
+    httpd.bobframes_jobs = {}                            # type: ignore[attr-defined]  id -> jobs.Job
     return httpd
 
 
