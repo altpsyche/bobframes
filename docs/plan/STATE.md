@@ -34,7 +34,15 @@ active_release: v0.2.9 (OPEN 2026-06-24 on feat/v029-panel-polish, off main @ v0
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.9 v029_11 DONE 2026-06-24 (favicon). A tiny inline SVG _FAVICON (neutral rounded square + "b") served
+current:        v0.2.9 v029_12 DONE 2026-06-24 (narrow-width responsive check). panel.css gains a @media (max-width:560px)
+                breakpoint: smaller margins/padding, input/select max-width:100%+box-sizing (fixed-width fields reflow),
+                table display:block+overflow-x:auto (wide tables scroll, never force page overflow). New browser smoke at a
+                480px viewport asserts scrollWidth-innerWidth<=1 (no horizontal overflow). CSS-only. 432 green `-m "not
+                browser"` (unchanged; browser-marked test -> 5 deselected); node --check + 3 browser smokes green; 5
+                golden_env byte-unchanged; no new dep. ALL 13 FEATURE FINDINGS DONE (v029_0..12). NEXT = v029_13 CLOSE-OUT:
+                _version 0.2.8->0.2.9 + CHANGELOG [0.2.9] + STATE/INDEX/ROADMAP; confirm golden byte-unchanged + clean wheel
+                ships ui/assets/*; then (GATED) the v0.2.9 PR -> tag -> PyPI. commit doc commits/v029/v029_12_narrow_width.md.
+                (prior: v029_11 DONE 2026-06-24 -- favicon. A tiny inline SVG _FAVICON (neutral rounded square + "b") served
                 at GET /favicon.ico (image/svg+xml, no token) + a <link rel="icon"> in the shell head, so the tab isn't a
                 broken icon / console 404. 432 green `-m "not browser"` (was 430; +2) / 4 deselected; node --check + browser
                 populate-smoke green; 5 golden_env byte-unchanged; no new dep. NEXT = v029_12 (narrow-width responsive
@@ -1499,15 +1507,17 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    v029_12 -- narrow-width responsive check (LOW finding; last feature before close-out). Add a narrow-width
-                breakpoint to panel.css (e.g. <=560px: smaller body margins, .fields/.actions stack, table stays readable)
-                + a `browser`-marked smoke at a narrow viewport (Emulation.setDeviceMetricsOverride width ~480) asserting no
-                horizontal overflow (document.documentElement.scrollWidth <= innerWidth). Done-when: panel.css has the
-                breakpoint; the narrow smoke passes; node --check green; `-m "not browser"` green; `-m golden_env`
-                byte-unchanged; no new dep. Then v029_13 close-out: _version 0.2.8->0.2.9 + CHANGELOG [0.2.9] (bobframes
-                lint) + STATE/INDEX/ROADMAP; confirm golden byte-unchanged + clean wheel ships ui/assets/*; open the v0.2.9
-                PR off feat/v029-panel-polish -> main; before tag run `pytest -m browser`; tag v0.2.9 after merge -> ci.yml
-                publish -> PyPI (GATED on user authorization). See ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md. _version bump 0.2.8->0.2.9 + CHANGELOG [0.2.9] at the v029_13 close-out; open
+next_action:    v029_13 -- CLOSE-OUT (all 13 feature findings v029_0..12 DONE). (1) _version 0.2.8 -> 0.2.9
+                (bobframes/_version.py; SCHEMA_VERSION stays 3). (2) CHANGELOG: a new `## [0.2.9] - <date>` section listing
+                the panel-polish set (cancel, write-config, root input, ingest estimate, aria-live, A/B all-pair links,
+                reveal, log copy/download, prune registry, serve list/stop, RUN dedup, favicon, narrow-width) + the
+                JS-execution guard / externalized assets from 0.2.8 if not already covered; + compare link-refs;
+                `bobframes lint CHANGELOG.md` exit 0. (3) STATE/INDEX/ROADMAP close-out. (4) Confirm `-m golden_env` 5
+                byte-unchanged (NO golden refresh -- the version bump appears in no rendered HTML; the panel emits none) +
+                `uv build --wheel` ships bobframes/ui/assets/panel.{js,css} + the favicon is inline (no asset file). (5) GATED
+                on user authorization: open the v0.2.9 PR off feat/v029-panel-polish -> main; before tag run
+                `pytest -m browser` (Chrome) as sign-off; merge; tag v0.2.9 -> ci.yml publish -> PyPI + GitHub Release;
+                verify clean-venv `uv pip install bobframes==0.2.9`. See ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md. _version bump 0.2.8->0.2.9 + CHANGELOG [0.2.9] at the v029_13 close-out; open
                 the v0.2.9 PR when the track's gates are green, tag v0.2.9 after merge. Read `docs/plan/STATE.md` first next
                 session (plan-driven); approved UI-improvement plan ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md.
                 CARRY-OVER (independent, own commit): FINDINGS R-19 -- the
@@ -1659,6 +1669,10 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-24 — v0.2.9 v029_12 DONE (commits/v029/v029_12_narrow_width.md, feat/v029-panel-polish). Narrow-width: a
+  @media(max-width:560px) breakpoint in panel.css (reflow inputs, scrollable table, tighter spacing) + a browser smoke at
+  480px asserting no horizontal overflow. ALL 13 feature findings (v029_0..12) DONE. 432 green `-m "not browser"` (5
+  deselected); node --check + 3 browser smokes green; 5 golden_env byte-unchanged; no new dep. NEXT = v029_13 close-out.
 - 2026-06-24 — v0.2.9 v029_11 DONE (commits/v029/v029_11_favicon.md, feat/v029-panel-polish). Favicon: a tiny inline SVG
   served at GET /favicon.ico (image/svg+xml) + a <link rel="icon"> in the shell head -> no broken-tab icon / console 404.
   432 green `-m "not browser"` (+2) / 4 deselected; node --check + browser green; 5 golden_env byte-unchanged; no new dep.

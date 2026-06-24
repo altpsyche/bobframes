@@ -112,3 +112,22 @@ def test_run_column_dedupes_shared_run(tmp_path):
             cells = json.loads(_eval(chrome, _RUN_CELLS))
     assert len(cells) == 2, cells
     assert cells[0] == '2026-06-01_r1' and cells[1] == '', cells   # shown once, then de-duped
+
+
+def test_narrow_viewport_has_no_horizontal_overflow(tmp_path):
+    """v029_12: at a narrow viewport the page must not overflow horizontally (the panel.css breakpoint
+    reflows fixed-width inputs + lets a wide table scroll)."""
+    if not shoot.find_chrome():
+        pytest.skip('Chrome not found')
+    root = make_capture_root(tmp_path)
+    with running(root) as (httpd, port):
+        url = f'http://127.0.0.1:{port}/?t={httpd.bobframes_token}'
+        with shoot.Chrome() as chrome:
+            s = chrome.session
+            chrome.cdp.call('Emulation.setDeviceMetricsOverride',
+                            {'width': 480, 'height': 800, 'deviceScaleFactor': 1, 'mobile': False}, session=s)
+            chrome.cdp.call('Page.navigate', {'url': url}, session=s)
+            chrome.cdp.wait_event('Page.loadEventFired', session=s)
+            _eval(chrome, _WAIT_POPULATED, await_promise=True)
+            overflow = _eval(chrome, "document.documentElement.scrollWidth - window.innerWidth")
+    assert overflow <= 1, f'horizontal overflow at 480px: scrollWidth - innerWidth = {overflow}'
