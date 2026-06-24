@@ -38,6 +38,7 @@
         : '<div><span class="bad">missing</span> <strong>'+esc(x.name)+'</strong><pre>'+esc(x.message)+'</pre></div>';
     }).join("");
     el("tools").innerHTML = t || '<p class="muted">none</p>';
+    el("tools_fix").hidden = !!allok;     // offer the starter-config helper only when a tool is missing
     if (s.drops === null) {
       el("drops").innerHTML = '<p class="bad">Folder not found: <code>'+esc(s.root)+'</code></p>';
       badge("drops_badge", false, "no folder");
@@ -161,4 +162,15 @@
   el("cancel_run").onclick = function(){ cancelJob(RUN_T); };
   el("cancel_share").onclick = function(){ cancelJob(SHARE_T); };
   el("cancel_ab").onclick = function(){ cancelJob(AB_T); };
+  el("write_config").onclick = function(){
+    el("config_msg").textContent = "writing...";
+    postJSON("/api/config/stub", {})
+      .then(function(r){ return r.json().then(function(j){ if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; }); })
+      .then(function(j){
+        el("config_msg").innerHTML = (j.written ? "Wrote " : "Already exists: ") + "<code>" + esc(j.path)
+          + "</code>. Edit its [tools] section to point at your RenderDoc, then reload this page.";
+        loadState();   // re-resolve (tools stay missing until the user edits the stub; config_msg persists)
+      })
+      .catch(function(e){ el("config_msg").innerHTML = '<span class="bad">' + esc(e.message) + '</span>'; });
+  };
   loadState();

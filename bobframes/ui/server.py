@@ -153,6 +153,11 @@ _SHELL = """<!doctype html>
 <section class="step">
   <div class="step-head"><h2>RenderDoc tools</h2><span id="tools_badge" class="badge">...</span></div>
   <div id="tools">Loading...</div>
+  <div id="tools_fix" hidden>
+    <p class="hint">No RenderDoc tool found. Write a starter <code>.bobframes.toml</code> here, then edit its <code>[tools]</code> section to point at your RenderDoc install (or add RenderDoc to your PATH).</p>
+    <button id="write_config">Write starter config</button>
+    <p id="config_msg" class="hint"></p>
+  </div>
 </section>
 
 <section class="step">
@@ -314,6 +319,9 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         if path == '/api/scaffold':
             self._scaffold(root, self._read_json_body())
             return
+        if path == '/api/config/stub':
+            self._write_config_stub(root)
+            return
         if path.startswith('/api/cancel/'):
             self._cancel_job(path[len('/api/cancel/'):])
             return
@@ -427,6 +435,14 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         self.server.bobframes_serve = info             # type: ignore[attr-defined]
         self.server.bobframes_serve_httpd = httpd      # type: ignore[attr-defined]
         self._send_json(info)
+
+    def _write_config_stub(self, root: str) -> None:
+        """Write a starter ``.bobframes.toml`` to ``root`` (the v029_1 first-run helper when a RenderDoc
+        tool is missing -- a config dead end today). Idempotent: ``written`` is False if it already
+        exists (no overwrite). The user then edits its ``[tools]`` section to point at their install."""
+        from .. import config
+        path, written = config.write_config_stub(root)
+        self._send_json({'path': path, 'written': written})
 
     def _scaffold(self, root: str, body: dict) -> None:
         """Opt-in: create a convention-correct empty capture folder ``<root>/<area>/<date[_label]>/`` so
