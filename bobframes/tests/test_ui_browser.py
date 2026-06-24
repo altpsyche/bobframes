@@ -48,7 +48,8 @@ new Promise(function(resolve){
       resolve({
         root: root.textContent,
         tools: document.getElementById('tools').innerHTML,
-        drops: document.getElementById('drops').innerHTML
+        drops: document.getElementById('drops').innerHTML,
+        estimate: document.getElementById('ingest_estimate').textContent
       });
     } else if ((waited += step) >= deadline) {
       clearInterval(timer);
@@ -76,3 +77,5 @@ def test_panel_js_runs_and_populates_state(tmp_path):
     assert 'Loading' not in state['root'] and 'proj' in state['root'], state['root']
     assert 'renderdoccmd' in state['tools'], 'tool rows did not render'
     assert 'Town' in state['drops'] or 'Bay' in state['drops'], 'drops table did not render'
+    # v029_3: the honest ingest estimate computed in-browser (4 captures x 600s budget -> ~40 min).
+    assert '4 capture' in state['estimate'] and 'min' in state['estimate'], state['estimate']
