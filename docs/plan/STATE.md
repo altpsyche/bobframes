@@ -6,7 +6,14 @@
 > defer to this.
 
 ```
-active_release: v0.2.9 (RELEASE-READY 2026-06-24 on feat/v029-panel-polish, off main @ v0.2.8; spine v029_0..13 ALL DONE)
+active_release: v0.2.9 SHIPPED 2026-06-24 -- bobframes 0.2.9 LIVE on PyPI, published by the `v0.2.9` tag CI run (Trusted
+                Publishing/OIDC, ci.yml publish job, ADR-13) + a GitHub Release; verified clean-venv `uv pip install
+                bobframes==0.2.9` -> 0.2.9 schema 3 pyarrow 21.0.0. Spine v029_0..19 ALL DONE (the 13 planned findings
+                v029_0..12 + close-out v029_13 + test-feedback follow-ups v029_14 replay-bar / v029_15 folder-wording /
+                v029_16 progress-bar-all-jobs / v029_17 folder-disclosure / v029_18 captures-run-caption + v029_19 the CI
+                fix that unblocked the release). NOTE: the first v0.2.9 tag run FLAKED on a headless-Chrome screenshot test
+                in CI's gate (test_browser_shots) -> v029_19 excluded the opt-in browser marker from the CI gate
+                (`-m "not golden_env and not browser"`); re-tagged onto that fix -> green -> published.
                 -- the `bobframes ui` PANEL POLISH track: resolved every review finding from the approved UI-improvement plan
                 ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md, each its OWN commit (v029_0..13). MED: cancel
                 job, write-starter-config button, root-path input, honest ingest estimate, aria-live, A/B all-pair links.
@@ -38,7 +45,13 @@ active_release: v0.2.9 (RELEASE-READY 2026-06-24 on feat/v029-panel-polish, off 
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.9 v029_19 DONE 2026-06-24 (CI fix -- don't gate the release on opt-in browser tests). The v0.2.9 tag
+current:        v0.2.9 SHIPPED 2026-06-24 -- bobframes 0.2.9 LIVE on PyPI (verified clean-venv `uv pip install
+                bobframes==0.2.9` -> 0.2.9 schema 3 pyarrow 21.0.0) + GitHub Release, via the re-pushed `v0.2.9` tag CI run.
+                The `bobframes ui` panel-polish epic is COMPLETE (spine v029_0..19). v029_19 (the last commit) fixed a CI
+                misconfig the release exposed: the gate ran `-m "not golden_env"` (incl. opt-in browser tests) and flaked on
+                a headless-Chrome screenshot; now `-m "not golden_env and not browser"` (browser stays local + pre-tag
+                sign-off). NEXT: nothing pending on v0.2.9; the next release line is v0.3 (CI/automation -- see ROADMAP).
+                (prior: v0.2.9 v029_19 DONE 2026-06-24 (CI fix -- don't gate the release on opt-in browser tests). The v0.2.9 tag
                 run FAILED on one cell (py3.12/pyarrow21) in test_browser_shots.test_harness_captures_light_dark_print -- a
                 pre-existing headless-Chrome pixel-diff FLAKE (passed on the other 4 cells), which (publish needs test)
                 skipped publish + blocked the release. Root cause (ADR-23, not a gate-narrowing): CI's gating step ran
@@ -1567,7 +1580,14 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    v0.2.9 RELEASE SEQUENCE (GATED on user authorization; epic COMPLETE -- spine v029_0..16 DONE incl. the
+next_action:    v0.2.9 SHIPPED -- nothing pending on this line. The `bobframes ui` panel (v0.2.8) + its polish track
+                (v0.2.9) are both LIVE on PyPI. Next release line per ROADMAP is v0.3 (CI/automation surface: `--json`
+                everywhere, exit-code gating, `verify`/`diff`/`export`, isolated stages -- commits c20..c26), which also
+                builds the structured api.py/events.py event seam that ADR-47 names as the durable replacement for the
+                panel's stdout-parsing progress (the convergence target). When starting v0.3: read this STATE first, then
+                ROADMAP.md + open a commits/v03/ unit. Approved UI plan (now fully delivered):
+                ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md.
+                (SUPERSEDED v0.2.9 release checklist, now DONE:) spine v029_0..16 DONE incl. the
                 test-feedback follow-ups v029_14 replay bar / v029_15 folder wording / v029_16 progress-bar-for-all;
                 _version
                 0.2.9, 432 `-m "not browser"` + 5 golden_env byte-unchanged, lint exit 0, clean wheel ships ui/assets/*,
@@ -1739,6 +1759,10 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-24 — v0.2.9 SHIPPED to PyPI. Re-pushed the `v0.2.9` tag onto the v029_19 ci-fix commit; the tag CI run went
+  green (matrix + node --check; golden_env byte-unchanged) and the publish job shipped to PyPI (Trusted Publishing/OIDC) +
+  a GitHub Release. Verified clean-venv `uv pip install bobframes==0.2.9` -> 0.2.9 schema 3 pyarrow 21.0.0. The `bobframes
+  ui` panel-polish epic (v029_0..19) is COMPLETE; next release line is v0.3 (CI/automation).
 - 2026-06-24 — v0.2.9 v029_19 DONE (commits/v029/v029_19_ci_browser_not_gating.md, main). The v0.2.9 tag run flaked on one
   cell in test_browser_shots (headless-Chrome pixel-diff) and skipped publish. Root cause: CI gated on `-m "not golden_env"`
   which includes the opt-in browser tests; fixed to `-m "not golden_env and not browser"` (ADR-23 -- aligns with the
