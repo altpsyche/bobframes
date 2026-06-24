@@ -162,6 +162,15 @@
   el("cancel_run").onclick = function(){ cancelJob(RUN_T); };
   el("cancel_share").onclick = function(){ cancelJob(SHARE_T); };
   el("cancel_ab").onclick = function(){ cancelJob(AB_T); };
+  el("set_root").onclick = function(){           // repoint the panel at another folder (POST /api/root)
+    var p = el("root_input").value;
+    if (!p) { el("root_msg").innerHTML = '<span class="bad">enter a folder path</span>'; return; }
+    el("root_msg").textContent = "opening...";
+    postJSON("/api/root", { path: p })
+      .then(function(r){ return r.json().then(function(j){ if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; }); })
+      .then(function(s){ el("root_msg").textContent = ""; el("root_input").value = ""; render(s); })   // server returns fresh state
+      .catch(function(e){ el("root_msg").innerHTML = '<span class="bad">' + esc(e.message) + '</span>'; });
+  };
   el("write_config").onclick = function(){
     el("config_msg").textContent = "writing...";
     postJSON("/api/config/stub", {})
