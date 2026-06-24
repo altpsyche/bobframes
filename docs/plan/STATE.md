@@ -6,25 +6,34 @@
 > defer to this.
 
 ```
-active_release: v0.2.7 (DEV -- opened 2026-06-17; aggregation-consistency "confusing averages" burndown, commits/v027/;
-                approved plan ~/.claude/plans/check-aggregation-findings-read-it-elegant-kite.md; audit
-                docs/plan/reference/AGGREGATION_FINDINGS.md -> intaken as D-13..D-16 + Q-10..Q-13 + H-41; ADR-46 drafts in
-                v027_1)    (prior: v0.2.6 SHIPPED 2026-06-06    -- bobframes 0.2.6 LIVE on PyPI, published by the `v0.2.6` tag CI run
+active_release: v0.2.8 (DEV -- opened 2026-06-24 on feat/v028-ui-control-panel; the `bobframes ui` ZERO-dep local-web
+                control panel for QA/product (ingest/generate/package + serve/open + A/B + theming in a browser),
+                commits/v028/, ADR-47; approved plan ~/.claude/plans/lets-plan-on-improving-bubbly-bumblebee.md. Spawns
+                the existing verbs as subprocesses + streams stdout over SSE; emits NO report HTML (golden gate untouched);
+                NO new dependency. Commit spine v028_0..-5.)
+                (prior: v0.2.7 SHIPPED 2026-06-24 -- bobframes 0.2.7 LIVE on PyPI, published by the `v0.2.7` tag CI run
+                (Trusted Publishing/OIDC, ci.yml publish job, ADR-13) + a GitHub Release; verified clean-venv
+                `uv pip install bobframes==0.2.7` -> 0.2.7 schema 3 pyarrow 21. v027_5 close-out: _version 0.2.6->0.2.7 +
+                ONE CHANGELOG [0.2.7]; 365 green incl golden_env.)
+                (prior: v0.2.6 SHIPPED 2026-06-06    -- bobframes 0.2.6 LIVE on PyPI, published by the `v0.2.6` tag CI run
                 (PyPI Trusted Publishing / OIDC, no token; ci.yml publish job, ADR-13) + a GitHub Release
                 (https://github.com/altpsyche/bobframes/releases/tag/v0.2.6); verified by a clean-venv
                 `uv pip install bobframes==0.2.6` -> version 0.2.6 schema 3 pyarrow 21. v0.1 COMPLETE (0.1.0 on PyPI
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.7 RELEASE-READY -- v027_5 close-out DONE 2026-06-24 (_version 0.2.6->0.2.7; ONE CHANGELOG `## [0.2.7] -
-                2026-06-24` [Changed: ADR-46 aggregation consistency + R-20/R-21/R-22 Fixed], lint exit 0; 365 passed / 2
-                deselected `-m "not browser"` incl golden_env on the canonical .venv py3.12.13/pyarrow21; clean wheel
-                bobframes-0.2.7-py3-none-any.whl bakes _version 0.2.7 + replay_main force-included). REMAINING = `git tag
-                v0.2.7` -> push -> the ci.yml publish job (PyPI Trusted Publishing/OIDC + GitHub Release, ADR-13), GATED ON
-                EXPLICIT AUTHORIZATION (outward/irreversible). AFTER SHIP: v0.2.8 = the `bobframes ui` local-web control
-                panel (approved plan ~/.claude/plans/lets-plan-on-improving-bubbly-bumblebee.md; fresh
-                feat/v028-ui-control-panel branch off main). commit doc commits/v027/v027_5_closeout_ship.md.
-                (prior: v0.2.7 aggregation burndown COMPLETE (v027_0..-4 DONE).    (status:
+current:        v0.2.8 v028_0 DONE 2026-06-24 (`ui` verb + control-panel skeleton + ADR-47). NEXT = v028_1 (the generated
+                control page on `/` + read-only `GET /api/state` [tools via config.resolve_tool_verbose, drops via
+                discovery.find_drops] + the security guard: localhost bind + a random per-session token on every `/api/*`;
+                tests test_ui_state / test_ui_security / test_ui_smoke). v028_0 as-built: ADR-47 appended (frontends =
+                SURFACE above the ADR-40 taxonomy; zero-dep stdlib-http panel that DRIVES the verbs; localhost+token guard;
+                no JS-framework governance line); NEW bobframes/ui/{__init__,server}.py (ThreadingHTTPServer on 127.0.0.1
+                serving a placeholder, clean start/stop, Ctrl+C->4, bind-fail->1); `_cmd_ui` + `ui` subparser
+                ([root=.] [--port 8765] [--bind 127.0.0.1] [--no-open], lazy import so core never loads ui). VERIFIED:
+                `ui --help` ok; in-process start/stop smoke 200+placeholder on `/`, 404 on `/nope`, stops cleanly; 365
+                passed / 2 deselected `-m "not browser"` (no regression; no report HTML -> golden gate untouched, no
+                refresh). No new dependency. commit doc commits/v028/v028_0_ui_verb_skeleton.md.
+                (prior: v0.2.7 RELEASE close-out v027_5 DONE 2026-06-24; v0.2.7 aggregation burndown COMPLETE (v027_0..-4 DONE).    (status:
                 v0.2.7-4 DONE 2026-06-17 (record Q-13 + close out; docs/gates + naming-gate test only, NO production code).
                 Q-13 recorded as correct-as-designed (overdraw pooled-micro reject% + MAX "worst", not changed). NEW
                 test_no_vague_estimator_labels (ADR-46 naming gate: no "avg"/"average"/"(med)"/"typical" in any rendered
@@ -321,9 +330,11 @@ last_session:   2026-06-24 — v0.2.7 RELEASE close-out (v027_5_closeout_ship). 
                 stale bottom link-refs; `lint CHANGELOG.md` exit 0. Verified on the canonical .venv (py3.12.13/pyarrow21):
                 365 passed / 2 deselected `-m "not browser"` (golden_env byte-gate included; nothing broke post bump); clean
                 `uv build --wheel` -> bobframes-0.2.7-py3-none-any.whl bakes _version 0.2.7 + replay_main force-included.
-                RELEASE-READY; `git tag v0.2.7` + push (tag-triggered CI publish to PyPI + GitHub Release) GATED ON
-                AUTHORIZATION. NEXT: tag on authorization, then v0.2.8 = the `bobframes ui` control panel (approved plan,
-                feat/v028-ui-control-panel branch off main). CARRY-OVER: R-19 (own commit).
+                SHIPPED: annotated tag `v0.2.7` pushed -> the ci.yml publish job went green end-to-end (test matrix +
+                build + PyPI Trusted Publishing + GitHub Release); verified clean-venv `uv pip install bobframes==0.2.7`
+                -> `bobframes 0.2.7  schema 3  pyarrow 21.0.0`. THEN opened v0.2.8 on a fresh feat/v028-ui-control-panel
+                branch off main and landed v028_0 (ADR-47 + `ui` verb + bobframes/ui/ skeleton; 365 green, no regression).
+                NEXT: v028_1 (control page + /api/state + security guard). CARRY-OVER: R-19 (own commit).
                 [prior] 2026-06-17 — v0.2.7 OPENED + v0.2.7-0..-4 DONE: the aggregation-consistency "confusing averages" burndown is
                 COMPLETE (D-13..D-16 / Q-10..Q-13 / H-41 all ☑; ADR-46 frozen; 352->362 green; goldens refreshed bounded per
                 commit, data path frozen throughout). NEXT = the v0.2.7 RELEASE ship (own commit). Also fixed a PRE-EXISTING bug found while eyeballing the

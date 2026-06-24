@@ -960,3 +960,35 @@ the 1-capture-per-frame path `per_frame` is a no-op, so numeric churn is confine
 constructed tests. Enforced by new tests (trend<->health per-frame parity; headline<->per-area-column
 relationship; an "avg/(med) absent from rendered labels" naming gate). Extends c16v/G-29; implemented across
 v0.2.7-0..-4.
+
+### ADR-47 — human frontends are a layer above the verb taxonomy; the first is a zero-dep local-web control panel `ui` (v0.2.8)
+**Context.** v1's CLI (argparse, `[HH:MM:SS]` log lines) is a barrier for QA/product teammates who need to
+ingest -> generate -> package reports but are not comfortable in a terminal: they must get the
+`<Area>/<YYYY-MM-DD[_label]>/*.rdc` convention exactly right, resolve the RenderDoc tools, recall the
+verb/flag sequence, and read raw logs through a 600s/capture replay with no progress affordance. ROADMAP
+names "install + first report < 5 min" as an explicit adoptability goal. ADR-37 rejected a bespoke offline
+SPA *for the report artifacts* on durability/maintenance-tax grounds; ADR-40 froze the PRESENTATION verbs
+(`render`/`package`/`serve`) and the four-contract verb taxonomy; ADR-17 keeps the core pyarrow-only. None
+of these address a tool that DRIVES the pipeline for a human. A TUI (still a terminal; adds a dep) and a
+packaged desktop GUI (heavy build/signing/maintenance) were weighed and set aside.
+**Decision (user-confirmed 2026-06-24).** A human-facing frontend is a SURFACE layered ABOVE the ADR-40
+verb taxonomy, not a fifth verb category. The first frontend is `bobframes ui`: a ZERO-dependency local-web
+control panel on the stdlib `http.server` (the pattern `serve` already proves), bound to `127.0.0.1`, that
+opens the browser and DRIVES the existing verbs. Rules: (1) it MUST NOT re-implement pipeline/render/package
+logic -- read-only state via in-process calls (config/discovery), heavy work by SPAWNING the existing CLI
+verbs as subprocesses and streaming their stdout (the `_render_watch` precedent), so a qrenderdoc native
+fault or the `os.environ` / `config._ACTIVE` singleton mutation in `run.main` cannot corrupt the panel;
+(2) it MUST NOT become a report artifact -- it emits no report HTML, so the golden gate and ADR-37's
+static-output contract are untouched (reaffirmed); (3) it MUST NOT pull a dependency into core -- pyarrow-only
+stands (reaffirms ADR-17); distribution is `pipx install bobframes` -> `bobframes ui`, all features, no extra,
+no `.exe`; (4) because POST endpoints spawn processes, a minimal guard is mandatory: localhost bind + a random
+per-session token required on every `/api/*` call. **Hard governance limit:** the panel never accretes a JS
+framework, a client-side router, or a build step. If it ever needs one, that is the trigger to promote a real
+GUI as an optional extra -- not to grow a bespoke web app inside core (the exact tax ADR-37 refused).
+**Consequence.** A new top-level `ui` verb + a `bobframes/ui/` package; no change to the verb taxonomy or any
+existing verb. Progress in v1 is derived by PARSING the verbs' stdout `[HH:MM:SS]` lines (raw lines always
+shown verbatim, nothing hidden -- ADR-23); the durable replacement is the structured `api.py` + `events.py`
+orchestration seam, which is the v0.3 `--json` prerequisite and will absorb the panel's progress channel then
+(one seam -> CLI, `--json`, verify/diff, the panel) -- recorded as deliberate scoping, not rework. Golden gate
+unaffected (no report HTML emitted). Approved plan
+`~/.claude/plans/lets-plan-on-improving-bubbly-bumblebee.md`; implemented across v0.2.8 (v028_0..-5).
