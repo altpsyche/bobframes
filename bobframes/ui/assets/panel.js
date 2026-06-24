@@ -90,15 +90,16 @@
         el("root").innerHTML = '<span class="bad">Could not load state ('+esc(e.message)+'). Open the panel via the link printed in the terminal (it carries the session token).</span>';
       });
   }
-  function applyProgress(t, d){      // one stdout line -> log + phase strip + replay progress bar
+  function applyProgress(t, d){      // one stdout line -> log + phase strip + progress bar
     var log = el(t.log);
     log.textContent += d.line + "\n"; log.scrollTop = log.scrollHeight;
-    var p = d.phase || "running";
-    if (d.replay_total) {            // the only countable phase (per-capture replay, sequential)
-      p += "  -  replay " + d.replay_done + "/" + d.replay_total;
-      if (t.bar) { var b = el(t.bar); b.hidden = false; b.max = d.replay_total; b.value = d.replay_done; }
+    var inReplay = d.phase === "replay" && d.replay_total;
+    if (t.bar) {                     // a bar for EVERY job: exact during replay, "working" otherwise
+      var b = el(t.bar); b.hidden = false;
+      if (inReplay) { b.max = d.replay_total; b.value = d.replay_done; }   // determinate: exact k/n
+      else { b.removeAttribute("value"); }   // indeterminate "working" -- no honest per-item count here
     }
-    el(t.phase).textContent = p;
+    el(t.phase).textContent = (d.phase || "running") + (inReplay ? ("  -  replay " + d.replay_done + "/" + d.replay_total) : "");
   }
   function stream(job, t, onDone){
     var es = new EventSource("/api/stream/" + job + "?t=" + encodeURIComponent(TOKEN));
@@ -124,7 +125,7 @@
   function startJob(path, body, t, onDone){       // streamed subprocess (ingest / render / package / ab)
     el(t.job).hidden = false; el(t.log).textContent = ""; el(t.phase).textContent = "starting...";
     if (t.cancel) el(t.cancel).hidden = true;     // shown once we have a job id to cancel
-    if (t.bar) { el(t.bar).hidden = true; el(t.bar).value = 0; }   // reset the replay bar for this run
+    if (t.bar) { el(t.bar).hidden = false; el(t.bar).removeAttribute("value"); }   // "working" from the start
     postJSON(path, body)
       .then(function(r){ if (r.status === 409) throw new Error("a job is already running"); if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
       .then(function(j){ t.jobId = j.job; if (t.cancel) { el(t.cancel).hidden = false; el(t.cancel).disabled = false; } stream(j.job, t, onDone); })
