@@ -55,20 +55,24 @@
       el("drops").innerHTML = '<p class="muted">No captures found. Expected layout: <code>'+esc(s.convention)+'</code></p>';
       badge("drops_badge", false, "empty");
     } else {
-      // Group by run and show the run key ONCE per group (de-dup): areas captured in the same run
-      // otherwise repeat the key down the column (e.g. 7 areas x 4 runs).
+      // De-dup the run WITHOUT blank cells: if every area is in ONE run, show it once as a caption and
+      // drop the column; if runs differ, keep a Run column populated on EVERY row (never blank).
       var sorted = s.drops.slice().sort(function(a, b){
         var ka = runKey(a), kb = runKey(b);
         return ka < kb ? -1 : ka > kb ? 1 : (a.area < b.area ? -1 : a.area > b.area ? 1 : 0);
       });
-      var prevRun = null;
-      var rows = sorted.map(function(d){
-        var key = runKey(d);
-        var runCell = (key === prevRun) ? "" : esc(key);   // blank when same as the row above
-        prevRun = key;
-        return "<tr><td>"+esc(d.area)+"</td><td>"+runCell+"</td><td>"+esc(d.n_captures)+" capture(s)</td></tr>";
-      }).join("");
-      el("drops").innerHTML = "<table><thead><tr><th>Area</th><th>Run</th><th>Captures</th></tr></thead><tbody>"+rows+"</tbody></table>";
+      var runKeys = sorted.map(runKey).filter(function(k, i, a){ return a.indexOf(k) === i; });
+      var caption, head, rows;
+      if (runKeys.length === 1) {
+        caption = '<p class="hint">Run <code>' + esc(runKeys[0]) + '</code></p>';
+        head = "<tr><th>Area</th><th>Captures</th></tr>";
+        rows = sorted.map(function(d){ return "<tr><td>"+esc(d.area)+"</td><td>"+esc(d.n_captures)+" capture(s)</td></tr>"; }).join("");
+      } else {
+        caption = "";
+        head = "<tr><th>Area</th><th>Run</th><th>Captures</th></tr>";
+        rows = sorted.map(function(d){ return "<tr><td>"+esc(d.area)+"</td><td>"+esc(runKey(d))+"</td><td>"+esc(d.n_captures)+" capture(s)</td></tr>"; }).join("");
+      }
+      el("drops").innerHTML = caption + "<table><thead>"+head+"</thead><tbody>"+rows+"</tbody></table>";
       badge("drops_badge", true, s.drops.length + " areas");
     }
     // Only let an action run when its inputs exist: Ingest needs tools + captures; the report actions
