@@ -6,16 +6,23 @@
 > defer to this.
 
 ```
-active_release: v0.2.8 (RELEASE-READY + BROWSER-VERIFIED -- opened + COMPLETED 2026-06-24 on feat/v028-ui-control-panel;
-                commit spine v028_0..-8 DONE (v028_7 = pre-ship CI JS-execution gate; v028_8 = externalize panel JS/CSS to static assets). The `bobframes ui` ZERO-dep local-web control panel for QA/product
-                (ingest/generate/package + serve/open + A/B + theming + scaffold in a browser), commits/v028/, ADR-47;
-                approved plan ~/.claude/plans/lets-plan-on-improving-bubbly-bumblebee.md. Spawns the existing verbs as
-                subprocesses + streams stdout over SSE; emits NO report HTML (golden gate untouched throughout); NO new
-                dependency. _version 0.2.7->0.2.8 + ONE CHANGELOG [0.2.8]; 401 green `-m "not browser"` + 5 golden_env
-                byte-unchanged. v028_6 added the real browser pass: fixed 2 latent bugs (panel JS never parsed in any
-                browser since v028_2; A/B link vanished) + a user-approved full UI redesign + headless light/dark sign-off
-                on the real 7-area/4-run corpus. REMAINING (gated on authorization): v0.2.8 PR -> tag v0.2.8 -> ci.yml
-                publish -> PyPI.)
+active_release: v0.2.9 (OPEN 2026-06-24 on feat/v029-panel-polish, off main @ v0.2.8) -- the `bobframes ui` PANEL POLISH
+                track: resolve every review finding from the approved UI-improvement plan
+                ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md, each its OWN commit (v029_0..13). MED: cancel
+                job, write-starter-config button, root-path input, honest ingest estimate, aria-live, A/B all-pair links.
+                LOW: reveal-in-folder, log copy/download, prune job registry, serve list/stop, RUN-col dedup, favicon,
+                narrow-width. Hard rules unchanged (ADR-47): zero new dep, stdlib http.server, no JS framework/router/build
+                step, panel DRIVES verbs + emits NO report HTML (golden gate byte-unchanged throughout), localhost+token.
+                Testing rule baked in (v028_7/8): every panel-JS change is node --check'd (CI step + pytest) and the
+                @pytest.mark.browser populate-smoke re-runs; the JS now lives in bobframes/ui/assets/panel.{js,css}. commits/v029/.
+                No new ADR (rides ADR-47/45/23). _version bump 0.2.8->0.2.9 + CHANGELOG [0.2.9] at the v029_13 close-out.
+                (prior: v0.2.8 SHIPPED 2026-06-24 -- bobframes 0.2.8 LIVE on PyPI, published by the `v0.2.8` tag CI run
+                (Trusted Publishing/OIDC, ci.yml publish job, ADR-13) + a GitHub Release; verified clean-venv
+                `uv pip install bobframes==0.2.8` -> 0.2.8 schema 3 pyarrow 21.0.0. The zero-dep `bobframes ui` local-web
+                control panel (ADR-47): spine v028_0..-8 DONE; v028_7 added the CI JS-execution gate (node --check + a
+                @pytest.mark.browser populate smoke -- the HIGH finding the release exposed) and v028_8 externalized the
+                panel JS/CSS to served static assets (the v028_2 `\n`-in-a-string bug class now structurally impossible);
+                _version 0.2.7->0.2.8 + ONE CHANGELOG [0.2.8]; 403 green `-m "not browser"` + 5 golden_env byte-unchanged.)
                 (prior: v0.2.7 SHIPPED 2026-06-24 -- bobframes 0.2.7 LIVE on PyPI, published by the `v0.2.7` tag CI run
                 (Trusted Publishing/OIDC, ci.yml publish job, ADR-13) + a GitHub Release; verified clean-venv
                 `uv pip install bobframes==0.2.7` -> 0.2.7 schema 3 pyarrow 21. v027_5 close-out: _version 0.2.6->0.2.7 +
@@ -27,8 +34,17 @@ active_release: v0.2.8 (RELEASE-READY + BROWSER-VERIFIED -- opened + COMPLETED 2
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.8 v028_8 DONE 2026-06-24 (externalize panel JS/CSS to served static assets). LAST pre-ship commit;
-                v0.2.8 RELEASE-READY (spine v028_0..-8 DONE). The client JS + static CSS moved out of the server._CONTROL_PAGE
+current:        v0.2.9 v029_0 DONE 2026-06-24 (Cancel a running job + open the v0.2.9 polish track). POST /api/cancel/<job>
+                wires the already-present jobs.Job.cancel() + a Cancel button per job panel; the SSE terminal event now
+                carries `cancelled` so the panel reads 'cancelled' not 'failed' (honest labelling, ADR-23). 406 green
+                `-m "not browser"` (was 403; +3 cancel tests) / 3 deselected; node --check + browser populate-smoke green; 5
+                golden_env BYTE-UNCHANGED, NO refresh; no new dep. Track opened (active_release=v0.2.9, commits/v029/,
+                INDEX+ROADMAP rows). NEXT = v029_1 (write-starter-config button: POST /api/config/stub ->
+                config.write_config_stub on a missing-tool row). commit doc commits/v029/v029_0_cancel_job.md.
+                (prior: v0.2.8 SHIPPED 2026-06-24 -- bobframes 0.2.8 LIVE on PyPI via the v0.2.8 tag CI run; clean-venv
+                `uv pip install bobframes==0.2.8` -> 0.2.8 verified. v028_8 DONE -- externalize panel JS/CSS to served static
+                assets, LAST pre-ship commit; v0.2.8 RELEASE-READY at that point (spine v028_0..-8 DONE). The client JS +
+                static CSS moved out of the server._CONTROL_PAGE
                 Python string into bobframes/ui/assets/panel.{js,css}, served at GET /panel.js (text/javascript) + /panel.css
                 (text/css), untokened (no secret/state; token stays in the page URL). control_page() -> a JS-free HTML shell
                 (_SHELL, plain string) + a tiny inline <style> injecting chrome.design_tokens_css() (the only dynamic CSS;
@@ -431,7 +447,14 @@ current:        v0.2.8 v028_8 DONE 2026-06-24 (externalize panel JS/CSS to serve
                 token-validity guard + preview gallery; migrate summary.py off its inline <style> (visual parity).
                 NOTE: c16p (v0.2 release) COMPLETE - PyPI bobframes 0.2.0 LIVE; tag v0.2.0 -> 765a4db on main.
                 GIT: c16y + c16v are in the WORKING TREE, NOT yet committed (user hasn't asked to commit).)
-last_session:   2026-06-24 — v0.2.8 v028_7 + v028_8 DONE (pre-ship hardening per the approved UI-improvement plan
+last_session:   2026-06-24 — v0.2.8 SHIPPED to PyPI + v0.2.9 OPENED. Merged feat/v028-ui-control-panel -> main, tagged
+                v0.2.8 (ci.yml publish -> PyPI + GitHub Release), verified clean-venv `uv pip install bobframes==0.2.8` ->
+                0.2.8. Branched feat/v029-panel-polish off main and did v029_0 (Cancel a running job): POST
+                /api/cancel/<job> wires jobs.Job.cancel() + a Cancel button per job panel; SSE terminal event carries
+                `cancelled` (panel reads 'cancelled', not 'failed'). Track opened (active_release=v0.2.9, commits/v029/,
+                INDEX+ROADMAP). 406 green `-m "not browser"` (+3) / 3 deselected; node --check + browser populate-smoke
+                green; 5 golden_env byte-unchanged; no new dep. NEXT = v029_1 (write-starter-config button).
+                (prior session: v0.2.8 v028_7 + v028_8 DONE -- pre-ship hardening per the approved UI-improvement plan
                 plan-a-ui-improvement-track-sharded-sky.md): the v0.2.8 release is now RELEASE-READY with the JS-execution
                 gap closed. v028_7 -- the HIGH finding (nothing in CI parsed/ran the panel JS): a node --check pytest gate +
                 an unconditional ci.yml node --check step (+ node --version) + a @pytest.mark.browser live-panel populate
@@ -1400,17 +1423,16 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    v0.2.8 RELEASE SEQUENCE (GATED on user authorization; pre-ship hardening v028_7/8 DONE -- spine v028_0..-8
-                green, _version 0.2.8, 403 `-m "not browser"` + 5 golden_env byte-unchanged, wheel ships ui/assets/*, no new
-                dep). Steps: (1) open the v0.2.8 PR from feat/v028-ui-control-panel -> main; CI matrix green incl. the new
-                node --check step; merge. (2) git checkout main && git pull so the tag sits on the merged HEAD. (3) BEFORE
-                tagging run `pytest -m browser` locally (Chrome) as the release sign-off (node --check covers parse; this
-                covers "the live panel populates"). (4) tag `v0.2.8` + push -> ci.yml publish job (Trusted Publishing/OIDC,
-                ADR-13) -> PyPI + GitHub Release. (5) verify clean-venv `uv pip install bobframes==0.2.8` -> 0.2.8. (6) branch
-                feat/v029-panel-polish off the updated main and start the 0.2.9 polish track (v029_0 = Cancel job + track-open
-                housekeeping; then v029_1..13, each finding its own commit). Read `docs/plan/STATE.md` first next session
-                (plan-driven); approved UI-improvement plan ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md (epic
-                plan ~/.claude/plans/lets-plan-on-improving-bubbly-bumblebee.md).
+next_action:    v029_1 -- write-starter-config button (MED finding; fixes the first-run dead end when a RenderDoc tool is
+                missing). On feat/v029-panel-polish: add `POST /api/config/stub` -> config.write_config_stub(root)
+                ([config.py] write_config_stub(root)->(path,bool)); surface a "Write starter config" button on a
+                missing-tool row in panel.js; on success re-resolve tools + refresh state. Done-when: with tools
+                mocked-missing the button posts + a stub is written (idempotent: "already exists" on re-click) + state
+                refreshes; node --check + browser populate-smoke green; `-m "not browser"` green; `-m golden_env`
+                byte-unchanged; no new dep. Then v029_2..13 (each review finding its own commit; see the plan). _version
+                bump 0.2.8->0.2.9 + CHANGELOG [0.2.9] at the v029_13 close-out; open the v0.2.9 PR when the track's gates are
+                green, tag v0.2.9 after merge. Read `docs/plan/STATE.md` first next session (plan-driven); approved
+                UI-improvement plan ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md.
                 CARRY-OVER (independent, own commit): FINDINGS R-19 -- the
                 overdraw `set(by_area[area])` row-order nondeterminism on real multi-RT data (reconfirmed pre-existing at -5;
                 CARRY-OVER (independent, own commit): FINDINGS R-19 -- the
@@ -1560,6 +1582,12 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-24 — v0.2.8 SHIPPED + v0.2.9 v029_0 DONE (commits/v029/v029_0_cancel_job.md, feat/v029-panel-polish). Released
+  0.2.8: merged feat/v028-ui-control-panel -> main, tagged v0.2.8 (ci.yml publish -> PyPI + GitHub Release; the new
+  node --check gate ran green in the release CI), verified clean-venv `uv pip install bobframes==0.2.8` -> 0.2.8. Opened
+  the v0.2.9 panel-polish track off main; v029_0 = Cancel a running job: POST /api/cancel/<job> wires jobs.Job.cancel() +
+  a Cancel button per job panel; SSE terminal event carries `cancelled`. 406 green `-m "not browser"` (+3) / 3 deselected;
+  node --check + browser populate-smoke green; 5 golden_env byte-unchanged, no refresh; no new dep. NEXT = v029_1.
 - 2026-06-24 — v0.2.8 v028_8 DONE (commits/v028/v028_8_externalize_assets.md, feat/v028-ui-control-panel). Externalized the
   panel client JS + static CSS out of server._CONTROL_PAGE into bobframes/ui/assets/panel.{js,css}, served at /panel.js +
   /panel.css (untokened); control_page() is now a JS-free HTML shell + inline design-tokens <style>. Makes the v028_2

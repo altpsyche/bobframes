@@ -99,6 +99,7 @@ class Job:
         self.proc = proc
         self.q: queue.Queue = queue.Queue()
         self.rc: int | None = None
+        self.cancelled = False        # set by cancel() so the stream's terminal event reads 'cancelled'
         self._t = threading.Thread(target=self._pump, daemon=True)
         self._t.start()
 
@@ -115,5 +116,9 @@ class Job:
         return self.rc is None and self.proc.poll() is None
 
     def cancel(self) -> None:
+        """Terminate the spawned verb process (the v029_0 Cancel button). Marks the job cancelled so the
+        stream's terminal event reads 'cancelled', not 'failed'. Only the spawned process is terminated;
+        deeper replay-grandchild cleanup is run.py's concern (R-4/ADR-4), out of the panel's scope."""
         if self.proc.poll() is None:
+            self.cancelled = True
             self.proc.terminate()

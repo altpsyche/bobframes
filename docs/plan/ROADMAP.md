@@ -54,6 +54,17 @@ parity pinned to the canonical cell py3.12+pa21, [ADR-11](DECISIONS.md)).
   verdict consumers. See [v025_packaging_and_onepager_proposal.md](v025_packaging_and_onepager_proposal.md),
   ADR-39/40/41.
 
+### v0.2.9 — `bobframes ui` panel polish (S) — adoptability follow-up to v0.2.8
+- **Commits:** v029_0..13, each a review finding its own commit. MED: cancel a running job,
+  write-starter-config button, root-path input, honest ingest estimate, `aria-live`, A/B all-pair links.
+  LOW: reveal-in-folder, log copy/download, prune job registry, serve list/stop, RUN-col dedup, favicon,
+  narrow-width.
+- **Serves:** the QA/product persona — removes the panel's first-run dead-ends + unstoppable-job gap.
+- **Schema:** none; the panel emits no report HTML — **golden gate byte-unchanged throughout**.
+- **Deps / rules:** rides ADR-47 (zero new dep, stdlib http.server, no JS framework/router/build step,
+  localhost+token). Every panel-JS change is `node --check`'d + the `browser` populate-smoke re-runs
+  (the v028_7/8 gate). Approved plan `~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md`.
+
 ### v0.3 — CI/automation surface (S–M) — the high-leverage next step
 - **Commits:** c20 `--json` + `json_schema_version` → c21 config-driven regression gating → c22
   isolated `parse`/`replay` → c23 `--dry-run` → c24 `verify` → c25 `diff` → c26 `export`.
