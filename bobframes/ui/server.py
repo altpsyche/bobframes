@@ -88,9 +88,20 @@ def _run_state(root: str) -> list[dict]:
         return []
 
 
+def _replay_timeout_s(root: str) -> float:
+    """The per-capture qrenderdoc replay budget for the honest ingest estimate (v029_3). Read from the
+    resolved config for this root (``cfg.pipeline.replay_timeout_s``) via the non-mutating builder so the
+    panel never disturbs the global ``config._ACTIVE`` singleton; falls back to the documented default."""
+    from .. import config
+    try:
+        return float(config._build_config(root).pipeline.replay_timeout_s)
+    except Exception:
+        return 600.0
+
+
 def panel_state(root: str) -> dict:
     """The full read-only state the control page renders. Pure: resolves tools + discovers drops +
-    enumerates rendered runs (for the A/B picker)."""
+    enumerates rendered runs (for the A/B picker) + the per-capture replay budget (for the estimate)."""
     return {
         'root': os.path.abspath(root),
         'platform': sys.platform,
@@ -99,6 +110,7 @@ def panel_state(root: str) -> dict:
         'tools': _tool_state(),
         'drops': _drop_state(root),
         'runs': _run_state(root),
+        'replay_timeout_s': _replay_timeout_s(root),
     }
 
 
@@ -187,6 +199,7 @@ _SHELL = r"""<!doctype html>
     <button id="render">Rebuild reports only</button>
   </div>
   <p class="hint">Ingest replays every capture (slow; needs RenderDoc). Rebuild reports only re-renders the HTML from data you already ingested (fast, no replay).</p>
+  <p class="hint" id="ingest_estimate"></p>
   <details><summary>Options</summary>
     <div class="fields">
       <label><input type="checkbox" id="force"> Force re-ingest (rebuild from captures)</label>

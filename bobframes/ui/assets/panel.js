@@ -14,6 +14,7 @@
   function badge(id, good, text){ el(id).className = "badge " + (good ? "good" : "warn"); el(id).textContent = text; }
   function result(id, html){ var r = el(id); r.hidden = false; r.innerHTML = html; }
   function enable(id, ok, why){ el(id).disabled = !ok; el(id).title = ok ? "" : (why || ""); }
+  function fmtDur(s){ return s < 90 ? Math.round(s) + "s" : Math.round(s / 60) + " min"; }   // coarse, honest
   function renderRuns(runs){
     RUNS = runs || [];
     if (RUNS.length < 2) {
@@ -39,6 +40,13 @@
     }).join("");
     el("tools").innerHTML = t || '<p class="muted">none</p>';
     el("tools_fix").hidden = !!allok;     // offer the starter-config helper only when a tool is missing
+    // Honest ingest estimate: an UPPER BOUND (replay runs sequentially, the budget is a per-capture max,
+    // not the expected time -- ADR-23 phrasing). Captures = sum across the discovered drops.
+    var caps = (s.drops || []).reduce(function(a, d){ return a + (d.n_captures || 0); }, 0);
+    el("ingest_estimate").textContent = (caps && s.replay_timeout_s)
+      ? "Estimated ingest: up to ~" + fmtDur(caps * s.replay_timeout_s) + " for " + caps
+        + " capture(s) -- worst case, " + s.replay_timeout_s + "s replay budget each, run sequentially."
+      : "";
     if (s.drops === null) {
       el("drops").innerHTML = '<p class="bad">Folder not found: <code>'+esc(s.root)+'</code></p>';
       badge("drops_badge", false, "no folder");

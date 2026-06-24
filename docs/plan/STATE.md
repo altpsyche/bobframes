@@ -34,7 +34,14 @@ active_release: v0.2.9 (OPEN 2026-06-24 on feat/v029-panel-polish, off main @ v0
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.9 v029_2 DONE 2026-06-24 (root-path input: repoint without relaunching). POST /api/root {path} ->
+current:        v0.2.9 v029_3 DONE 2026-06-24 (honest ingest time estimate). panel_state gains replay_timeout_s (read from
+                the root's config via the NON-mutating config._build_config -> cfg.pipeline.replay_timeout_s; fallback
+                600.0); panel.js shows "Estimated ingest: up to ~X for N capture(s) -- worst case, Ys budget each,
+                sequential" (a labelled UPPER BOUND, ADR-23, not a promise). browser smoke extended to assert the
+                in-browser calc (4 caps x 600s -> ~40 min). 413 green `-m "not browser"` (was 411; +2) / 3 deselected; node
+                --check + browser populate-smoke green; 5 golden_env byte-unchanged; no new dep. NEXT = v029_4 (aria-live on
+                the progress/result regions). commit doc commits/v029/v029_3_ingest_estimate.md.
+                (prior: v029_2 DONE 2026-06-24 -- root-path input: repoint without relaunching. POST /api/root {path} ->
                 _set_root (dir-validated; updates httpd.bobframes_root; returns fresh panel_state) + a "Project folder"
                 input/"Open folder" button that render()s the returned state; non-dir -> 400. IN-COMMIT HARDENING: the
                 first cut put a `C:\path\to\..` placeholder in the plain-string _SHELL and Python turned `\t` into a TAB
@@ -1439,13 +1446,11 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    v029_3 -- honest ingest time estimate (MED finding). Show `n_captures x replay_timeout_s` as a labelled
-                WORST-CASE upper bound ("up to ~X min for N captures"; it's the per-capture replay budget, not expected
-                time; replay is sequential -- ADR-23 honest phrasing) before + during ingest. Source replay_timeout_s from
-                config.get_config() (config.py:75) surfaced via /api/state; pure display (the classifier already carries
-                replay_total/replay_done for the live bar). Done-when: a labelled upper-bound estimate shows pre-ingest
-                (from state) + during replay; a unit test pins the calc; node --check + browser populate-smoke green;
-                `-m "not browser"` green; `-m golden_env` byte-unchanged; no new dep. Then v029_4..13 (each review finding
+next_action:    v029_4 -- aria-live on the progress + result regions (MED finding; a11y). Add `aria-live="polite"` to the
+                per-section phase/result/log regions (assertive for the error path) so a screen reader announces job
+                completion + results. Done-when: the regions carry aria-live; the browser populate-smoke asserts the
+                attributes are present + a result region's text updates after a (mocked) action; node --check green;
+                `-m "not browser"` green; `-m golden_env` byte-unchanged; no new dep. Then v029_5..13 (each review finding
                 its own commit; see the plan). _version bump 0.2.8->0.2.9 + CHANGELOG [0.2.9] at the v029_13 close-out; open
                 the v0.2.9 PR when the track's gates are green, tag v0.2.9 after merge. Read `docs/plan/STATE.md` first next
                 session (plan-driven); approved UI-improvement plan ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md.
@@ -1598,6 +1603,11 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-24 — v0.2.9 v029_3 DONE (commits/v029/v029_3_ingest_estimate.md, feat/v029-panel-polish). Honest ingest
+  estimate: panel_state gains replay_timeout_s (root config via non-mutating _build_config; fallback 600.0); panel.js
+  shows a labelled WORST-CASE upper bound ("up to ~X for N capture(s)", ADR-23, not a promise). Browser smoke extended to
+  assert the in-browser calc (4 caps x 600s -> ~40 min). 413 green `-m "not browser"` (+2) / 3 deselected; node --check +
+  browser green; 5 golden_env byte-unchanged; no new dep. NEXT = v029_4 (aria-live).
 - 2026-06-24 — v0.2.9 v029_2 DONE (commits/v029/v029_2_root_input.md, feat/v029-panel-polish). Root-path input: POST
   /api/root {path} -> _set_root (dir-validated; updates root; returns fresh state) + a "Project folder" input/"Open folder"
   button. Caught + fixed in-commit: a `C:\path` placeholder in the plain-string _SHELL turned `\t` into a TAB
