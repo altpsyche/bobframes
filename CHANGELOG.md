@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.7] - 2026-06-24
+
+An aggregation-consistency pass plus four report/sharing correctness fixes. Every KPI now names its
+estimator and rate KPIs read on one per-frame basis, so the same metric agrees across the summary,
+dashboard, and trend. No schema change (still schema 3); parquet digests stay byte-identical on the
+same captures. `_version` 0.2.6 -> 0.2.7.
+
+### Changed
+- One canonical aggregation policy (ADR-46): every rendered KPI label names its estimator precisely --
+  `Pooled mean`, `Mean (per area)`, `Median`, `Total` -- and never a bare "avg". Rate KPIs (GPU, draws)
+  read per-frame on a single basis, so the same area's GPU now reads identically across the summary,
+  dashboard, and trend (previously e.g. `0.0356`/frame on the summary vs a raw `0.178` total on the
+  dashboard with no bridge). A naming gate (`test_no_vague_estimator_labels`) fails the build on any
+  vague estimator word. (D-13..D-16, Q-10..Q-13)
+- Regression detection unified on the per-frame basis with config-driven thresholds: `trend_table`
+  reads every KPI per frame, so a regression flag is capture-count-independent and agrees with the
+  build-health verdict (a 7-vs-5-capture run no longer reports a false +40%); the per-KPI thresholds
+  (`draws`/`vbo`/`ibo`/`program_switches`) move from code literals to the `[report]` config, with
+  defaults that reproduce the prior values. (H-41)
+- `draws_by_class` ratios use `statistics.median` (was the upper-middle `sorted[n//2]`, an off-by-one
+  on even N).
+- `aggregates.frame_counts` is the single owner of every per-(drop, area) frame count; when the
+  GPU/draws denominator and the entity-rate denominator legitimately differ (a capture that replayed
+  but exported partial entity rows), the divergence is logged as a WARNING rather than silently
+  normalized away.
+
+### Fixed
+- Run-selector dropdown did nothing on every report: the component JS runs in `<head>`, so the custom
+  element upgraded before its child `<select>` had parsed; initialization now defers to
+  `DOMContentLoaded`. (R-20)
+- Exported standalone one-pager carried dead tree-relative navigation -- a run dropdown pointing at
+  siblings not in the bundle, a breadcrumb, the dashboard link, and a "viewing an older run" banner.
+  The detached summary now strips them; the in-tree summary keeps its working navigation. (R-21)
+- Older-run report pages showed cross-drop graphs and tables spanning all runs, including ones newer
+  than the page's own run. Cross-drop renderers now scope to run history (up to and including the
+  current run) while the run picker keeps the full list. (R-22)
+
 ## [0.2.6] - 2026-06-06
 
 A build-health one-pager, a shareable `package` bundle, a server-side component system, and a full visual
@@ -123,5 +160,8 @@ First standalone release. v1 is Windows-only (the replay stage drives `qrenderdo
   `python -m _analysis.*` entry points no longer work; switch to the `bobframes` commands (see the
   migration table in the README). This is a hard rename with no compatibility shim.
 
-[Unreleased]: https://github.com/altpsyche/bobframes/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/altpsyche/bobframes/compare/v0.2.7...HEAD
+[0.2.7]: https://github.com/altpsyche/bobframes/compare/v0.2.6...v0.2.7
+[0.2.6]: https://github.com/altpsyche/bobframes/compare/v0.2.0...v0.2.6
+[0.2.0]: https://github.com/altpsyche/bobframes/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/altpsyche/bobframes/releases/tag/v0.1.0

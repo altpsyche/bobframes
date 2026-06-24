@@ -16,8 +16,15 @@ active_release: v0.2.7 (DEV -- opened 2026-06-17; aggregation-consistency "confu
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.7 aggregation burndown COMPLETE (v027_0..-4 DONE) -- NEXT = the v0.2.7 RELEASE ship (own commit:
-                _version->0.2.7 + CHANGELOG + matrix/clean-wheel verify + tag/PyPI on authorization)    (status:
+current:        v0.2.7 RELEASE-READY -- v027_5 close-out DONE 2026-06-24 (_version 0.2.6->0.2.7; ONE CHANGELOG `## [0.2.7] -
+                2026-06-24` [Changed: ADR-46 aggregation consistency + R-20/R-21/R-22 Fixed], lint exit 0; 365 passed / 2
+                deselected `-m "not browser"` incl golden_env on the canonical .venv py3.12.13/pyarrow21; clean wheel
+                bobframes-0.2.7-py3-none-any.whl bakes _version 0.2.7 + replay_main force-included). REMAINING = `git tag
+                v0.2.7` -> push -> the ci.yml publish job (PyPI Trusted Publishing/OIDC + GitHub Release, ADR-13), GATED ON
+                EXPLICIT AUTHORIZATION (outward/irreversible). AFTER SHIP: v0.2.8 = the `bobframes ui` local-web control
+                panel (approved plan ~/.claude/plans/lets-plan-on-improving-bubbly-bumblebee.md; fresh
+                feat/v028-ui-control-panel branch off main). commit doc commits/v027/v027_5_closeout_ship.md.
+                (prior: v0.2.7 aggregation burndown COMPLETE (v027_0..-4 DONE).    (status:
                 v0.2.7-4 DONE 2026-06-17 (record Q-13 + close out; docs/gates + naming-gate test only, NO production code).
                 Q-13 recorded as correct-as-designed (overdraw pooled-micro reject% + MAX "worst", not changed). NEW
                 test_no_vague_estimator_labels (ADR-46 naming gate: no "avg"/"average"/"(med)"/"typical" in any rendered
@@ -307,7 +314,17 @@ current:        v0.2.7 aggregation burndown COMPLETE (v027_0..-4 DONE) -- NEXT =
                 token-validity guard + preview gallery; migrate summary.py off its inline <style> (visual parity).
                 NOTE: c16p (v0.2 release) COMPLETE - PyPI bobframes 0.2.0 LIVE; tag v0.2.0 -> 765a4db on main.
                 GIT: c16y + c16v are in the WORKING TREE, NOT yet committed (user hasn't asked to commit).)
-last_session:   2026-06-17 — v0.2.7 OPENED + v0.2.7-0..-4 DONE: the aggregation-consistency "confusing averages" burndown is
+last_session:   2026-06-24 — v0.2.7 RELEASE close-out (v027_5_closeout_ship). Bumped _version 0.2.6->0.2.7; wrote the ONE
+                CHANGELOG `## [0.2.7] - 2026-06-24` (Changed: ADR-46 aggregation consistency + named estimators / per-frame
+                regression + config thresholds / statistics.median / frame_counts single-owner + divergence-warning; Fixed:
+                R-20 run-selector init, R-21 detached one-pager dead nav, R-22 older-run cross-drop scope) + repaired the
+                stale bottom link-refs; `lint CHANGELOG.md` exit 0. Verified on the canonical .venv (py3.12.13/pyarrow21):
+                365 passed / 2 deselected `-m "not browser"` (golden_env byte-gate included; nothing broke post bump); clean
+                `uv build --wheel` -> bobframes-0.2.7-py3-none-any.whl bakes _version 0.2.7 + replay_main force-included.
+                RELEASE-READY; `git tag v0.2.7` + push (tag-triggered CI publish to PyPI + GitHub Release) GATED ON
+                AUTHORIZATION. NEXT: tag on authorization, then v0.2.8 = the `bobframes ui` control panel (approved plan,
+                feat/v028-ui-control-panel branch off main). CARRY-OVER: R-19 (own commit).
+                [prior] 2026-06-17 — v0.2.7 OPENED + v0.2.7-0..-4 DONE: the aggregation-consistency "confusing averages" burndown is
                 COMPLETE (D-13..D-16 / Q-10..Q-13 / H-41 all ☑; ADR-46 frozen; 352->362 green; goldens refreshed bounded per
                 commit, data path frozen throughout). NEXT = the v0.2.7 RELEASE ship (own commit). Also fixed a PRE-EXISTING bug found while eyeballing the
                 rendered corpus: the run-selector dropdown did nothing in any report (R-20) -- the component JS rides in
