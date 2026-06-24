@@ -34,7 +34,16 @@ active_release: v0.2.9 (OPEN 2026-06-24 on feat/v029-panel-polish, off main @ v0
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.9 v029_3 DONE 2026-06-24 (honest ingest time estimate). panel_state gains replay_timeout_s (read from
+current:        v0.2.9 v029_4 DONE 2026-06-24 (aria-live on the progress + result regions). aria-live="polite" on the job
+                phase regions (phase/phase_share/phase_ab), result boxes (share_result/ab_result), and action status lines
+                (sc_msg/config_msg/root_msg/ab_hint) so a screen reader announces job completion + outcomes; the streaming
+                log <pre>s are deliberately NOT aria-live (would flood the reader). SCOPING (ADR-23): errors render into the
+                same polite regions so they ARE announced (politely, not interrupting); a true interrupting assertive/
+                role=alert deferred (per-message region juggling for marginal benefit). 415 green `-m "not browser"` (was
+                413; +2) / 3 deselected; node --check + browser populate-smoke green (confirms #phase aria-live in the live
+                DOM); 5 golden_env byte-unchanged; no new dep. NEXT = v029_5 (A/B: link every report in the pair, not just
+                summary.html). commit doc commits/v029/v029_4_aria_live.md.
+                (prior: v029_3 DONE 2026-06-24 -- honest ingest time estimate. panel_state gains replay_timeout_s (read from
                 the root's config via the NON-mutating config._build_config -> cfg.pipeline.replay_timeout_s; fallback
                 600.0); panel.js shows "Estimated ingest: up to ~X for N capture(s) -- worst case, Ys budget each,
                 sequential" (a labelled UPPER BOUND, ADR-23, not a promise). browser smoke extended to assert the
@@ -1446,12 +1455,14 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    v029_4 -- aria-live on the progress + result regions (MED finding; a11y). Add `aria-live="polite"` to the
-                per-section phase/result/log regions (assertive for the error path) so a screen reader announces job
-                completion + results. Done-when: the regions carry aria-live; the browser populate-smoke asserts the
-                attributes are present + a result region's text updates after a (mocked) action; node --check green;
-                `-m "not browser"` green; `-m golden_env` byte-unchanged; no new dep. Then v029_5..13 (each review finding
-                its own commit; see the plan). _version bump 0.2.8->0.2.9 + CHANGELOG [0.2.9] at the v029_13 close-out; open
+next_action:    v029_5 -- A/B: link every report in the pair, not just summary.html (MED finding). After an A/B run,
+                enumerate the pair's emitted files under `_reports/ab/<base>_vs_<cmp>/` and link each (reuse the
+                traversal-guarded _open_report(rel), server.py). Likely a new read endpoint (e.g. GET /api/ab/reports?base=&cmp=
+                or fold into /api/state) returning the pair's report list; panel.js renders the links in ab_result; each
+                opens via POST /api/open {path:rel} (already validated). Done-when: after an A/B run the result box links
+                each report in the pair + each opens (traversal -> 400); tests; node --check + browser green;
+                `-m "not browser"` green; `-m golden_env` byte-unchanged; no new dep. Then v029_6..13 (LOW polish + close-out;
+                see the plan). _version bump 0.2.8->0.2.9 + CHANGELOG [0.2.9] at the v029_13 close-out; open
                 the v0.2.9 PR when the track's gates are green, tag v0.2.9 after merge. Read `docs/plan/STATE.md` first next
                 session (plan-driven); approved UI-improvement plan ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md.
                 CARRY-OVER (independent, own commit): FINDINGS R-19 -- the
@@ -1603,6 +1614,11 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-24 — v0.2.9 v029_4 DONE (commits/v029/v029_4_aria_live.md, feat/v029-panel-polish). aria-live="polite" on the
+  progress (phase x3) + result (share/ab) + action-status (sc/config/root/ab_hint) regions so a screen reader announces
+  completion; logs left non-live (would flood). Errors render into the same polite regions (announced, not interrupting --
+  documented ADR-23 scoping). 415 green `-m "not browser"` (+2) / 3 deselected; node --check + browser green (confirms
+  #phase aria-live in the live DOM); 5 golden_env byte-unchanged; no new dep. NEXT = v029_5 (A/B all-pair links).
 - 2026-06-24 — v0.2.9 v029_3 DONE (commits/v029/v029_3_ingest_estimate.md, feat/v029-panel-polish). Honest ingest
   estimate: panel_state gains replay_timeout_s (root config via non-mutating _build_config; fallback 600.0); panel.js
   shows a labelled WORST-CASE upper bound ("up to ~X for N capture(s)", ADR-23, not a promise). Browser smoke extended to

@@ -166,7 +166,7 @@ _SHELL = r"""<!doctype html>
   <label>Project folder <input id="root_input" placeholder="C:/path/to/captures" style="width:24rem"></label>
   <button id="set_root">Open folder</button>
 </div>
-<p id="root_msg" class="hint"></p>
+<p id="root_msg" class="hint" aria-live="polite"></p>
 
 <section class="step">
   <div class="step-head"><h2>RenderDoc tools</h2><span id="tools_badge" class="badge">...</span></div>
@@ -174,7 +174,7 @@ _SHELL = r"""<!doctype html>
   <div id="tools_fix" hidden>
     <p class="hint">No RenderDoc tool found. Write a starter <code>.bobframes.toml</code> here, then edit its <code>[tools]</code> section to point at your RenderDoc install (or add RenderDoc to your PATH).</p>
     <button id="write_config">Write starter config</button>
-    <p id="config_msg" class="hint"></p>
+    <p id="config_msg" class="hint" aria-live="polite"></p>
   </div>
 </section>
 
@@ -188,7 +188,7 @@ _SHELL = r"""<!doctype html>
       <label>label <input id="sc_label" placeholder="r110600 (optional)" style="width:11rem"></label>
       <button id="scaffold">Create folder</button>
     </div>
-    <p id="sc_msg" class="hint"></p>
+    <p id="sc_msg" class="hint" aria-live="polite"></p>
   </details>
 </section>
 
@@ -211,7 +211,7 @@ _SHELL = r"""<!doctype html>
     </div>
     <p class="hint">Accent colors re-hue the report; applied by "Rebuild reports only".</p>
   </details>
-  <div class="job" id="job_run" hidden><div class="actions"><p id="phase" class="phase"></p><button id="cancel_run" style="margin-left:auto" hidden>Cancel</button></div><pre id="log"></pre></div>
+  <div class="job" id="job_run" hidden><div class="actions"><p id="phase" class="phase" aria-live="polite"></p><button id="cancel_run" style="margin-left:auto" hidden>Cancel</button></div><pre id="log"></pre></div>
 </section>
 
 <section class="step">
@@ -225,8 +225,8 @@ _SHELL = r"""<!doctype html>
     <label><input type="checkbox" id="pkg_light"> Light bundle (index + top reports only)</label>
     <label><input type="checkbox" id="pkg_redact"> Redact (scrub provenance + paths)</label>
   </div>
-  <div id="share_result" class="result" hidden></div>
-  <div class="job" id="job_share" hidden><div class="actions"><p id="phase_share" class="phase"></p><button id="cancel_share" style="margin-left:auto" hidden>Cancel</button></div><pre id="log_share"></pre></div>
+  <div id="share_result" class="result" hidden aria-live="polite"></div>
+  <div class="job" id="job_share" hidden><div class="actions"><p id="phase_share" class="phase" aria-live="polite"></p><button id="cancel_share" style="margin-left:auto" hidden>Cancel</button></div><pre id="log_share"></pre></div>
 </section>
 
 <section class="step">
@@ -236,9 +236,9 @@ _SHELL = r"""<!doctype html>
     <label>Compare <select id="ab_cmp"></select></label>
     <button id="ab" class="primary">Compare</button>
   </div>
-  <p id="ab_hint" class="hint"></p>
-  <div id="ab_result" class="result" hidden></div>
-  <div class="job" id="job_ab" hidden><div class="actions"><p id="phase_ab" class="phase"></p><button id="cancel_ab" style="margin-left:auto" hidden>Cancel</button></div><pre id="log_ab"></pre></div>
+  <p id="ab_hint" class="hint" aria-live="polite"></p>
+  <div id="ab_result" class="result" hidden aria-live="polite"></div>
+  <div class="job" id="job_ab" hidden><div class="actions"><p id="phase_ab" class="phase" aria-live="polite"></p><button id="cancel_ab" style="margin-left:auto" hidden>Cancel</button></div><pre id="log_ab"></pre></div>
 </section>
 <script src="/panel.js"></script>
 </body></html>
