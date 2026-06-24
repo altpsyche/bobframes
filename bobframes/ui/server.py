@@ -412,6 +412,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         job = jobs.Job(make_proc())
         jid = secrets.token_urlsafe(6)
         registry[jid] = job
+        jobs.prune_registry(registry)            # bound the registry (v029_8); never cuts a live stream
         self._send_json({'job': jid}, code=202)
 
     def _cancel_job(self, jid: str) -> None:

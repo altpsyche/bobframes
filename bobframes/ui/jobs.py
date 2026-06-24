@@ -18,6 +18,21 @@ import threading
 
 DONE = object()  # queue sentinel: the child closed stdout and exited (Job.rc is then set)
 
+MAX_REGISTRY = 20  # keep at most N jobs in the panel's id->Job registry (v029_8): it otherwise grows one
+                   # entry per job forever. Only FINISHED jobs are pruned; an in-flight SSE stream holds
+                   # its own Job reference, so pruning the registry never cuts a live stream.
+
+
+def prune_registry(registry: dict, keep: int = MAX_REGISTRY) -> None:
+    """Drop the oldest FINISHED jobs so ``registry`` keeps at most ``keep`` entries. Never removes a
+    running job (dict insertion order is oldest-first)."""
+    excess = len(registry) - keep
+    if excess <= 0:
+        return
+    removable = [jid for jid, job in registry.items() if not job.running()]  # oldest finished first
+    for jid in removable[:excess]:
+        del registry[jid]
+
 
 def build_run_argv(root: str, *, force: bool = False, render_only: bool = False,
                    workers: int | None = None, pixel_grid: int = 4) -> list[str]:
