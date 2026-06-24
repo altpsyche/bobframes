@@ -38,7 +38,13 @@ active_release: v0.2.9 (RELEASE-READY 2026-06-24 on feat/v029-panel-polish, off 
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.9 v029_14 DONE 2026-06-24 (replay progress bar -- user-requested while testing). A <progress> bar in
+current:        v0.2.9 v029_15 DONE 2026-06-24 (unify "Project folder" wording -- test feedback). The status line read
+                "Project root:" while the v029_2 input was "Project folder" (two labels, one dir); render() now says
+                "Project folder:" to match (internal s.root/#root/--root unchanged). Display-only. node --check + browser
+                populate-smoke green; 432 `-m "not browser"` / 6 deselected; 5 golden_env byte-unchanged; no new dep. NEXT =
+                v029_16 (progress bar for ALL jobs: indeterminate "working" for package/rebuild/ab + determinate during
+                replay -- honest, no faked %). commit doc commits/v029/v029_15_folder_wording.md.
+                (prior: v029_14 DONE 2026-06-24 -- replay progress bar -- user-requested while testing. A <progress> bar in
                 each job panel bound to the classifier's replay_done/replay_total: panel.js factors the per-line update
                 into applyProgress(t,d) (log + phase + bar); the bar shows during replay (the only countable phase),
                 resets per run, hides on done. CSS accent-styled full-width. Post-close-out but PRE-release -> rides into
@@ -1699,6 +1705,10 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-24 — v0.2.9 v029_15 DONE (commits/v029/v029_15_folder_wording.md, feat/v029-panel-polish). Unify wording: the
+  status line "Project root:" -> "Project folder:" to match the v029_2 input label (test feedback; one dir, one label).
+  Display-only. node --check + browser populate-smoke green; 432 `-m "not browser"` / 6 deselected; 5 golden_env
+  byte-unchanged; no new dep. NEXT = v029_16 (progress bar for all jobs).
 - 2026-06-24 — v0.2.9 v029_14 DONE (commits/v029/v029_14_progress_bar.md, feat/v029-panel-polish). Replay progress bar
   (user-requested while testing): a <progress> per job panel bound to replay_done/replay_total; panel.js applyProgress(t,d)
   refactor (log+phase+bar). Post-close-out, pre-release -> CHANGELOG [0.2.9] +line. 432 green `-m "not browser"` (6
