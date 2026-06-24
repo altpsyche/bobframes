@@ -50,7 +50,8 @@ new Promise(function(resolve){
         tools: document.getElementById('tools').innerHTML,
         drops: document.getElementById('drops').innerHTML,
         estimate: document.getElementById('ingest_estimate').textContent,
-        phaseLive: document.getElementById('phase').getAttribute('aria-live')
+        phaseLive: document.getElementById('phase').getAttribute('aria-live'),
+        logTools: !!document.getElementById('copy_run') && !!document.getElementById('dl_run')
       });
     } else if ((waited += step) >= deadline) {
       clearInterval(timer);
@@ -82,3 +83,5 @@ def test_panel_js_runs_and_populates_state(tmp_path):
     assert '4 capture' in state['estimate'] and 'min' in state['estimate'], state['estimate']
     # v029_4: the aria-live attribute survives to the live DOM (screen-reader announce).
     assert state['phaseLive'] == 'polite', state['phaseLive']
+    # v029_7: the log copy/download controls are wired into the live DOM.
+    assert state['logTools'] is True
