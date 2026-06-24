@@ -9,6 +9,8 @@ table) -- i.e. the script parsed AND executed AND wired the fetch->render path.
 """
 from __future__ import annotations
 
+import json
+import os
 import pathlib
 import sys
 
@@ -85,3 +87,28 @@ def test_panel_js_runs_and_populates_state(tmp_path):
     assert state['phaseLive'] == 'polite', state['phaseLive']
     # v029_7: the log copy/download controls are wired into the live DOM.
     assert state['logTools'] is True
+
+
+_RUN_CELLS = "JSON.stringify([].slice.call(document.querySelectorAll('#drops tbody tr')).map(function(tr){return tr.children[1].textContent;}))"
+
+
+def test_run_column_dedupes_shared_run(tmp_path):
+    """v029_10: two areas captured in the SAME run show the run key once -- the second row's Run cell is
+    blank (the existing populate smoke uses two DISTINCT runs, so it can't exercise the de-dup)."""
+    if not shoot.find_chrome():
+        pytest.skip('Chrome not found')
+    root = tmp_path / 'proj'
+    for area in ('Alpha', 'Bravo'):                    # same dated run -> the Run key repeats
+        d = root / area / '2026-06-01_r1'
+        os.makedirs(d)
+        (d / '1.rdc').write_text('', encoding='utf-8')
+    with running(str(root)) as (httpd, port):
+        url = f'http://127.0.0.1:{port}/?t={httpd.bobframes_token}'
+        with shoot.Chrome() as chrome:
+            s = chrome.session
+            chrome.cdp.call('Page.navigate', {'url': url}, session=s)
+            chrome.cdp.wait_event('Page.loadEventFired', session=s)
+            _eval(chrome, _WAIT_POPULATED, await_promise=True)
+            cells = json.loads(_eval(chrome, _RUN_CELLS))
+    assert len(cells) == 2, cells
+    assert cells[0] == '2026-06-01_r1' and cells[1] == '', cells   # shown once, then de-duped
