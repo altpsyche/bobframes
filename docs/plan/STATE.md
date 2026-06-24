@@ -6,16 +6,20 @@
 > defer to this.
 
 ```
-active_release: v0.2.9 (OPEN 2026-06-24 on feat/v029-panel-polish, off main @ v0.2.8) -- the `bobframes ui` PANEL POLISH
-                track: resolve every review finding from the approved UI-improvement plan
+active_release: v0.2.9 (RELEASE-READY 2026-06-24 on feat/v029-panel-polish, off main @ v0.2.8; spine v029_0..13 ALL DONE)
+                -- the `bobframes ui` PANEL POLISH track: resolved every review finding from the approved UI-improvement plan
                 ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md, each its OWN commit (v029_0..13). MED: cancel
                 job, write-starter-config button, root-path input, honest ingest estimate, aria-live, A/B all-pair links.
                 LOW: reveal-in-folder, log copy/download, prune job registry, serve list/stop, RUN-col dedup, favicon,
-                narrow-width. Hard rules unchanged (ADR-47): zero new dep, stdlib http.server, no JS framework/router/build
-                step, panel DRIVES verbs + emits NO report HTML (golden gate byte-unchanged throughout), localhost+token.
-                Testing rule baked in (v028_7/8): every panel-JS change is node --check'd (CI step + pytest) and the
-                @pytest.mark.browser populate-smoke re-runs; the JS now lives in bobframes/ui/assets/panel.{js,css}. commits/v029/.
-                No new ADR (rides ADR-47/45/23). _version bump 0.2.8->0.2.9 + CHANGELOG [0.2.9] at the v029_13 close-out.
+                narrow-width -- all DONE (v029_0..12). v029_13 close-out DONE: _version 0.2.8->0.2.9 + CHANGELOG [0.2.9] +
+                docs; `bobframes version`->0.2.9 schema 3; lint exit 0; -m "not browser" 432 green / 5 deselected; -m
+                golden_env 5 BYTE-UNCHANGED (no refresh); clean wheel bobframes-0.2.9-py3-none-any.whl ships ui/assets/
+                panel.{js,css}; no new dep. Hard rules held throughout (ADR-47): zero new dep, stdlib http.server, no JS
+                framework/router/build step, panel DRIVES verbs + emits NO report HTML, localhost+token. Testing rule
+                (v028_7/8): every panel-JS change node --check'd (CI step + pytest) + the @pytest.mark.browser populate-smoke
+                re-ran (grew to 3 browser smokes: populate, RUN-dedup, narrow-width); JS lives in bobframes/ui/assets/
+                panel.{js,css}. commits/v029/. No new ADR (rides ADR-47/45/23). REMAINING (GATED on user authorization): the
+                v0.2.9 PR -> tag v0.2.9 -> ci.yml publish -> PyPI + GitHub Release.
                 (prior: v0.2.8 SHIPPED 2026-06-24 -- bobframes 0.2.8 LIVE on PyPI, published by the `v0.2.8` tag CI run
                 (Trusted Publishing/OIDC, ci.yml publish job, ADR-13) + a GitHub Release; verified clean-venv
                 `uv pip install bobframes==0.2.8` -> 0.2.8 schema 3 pyarrow 21.0.0. The zero-dep `bobframes ui` local-web
@@ -34,7 +38,17 @@ active_release: v0.2.9 (OPEN 2026-06-24 on feat/v029-panel-polish, off main @ v0
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.9 v029_12 DONE 2026-06-24 (narrow-width responsive check). panel.css gains a @media (max-width:560px)
+current:        v0.2.9 v029_13 DONE 2026-06-24 (close-out). _version 0.2.8->0.2.9 + CHANGELOG [0.2.9] (Added: cancel,
+                write-config, root input, ingest estimate, A/B all-pair links, reveal, log copy/download, serve list/stop,
+                favicon; Changed: aria-live, RUN-col dedup, narrow-width, pruned registry) + link-refs. VERIFIED:
+                `bobframes version`->0.2.9 schema 3; `lint CHANGELOG.md` exit 0; -m golden_env 5 BYTE-UNCHANGED (NO refresh
+                -- the bump is in no rendered HTML; panel emits none); -m "not browser" 432 / 5 deselected; clean wheel
+                bobframes-0.2.9-py3-none-any.whl ships ui/assets/panel.{js,css} + bakes _version 0.2.9; favicon inline (no
+                asset file); no new dep; no new ADR. **v0.2.9 EPIC COMPLETE / RELEASE-READY (spine v029_0..13 all DONE).**
+                NEXT = the v0.2.9 RELEASE SEQUENCE (GATED on user authorization): PR feat/v029-panel-polish -> main; before
+                tag run `pytest -m browser`; tag v0.2.9 -> ci.yml publish -> PyPI + GitHub Release; verify clean-venv
+                `uv pip install bobframes==0.2.9`. commit doc commits/v029/v029_13_closeout.md.
+                (prior: v029_12 DONE 2026-06-24 -- narrow-width responsive check. panel.css gains a @media (max-width:560px)
                 breakpoint: smaller margins/padding, input/select max-width:100%+box-sizing (fixed-width fields reflow),
                 table display:block+overflow-x:auto (wide tables scroll, never force page overflow). New browser smoke at a
                 480px viewport asserts scrollWidth-innerWidth<=1 (no horizontal overflow). CSS-only. 432 green `-m "not
@@ -1507,7 +1521,15 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    v029_13 -- CLOSE-OUT (all 13 feature findings v029_0..12 DONE). (1) _version 0.2.8 -> 0.2.9
+next_action:    v0.2.9 RELEASE SEQUENCE (GATED on user authorization; epic COMPLETE -- spine v029_0..13 DONE, _version
+                0.2.9, 432 `-m "not browser"` + 5 golden_env byte-unchanged, lint exit 0, clean wheel ships ui/assets/*,
+                no new dep). Steps: (1) open the v0.2.9 PR from feat/v029-panel-polish -> main; CI matrix green incl. the
+                node --check step; merge. (2) git checkout main && git pull. (3) BEFORE tagging run `pytest -m browser`
+                (Chrome) as the sign-off (the 3 panel smokes: populate, RUN-dedup, narrow-width). (4) tag `v0.2.9` + push
+                -> ci.yml publish (OIDC, ADR-13) -> PyPI + GitHub Release. (5) verify clean-venv `uv pip install
+                bobframes==0.2.9` -> 0.2.9. Read `docs/plan/STATE.md` first next session (plan-driven); approved plan
+                ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md.
+                (SUPERSEDED close-out checklist, now DONE in v029_13:) (1) _version 0.2.8 -> 0.2.9
                 (bobframes/_version.py; SCHEMA_VERSION stays 3). (2) CHANGELOG: a new `## [0.2.9] - <date>` section listing
                 the panel-polish set (cancel, write-config, root input, ingest estimate, aria-live, A/B all-pair links,
                 reveal, log copy/download, prune registry, serve list/stop, RUN dedup, favicon, narrow-width) + the
@@ -1669,6 +1691,11 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-24 — v0.2.9 v029_13 DONE (commits/v029/v029_13_closeout.md, feat/v029-panel-polish). Close-out: _version
+  0.2.8->0.2.9 + CHANGELOG [0.2.9] + link-refs + STATE/INDEX/ROADMAP. `bobframes version`->0.2.9 schema 3; lint exit 0;
+  -m golden_env 5 BYTE-UNCHANGED (no refresh); -m "not browser" 432 / 5 deselected; clean wheel bobframes-0.2.9 ships
+  ui/assets/panel.{js,css}; no new dep. v0.2.9 EPIC COMPLETE / RELEASE-READY (v029_0..13). NEXT = the v0.2.9 release
+  sequence (GATED): PR -> tag v0.2.9 -> ci.yml publish -> PyPI.
 - 2026-06-24 — v0.2.9 v029_12 DONE (commits/v029/v029_12_narrow_width.md, feat/v029-panel-polish). Narrow-width: a
   @media(max-width:560px) breakpoint in panel.css (reflow inputs, scrollable table, tighter spacing) + a browser smoke at
   480px asserting no horizontal overflow. ALL 13 feature findings (v029_0..12) DONE. 432 green `-m "not browser"` (5
