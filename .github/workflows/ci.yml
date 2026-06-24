@@ -52,7 +52,9 @@ jobs:
           pip install --upgrade "pyarrow==${{ matrix.pyarrow }}.*"
 
       - name: Resolved versions
-        run: bobframes version
+        run: |
+          bobframes version
+          node --version          # the panel JS gate needs node; fail loudly here if it is ever absent
 
       # Every gate runs on every cell EXCEPT golden byte-parity (test_parity), which is pinned to
       # the canonical env below. The rendered HTML embeds environment-variable bytes that are not a
@@ -65,6 +67,17 @@ jobs:
       # test_parity.py, etc.)
       - name: pytest (all gates except golden-env byte comparisons)
         run: python -m pytest bobframes/tests -m "not golden_env" -v
+
+      # The panel's served <script> is the only un-typechecked surface and pytest exercises the HTTP
+      # surface without ever parsing the JS -- v028_2 shipped a broken <script> through five commits
+      # because of exactly that gap (ADR-47 panel). Extract the served script and `node --check` it
+      # (syntax-only; browser globals are fine) so a parse error fails the build. UNCONDITIONAL on
+      # purpose -- node is preinstalled on windows-latest, so this can never silently skip (ADR-23).
+      # v028_8 externalizes the JS to bobframes/ui/assets/panel.js and this becomes a plain file check.
+      - name: panel JS parses (node --check)
+        run: |
+          python -c "import re, pathlib; from bobframes.ui import server; m = re.search(r'<script>(.*)</script>', server.control_page(), re.S); pathlib.Path('panel_check.js').write_text(m.group(1), encoding='utf-8')"
+          node --check panel_check.js
 
       - name: golden byte-parity (canonical env only)
         # The `golden_env` byte-for-byte HTML comparisons (test_parity + the test_package inline/
