@@ -38,7 +38,15 @@ active_release: v0.2.9 (RELEASE-READY 2026-06-24 on feat/v029-panel-polish, off 
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.9 v029_17 DONE 2026-06-24 (one project-folder line; change-box behind a disclosure -- test feedback).
+current:        v0.2.9 v029_18 DONE 2026-06-24 (Captures: single-run caption, no blank RUN cells -- test feedback). The
+                v029_10 RUN-column blank-dedup read as BROKEN when all 7 areas share one run (6 empty cells look like
+                missing data). Fixed: render() now shows the run ONCE as a "Run <key>" caption + an Area|Captures table
+                when there is a single run; a populated Area|Run|Captures table (run on EVERY row, never blank) when runs
+                differ. Supersedes v029_10's blanking. node --check + 5 browser smokes green (updated single-run test:
+                headers [Area,Captures], run once); 432 `-m "not browser"` / 7 deselected; 5 golden_env byte-unchanged; no
+                new dep. v0.2.9 RELEASE-READY (spine v029_0..18). NEXT = restart panel; GATED v0.2.9 release. commit doc
+                commits/v029/v029_18_captures_run_caption.md.
+                (prior: v029_17 DONE 2026-06-24 -- one project-folder line; change-box behind a disclosure -- test feedback.)
                 The folder showed twice (read-only "Project folder: <path>" line + an always-visible empty input); the
                 input/"Open folder"/msg now live inside a <details>"Change folder" (collapsed; input relabelled "New
                 folder"), so the default view shows one folder + no redundant empty box. Shell-only; ids/wiring/(/api/root)
@@ -1722,6 +1730,10 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-24 — v0.2.9 v029_18 DONE (commits/v029/v029_18_captures_run_caption.md, feat/v029-panel-polish). Captures run
+  presentation: v029_10's blank-dedup read as broken when all areas share one run; render() now shows a "Run <key>"
+  caption + Area|Captures table for a single run, and a populated Area|Run|Captures table (no blanks) when runs differ.
+  node --check + 5 browser smokes green; 432 `-m "not browser"` / 7 deselected; 5 golden_env byte-unchanged; no new dep.
 - 2026-06-24 — v0.2.9 v029_17 DONE (commits/v029/v029_17_folder_disclosure.md, feat/v029-panel-polish). One folder line:
   the folder showed twice (read-only line + an always-visible empty input); the change-box now lives in a <details>
   "Change folder" (collapsed), so default view shows one folder + no empty box. Shell-only; wiring/(/api/root) unchanged.

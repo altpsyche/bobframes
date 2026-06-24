@@ -89,16 +89,22 @@ def test_panel_js_runs_and_populates_state(tmp_path):
     assert state['logTools'] is True
 
 
-_RUN_CELLS = "JSON.stringify([].slice.call(document.querySelectorAll('#drops tbody tr')).map(function(tr){return tr.children[1].textContent;}))"
+_DROPS_SHAPE = """(function(){
+  var d = document.getElementById('drops');
+  var headers = [].slice.call(d.querySelectorAll('thead th')).map(function(th){return th.textContent;});
+  var occurrences = (d.innerHTML.match(/2026-06-01_r1/g) || []).length;
+  return JSON.stringify({headers: headers, occurrences: occurrences});
+})()"""
 
 
-def test_run_column_dedupes_shared_run(tmp_path):
-    """v029_10: two areas captured in the SAME run show the run key once -- the second row's Run cell is
-    blank (the existing populate smoke uses two DISTINCT runs, so it can't exercise the de-dup)."""
+def test_single_run_shows_run_once_as_caption(tmp_path):
+    """v029_18: when every area is in ONE run there is no RUN column (it would be pure redundancy / blank
+    cells -- the v029_10 blanking read as broken). The run shows once as a caption; the table is
+    Area | Captures."""
     if not shoot.find_chrome():
         pytest.skip('Chrome not found')
     root = tmp_path / 'proj'
-    for area in ('Alpha', 'Bravo'):                    # same dated run -> the Run key repeats
+    for area in ('Alpha', 'Bravo'):                    # both in the same run
         d = root / area / '2026-06-01_r1'
         os.makedirs(d)
         (d / '1.rdc').write_text('', encoding='utf-8')
@@ -109,9 +115,9 @@ def test_run_column_dedupes_shared_run(tmp_path):
             chrome.cdp.call('Page.navigate', {'url': url}, session=s)
             chrome.cdp.wait_event('Page.loadEventFired', session=s)
             _eval(chrome, _WAIT_POPULATED, await_promise=True)
-            cells = json.loads(_eval(chrome, _RUN_CELLS))
-    assert len(cells) == 2, cells
-    assert cells[0] == '2026-06-01_r1' and cells[1] == '', cells   # shown once, then de-duped
+            shape = json.loads(_eval(chrome, _DROPS_SHAPE))
+    assert shape['headers'] == ['Area', 'Captures'], shape       # no RUN column for a single run
+    assert shape['occurrences'] == 1, shape                       # the run shown once (caption), not per row
 
 
 def test_narrow_viewport_has_no_horizontal_overflow(tmp_path):
