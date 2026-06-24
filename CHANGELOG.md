@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-06-24
+
+A guided local-web control panel (`bobframes ui`) for QA and product teammates who are not comfortable
+in a terminal. Zero new runtime dependency (stdlib `http.server` only) and no report-output change --
+the panel drives the existing verbs and emits no report HTML, so the rendered HTML and parquet digests
+stay byte-identical on the same captures. No schema change (still schema 3). `_version` 0.2.7 -> 0.2.8.
+
+### Added
+- `bobframes ui`: a zero-dependency local-web control panel that drives the whole pipeline from a
+  browser (ADR-47). It detects the RenderDoc tools and discovers capture drops, runs ingest /
+  re-generate / package / A-B as subprocesses with live per-capture progress streamed over Server-Sent
+  Events, opens or serves the rendered report, applies accent theming to a re-render, and can scaffold a
+  convention-correct capture folder. Server-rendered HTML + vanilla JS -- no framework, no build step,
+  no client router (the hard governance line in ADR-47). Binds `127.0.0.1` only and gates every
+  `/api/*` call with a per-session token. Install with `pipx install bobframes`, then run `bobframes ui`.
+
+### Changed
+- The static preview server body moved from `cli._cmd_serve` into a reusable `serve.make_server` /
+  `serve.serve_forever` so the panel's background serve and the `bobframes serve` verb share it; the
+  `serve` verb's behavior is unchanged.
+
 ## [0.2.7] - 2026-06-24
 
 An aggregation-consistency pass plus four report/sharing correctness fixes. Every KPI now names its
@@ -160,7 +181,8 @@ First standalone release. v1 is Windows-only (the replay stage drives `qrenderdo
   `python -m _analysis.*` entry points no longer work; switch to the `bobframes` commands (see the
   migration table in the README). This is a hard rename with no compatibility shim.
 
-[Unreleased]: https://github.com/altpsyche/bobframes/compare/v0.2.7...HEAD
+[Unreleased]: https://github.com/altpsyche/bobframes/compare/v0.2.8...HEAD
+[0.2.8]: https://github.com/altpsyche/bobframes/compare/v0.2.7...v0.2.8
 [0.2.7]: https://github.com/altpsyche/bobframes/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/altpsyche/bobframes/compare/v0.2.0...v0.2.6
 [0.2.0]: https://github.com/altpsyche/bobframes/compare/v0.1.0...v0.2.0

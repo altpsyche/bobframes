@@ -6,11 +6,16 @@
 > defer to this.
 
 ```
-active_release: v0.2.8 (DEV -- opened 2026-06-24 on feat/v028-ui-control-panel; the `bobframes ui` ZERO-dep local-web
-                control panel for QA/product (ingest/generate/package + serve/open + A/B + theming in a browser),
-                commits/v028/, ADR-47; approved plan ~/.claude/plans/lets-plan-on-improving-bubbly-bumblebee.md. Spawns
-                the existing verbs as subprocesses + streams stdout over SSE; emits NO report HTML (golden gate untouched);
-                NO new dependency. Commit spine v028_0..-5.)
+active_release: v0.2.8 (RELEASE-READY + BROWSER-VERIFIED -- opened + COMPLETED 2026-06-24 on feat/v028-ui-control-panel;
+                commit spine v028_0..-6 ALL DONE. The `bobframes ui` ZERO-dep local-web control panel for QA/product
+                (ingest/generate/package + serve/open + A/B + theming + scaffold in a browser), commits/v028/, ADR-47;
+                approved plan ~/.claude/plans/lets-plan-on-improving-bubbly-bumblebee.md. Spawns the existing verbs as
+                subprocesses + streams stdout over SSE; emits NO report HTML (golden gate untouched throughout); NO new
+                dependency. _version 0.2.7->0.2.8 + ONE CHANGELOG [0.2.8]; 401 green `-m "not browser"` + 5 golden_env
+                byte-unchanged. v028_6 added the real browser pass: fixed 2 latent bugs (panel JS never parsed in any
+                browser since v028_2; A/B link vanished) + a user-approved full UI redesign + headless light/dark sign-off
+                on the real 7-area/4-run corpus. REMAINING (gated on authorization): v0.2.8 PR -> tag v0.2.8 -> ci.yml
+                publish -> PyPI.)
                 (prior: v0.2.7 SHIPPED 2026-06-24 -- bobframes 0.2.7 LIVE on PyPI, published by the `v0.2.7` tag CI run
                 (Trusted Publishing/OIDC, ci.yml publish job, ADR-13) + a GitHub Release; verified clean-venv
                 `uv pip install bobframes==0.2.7` -> 0.2.7 schema 3 pyarrow 21. v027_5 close-out: _version 0.2.6->0.2.7 +
@@ -22,22 +27,83 @@ active_release: v0.2.8 (DEV -- opened 2026-06-24 on feat/v028-ui-control-panel; 
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.8 v028_2 DONE 2026-06-24 (subprocess job runner + SSE progress + POST /api/ingest). NEXT = v028_3
-                (share & explore: POST /api/render [+ theme flags later], /api/package [light/redact via package.build],
-                /api/open [webbrowser.open root_index_html], /api/serve [the _cmd_serve body, opt. extracted to
-                serve.serve_forever]). v028_2 as-built: NEW bobframes/ui/jobs.py (build_run_argv mirrors _cmd_ingest;
-                spawn() = Popen python -m bobframes.run [the _render_watch precedent, NOT in-process]; Job pumps stdout
-                ->queue on a daemon thread + DONE sentinel + .rc; the single monkeypatch seam for GPU-free tests) + NEW
-                bobframes/ui/progress.py (server-side Classifier.feed(line)->{line,phase,replay_done,replay_total} on
-                run.py's stable _log substrings; raw line always carried -- ADR-23). server.py: bobframes_jobs registry,
-                token-gated POST /api/ingest (coerced body, one-job-at-a-time->409, ->202 {job}), GET /api/stream/<job>
-                (text/event-stream, classified data: events + :keepalive each idle sec for the 600s replay + event:done
-                with rc, Connection:close; token via query since EventSource can't set headers). Control page gained the
-                Run card (force/render-only/workers + Ingest) consuming the EventSource into a stage line + raw log,
-                refreshing drops on clean exit. NEW test_ui_progress (3) + test_ui_jobs (5); _ui_util.post added.
-                VERIFIED (mocked spawn, no GPU -- ADR-6 discipline): 8/8 new + full `-m "not browser"` 381 passed / 2
-                deselected (was 373; +8; no regression; no golden refresh). No new dependency.
-                commit doc commits/v028/v028_2_job_runner_sse.md.
+current:        v0.2.8 v028_6 DONE 2026-06-24 (panel bug fixes + guided UI redesign + browser sign-off). v0.2.8 epic
+                COMPLETE / RELEASE-READY + BROWSER-VERIFIED (spine v028_0..-6 all DONE). NEXT = the v0.2.8 PR off
+                feat/v028-ui-control-panel -> tag v0.2.8 -> ci.yml publish -> PyPI (GATED on user authorization). v028_6
+                as-built (surfaced by the first real browser test on the live corpus): (1) BUG -- control_page() was a
+                normal triple-quoted string, so the embedded JS `"\n"` became a REAL newline mid-literal -> the WHOLE
+                <script> failed to parse in EVERY browser since v028_2 (pytest never executed the panel JS) -> nothing
+                populated. Fixed: r-string literal; locked by test_ui_smoke parsing the <script> for newline-broken string
+                literals (+ node --check in dev). (2) BUG -- the A/B result link vanished: the generic stream done-handler
+                called loadState() which rebuilt the A/B card (renderRuns cleared ab_msg) ~50ms after the link was written.
+                Fixed: generic done no longer refreshes; callers refresh where state changes (ingest/render/package via
+                refreshOnOk); A/B onDone shows the link without refresh. (3) /api/open generalized to take an optional
+                relative path (normpath-validated inside root; traversal->400; default root index) so A/B opens the pair's
+                self-contained summary.html (+2 open tests). (4) FULL guided redesign (user-approved): flat card stack ->
+                top-to-bottom flow with section badges (READY/N AREAS), primary(filled)/secondary(outline) buttons, plain
+                language + Options/Create-folder disclosures, per-section progress panels, prominent result boxes (zip
+                path/serve URL/A-B link); step numbers added then REMOVED per user. (5) review polish: buttons disable when
+                inputs absent (Ingest needs tools+captures; report actions need ingested data) + title tooltips; tool paths
+                normpath-tidied. Styling stays on shared design tokens (v028_5); neutral theme. VERIFIED: node --check
+                clean; full `-m "not browser"` 401 passed / 2 deselected (was 398; +3 -- the JS-integrity lock + 2 open
+                tests); golden_env unaffected; no golden refresh; no new dep. BROWSER SIGN-OFF (completes v028_5's deferred
+                item): headless light+dark capture of the LIVE panel on the real 7-area/4-run corpus -- both clean; manual
+                end-to-end on the rendered tree (A/B link opens; open/serve/package drive the verbs). commit doc
+                commits/v028/v028_6_panel_fixes_redesign.md.
+                (prior: v028_5 DONE 2026-06-24 -- polish + docs + close-out.) v028_5 as-built: the control page's
+                placeholder hex CSS replaced by the SHARED design tokens -- control_page() substitutes a /*TOKENS*/ marker
+                with chrome.design_tokens_css() (lazy import) + every rule references var(--bg/surface-1/border/text-*/
+                radius*/sp-*/fs-*/accent-primary/status-ok/status-alarm/accent-data) incl :focus-visible rings + the
+                tokens' reduced-motion media (NEUTRAL theme=None; the panel chrome is not user-themed -- the REPORT is, via
+                render --accent; REUSE not re-impl, ADR-47). README: NEW "Guided mode (recommended for QA/product)" section
+                (pipx install -> bobframes ui; localhost+token; stdlib-only) + a `ui` Commands row. CHANGELOG: `## [0.2.8]
+                - 2026-06-24` (Added bobframes ui; Changed the serve extraction) + compare link-refs; lint exit 0.
+                _version 0.2.7->0.2.8 (SCHEMA_VERSION stays 3). DEFERRED (ADR-23): no README screenshot (needs an
+                unattended browser capture -- prose instead) + a browser visual sign-off of the tokenized panel
+                recommended before PR (not run this session; token-only styling, HTTP/structure tests pass). VERIFIED on
+                the canonical .venv: `-m "not browser"` 398 passed / 2 deselected (UNCHANGED -- styling moved no test);
+                `-m golden_env` 5 passed BYTE-PARITY UNCHANGED, NO golden refresh (the version bump appears in no rendered
+                HTML -> report path untouched); lint README.md + CHANGELOG.md exit 0; `version` -> 0.2.8. CLEAN-WHEEL:
+                `uv build --wheel` -> bobframes-0.2.8-py3-none-any.whl bakes _version 0.2.8 + ships bobframes/ui/* +
+                bobframes/serve.py (packages=["bobframes"] recursive; no pyproject change). No new dependency; no new ADR
+                (rides ADR-47/45/23). commit doc commits/v028/v028_5_polish_docs_closeout.md.
+                (prior: v028_4 DONE 2026-06-24 -- A/B + theming + scaffold.) v028_4 as-built: jobs.py +build_render_argv (mirrors _cmd_render: run.py
+                --render-only + optional ADR-45 --accent/--accent-data) +build_ab_argv (mirrors _cmd_ab -> bobframes.cli
+                ab). server.py: panel_state +runs (reports.discovery.discover_drops -> {key,label,date,n_captures}; [] pre-
+                ingest) feeding the A/B picker; POST /api/render now coerces accent/accent-data (_render_opts) + spawns
+                build_render_argv (the v028_3 endpoint gains theming; blank field -> flag omitted); POST /api/ab (token-
+                gated; _ab_opts; requires baseline+compare labels -> 400 else; streamed `bobframes ab` job via spawn_cli);
+                POST /api/scaffold (token-gated, opt-in; os.makedirs <root>/<area>/<date[_label]>/ via paths.drop_dirname;
+                names guarded vs traversal [no / \\ .. :], date strict ISO; {created,path}; idempotent). Control page: a
+                Create-a-capture-folder form in the drops card, accent/accent-data inputs in the Share card (applied by
+                Re-generate), an A/B card whose two selects populate from state.runs (default prior-vs-newest; hidden +
+                hint when <2 runs). NEW test_ui_ab_theme (10). DECISIONS (ADR-23): theming rides /api/render ONLY (package
+                rejects --accent, ADR-40/45); the A/B picker needs non-empty LABELS (the ab verb's required flags) -> a
+                label-less run can't be picked in v1 (recorded; still renders + listed). VERIFIED (mocked spawn/spawn_cli
+                + mocked discover_drops, no GPU -- ADR-6): 10/10 new + full `-m "not browser"` 398 passed / 2 deselected
+                (was 388; +10; no regression; no golden refresh). No new dependency. commit doc
+                commits/v028/v028_4_ab_theme_scaffold.md.
+                (prior: v028_3 DONE 2026-06-24 -- share & explore: render / package / open / serve.) v028_3 as-built: NEW
+                bobframes/serve.py (the _cmd_serve body extracted to
+                make_server(root,bind,port) [build-not-start; port=0 ephemeral] + serve_forever() [build+block, the verb];
+                cli._cmd_serve now calls it, byte-identical behavior; the panel reuses make_server for its background
+                click-to-serve). jobs.py: build_package_argv (mirrors _cmd_package; `package` takes <root> POSITIONAL) +
+                spawn_cli (Popen python -m bobframes.cli ...; the 2nd spawn seam for the non-run verbs). server.py:
+                _start_job refactored to a zero-arg proc FACTORY (run only AFTER the busy check -> a 409 never spawns);
+                token-gated POST /api/render (render-only job, no GPU; theme flags ride this in v028_4), POST /api/package
+                (streamed `bobframes package` job via spawn_cli; light/redact toggles), POST /api/open (webbrowser.open
+                root_index_html; 409 if nothing rendered), POST /api/serve (background static server over <root> via
+                make_server in a daemon thread; returns {url,port}; ephemeral port so it never collides; idempotent;
+                _shutdown_aux stops it on panel exit + in the test harness running()). Control page gained a Share &
+                explore card (render/open/serve + package light/redact) with JS split into startJob [streamed, reuses the
+                SSE pane] + action [one-shot JSON]. NEW test_ui_share (7). DECISIONS (ADR-23): package runs as a
+                SUBPROCESS (bobframes.cli package) not in-process (consistent isolation -- the panel never imports the
+                renderer; the zip path surfaces via the streamed log, a structured result is the v0.3 api.py seam's job);
+                serve uses an EPHEMERAL port not the verb's 8000 (click-to-serve never fails on a busy port; a body
+                `port` pins it). VERIFIED (mocked spawn/spawn_cli + a real stdlib static server, no GPU -- ADR-6): 7/7 new
+                + full `-m "not browser"` 388 passed / 2 deselected (was 381; +7; no regression; no golden refresh). No
+                new dependency. commit doc commits/v028/v028_3_share_explore.md.
+                (prior: v028_2 DONE 2026-06-24 -- subprocess job runner + SSE progress + POST /api/ingest.)
                 (prior: v028_1 DONE 2026-06-24 -- control page + read-only /api/state + security guard.)
                 v028_1 as-built: bobframes/ui/server.py gained panel_state(root) [tools via config.resolve_tool_verbose
                 a la _cmd_check; drops via discovery.find_drops; None if root missing] + control_page() [server-rendered
@@ -347,18 +413,43 @@ current:        v0.2.8 v028_2 DONE 2026-06-24 (subprocess job runner + SSE progr
                 token-validity guard + preview gallery; migrate summary.py off its inline <style> (visual parity).
                 NOTE: c16p (v0.2 release) COMPLETE - PyPI bobframes 0.2.0 LIVE; tag v0.2.0 -> 765a4db on main.
                 GIT: c16y + c16v are in the WORKING TREE, NOT yet committed (user hasn't asked to commit).)
-last_session:   2026-06-24 — v0.2.7 RELEASE close-out (v027_5_closeout_ship). Bumped _version 0.2.6->0.2.7; wrote the ONE
-                CHANGELOG `## [0.2.7] - 2026-06-24` (Changed: ADR-46 aggregation consistency + named estimators / per-frame
-                regression + config thresholds / statistics.median / frame_counts single-owner + divergence-warning; Fixed:
-                R-20 run-selector init, R-21 detached one-pager dead nav, R-22 older-run cross-drop scope) + repaired the
-                stale bottom link-refs; `lint CHANGELOG.md` exit 0. Verified on the canonical .venv (py3.12.13/pyarrow21):
-                365 passed / 2 deselected `-m "not browser"` (golden_env byte-gate included; nothing broke post bump); clean
-                `uv build --wheel` -> bobframes-0.2.7-py3-none-any.whl bakes _version 0.2.7 + replay_main force-included.
-                SHIPPED: annotated tag `v0.2.7` pushed -> the ci.yml publish job went green end-to-end (test matrix +
-                build + PyPI Trusted Publishing + GitHub Release); verified clean-venv `uv pip install bobframes==0.2.7`
-                -> `bobframes 0.2.7  schema 3  pyarrow 21.0.0`. THEN opened v0.2.8 on a fresh feat/v028-ui-control-panel
-                branch off main and landed v028_0 (ADR-47 + `ui` verb + bobframes/ui/ skeleton; 365 green, no regression).
-                NEXT: v028_1 (control page + /api/state + security guard). CARRY-OVER: R-19 (own commit).
+last_session:   2026-06-24 — v0.2.8 v028_6 DONE (panel bug fixes + guided UI redesign + browser sign-off) -- the FIRST
+                real end-to-end browser test (live panel against the user's rendered 7-area/4-run corpus under Downloads/
+                RDCs). Found the panel JS had NEVER run in any browser since v028_2: control_page() was a normal triple-
+                quoted string so the JS `"\n"` became a real newline mid-literal -> whole <script> a syntax error ->
+                nothing populated (pytest never executes the panel JS, so it slipped every gate). Fixed: r-string +
+                test_ui_smoke now parses the <script> for newline-broken literals (+ node --check in dev). 2nd bug: the A/B
+                result link vanished (generic stream done called loadState() -> renderRuns cleared ab_msg ~50ms later);
+                fixed by refreshing state only where it changes (ingest/render/package), not after A/B; /api/open generalized
+                to open a validated relative path (the pair's summary.html). Then the user-approved FULL UI redesign: flat
+                card stack -> guided top-to-bottom flow (section badges, primary/secondary buttons, plain language +
+                Options/Create-folder disclosures, per-section progress panels, prominent result boxes for zip path/serve
+                URL/A-B link); step numbers added then removed per user. Review polish: buttons disable when inputs absent
+                + title tooltips; tool paths normpath-tidied. VERIFIED: node --check clean; full `-m "not browser"` 401
+                passed / 2 deselected (was 398; +3); golden_env unaffected; no golden refresh; no new dep. BROWSER SIGN-OFF
+                (completes v028_5's deferred item): headless light+dark capture of the LIVE panel on the real corpus -- both
+                clean; manual end-to-end on the rendered tree (A/B link opens; open/serve/package drive the verbs). commit
+                doc commits/v028/v028_6_panel_fixes_redesign.md. NEXT (gated on authorization): v0.2.8 PR -> tag -> PyPI.
+                CARRY-OVER: R-19 (own commit).
+                [prior] 2026-06-24 — v0.2.8 v028_5 DONE (polish + docs + close-out). Styled the control page with the SHARED
+                design tokens (control_page() swaps a /*TOKENS*/ marker for chrome.design_tokens_css()); README "Guided
+                mode" (pipx) + `ui` Commands row; CHANGELOG `## [0.2.8]` + link-refs (lint exit 0); _version 0.2.7->0.2.8;
+                398 green + 5 golden_env byte-unchanged; clean wheel bakes 0.2.8 + ships ui/* + serve.py.
+                [prior] 2026-06-24 — v0.2.8 v028_4 DONE (A/B + theming + scaffold). jobs.py +build_render_argv +build_ab_argv;
+                server.py panel_state +runs (discover_drops) for the A/B picker; /api/render gains accent/accent-data; NEW
+                /api/ab (streamed `ab` via spawn_cli; 400 without both runs) + /api/scaffold (opt-in makedirs, traversal+ISO
+                guards). NEW test_ui_ab_theme (10). 398 green `-m "not browser"` (+10); no golden refresh.
+                [prior] 2026-06-24 — v0.2.8 v028_3 DONE (share & explore: render / package / open / serve). NEW
+                bobframes/serve.py (extracted _cmd_serve -> make_server + serve_forever; cli calls it, byte-identical);
+                jobs.py +build_package_argv +spawn_cli; server.py _start_job -> proc factory + token-gated /api/render,
+                /api/package (streamed via spawn_cli), /api/open (webbrowser), /api/serve (background static server,
+                ephemeral + idempotent). NEW test_ui_share (7). package=subprocess + serve=ephemeral-port (ADR-23). 388
+                green `-m "not browser"` (+7); no golden refresh.
+                [prior] 2026-06-24 — v0.2.7 RELEASE close-out (v027_5_closeout_ship) + opened v0.2.8 (v028_0..-2). Bumped
+                _version 0.2.6->0.2.7; ONE CHANGELOG `## [0.2.7]`; `lint` exit 0; tag `v0.2.7` -> ci.yml publish green ->
+                `uv pip install bobframes==0.2.7` verified. THEN on feat/v028-ui-control-panel: v028_0 (ADR-47 + `ui` verb
+                + ui skeleton), v028_1 (control page + /api/state + token guard), v028_2 (subprocess job runner + SSE
+                progress + /api/ingest); 381 green at v028_2. CARRY-OVER: R-19 (own commit).
                 [prior] 2026-06-17 — v0.2.7 OPENED + v0.2.7-0..-4 DONE: the aggregation-consistency "confusing averages" burndown is
                 COMPLETE (D-13..D-16 / Q-10..Q-13 / H-41 all ☑; ADR-46 frozen; 352->362 green; goldens refreshed bounded per
                 commit, data path frozen throughout). NEXT = the v0.2.7 RELEASE ship (own commit). Also fixed a PRE-EXISTING bug found while eyeballing the
@@ -1282,9 +1373,19 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    v0.2.6 is SHIPPED (LIVE on PyPI + GitHub Release; see active_release / last_session). No open work on the
-                0.2.6 line. The next release line is v0.2.7; pick up either (or both), each its OWN commit, when the user is
-                ready: (1) the user's promised 0.2.7 visual/UX FEEDBACK REPORT (await their notes); (2) FINDINGS R-19 -- the
+next_action:    v0.2.8 COMPLETE / RELEASE-READY + BROWSER-VERIFIED on feat/v028-ui-control-panel (spine v028_0..-6 all
+                DONE; _version 0.2.8; 401 green `-m "not browser"` + 5 golden_env byte-unchanged; lint clean; clean wheel
+                bakes 0.2.8 + ships ui/* + serve.py; the panel was driven in a real browser on the live corpus -- light+dark
+                clean, A/B/open/serve/package all work). REMAINING (GATED on user authorization, NOT in the green gate):
+                open the v0.2.8 PR from feat/v028-ui-control-panel; on approval, tag `v0.2.8` -> the ci.yml publish job
+                (Trusted Publishing/OIDC, ADR-13) ships PyPI + a GitHub Release; verify a clean-venv `uv pip install
+                bobframes==0.2.8` -> 0.2.8. (The v028_5-deferred browser visual sign-off is now DONE in v028_6.) Read
+                `docs/plan/STATE.md` first next session (plan-driven); the approved epic plan is
+                ~/.claude/plans/lets-plan-on-improving-bubbly-bumblebee.md.
+                CARRY-OVER (independent, own commit): FINDINGS R-19 -- the
+                overdraw `set(by_area[area])` row-order nondeterminism on real multi-RT data (reconfirmed pre-existing at -5;
+                CARRY-OVER (independent, own commit): FINDINGS R-19 -- the
+                overdraw `set(by_area[area])` row-order nondeterminism on real multi-RT data (reconfirmed pre-existing at -5;
                 overdraw `set(by_area[area])` row-order nondeterminism on real multi-RT data (reconfirmed pre-existing at -5;
                 golden-neutral on the synthetic, so the fix needs a multi-tie fixture + a determinism regression; fix sketch:
                 `for label in sorted(set(by_area[area]))` or a `(-n_samples, label)` sort key; audit the other set-iterating
@@ -1430,6 +1531,38 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-24 — v0.2.8 v028_6 DONE (commits/v028/v028_6_panel_fixes_redesign.md, feat/v028-ui-control-panel). First real
+  browser test on the live corpus surfaced two latent bugs: (1) the panel JS NEVER ran in any browser since v028_2 --
+  control_page() was a normal triple-quoted string so the JS `"\n"` became a real newline mid-literal -> whole <script>
+  failed to parse (pytest never executes the panel JS); fixed with an r-string + a test_ui_smoke JS-integrity lock (+ node
+  --check in dev). (2) the A/B result link vanished (loadState rebuilt the card and cleared it); fixed by refreshing state
+  only where it changes, not after A/B; /api/open generalized to open a validated relative path. Then the user-approved
+  FULL UI redesign: flat card stack -> guided flow (section badges, primary/secondary buttons, plain language +
+  disclosures, per-section progress, prominent result boxes); step numbers added then removed per user; buttons disable
+  when inputs absent; tool paths normpath-tidied. 401 green `-m "not browser"` (+3); golden_env unaffected; no new dep.
+  BROWSER SIGN-OFF (completes v028_5's deferred item): headless light+dark capture of the live panel -- both clean.
+- 2026-06-24 — v0.2.8 v028_5 DONE (commits/v028/v028_5_polish_docs_closeout.md, feat/v028-ui-control-panel). Polish +
+  docs + close-out; v0.2.8 epic COMPLETE / RELEASE-READY. Control page restyled with the SHARED design tokens
+  (control_page() swaps a /*TOKENS*/ marker for chrome.design_tokens_css(); var(--*) throughout; neutral theme). README
+  "Guided mode" (pipx -> bobframes ui) + `ui` Commands row. CHANGELOG `## [0.2.8]` + link-refs (lint exit 0). _version
+  0.2.7->0.2.8. VERIFIED: 398 green `-m "not browser"` (unchanged) + 5 golden_env BYTE-UNCHANGED (no golden refresh);
+  clean wheel bakes 0.2.8 + ships ui/* + serve.py. DEFERRED (ADR-23): README screenshot + browser visual sign-off.
+  REMAINING (gated on authorization): v0.2.8 PR -> tag -> PyPI.
+- 2026-06-24 — v0.2.8 v028_4 DONE (commits/v028/v028_4_ab_theme_scaffold.md, feat/v028-ui-control-panel). A/B + theming
+  + scaffold: jobs.py +build_render_argv (accent) +build_ab_argv; server.py panel_state +runs (discover_drops) for the
+  A/B picker; /api/render gains accent/accent-data; NEW /api/ab (streamed `ab` via spawn_cli; 400 without both runs) +
+  /api/scaffold (opt-in makedirs, traversal+ISO guards, idempotent). Control page: scaffold form, accent inputs, A/B
+  card (selects from state.runs). NEW test_ui_ab_theme (10). theming=/api/render-only + ab-needs-labels (ADR-23). 398
+  green `-m "not browser"` (was 388; +10); no golden refresh; no new dep. NEXT v028_5 (polish + docs + CHANGELOG).
+- 2026-06-24 — v0.2.8 v028_3 DONE (commits/v028/v028_3_share_explore.md, feat/v028-ui-control-panel). Share & explore:
+  NEW bobframes/serve.py (extracted _cmd_serve -> make_server + serve_forever; cli now calls it, byte-identical); jobs.py
+  +build_package_argv +spawn_cli; server.py _start_job -> proc factory + four token-gated POSTs (/api/render render-only,
+  /api/package streamed via spawn_cli, /api/open webbrowser, /api/serve background static server, ephemeral+idempotent);
+  Share & explore card. NEW test_ui_share (7). package=subprocess + serve=ephemeral-port (ADR-23 decisions). 388 green
+  `-m "not browser"` (was 381; +7); no golden refresh; no new dep. NEXT v028_4 (A/B picker + accent theming + scaffold).
+- 2026-06-24 — v0.2.7 SHIPPED to PyPI (v027_0..-5; tag `v0.2.7` -> ci.yml publish green; `uv pip install bobframes==0.2.7`
+  verified) THEN opened v0.2.8 on feat/v028-ui-control-panel: v028_0 (ADR-47 + `ui` verb + ui skeleton), v028_1 (control
+  page + /api/state + token guard), v028_2 (job runner + SSE + /api/ingest). 381 green at v028_2; no golden refresh.
 - 2026-06-06 — v0.2.6 SHIPPED to PyPI. Rebased the v0.2.6 work onto `main`, pushed the `v0.2.6` annotated tag -> the
   ci.yml `publish` job ran (test matrix GREEN across the py3.10/3.12/3.13 x pyarrow17/21 grid, then PyPI Trusted
   Publishing [OIDC, no token, ADR-13] + a GitHub Release). Verified: clean-venv `uv pip install bobframes==0.2.6` from

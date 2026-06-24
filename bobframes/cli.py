@@ -251,20 +251,10 @@ def _cmd_check(args: argparse.Namespace) -> int:
 
 
 def _cmd_serve(args: argparse.Namespace) -> int:
-    import functools
-    import http.server
-    import socketserver
-
-    root = os.path.abspath(args.root)
-    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=root)
-    log = logging.getLogger('bobframes')
-    try:
-        with socketserver.TCPServer((args.bind, args.port), handler) as httpd:
-            log.info(f'serving {root} at http://{args.bind}:{args.port} (Ctrl+C to stop)')
-            httpd.serve_forever()
-    except KeyboardInterrupt:
-        return 4
-    return 0
+    # The static preview server body lives in serve.serve_forever so the `ui` panel can reuse the
+    # same builder (serve.make_server) for its background click-to-serve (v028_3).
+    from . import serve
+    return serve.serve_forever(os.path.abspath(args.root), bind=args.bind, port=args.port)
 
 
 def _cmd_ui(args: argparse.Namespace) -> int:

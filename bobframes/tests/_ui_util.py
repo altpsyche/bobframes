@@ -38,6 +38,7 @@ def running(root: str):
     try:
         yield httpd, httpd.server_address[1]
     finally:
+        _server._shutdown_aux(httpd)          # stop the background static serve if /api/serve started one
         httpd.shutdown()
         t.join(timeout=5)
 
