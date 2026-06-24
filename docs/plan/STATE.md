@@ -38,7 +38,16 @@ active_release: v0.2.9 (RELEASE-READY 2026-06-24 on feat/v029-panel-polish, off 
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.9 v029_18 DONE 2026-06-24 (Captures: single-run caption, no blank RUN cells -- test feedback). The
+current:        v0.2.9 v029_19 DONE 2026-06-24 (CI fix -- don't gate the release on opt-in browser tests). The v0.2.9 tag
+                run FAILED on one cell (py3.12/pyarrow21) in test_browser_shots.test_harness_captures_light_dark_print -- a
+                pre-existing headless-Chrome pixel-diff FLAKE (passed on the other 4 cells), which (publish needs test)
+                skipped publish + blocked the release. Root cause (ADR-23, not a gate-narrowing): CI's gating step ran
+                `-m "not golden_env"` which INCLUDES browser-marked tests, but the marker is documented opt-in ("never runs
+                in the default suite"); fixed to `-m "not golden_env and not browser"`. Browser coverage NOT dropped -- the
+                panel smokes run locally + as the mandatory pre-tag `pytest -m browser` sign-off (7 passed this release).
+                Re-tagging v0.2.9 onto this commit (the prior tag never published -> clean re-point). NEXT = push main, move
+                the v0.2.9 tag, watch publish -> PyPI. commit doc commits/v029/v029_19_ci_browser_not_gating.md.
+                (prior: v029_18 DONE 2026-06-24 -- Captures: single-run caption, no blank RUN cells -- test feedback. The
                 v029_10 RUN-column blank-dedup read as BROKEN when all 7 areas share one run (6 empty cells look like
                 missing data). Fixed: render() now shows the run ONCE as a "Run <key>" caption + an Area|Captures table
                 when there is a single run; a populated Area|Run|Captures table (run on EVERY row, never blank) when runs
@@ -1730,6 +1739,11 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-24 — v0.2.9 v029_19 DONE (commits/v029/v029_19_ci_browser_not_gating.md, main). The v0.2.9 tag run flaked on one
+  cell in test_browser_shots (headless-Chrome pixel-diff) and skipped publish. Root cause: CI gated on `-m "not golden_env"`
+  which includes the opt-in browser tests; fixed to `-m "not golden_env and not browser"` (ADR-23 -- aligns with the
+  marker's documented "never in the default suite"; browser smokes still run locally + as the pre-tag sign-off, 7 passed).
+  Re-tagging v0.2.9 onto this fix (prior tag never published).
 - 2026-06-24 — v0.2.9 v029_18 DONE (commits/v029/v029_18_captures_run_caption.md, feat/v029-panel-polish). Captures run
   presentation: v029_10's blank-dedup read as broken when all areas share one run; render() now shows a "Run <key>"
   caption + Area|Captures table for a single run, and a populated Area|Run|Captures table (no blanks) when runs differ.
