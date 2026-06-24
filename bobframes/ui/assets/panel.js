@@ -139,10 +139,18 @@
     startJob("/api/package", { light: el("pkg_light").checked, redact: el("pkg_redact").checked }, SHARE_T, function(rc, logText){
       if (rc !== 0) return;
       var m = /zip (.+)$/m.exec(logText);
-      result("share_result", m ? ('Bundle written: <code>' + esc(m[1].trim()) + '</code> (beside your project folder).')
-                                : 'Bundle written beside your project folder.');
+      result("share_result", (m ? ('Bundle written: <code>' + esc(m[1].trim()) + '</code> (beside your project folder).')
+                                 : 'Bundle written beside your project folder.')
+                              + ' <a href="#" id="reveal_pkg">Reveal in folder</a>');
+      el("reveal_pkg").onclick = function(e){ e.preventDefault(); revealFolder("package"); };
     });
   };
+  function revealFolder(kind){          // open the output folder in the OS file explorer (POST /api/reveal)
+    postJSON("/api/reveal", { kind: kind })
+      .then(function(r){ return r.json().then(function(j){ if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; }); })
+      .then(function(j){ /* Explorer opened at j.path; leave the result (zip path) intact */ })
+      .catch(function(e){ el("share_result").innerHTML = '<span class="bad">' + esc(e.message) + '</span>'; });
+  }
   el("open").onclick = function(){ action("/api/open", {}, function(j){ result("share_result", 'Opened <code>' + esc(j.path) + '</code> in your browser.'); }); };
   el("serve").onclick = function(){ action("/api/serve", {}, function(j){ result("share_result", 'Serving at <a href="' + esc(j.url) + '" target="_blank" rel="noopener">' + esc(j.url) + '</a> &mdash; browse the report over http.'); }); };
   el("ab").onclick = function(){

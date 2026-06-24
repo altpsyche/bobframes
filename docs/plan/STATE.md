@@ -34,7 +34,13 @@ active_release: v0.2.9 (OPEN 2026-06-24 on feat/v029-panel-polish, off main @ v0
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.9 v029_5 DONE 2026-06-24 (A/B: link every report in the pair). GET /api/ab/reports?base=&cmp= ->
+current:        v0.2.9 v029_6 DONE 2026-06-24 (reveal output folder; LOW tier opens). POST /api/reveal {kind} ->
+                _reveal: kind=package opens the dir BESIDE the project (root parent, where the zip lands), else root; no
+                client path (no traversal surface); os.startfile (Windows-only; 501 else, 409 if gone). panel.js adds a
+                "Reveal in folder" link on the package result. 423 green `-m "not browser"` (was 419; +4) / 3 deselected;
+                node --check + browser populate-smoke green; 5 golden_env byte-unchanged; no new dep. NEXT = v029_7 (log
+                copy/download buttons on each log pane). commit doc commits/v029/v029_6_reveal_in_folder.md.
+                (prior: v029_5 DONE 2026-06-24 -- A/B: link every report in the pair. GET /api/ab/reports?base=&cmp= ->
                 _ab_reports lists `_reports/ab/<base>_vs_<cmp>/*.html` ({name,rel}; key-guarded vs separators/.. -> 400;
                 un-rendered -> []); panel.js showAbReports() links each, openAbReport() opens one via the traversal-guarded
                 /api/open without wiping the list. Replaces the old single summary.html link. 419 green `-m "not browser"`
@@ -1462,14 +1468,13 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    v029_6 -- reveal output folder (LOW finding; first of the LOW tier). Add `POST /api/reveal {path?}` ->
-                os.startfile(dirname) on the output dir (Windows-only, matches v1); a "Reveal in folder" action on the
-                package/serve result in panel.js. Traversal-guarded like _open_report. Done-when: reveal opens the folder
-                (mock os.startfile in tests); traversal -> 400; node --check + browser green; `-m "not browser"` green;
-                `-m golden_env` byte-unchanged; no new dep. Then v029_7..12 (LOW: log copy/download, prune job registry,
-                serve list/stop, RUN-col dedup, favicon, narrow-width) + v029_13 close-out (version bump 0.2.8->0.2.9 +
-                CHANGELOG [0.2.9] + open the v0.2.9 PR; tag after merge). See the plan
-                ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md. _version bump 0.2.8->0.2.9 + CHANGELOG [0.2.9] at the v029_13 close-out; open
+next_action:    v029_7 -- log copy/download (LOW finding). Add Copy-to-clipboard (navigator.clipboard) + download-as-.txt
+                (Blob) buttons on each log pane (job_run/job_share/job_ab) in panel.js (pure client JS; no server change).
+                Done-when: the buttons are present + wired; the browser smoke asserts the handlers exist + the log text is
+                reachable; node --check green; `-m "not browser"` green; `-m golden_env` byte-unchanged; no new dep. Then
+                v029_8 (prune job registry) -> v029_9 (serve list/stop) -> v029_10 (RUN-col dedup) -> v029_11 (favicon) ->
+                v029_12 (narrow-width) -> v029_13 close-out (version bump 0.2.8->0.2.9 + CHANGELOG [0.2.9]; open the v0.2.9
+                PR; tag after merge). See the plan ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md. _version bump 0.2.8->0.2.9 + CHANGELOG [0.2.9] at the v029_13 close-out; open
                 the v0.2.9 PR when the track's gates are green, tag v0.2.9 after merge. Read `docs/plan/STATE.md` first next
                 session (plan-driven); approved UI-improvement plan ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md.
                 CARRY-OVER (independent, own commit): FINDINGS R-19 -- the
@@ -1621,6 +1626,10 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-24 — v0.2.9 v029_6 DONE (commits/v029/v029_6_reveal_in_folder.md, feat/v029-panel-polish). Reveal output folder
+  (LOW tier opens): POST /api/reveal {kind} -> os.startfile on root's parent (package) or root; no client path (no
+  traversal); 501 off-Windows. panel.js: "Reveal in folder" link on the package result. 423 green `-m "not browser"` (+4)
+  / 3 deselected; node --check + browser green; 5 golden_env byte-unchanged; no new dep. NEXT = v029_7 (log copy/download).
 - 2026-06-24 — v0.2.9 v029_5 DONE (commits/v029/v029_5_ab_all_reports.md, feat/v029-panel-polish). A/B links every report
   in the pair: GET /api/ab/reports?base=&cmp= lists `_reports/ab/<pair>/*.html` (key-guarded -> 400; un-rendered -> []);
   panel.js links each, opens via the traversal-guarded /api/open without wiping the list. 419 green `-m "not browser"`

@@ -350,6 +350,9 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         if path == '/api/root':
             self._set_root(self._read_json_body())
             return
+        if path == '/api/reveal':
+            self._reveal(root, self._read_json_body())
+            return
         if path.startswith('/api/cancel/'):
             self._cancel_job(path[len('/api/cancel/'):])
             return
@@ -485,6 +488,23 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         self.server.bobframes_serve = info             # type: ignore[attr-defined]
         self.server.bobframes_serve_httpd = httpd      # type: ignore[attr-defined]
         self._send_json(info)
+
+    def _reveal(self, root: str, body: dict) -> None:
+        """Open a folder in the OS file explorer (the v029_6 'reveal in folder' action; no client path,
+        so no traversal surface). ``kind=package`` -> the dir BESIDE the project where ``package`` writes
+        the zip (root's parent); otherwise the project root (where index.html + _reports live). Uses
+        ``os.startfile`` -- Windows only (v1 is Windows-only); 501 elsewhere, 409 if the dir is gone."""
+        kind = str(body.get('kind') or 'root').strip()
+        target = os.path.dirname(os.path.abspath(root)) if kind == 'package' else os.path.abspath(root)
+        if not os.path.isdir(target):
+            self._send_json({'error': 'folder not found', 'path': target}, code=409)
+            return
+        startfile = getattr(os, 'startfile', None)
+        if startfile is None:
+            self._send_json({'error': 'reveal is Windows-only'}, code=501)
+            return
+        startfile(target)
+        self._send_json({'ok': True, 'path': target})
 
     def _set_root(self, body: dict) -> None:
         """Repoint the panel at another folder without relaunching from a terminal (the v029_2 root
