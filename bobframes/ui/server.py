@@ -163,11 +163,14 @@ _SHELL = r"""<!doctype html>
 <h1>bobframes</h1>
 <p class="sub">Guided control panel &mdash; turn RenderDoc captures into shareable reports.</p>
 <p class="muted" id="root">Loading...</p>
-<div class="fields">
-  <label>Project folder <input id="root_input" placeholder="C:/path/to/captures" style="width:24rem"></label>
-  <button id="set_root">Open folder</button>
-</div>
-<p id="root_msg" class="hint" aria-live="polite"></p>
+<details>
+  <summary>Change folder</summary>
+  <div class="fields">
+    <label>New folder <input id="root_input" placeholder="C:/path/to/captures" style="width:24rem"></label>
+    <button id="set_root">Open folder</button>
+  </div>
+  <p id="root_msg" class="hint" aria-live="polite"></p>
+</details>
 
 <section class="step">
   <div class="step-head"><h2>RenderDoc tools</h2><span id="tools_badge" class="badge">...</span></div>

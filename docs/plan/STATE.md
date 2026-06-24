@@ -38,7 +38,14 @@ active_release: v0.2.9 (RELEASE-READY 2026-06-24 on feat/v029-panel-polish, off 
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.9 v029_16 DONE 2026-06-24 (progress bar for ALL jobs -- test feedback). applyProgress shows the bar
+current:        v0.2.9 v029_17 DONE 2026-06-24 (one project-folder line; change-box behind a disclosure -- test feedback).
+                The folder showed twice (read-only "Project folder: <path>" line + an always-visible empty input); the
+                input/"Open folder"/msg now live inside a <details>"Change folder" (collapsed; input relabelled "New
+                folder"), so the default view shows one folder + no redundant empty box. Shell-only; ids/wiring/(/api/root)
+                unchanged. node --check + 5 browser smokes green; 432 `-m "not browser"` / 7 deselected; 5 golden_env
+                byte-unchanged; no new dep. v0.2.9 RELEASE-READY (spine v029_0..17). NEXT = restart panel; GATED v0.2.9
+                release. commit doc commits/v029/v029_17_folder_disclosure.md.
+                (prior: v029_16 DONE 2026-06-24 -- progress bar for ALL jobs. applyProgress shows the bar
                 for every running job: DETERMINATE during replay (value=replay_done, max=replay_total) + INDETERMINATE
                 "working" animation (removeAttribute value -> position -1) for every other phase/job (package/rebuild/ab and
                 the non-replay pipeline phases). startJob shows it working from the start; done hides it. ADR-23-honest: the
@@ -1715,6 +1722,10 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-24 — v0.2.9 v029_17 DONE (commits/v029/v029_17_folder_disclosure.md, feat/v029-panel-polish). One folder line:
+  the folder showed twice (read-only line + an always-visible empty input); the change-box now lives in a <details>
+  "Change folder" (collapsed), so default view shows one folder + no empty box. Shell-only; wiring/(/api/root) unchanged.
+  node --check + 5 browser smokes green; 432 `-m "not browser"` / 7 deselected; 5 golden_env byte-unchanged; no new dep.
 - 2026-06-24 — v0.2.9 v029_16 DONE (commits/v029/v029_16_progress_bar_all_jobs.md, feat/v029-panel-polish). Progress bar
   for ALL jobs (test feedback): applyProgress shows the bar for every job -- determinate during replay (value/max), an
   indeterminate "working" animation otherwise (package/rebuild/ab + non-replay phases); honest per ADR-23 (no faked %).
