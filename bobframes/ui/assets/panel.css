@@ -48,3 +48,11 @@
   .phase { margin: 0; color: var(--text-2); font-size: var(--fs-small); }
   .job { margin-top: var(--sp-3); }
   [hidden] { display: none !important; }
+  /* v029_12: narrow viewports -- shrink margins, let fixed-width inputs reflow, and make a wide table
+     scroll instead of forcing horizontal page overflow. */
+  @media (max-width: 560px) {
+    body { margin: var(--sp-6) auto var(--sp-8); }
+    .step { padding: var(--sp-3); }
+    input, select { max-width: 100%; box-sizing: border-box; }
+    table { display: block; overflow-x: auto; }
+  }
