@@ -15,6 +15,7 @@
   function result(id, html){ var r = el(id); r.hidden = false; r.innerHTML = html; }
   function enable(id, ok, why){ el(id).disabled = !ok; el(id).title = ok ? "" : (why || ""); }
   function fmtDur(s){ return s < 90 ? Math.round(s) + "s" : Math.round(s / 60) + " min"; }   // coarse, honest
+  function runKey(d){ return d.date + (d.label ? "_" + d.label : ""); }
   function renderRuns(runs){
     RUNS = runs || [];
     if (RUNS.length < 2) {
@@ -54,9 +55,18 @@
       el("drops").innerHTML = '<p class="muted">No captures found. Expected layout: <code>'+esc(s.convention)+'</code></p>';
       badge("drops_badge", false, "empty");
     } else {
-      var rows = s.drops.map(function(d){
-        var key = esc(d.date) + (d.label ? "_" + esc(d.label) : "");
-        return "<tr><td>"+esc(d.area)+"</td><td>"+key+"</td><td>"+esc(d.n_captures)+" capture(s)</td></tr>";
+      // Group by run and show the run key ONCE per group (de-dup): areas captured in the same run
+      // otherwise repeat the key down the column (e.g. 7 areas x 4 runs).
+      var sorted = s.drops.slice().sort(function(a, b){
+        var ka = runKey(a), kb = runKey(b);
+        return ka < kb ? -1 : ka > kb ? 1 : (a.area < b.area ? -1 : a.area > b.area ? 1 : 0);
+      });
+      var prevRun = null;
+      var rows = sorted.map(function(d){
+        var key = runKey(d);
+        var runCell = (key === prevRun) ? "" : esc(key);   // blank when same as the row above
+        prevRun = key;
+        return "<tr><td>"+esc(d.area)+"</td><td>"+runCell+"</td><td>"+esc(d.n_captures)+" capture(s)</td></tr>";
       }).join("");
       el("drops").innerHTML = "<table><thead><tr><th>Area</th><th>Run</th><th>Captures</th></tr></thead><tbody>"+rows+"</tbody></table>";
       badge("drops_badge", true, s.drops.length + " areas");
