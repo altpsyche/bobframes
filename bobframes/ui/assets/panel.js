@@ -164,7 +164,23 @@
       .catch(function(e){ el("share_result").innerHTML = '<span class="bad">' + esc(e.message) + '</span>'; });
   }
   el("open").onclick = function(){ action("/api/open", {}, function(j){ result("share_result", 'Opened <code>' + esc(j.path) + '</code> in your browser.'); }); };
-  el("serve").onclick = function(){ action("/api/serve", {}, function(j){ result("share_result", 'Serving at <a href="' + esc(j.url) + '" target="_blank" rel="noopener">' + esc(j.url) + '</a> &mdash; browse the report over http.'); }); };
+  el("serve").onclick = function(){ action("/api/serve", {}, function(j){ showServe(j); }); };
+  function showServe(info){          // show the running static server's URL + a Stop control (v029_9)
+    result("share_result", 'Serving at <a href="' + esc(info.url) + '" target="_blank" rel="noopener">' + esc(info.url)
+      + '</a> &mdash; browse the report over http. <a href="#" id="stop_serve">Stop server</a>');
+    el("stop_serve").onclick = function(e){ e.preventDefault();
+      postJSON("/api/serve/stop", {})
+        .then(function(r){ return r.json(); })
+        .then(function(){ result("share_result", "Static server stopped."); })
+        .catch(function(err){ result("share_result", '<span class="bad">' + esc(err.message) + '</span>'); });
+    };
+  }
+  function checkServe(){             // on load, surface an already-running serve so it can be stopped
+    fetch("/api/serve?t=" + encodeURIComponent(TOKEN))
+      .then(function(r){ return r.ok ? r.json() : {}; })
+      .then(function(j){ if (j && j.serving) showServe(j.serving); })
+      .catch(function(){});
+  }
   el("ab").onclick = function(){
     var b = RUNS[el("ab_base").value], c = RUNS[el("ab_cmp").value];
     if (!b || !c) { el("ab_hint").innerHTML = '<span class="bad">pick a baseline and a compare run</span>'; return; }
@@ -235,3 +251,4 @@
       .catch(function(e){ el("config_msg").innerHTML = '<span class="bad">' + esc(e.message) + '</span>'; });
   };
   loadState();
+  checkServe();   // v029_9: surface an already-running static serve so it can be stopped
