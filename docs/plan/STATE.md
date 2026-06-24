@@ -34,7 +34,12 @@ active_release: v0.2.9 (OPEN 2026-06-24 on feat/v029-panel-polish, off main @ v0
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.9 v029_10 DONE 2026-06-24 (Captures RUN-column de-duplication). render() sorts the drops by
+current:        v0.2.9 v029_11 DONE 2026-06-24 (favicon). A tiny inline SVG _FAVICON (neutral rounded square + "b") served
+                at GET /favicon.ico (image/svg+xml, no token) + a <link rel="icon"> in the shell head, so the tab isn't a
+                broken icon / console 404. 432 green `-m "not browser"` (was 430; +2) / 4 deselected; node --check + browser
+                populate-smoke green; 5 golden_env byte-unchanged; no new dep. NEXT = v029_12 (narrow-width responsive
+                breakpoint in panel.css + a narrow-viewport browser smoke). commit doc commits/v029/v029_11_favicon.md.
+                (prior: v029_10 DONE 2026-06-24 -- Captures RUN-column de-duplication. render() sorts the drops by
                 (runKey, area) and blanks the RUN cell when it repeats the row above, so each run prints once (areas in
                 the same run no longer echo the key down the column). Client display only; no data hidden. New browser test
                 on a shared-run fixture asserts cells ['2026-06-01_r1','']. 430 green `-m "not browser"` (unchanged; the new
@@ -1494,12 +1499,15 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    v029_11 -- favicon (LOW finding). Serve a tiny favicon (GET /favicon.ico -> 200, not a 404) so the tab
-                isn't a broken icon and the console is clean. Either a bundled asset under bobframes/ui/assets/ or an inline
-                data-URI <link> in the shell. Done-when: GET /favicon.ico -> 200 (correct content-type); a structural/HTTP
-                test; node --check + browser green; `-m "not browser"` green; `-m golden_env` byte-unchanged; no new dep.
-                Then v029_12 (narrow-width responsive) -> v029_13 close-out (version bump 0.2.8->0.2.9 + CHANGELOG [0.2.9];
-                open the v0.2.9 PR; tag after merge). See the plan ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md. _version bump 0.2.8->0.2.9 + CHANGELOG [0.2.9] at the v029_13 close-out; open
+next_action:    v029_12 -- narrow-width responsive check (LOW finding; last feature before close-out). Add a narrow-width
+                breakpoint to panel.css (e.g. <=560px: smaller body margins, .fields/.actions stack, table stays readable)
+                + a `browser`-marked smoke at a narrow viewport (Emulation.setDeviceMetricsOverride width ~480) asserting no
+                horizontal overflow (document.documentElement.scrollWidth <= innerWidth). Done-when: panel.css has the
+                breakpoint; the narrow smoke passes; node --check green; `-m "not browser"` green; `-m golden_env`
+                byte-unchanged; no new dep. Then v029_13 close-out: _version 0.2.8->0.2.9 + CHANGELOG [0.2.9] (bobframes
+                lint) + STATE/INDEX/ROADMAP; confirm golden byte-unchanged + clean wheel ships ui/assets/*; open the v0.2.9
+                PR off feat/v029-panel-polish -> main; before tag run `pytest -m browser`; tag v0.2.9 after merge -> ci.yml
+                publish -> PyPI (GATED on user authorization). See ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md. _version bump 0.2.8->0.2.9 + CHANGELOG [0.2.9] at the v029_13 close-out; open
                 the v0.2.9 PR when the track's gates are green, tag v0.2.9 after merge. Read `docs/plan/STATE.md` first next
                 session (plan-driven); approved UI-improvement plan ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md.
                 CARRY-OVER (independent, own commit): FINDINGS R-19 -- the
@@ -1651,6 +1659,10 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-24 — v0.2.9 v029_11 DONE (commits/v029/v029_11_favicon.md, feat/v029-panel-polish). Favicon: a tiny inline SVG
+  served at GET /favicon.ico (image/svg+xml) + a <link rel="icon"> in the shell head -> no broken-tab icon / console 404.
+  432 green `-m "not browser"` (+2) / 4 deselected; node --check + browser green; 5 golden_env byte-unchanged; no new dep.
+  NEXT = v029_12 (narrow-width).
 - 2026-06-24 — v0.2.9 v029_10 DONE (commits/v029/v029_10_run_col_dedupe.md, feat/v029-panel-polish). Captures RUN-column
   de-dup: render() sorts drops by (run,area) + blanks the repeated RUN cell so each run prints once. New browser test on a
   shared-run fixture (cells ['2026-06-01_r1','']). Caught + fixed an edit that split the populate test (orphaned asserts).
