@@ -31,7 +31,7 @@
   }
   function render(s){
     renderRuns(s.runs);
-    el("root").innerHTML = "Project root: <code>" + esc(s.root) + "</code>";
+    el("root").innerHTML = "Project folder: <code>" + esc(s.root) + "</code>";
     var allok = s.tools.length && s.tools.every(function(x){ return x.found; });
     badge("tools_badge", allok, allok ? "ready" : "missing");
     var t = s.tools.map(function(x){
