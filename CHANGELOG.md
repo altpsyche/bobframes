@@ -21,6 +21,7 @@ so the rendered HTML and parquet digests stay byte-identical on the same capture
 - Project-folder input to repoint the panel at another capture folder without relaunching from a terminal.
 - Honest ingest-time estimate shown before and during ingest -- a labelled worst-case upper bound
   (captures x the per-capture replay budget).
+- A per-capture replay progress bar during ingest (bound to the live replay count).
 - The A/B comparison links every report in the pair, not just the summary.
 - "Reveal in folder" for the packaged output; Copy / Download buttons on each job log.
 - List + Stop the panel's background static server; a favicon.

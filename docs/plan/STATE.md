@@ -38,7 +38,15 @@ active_release: v0.2.9 (RELEASE-READY 2026-06-24 on feat/v029-panel-polish, off 
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.9 v029_13 DONE 2026-06-24 (close-out). _version 0.2.8->0.2.9 + CHANGELOG [0.2.9] (Added: cancel,
+current:        v0.2.9 v029_14 DONE 2026-06-24 (replay progress bar -- user-requested while testing). A <progress> bar in
+                each job panel bound to the classifier's replay_done/replay_total: panel.js factors the per-line update
+                into applyProgress(t,d) (log + phase + bar); the bar shows during replay (the only countable phase),
+                resets per run, hides on done. CSS accent-styled full-width. Post-close-out but PRE-release -> rides into
+                v0.2.9 (CHANGELOG [0.2.9] +line). 432 green `-m "not browser"` (browser-marked test; 6 deselected); 4 browser
+                smokes green incl. the new bar-fill (value 2/max 3); node --check clean; 5 golden_env byte-unchanged; no new
+                dep. v0.2.9 still RELEASE-READY (spine v029_0..14). NEXT = the v0.2.9 release sequence (GATED). commit doc
+                commits/v029/v029_14_progress_bar.md.
+                (prior: v029_13 DONE 2026-06-24 -- close-out. _version 0.2.8->0.2.9 + CHANGELOG [0.2.9] (Added: cancel,
                 write-config, root input, ingest estimate, A/B all-pair links, reveal, log copy/download, serve list/stop,
                 favicon; Changed: aria-live, RUN-col dedup, narrow-width, pruned registry) + link-refs. VERIFIED:
                 `bobframes version`->0.2.9 schema 3; `lint CHANGELOG.md` exit 0; -m golden_env 5 BYTE-UNCHANGED (NO refresh
@@ -1691,6 +1699,10 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-24 — v0.2.9 v029_14 DONE (commits/v029/v029_14_progress_bar.md, feat/v029-panel-polish). Replay progress bar
+  (user-requested while testing): a <progress> per job panel bound to replay_done/replay_total; panel.js applyProgress(t,d)
+  refactor (log+phase+bar). Post-close-out, pre-release -> CHANGELOG [0.2.9] +line. 432 green `-m "not browser"` (6
+  deselected); 4 browser smokes green incl. bar-fill (2/3); node --check + golden_env byte-unchanged; no new dep.
 - 2026-06-24 — v0.2.9 v029_13 DONE (commits/v029/v029_13_closeout.md, feat/v029-panel-polish). Close-out: _version
   0.2.8->0.2.9 + CHANGELOG [0.2.9] + link-refs + STATE/INDEX/ROADMAP. `bobframes version`->0.2.9 schema 3; lint exit 0;
   -m golden_env 5 BYTE-UNCHANGED (no refresh); -m "not browser" 432 / 5 deselected; clean wheel bobframes-0.2.9 ships

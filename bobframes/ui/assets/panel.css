@@ -47,6 +47,8 @@
             padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-sm); margin-top: var(--sp-3); }
   .phase { margin: 0; color: var(--text-2); font-size: var(--fs-small); }
   .job { margin-top: var(--sp-3); }
+  progress { width: 100%; height: .5rem; margin-top: var(--sp-2); accent-color: var(--accent-data);
+             border: 0; border-radius: var(--radius-sm); }
   [hidden] { display: none !important; }
   /* v029_12: narrow viewports -- shrink margins, let fixed-width inputs reflow, and make a wide table
      scroll instead of forcing horizontal page overflow. */
