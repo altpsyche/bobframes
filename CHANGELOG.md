@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.9] - 2026-06-24
+
+Polish for the `bobframes ui` control panel (the review findings from the 0.2.8 ship), each its own
+commit. Zero new runtime dependency (stdlib `http.server` only); the panel still emits no report HTML,
+so the rendered HTML and parquet digests stay byte-identical on the same captures (still schema 3).
+`_version` 0.2.8 -> 0.2.9.
+
+### Added
+- Cancel a running job from the panel (a long ingest is no longer unstoppable from the UI).
+- "Write starter config" button when a RenderDoc tool is missing -- writes a commented `.bobframes.toml`
+  to edit, instead of a first-run dead end.
+- Project-folder input to repoint the panel at another capture folder without relaunching from a terminal.
+- Honest ingest-time estimate shown before and during ingest -- a labelled worst-case upper bound
+  (captures x the per-capture replay budget).
+- The A/B comparison links every report in the pair, not just the summary.
+- "Reveal in folder" for the packaged output; Copy / Download buttons on each job log.
+- List + Stop the panel's background static server; a favicon.
+
+### Changed
+- The progress and result regions are `aria-live`, so a screen reader announces job completion and
+  results.
+- The Captures table de-duplicates the run key (shown once per run group instead of repeated per area).
+- A narrow-width breakpoint reflows the panel on small viewports (no horizontal overflow).
+- The in-memory job registry is bounded (oldest finished jobs pruned) instead of growing per job.
+
 ## [0.2.8] - 2026-06-24
 
 A guided local-web control panel (`bobframes ui`) for QA and product teammates who are not comfortable
@@ -189,7 +214,8 @@ First standalone release. v1 is Windows-only (the replay stage drives `qrenderdo
   `python -m _analysis.*` entry points no longer work; switch to the `bobframes` commands (see the
   migration table in the README). This is a hard rename with no compatibility shim.
 
-[Unreleased]: https://github.com/altpsyche/bobframes/compare/v0.2.8...HEAD
+[Unreleased]: https://github.com/altpsyche/bobframes/compare/v0.2.9...HEAD
+[0.2.9]: https://github.com/altpsyche/bobframes/compare/v0.2.8...v0.2.9
 [0.2.8]: https://github.com/altpsyche/bobframes/compare/v0.2.7...v0.2.8
 [0.2.7]: https://github.com/altpsyche/bobframes/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/altpsyche/bobframes/compare/v0.2.0...v0.2.6
