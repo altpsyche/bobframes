@@ -156,6 +156,7 @@ _SHELL = r"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>bobframes ui</title>
+<link rel="icon" href="/favicon.ico">
 <style>/*TOKENS*/</style>
 <link rel="stylesheet" href="/panel.css">
 </head><body>
@@ -244,6 +245,13 @@ _SHELL = r"""<!doctype html>
 </body></html>
 """
 
+# A tiny inline SVG favicon (neutral rounded square + a "b") served at /favicon.ico so the browser tab
+# is not a broken icon and the console has no favicon 404. Cosmetic; not themed.
+_FAVICON = (b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">'
+            b'<rect width="16" height="16" rx="3" fill="#1f2937"/>'
+            b'<text x="8" y="12" font-family="sans-serif" font-size="11" fill="#f9fafb" '
+            b'text-anchor="middle">b</text></svg>')
+
 
 # --- HTTP handler ------------------------------------------------------------------------------
 
@@ -281,6 +289,9 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             return
         if path == '/panel.css':
             self._send(200, panel_css().encode('utf-8'), 'text/css; charset=utf-8')
+            return
+        if path == '/favicon.ico':      # tiny SVG mark so the tab isn't a broken icon / console 404
+            self._send(200, _FAVICON, 'image/svg+xml')
             return
         if path == '/api/state':
             if not self._has_valid_token(query):
