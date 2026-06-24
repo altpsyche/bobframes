@@ -289,6 +289,12 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             root = getattr(self.server, 'bobframes_root', '.')
             self._send_json(panel_state(root))
             return
+        if path == '/api/ab/reports':
+            if not self._has_valid_token(query):
+                self._send_json({'error': 'forbidden'}, code=403)
+                return
+            self._ab_reports(getattr(self.server, 'bobframes_root', '.'), query)
+            return
         if path.startswith('/api/stream/'):
             if not self._has_valid_token(query):           # EventSource can only auth via the query
                 self._send_json({'error': 'forbidden'}, code=403)
@@ -435,6 +441,28 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             return
         webbrowser.open(target)
         self._send_json({'ok': True, 'path': target})
+
+    def _ab_reports(self, root: str, query: dict) -> None:
+        """List every report in an A/B pair's output dir ``_reports/ab/<base>_vs_<cmp>/`` (v029_5) so the
+        panel can link them all, not just summary.html. Returns ``{reports: [{name, rel}]}`` (rel is a
+        root-relative path the traversal-guarded ``/api/open`` accepts). The run keys form a directory
+        name, so they are guarded against separators / ``..`` (400); an un-rendered pair -> empty list."""
+        base = (query.get('base', [''])[0] or '').strip()
+        cmp_ = (query.get('cmp', [''])[0] or '').strip()
+        if not base or not cmp_ or any(b in (base + cmp_) for b in _NAME_BAD):
+            self._send_json({'error': 'valid base and cmp run keys are required'}, code=400)
+            return
+        rel_dir = f'_reports/ab/{base}_vs_{cmp_}'
+        abs_dir = os.path.normpath(os.path.join(root, rel_dir))
+        if abs_dir != root and not abs_dir.startswith(root + os.sep):   # belt-and-suspenders
+            self._send_json({'error': 'invalid pair'}, code=400)
+            return
+        reports = []
+        if os.path.isdir(abs_dir):
+            for name in sorted(os.listdir(abs_dir)):
+                if name.endswith('.html'):
+                    reports.append({'name': name[:-len('.html')], 'rel': f'{rel_dir}/{name}'})
+        self._send_json({'reports': reports})
 
     def _serve_static(self, root: str, body: dict) -> None:
         """Start (once) a background static file server over ``<root>`` so the report can be browsed over

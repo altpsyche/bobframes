@@ -150,16 +150,34 @@
     if (!b || !c) { el("ab_hint").innerHTML = '<span class="bad">pick a baseline and a compare run</span>'; return; }
     if (b.key === c.key) { el("ab_hint").innerHTML = '<span class="bad">pick two different runs</span>'; return; }
     el("ab_result").hidden = true; el("ab_hint").textContent = "comparing " + b.key + " vs " + c.key + "...";
-    var rel = "_reports/ab/" + b.key + "_vs_" + c.key + "/summary.html";
     startJob("/api/ab", { baseline_label: b.label, baseline_date: b.date, compare_label: c.label, compare_date: c.date }, AB_T,
       function(rc){
         if (rc !== 0) return;
         el("ab_hint").textContent = "";
-        result("ab_result", esc(b.key) + ' vs ' + esc(c.key) + ' &mdash; <a href="#" id="ab_open">open comparison</a>');
-        el("ab_open").onclick = function(e){ e.preventDefault();
-          action("/api/open", { path: rel }, function(j){ result("ab_result", 'Opened <code>' + esc(j.path) + '</code> in your browser.'); }, "ab_result"); };
+        showAbReports(b, c);
       });
   };
+  function showAbReports(b, c){          // list + link EVERY report in the pair, not just summary.html
+    fetch("/api/ab/reports?base=" + encodeURIComponent(b.key) + "&cmp=" + encodeURIComponent(c.key) + "&t=" + encodeURIComponent(TOKEN))
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        var reps = j.reports || [];
+        if (!reps.length) { result("ab_result", esc(b.key) + ' vs ' + esc(c.key) + ' &mdash; comparison written.'); return; }
+        var links = reps.map(function(rp){ return '<a href="#" data-rel="' + esc(rp.rel) + '">' + esc(rp.name) + '</a>'; }).join("  &middot;  ");
+        result("ab_result", '<strong>' + esc(b.key) + ' vs ' + esc(c.key) + '</strong> &mdash; open: ' + links);
+        var as = el("ab_result").querySelectorAll("a[data-rel]");
+        for (var i = 0; i < as.length; i++) as[i].onclick = openAbReport;
+      })
+      .catch(function(){ result("ab_result", esc(b.key) + ' vs ' + esc(c.key) + ' &mdash; comparison written.'); });
+  }
+  function openAbReport(e){              // open one pair report; keep the link list (note goes to ab_hint)
+    e.preventDefault();
+    var rel = this.getAttribute("data-rel");
+    postJSON("/api/open", { path: rel })
+      .then(function(r){ return r.json().then(function(jj){ if (!r.ok) throw new Error(jj.error || ("HTTP " + r.status)); return jj; }); })
+      .then(function(jj){ el("ab_hint").textContent = "Opened " + jj.path; })
+      .catch(function(err){ el("ab_hint").innerHTML = '<span class="bad">' + esc(err.message) + '</span>'; });
+  }
   el("scaffold").onclick = function(){
     el("sc_msg").textContent = "creating...";
     postJSON("/api/scaffold", { area: el("sc_area").value, date: el("sc_date").value, label: el("sc_label").value })
