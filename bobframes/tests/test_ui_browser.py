@@ -157,3 +157,28 @@ def test_replay_progress_bar_fills(tmp_path):
             bar = json.loads(_eval(chrome, _FEED_REPLAY))
     assert bar['hidden'] is False, 'progress bar stayed hidden during replay'
     assert bar['value'] == 2 and bar['max'] == 3, bar          # 2 of 3 captures replayed
+
+
+_FEED_WORKING = """(function(){
+  applyProgress(RUN_T, {line:'render-only: rebuilding reports', phase:'render', replay_done:0, replay_total:0});
+  var b = document.getElementById('bar_run');
+  return JSON.stringify({hidden: b.hidden, position: b.position});  // position === -1 => indeterminate
+})()"""
+
+
+def test_progress_bar_indeterminate_for_uncounted_phase(tmp_path):
+    """v029_16: a phase with no per-item count (render / package / a-b) shows the bar as an indeterminate
+    'working' animation (position === -1) -- every job gets a progress affordance, none faked."""
+    if not shoot.find_chrome():
+        pytest.skip('Chrome not found')
+    root = make_capture_root(tmp_path)
+    with running(root) as (httpd, port):
+        url = f'http://127.0.0.1:{port}/?t={httpd.bobframes_token}'
+        with shoot.Chrome() as chrome:
+            s = chrome.session
+            chrome.cdp.call('Page.navigate', {'url': url}, session=s)
+            chrome.cdp.wait_event('Page.loadEventFired', session=s)
+            _eval(chrome, _WAIT_POPULATED, await_promise=True)
+            bar = json.loads(_eval(chrome, _FEED_WORKING))
+    assert bar['hidden'] is False, 'progress bar hidden for a working phase'
+    assert bar['position'] == -1, f'expected indeterminate bar, got position {bar["position"]}'

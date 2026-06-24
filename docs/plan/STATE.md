@@ -38,7 +38,15 @@ active_release: v0.2.9 (RELEASE-READY 2026-06-24 on feat/v029-panel-polish, off 
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.9 v029_15 DONE 2026-06-24 (unify "Project folder" wording -- test feedback). The status line read
+current:        v0.2.9 v029_16 DONE 2026-06-24 (progress bar for ALL jobs -- test feedback). applyProgress shows the bar
+                for every running job: DETERMINATE during replay (value=replay_done, max=replay_total) + INDETERMINATE
+                "working" animation (removeAttribute value -> position -1) for every other phase/job (package/rebuild/ab and
+                the non-replay pipeline phases). startJob shows it working from the start; done hides it. ADR-23-honest: the
+                verbs emit a real count only for replay, so no faked % elsewhere. 5 browser smokes green (fill: value2/max3;
+                working: position -1); 432 `-m "not browser"` / 7 deselected; node --check + 5 golden_env byte-unchanged;
+                no new dep. v0.2.9 RELEASE-READY (spine v029_0..16). NEXT = restart panel for testing, then the GATED v0.2.9
+                release sequence. commit doc commits/v029/v029_16_progress_bar_all_jobs.md.
+                (prior: v029_15 DONE 2026-06-24 -- unify "Project folder" wording. The status line read
                 "Project root:" while the v029_2 input was "Project folder" (two labels, one dir); render() now says
                 "Project folder:" to match (internal s.root/#root/--root unchanged). Display-only. node --check + browser
                 populate-smoke green; 432 `-m "not browser"` / 6 deselected; 5 golden_env byte-unchanged; no new dep. NEXT =
@@ -1535,7 +1543,9 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    v0.2.9 RELEASE SEQUENCE (GATED on user authorization; epic COMPLETE -- spine v029_0..13 DONE, _version
+next_action:    v0.2.9 RELEASE SEQUENCE (GATED on user authorization; epic COMPLETE -- spine v029_0..16 DONE incl. the
+                test-feedback follow-ups v029_14 replay bar / v029_15 folder wording / v029_16 progress-bar-for-all;
+                _version
                 0.2.9, 432 `-m "not browser"` + 5 golden_env byte-unchanged, lint exit 0, clean wheel ships ui/assets/*,
                 no new dep). Steps: (1) open the v0.2.9 PR from feat/v029-panel-polish -> main; CI matrix green incl. the
                 node --check step; merge. (2) git checkout main && git pull. (3) BEFORE tagging run `pytest -m browser`
@@ -1705,6 +1715,11 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-24 — v0.2.9 v029_16 DONE (commits/v029/v029_16_progress_bar_all_jobs.md, feat/v029-panel-polish). Progress bar
+  for ALL jobs (test feedback): applyProgress shows the bar for every job -- determinate during replay (value/max), an
+  indeterminate "working" animation otherwise (package/rebuild/ab + non-replay phases); honest per ADR-23 (no faked %).
+  5 browser smokes green (fill 2/3; working position -1); 432 `-m "not browser"` / 7 deselected; node --check + 5
+  golden_env byte-unchanged; no new dep. NEXT = restart panel; GATED v0.2.9 release.
 - 2026-06-24 — v0.2.9 v029_15 DONE (commits/v029/v029_15_folder_wording.md, feat/v029-panel-polish). Unify wording: the
   status line "Project root:" -> "Project folder:" to match the v029_2 input label (test feedback; one dir, one label).
   Display-only. node --check + browser populate-smoke green; 432 `-m "not browser"` / 6 deselected; 5 golden_env
