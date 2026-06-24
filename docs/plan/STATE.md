@@ -34,7 +34,14 @@ active_release: v0.2.9 (OPEN 2026-06-24 on feat/v029-panel-polish, off main @ v0
                 2026-05-31). v0.2.5 NOT released [ADR-43]: c16q-c16x is invisible plumbing, so there was no standalone
                 0.2.5 -- 0.2.6 carried the foundation AND the visual redesign; _version jumped 0.2.0 -> 0.2.6. All
                 v0.2.6 work rebased onto `main` (tag v0.2.6 on main HEAD). NEXT release line: v0.2.7.)
-current:        v0.2.9 v029_0 DONE 2026-06-24 (Cancel a running job + open the v0.2.9 polish track). POST /api/cancel/<job>
+current:        v0.2.9 v029_1 DONE 2026-06-24 (write-starter-config button). POST /api/config/stub ->
+                config.write_config_stub(root) (returns {path, written}; idempotent, no overwrite) + a "Write starter
+                config" button shown only when a RenderDoc tool is missing (the tools_fix block; render() toggles its
+                hidden state, never rebuilds it -> the written-path message persists), fixing the first-run dead end. 408
+                green `-m "not browser"` (was 406; +2 config tests) / 3 deselected; node --check + browser populate-smoke
+                green; 5 golden_env byte-unchanged; no new dep. NEXT = v029_2 (root-path input: POST /api/root to repoint
+                the panel without relaunching). commit doc commits/v029/v029_1_write_config_stub.md.
+                (prior: v029_0 DONE 2026-06-24 -- Cancel a running job + open the v0.2.9 polish track. POST /api/cancel/<job>
                 wires the already-present jobs.Job.cancel() + a Cancel button per job panel; the SSE terminal event now
                 carries `cancelled` so the panel reads 'cancelled' not 'failed' (honest labelling, ADR-23). 406 green
                 `-m "not browser"` (was 403; +3 cancel tests) / 3 deselected; node --check + browser populate-smoke green; 5
@@ -1423,16 +1430,15 @@ REAL-INGEST-2026-06-01: DONE (ADR-6) — ran Chor bazar (5 captures) full ingest
                 non-inheritable; broader than R-4 — holder is a 3rd-party proc). Salvaged: killed adb,
                 dropped _stage, completed the rename, ran `render` (exit 0: catalog 1/5, 6 reports +
                 dashboard + root index, lint clean). Validation GREEN with R-16 noted.
-next_action:    v029_1 -- write-starter-config button (MED finding; fixes the first-run dead end when a RenderDoc tool is
-                missing). On feat/v029-panel-polish: add `POST /api/config/stub` -> config.write_config_stub(root)
-                ([config.py] write_config_stub(root)->(path,bool)); surface a "Write starter config" button on a
-                missing-tool row in panel.js; on success re-resolve tools + refresh state. Done-when: with tools
-                mocked-missing the button posts + a stub is written (idempotent: "already exists" on re-click) + state
-                refreshes; node --check + browser populate-smoke green; `-m "not browser"` green; `-m golden_env`
-                byte-unchanged; no new dep. Then v029_2..13 (each review finding its own commit; see the plan). _version
-                bump 0.2.8->0.2.9 + CHANGELOG [0.2.9] at the v029_13 close-out; open the v0.2.9 PR when the track's gates are
-                green, tag v0.2.9 after merge. Read `docs/plan/STATE.md` first next session (plan-driven); approved
-                UI-improvement plan ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md.
+next_action:    v029_2 -- root-path input (MED finding; repoint the panel at another folder without relaunching from a
+                terminal). On feat/v029-panel-polish: add `POST /api/root {path}` -> validate the dir exists, update
+                httpd.bobframes_root, return fresh panel_state; a path input + "Open folder" in panel.js re-renders
+                tools/drops/runs; non-existent/non-dir path -> 400. Single-user local action under ADR-47. Done-when:
+                posting a valid dir flips state.root + drops; invalid -> 400; node --check + browser populate-smoke green;
+                `-m "not browser"` green; `-m golden_env` byte-unchanged; no new dep. Then v029_3..13 (each review finding
+                its own commit; see the plan). _version bump 0.2.8->0.2.9 + CHANGELOG [0.2.9] at the v029_13 close-out; open
+                the v0.2.9 PR when the track's gates are green, tag v0.2.9 after merge. Read `docs/plan/STATE.md` first next
+                session (plan-driven); approved UI-improvement plan ~/.claude/plans/plan-a-ui-improvement-track-sharded-sky.md.
                 CARRY-OVER (independent, own commit): FINDINGS R-19 -- the
                 overdraw `set(by_area[area])` row-order nondeterminism on real multi-RT data (reconfirmed pre-existing at -5;
                 CARRY-OVER (independent, own commit): FINDINGS R-19 -- the
@@ -1582,6 +1588,11 @@ blockers:       none. (Run tests via: .venv\Scripts\python -m pytest bobframes/t
 `not-started` → `doing` → `done`. Use `blocked: <reason>` when stuck and record it under `blockers`.
 
 ## Session log (append newest on top; one line each)
+- 2026-06-24 — v0.2.9 v029_1 DONE (commits/v029/v029_1_write_config_stub.md, feat/v029-panel-polish). Write-starter-config
+  button: POST /api/config/stub -> config.write_config_stub(root) ({path,written}, idempotent) + a "Write starter config"
+  button shown only when a RenderDoc tool is missing (tools_fix block), fixing the first-run dead end. 408 green
+  `-m "not browser"` (+2) / 3 deselected; node --check + browser populate-smoke green; 5 golden_env byte-unchanged; no new
+  dep. NEXT = v029_2 (root-path input).
 - 2026-06-24 — v0.2.8 SHIPPED + v0.2.9 v029_0 DONE (commits/v029/v029_0_cancel_job.md, feat/v029-panel-polish). Released
   0.2.8: merged feat/v028-ui-control-panel -> main, tagged v0.2.8 (ci.yml publish -> PyPI + GitHub Release; the new
   node --check gate ran green in the release CI), verified clean-venv `uv pip install bobframes==0.2.8` -> 0.2.8. Opened
